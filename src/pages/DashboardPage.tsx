@@ -9,7 +9,9 @@ import { MetricCard } from '@/components/MetricCard';
 import { StatusBadge } from '@/components/StatusBadge';
 import { GlassCard } from '@/components/GlassCard';
 import { mockCampaigns, generateDailySpend, formatCurrency, formatNumber } from '@/data/mock';
+import { useCredentials, useFacebookCampaigns, useFacebookInsights } from '@/hooks/useFacebookAds';
 import { Period } from '@/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
@@ -21,21 +23,43 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
+const periodToPreset: Record<Period, string> = {
+  '7d': 'last_7d',
+  '14d': 'last_14d',
+  '30d': 'last_30d',
+  '90d': 'last_90d',
+};
+
 export default function DashboardPage() {
   const [selectedClient, setSelectedClient] = useState('all');
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('30d');
 
+  const { data: creds } = useCredentials();
+  const hasIntegration = !!creds?.is_valid;
+
+  const { data: fbCampaigns, isLoading: campaignsLoading } = useFacebookCampaigns(hasIntegration);
+  const { data: fbInsights, isLoading: insightsLoading } = useFacebookInsights(hasIntegration, periodToPreset[selectedPeriod]);
+
+  const isLoading = hasIntegration && (campaignsLoading || insightsLoading);
+
+  // Use real data or mock
   const periodDays = { '7d': 7, '14d': 14, '30d': 30, '90d': 90 };
-  const dailySpend = useMemo(() => generateDailySpend(periodDays[selectedPeriod]), [selectedPeriod]);
+  const dailySpend = useMemo(() => {
+    if (hasIntegration && fbInsights?.daily_spend?.length) return fbInsights.daily_spend;
+    return generateDailySpend(periodDays[selectedPeriod]);
+  }, [hasIntegration, fbInsights, selectedPeriod]);
 
-  const campaigns = selectedClient === 'all'
-    ? mockCampaigns
-    : mockCampaigns.filter((c) => c.clientId === selectedClient);
+  const campaigns = useMemo(() => {
+    if (hasIntegration && fbCampaigns) return fbCampaigns;
+    return selectedClient === 'all'
+      ? mockCampaigns
+      : mockCampaigns.filter((c) => c.clientId === selectedClient);
+  }, [hasIntegration, fbCampaigns, selectedClient]);
 
-  const totalSpend = campaigns.reduce((s, c) => s + c.spend, 0);
-  const totalImpressions = campaigns.reduce((s, c) => s + c.impressions, 0);
-  const totalClicks = campaigns.reduce((s, c) => s + c.clicks, 0);
-  const totalConversions = campaigns.reduce((s, c) => s + c.conversions, 0);
+  const totalSpend = hasIntegration && fbInsights ? fbInsights.spend : campaigns.reduce((s, c) => s + c.spend, 0);
+  const totalImpressions = hasIntegration && fbInsights ? fbInsights.impressions : campaigns.reduce((s, c) => s + c.impressions, 0);
+  const totalClicks = hasIntegration && fbInsights ? fbInsights.clicks : campaigns.reduce((s, c) => s + c.clicks, 0);
+  const totalConversions = hasIntegration && fbInsights ? fbInsights.conversions : campaigns.reduce((s, c) => s + c.conversions, 0);
 
   const topCampaigns = [...campaigns]
     .sort((a, b) => b.spend - a.spend)
@@ -54,10 +78,18 @@ export default function DashboardPage() {
       <div className="p-6 space-y-6">
         {/* Metrics */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-          <MetricCard label="Total Gasto" value={formatCurrency(totalSpend)} change={12.5} icon={DollarSign} />
-          <MetricCard label="Impressões" value={formatNumber(totalImpressions)} change={8.3} icon={Eye} />
-          <MetricCard label="Cliques" value={formatNumber(totalClicks)} change={15.7} icon={MousePointer} />
-          <MetricCard label="Conversões" value={totalConversions.toString()} change={22.1} icon={Target} />
+          {isLoading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <GlassCard key={i}><Skeleton className="h-24 bg-white/5" /></GlassCard>
+            ))
+          ) : (
+            <>
+              <MetricCard label="Total Gasto" value={formatCurrency(totalSpend)} change={12.5} icon={DollarSign} />
+              <MetricCard label="Impressões" value={formatNumber(totalImpressions)} change={8.3} icon={Eye} />
+              <MetricCard label="Cliques" value={formatNumber(totalClicks)} change={15.7} icon={MousePointer} />
+              <MetricCard label="Conversões" value={totalConversions.toString()} change={22.1} icon={Target} />
+            </>
+          )}
         </div>
 
         {/* Charts */}
@@ -133,7 +165,7 @@ export default function DashboardPage() {
                     <td className="py-3 px-4 text-right metric-number">{formatCurrency(c.spend)}</td>
                     <td className="py-3 px-4 text-right text-white/60 hidden md:table-cell">{formatNumber(c.impressions)}</td>
                     <td className="py-3 px-4 text-right text-white/60 hidden md:table-cell">{formatNumber(c.clicks)}</td>
-                    <td className="py-3 px-4 text-right text-white/60 hidden lg:table-cell">{c.ctr}%</td>
+                    <td className="py-3 px-4 text-right text-white/60 hidden lg:table-cell">{typeof c.ctr === 'number' ? c.ctr.toFixed(2) : c.ctr}%</td>
                     <td className="py-3 px-4 text-right text-white/60 hidden lg:table-cell">{formatCurrency(c.cpc)}</td>
                     <td className="py-3 px-4 text-right metric-number">{c.conversions}</td>
                   </tr>

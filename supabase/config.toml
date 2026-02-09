@@ -1,1 +1,4 @@
 project_id = "gmdulobvxkgcfkfeydug"
+
+[functions.facebook-ads]
+verify_jwt = false
