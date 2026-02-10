@@ -1,108 +1,114 @@
 
 
-# Integração com Facebook Ads - Dados Reais
+# Conectar Facebook via OAuth (Login com Facebook)
 
 ## Resumo
 
-Conectar sua conta de negócios do Facebook Ads ao dashboard para puxar dados reais de campanhas, gastos, impressões, cliques e conversões -- substituindo os dados mockados atuais.
+Substituir o fluxo atual (colar token manualmente) por um botao "Conectar com Facebook" que abre a tela de login do Facebook, permite escolher o Business Manager e contas de anuncio, e salva o token automaticamente.
 
-## Como vai funcionar
+## Como vai funcionar para o usuario
 
-1. Você vai fornecer seu **Access Token** e **Ad Account ID** do Facebook na tela de Configurações
-2. Esses dados ficam salvos de forma segura no banco de dados (vinculados ao seu usuário)
-3. Uma função backend busca os dados da API do Facebook (Graph API v24.0) e retorna para o dashboard
-4. O dashboard exibe seus dados reais no lugar dos dados mockados
+1. Na aba Integracao, clica em **"Conectar com Facebook"**
+2. Abre popup do Facebook para login e autorizacao
+3. Escolhe qual Business Manager e conta de anuncios compartilhar
+4. Volta ao dashboard ja conectado -- sem colar nada manualmente
 
-## O que precisa ser feito antes
+## Pre-requisitos
 
-Para usar a API do Facebook Ads, você precisa ter:
-- Um **Facebook App** criado em [developers.facebook.com](https://developers.facebook.com)
-- Um **Access Token** com permissão `ads_read`
-- O **Ad Account ID** (formato: `act_XXXXXXXXX`)
+Voce precisa ter um **Facebook App** em [developers.facebook.com](https://developers.facebook.com) com:
+- Produto **Facebook Login for Business** ativado
+- Permissoes: `ads_read`, `business_management`
+- URL de redirecionamento configurada para apontar ao seu app
 
-## Etapas da implementação
+Eu vou pedir o **App ID** e o **App Secret** para armazenar como segredos no backend.
 
-### 1. Autenticação real com email/senha
-- Implementar login e cadastro usando o sistema de autenticação do Lovable Cloud
-- Proteger rotas para que apenas usuários autenticados acessem o dashboard
-- Criar tabela `profiles` para dados do usuário
+## Etapas da implementacao
 
-### 2. Tabela para credenciais do Facebook
-- Criar tabela `facebook_credentials` com colunas: `user_id`, `access_token`, `ad_account_id`
-- Proteger com RLS para que cada usuário veja apenas suas credenciais
-- Token salvo de forma segura no banco
+### 1. Armazenar credenciais do Facebook App
+- Salvar `FACEBOOK_APP_ID` e `FACEBOOK_APP_SECRET` como segredos no backend
+- O App Secret nunca sera exposto no frontend
 
-### 3. Edge Function para buscar dados do Facebook
-- Criar função backend `facebook-ads` que:
-  - Recebe o `user_id` e busca as credenciais no banco
-  - Chama a API `graph.facebook.com/v24.0/act_{ID}/campaigns` para listar campanhas
-  - Chama `/insights` para métricas (spend, impressions, clicks, conversions, ctr, cpc)
-  - Retorna dados formatados para o frontend
+### 2. Nova Edge Function: `facebook-oauth`
+- **Acao `auth-url`**: Gera a URL de autorizacao do Facebook com as permissoes necessarias (`ads_read`, `business_management`) e o redirect URI
+- **Acao `callback`**: Recebe o `code` retornado pelo Facebook, troca por um access token de longa duracao (60 dias) usando o App Secret, e salva na tabela `facebook_credentials`
+- **Acao `accounts`**: Apos autenticacao, lista as contas de anuncio disponiveis para o usuario escolher
 
-### 4. Atualizar a tela de Configurações (aba Integração)
-- Campos para Access Token e Ad Account ID com botao de salvar
-- Indicador de status da conexão (conectado/desconectado)
-- Botão para testar conexão antes de salvar
+### 3. Atualizar a tabela `facebook_credentials`
+- Adicionar coluna `ad_account_name` (para exibir o nome da conta conectada)
+- Adicionar coluna `token_expires_at` (para controlar expiracao do token)
 
-### 5. Atualizar o Dashboard para usar dados reais
-- Quando o usuário tem credenciais salvas, buscar dados reais via edge function
-- Fallback para dados mockados quando não há integração configurada
-- Loading states enquanto busca os dados
+### 4. Redesenhar a aba Integracao na tela de Configuracoes
+- **Estado desconectado**: Exibir botao "Conectar com Facebook" com icone do Meta
+- **Apos login no Facebook**: Exibir lista de contas de anuncio disponiveis para o usuario selecionar (similar a segunda tela de referencia)
+- **Estado conectado**: Exibir card com o nome da conta conectada, status de conexao e botao "Desconectar"
+- Remover os campos manuais de Access Token e Ad Account ID
 
-### 6. Atualizar as paginas de Campanhas e Clientes
-- Campanhas vindas da API do Facebook em vez de dados mock
-- Manter filtros por status funcionando com dados reais
-
----
+### 5. Fluxo de callback no frontend
+- Criar rota `/auth/facebook/callback` que recebe o `code` da URL
+- Chamar a edge function para trocar o code pelo token
+- Redirecionar de volta para a pagina de configuracoes
 
 ## Detalhes tecnicos
 
-### Tabelas do banco de dados
+### Fluxo OAuth
 
 ```text
-profiles
-+------------+--------+---------------------------+
-| Coluna     | Tipo   | Descricao                 |
-+------------+--------+---------------------------+
-| id         | uuid   | FK para auth.users(id)    |
-| name       | text   | Nome do usuario           |
-| email      | text   | Email                     |
-| company    | text   | Nome da empresa           |
-| created_at | timestamptz | Data de criacao       |
-+------------+--------+---------------------------+
-
-facebook_credentials
-+----------------+--------+---------------------------+
-| Coluna         | Tipo   | Descricao                 |
-+----------------+--------+---------------------------+
-| id             | uuid   | PK                        |
-| user_id        | uuid   | FK para profiles(id)      |
-| access_token   | text   | Token do Facebook         |
-| ad_account_id  | text   | act_XXXXX                 |
-| is_valid       | boolean| Status da conexao         |
-| created_at     | timestamptz |                       |
-| updated_at     | timestamptz |                       |
-+----------------+--------+---------------------------+
+Frontend                    Facebook                   Edge Function
+   |                           |                           |
+   |-- Clica "Conectar" ------>|                           |
+   |                           |                           |
+   |   GET facebook-oauth      |                           |
+   |   action=auth-url --------|-------------------------->|
+   |   <-- retorna URL --------|---------------------------|
+   |                           |                           |
+   |-- Redireciona p/ Facebook |                           |
+   |                           |                           |
+   |<-- Callback com code -----|                           |
+   |                           |                           |
+   |   POST facebook-oauth     |                           |
+   |   action=callback --------|-------------------------->|
+   |                           |   Troca code por token    |
+   |                           |<--------------------------|
+   |                           |   Salva no banco          |
+   |                           |-------------------------->|
+   |<-- Sucesso! --------------|---------------------------|
+   |                           |                           |
+   |   GET facebook-oauth      |                           |
+   |   action=accounts --------|-------------------------->|
+   |                           |   Lista ad accounts       |
+   |<-- Lista de contas -------|---------------------------|
+   |                           |                           |
+   |-- Seleciona conta ------->|                           |
+   |   POST facebook-oauth     |                           |
+   |   action=select-account --|-------------------------->|
+   |                           |   Salva ad_account_id     |
+   |<-- Conectado! ------------|---------------------------|
 ```
 
-### Edge Function: `facebook-ads`
+### Edge Function: `facebook-oauth`
 
-Endpoints:
-- `GET /facebook-ads?action=test` - Testar conexao
-- `GET /facebook-ads?action=campaigns` - Listar campanhas com insights
-- `GET /facebook-ads?action=insights&date_preset=last_30d` - Metricas agregadas da conta
+Acoes:
+- `auth-url`: Retorna URL do Facebook OAuth com scopes e redirect_uri
+- `callback`: Recebe code, troca por token via `oauth/access_token`, gera token de longa duracao via endpoint de troca, salva no banco
+- `accounts`: Chama `me/adaccounts?fields=name,account_id,account_status` para listar contas disponiveis
+- `select-account`: Salva a conta selecionada na tabela `facebook_credentials` e marca como valida
 
-### Campos retornados da API do Facebook
-
-- `campaign_name`, `status`, `spend`, `impressions`, `clicks`, `conversions`, `ctr`, `cpc`, `daily_budget`
-
-### Fluxo de autenticacao
+### Migracao do banco
 
 ```text
-Login/Cadastro -> Dashboard (dados mock)
-                      |
-              Configuracoes -> Salvar Token Facebook
-                      |
-              Dashboard (dados reais da API)
+ALTER TABLE facebook_credentials
+  ADD COLUMN ad_account_name text,
+  ADD COLUMN token_expires_at timestamptz;
 ```
+
+### Nova rota no frontend
+
+```text
+/auth/facebook/callback  -- Recebe code do OAuth e finaliza o fluxo
+```
+
+### Segredos necessarios
+
+- `FACEBOOK_APP_ID` -- ID do seu Facebook App
+- `FACEBOOK_APP_SECRET` -- Secret do seu Facebook App
 
