@@ -150,6 +150,7 @@ export default function ClientDashboard() {
         date: d.date, spend: d.value,
         impressions: Math.floor(d.value * 50), reach: Math.floor(d.value * 40),
         clicks: Math.floor(d.value * 2), leads: Math.floor(d.value * 0.3), purchases: Math.floor(d.value * 0.05),
+        conversions: Math.floor(d.value * 0.3) + Math.floor(d.value * 0.05),
       }));
     }
     return [];
@@ -179,6 +180,8 @@ export default function ClientDashboard() {
       cost_per_purchase: i?.cost_per_purchase ?? (purchases > 0 ? spend / purchases : 0),
       roas: i?.roas ?? 0,
       frequency: i?.frequency ?? 0,
+      conversions: i?.conversions ?? (leads + purchases),
+      cost_per_conversion: i?.cost_per_conversion ?? ((leads + purchases) > 0 ? spend / (leads + purchases) : 0),
     };
   }, [insights, campaignList]);
 
@@ -200,6 +203,8 @@ export default function ClientDashboard() {
       cost_per_purchase: p.cost_per_purchase ?? 0,
       roas: p.roas ?? 0,
       frequency: p.frequency ?? 0,
+      conversions: p.conversions ?? ((p.leads || 0) + (p.purchases || 0)),
+      cost_per_conversion: p.cost_per_conversion ?? 0,
     };
   }, [previousInsights]);
 

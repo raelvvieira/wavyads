@@ -117,80 +117,82 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
     <GlassCard className="animate-fade-in">
       <h3 className="text-lg font-semibold mb-4">Desempenho por Campanha</h3>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-white/10">
-              {COLUMNS.map((col) => (
-                <th
-                  key={col.key}
-                  onClick={() => toggleSort(col.key)}
-                  className={cn(
-                    'py-3 px-3 text-[10px] uppercase tracking-widest text-muted-foreground font-medium cursor-pointer hover:text-foreground transition-colors select-none',
-                    col.align === 'right' ? 'text-right' : 'text-left',
-                    getHideClass(col.hideOn)
-                  )}
-                >
-                  <span className="inline-flex items-center gap-1">
-                    {col.label}
-                    {sortKey === col.key ? (
-                      sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
-                    ) : (
-                      <ArrowUpDown className="h-3 w-3 opacity-30" />
+        <div className="max-h-[480px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 z-10 bg-[hsl(var(--card))] backdrop-blur-sm">
+              <tr className="border-b border-white/10">
+                {COLUMNS.map((col) => (
+                  <th
+                    key={col.key}
+                    onClick={() => toggleSort(col.key)}
+                    className={cn(
+                      'py-3 px-3 text-[10px] uppercase tracking-widest text-muted-foreground font-medium cursor-pointer hover:text-foreground transition-colors select-none',
+                      col.align === 'right' ? 'text-right' : 'text-left',
+                      getHideClass(col.hideOn)
                     )}
-                  </span>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((c) => {
-              const tags = getTags(c);
-              return (
-                <tr key={c.id} className="border-b border-white/5 transition-colors duration-200 hover:bg-white/[0.03]">
-                  <td className="py-3 px-3 font-medium">
-                    <div className="flex flex-col gap-1">
-                      <span className="truncate max-w-[200px]">{c.name}</span>
-                      {tags.length > 0 && (
-                        <div className="flex gap-1 flex-wrap">
-                          {tags.map(t => (
-                            <span key={t.label} className={cn('text-[9px] px-1.5 py-0.5 rounded-full border font-medium', t.className)}>
-                              {t.label}
-                            </span>
-                          ))}
-                        </div>
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      {col.label}
+                      {sortKey === col.key ? (
+                        sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 opacity-30" />
                       )}
-                    </div>
-                  </td>
-                  <td className="py-3 px-3"><StatusBadge status={c.status} /></td>
-                  <td className={cn('py-3 px-3 text-right text-muted-foreground', getHideClass('md'))}>{formatNumber(c.reach || 0)}</td>
-                  <td className={cn('py-3 px-3 text-right text-muted-foreground', getHideClass('md'))}>{formatNumber(c.impressions)}</td>
-                  <td className={cn('py-3 px-3 text-right text-muted-foreground', getHideClass('md'))}>{formatNumber(c.clicks)}</td>
-                  <td className={cn('py-3 px-3 text-right text-muted-foreground', getHideClass('lg'))}>{c.ctr.toFixed(2)}%</td>
-                  <td className={cn('py-3 px-3 text-right text-muted-foreground', getHideClass('lg'))}>{formatCurrency(c.cpm || 0)}</td>
-                  <td className="py-3 px-3 text-right metric-number">{c.leads || 0}</td>
-                  <td className={cn('py-3 px-3 text-right metric-number', getCplClass(c.cpl || 0))}>{formatCurrency(c.cpl || 0)}</td>
-                  <td className={cn('py-3 px-3 text-right metric-number', getHideClass('lg'))}>{c.purchases || 0}</td>
-                  <td className={cn('py-3 px-3 text-right text-muted-foreground', getHideClass('lg'))}>{formatCurrency(c.cost_per_purchase || 0)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-          <tfoot>
-            <tr className="border-t border-accent/30 bg-accent/5">
-              <td className="py-3 px-3 font-semibold text-accent">Total / Média</td>
-              <td className="py-3 px-3" />
-              <td className={cn('py-3 px-3 text-right font-semibold text-accent metric-number', getHideClass('md'))}>{formatNumber(totals.reach)}</td>
-              <td className={cn('py-3 px-3 text-right font-semibold text-accent metric-number', getHideClass('md'))}>{formatNumber(totals.impressions)}</td>
-              <td className={cn('py-3 px-3 text-right font-semibold text-accent metric-number', getHideClass('md'))}>{formatNumber(totals.clicks)}</td>
-              <td className={cn('py-3 px-3 text-right font-semibold text-accent metric-number', getHideClass('lg'))}>{totals.ctr.toFixed(2)}%</td>
-              <td className={cn('py-3 px-3 text-right font-semibold text-accent metric-number', getHideClass('lg'))}>{formatCurrency(totals.cpm)}</td>
-              <td className="py-3 px-3 text-right font-semibold text-accent metric-number">{totals.leads}</td>
-              <td className="py-3 px-3 text-right font-semibold text-accent metric-number">{formatCurrency(totals.cpl)}</td>
-              <td className={cn('py-3 px-3 text-right font-semibold text-accent metric-number', getHideClass('lg'))}>{totals.purchases}</td>
-              <td className={cn('py-3 px-3 text-right font-semibold text-accent metric-number', getHideClass('lg'))}>{formatCurrency(totals.cost_per_purchase)}</td>
-            </tr>
-          </tfoot>
-        </table>
+                    </span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((c) => {
+                const tags = getTags(c);
+                return (
+                  <tr key={c.id} className="border-b border-white/5 transition-colors duration-200 hover:bg-white/[0.03]">
+                    <td className="py-3 px-3 font-medium">
+                      <div className="flex flex-col gap-1">
+                        <span className="truncate max-w-[200px]">{c.name}</span>
+                        {tags.length > 0 && (
+                          <div className="flex gap-1 flex-wrap">
+                            {tags.map(t => (
+                              <span key={t.label} className={cn('text-[9px] px-1.5 py-0.5 rounded-full border font-medium', t.className)}>
+                                {t.label}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3 px-3"><StatusBadge status={c.status} /></td>
+                    <td className={cn('py-3 px-3 text-right text-muted-foreground', getHideClass('md'))}>{formatNumber(c.reach || 0)}</td>
+                    <td className={cn('py-3 px-3 text-right text-muted-foreground', getHideClass('md'))}>{formatNumber(c.impressions)}</td>
+                    <td className={cn('py-3 px-3 text-right text-muted-foreground', getHideClass('md'))}>{formatNumber(c.clicks)}</td>
+                    <td className={cn('py-3 px-3 text-right text-muted-foreground', getHideClass('lg'))}>{c.ctr.toFixed(2)}%</td>
+                    <td className={cn('py-3 px-3 text-right text-muted-foreground', getHideClass('lg'))}>{formatCurrency(c.cpm || 0)}</td>
+                    <td className="py-3 px-3 text-right metric-number">{c.leads || 0}</td>
+                    <td className={cn('py-3 px-3 text-right metric-number', getCplClass(c.cpl || 0))}>{formatCurrency(c.cpl || 0)}</td>
+                    <td className={cn('py-3 px-3 text-right metric-number', getHideClass('lg'))}>{c.purchases || 0}</td>
+                    <td className={cn('py-3 px-3 text-right text-muted-foreground', getHideClass('lg'))}>{formatCurrency(c.cost_per_purchase || 0)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot className="sticky bottom-0 z-10 bg-[hsl(var(--card))] backdrop-blur-sm">
+              <tr className="border-t border-accent/30 bg-accent/5">
+                <td className="py-3 px-3 font-semibold text-accent">Total / Média</td>
+                <td className="py-3 px-3" />
+                <td className={cn('py-3 px-3 text-right font-semibold text-accent metric-number', getHideClass('md'))}>{formatNumber(totals.reach)}</td>
+                <td className={cn('py-3 px-3 text-right font-semibold text-accent metric-number', getHideClass('md'))}>{formatNumber(totals.impressions)}</td>
+                <td className={cn('py-3 px-3 text-right font-semibold text-accent metric-number', getHideClass('md'))}>{formatNumber(totals.clicks)}</td>
+                <td className={cn('py-3 px-3 text-right font-semibold text-accent metric-number', getHideClass('lg'))}>{totals.ctr.toFixed(2)}%</td>
+                <td className={cn('py-3 px-3 text-right font-semibold text-accent metric-number', getHideClass('lg'))}>{formatCurrency(totals.cpm)}</td>
+                <td className="py-3 px-3 text-right font-semibold text-accent metric-number">{totals.leads}</td>
+                <td className="py-3 px-3 text-right font-semibold text-accent metric-number">{formatCurrency(totals.cpl)}</td>
+                <td className={cn('py-3 px-3 text-right font-semibold text-accent metric-number', getHideClass('lg'))}>{totals.purchases}</td>
+                <td className={cn('py-3 px-3 text-right font-semibold text-accent metric-number', getHideClass('lg'))}>{formatCurrency(totals.cost_per_purchase)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
       </div>
     </GlassCard>
   );
