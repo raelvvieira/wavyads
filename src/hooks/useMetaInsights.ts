@@ -96,6 +96,7 @@ export function useMetaInsights(clientId: string | undefined, enabled: boolean, 
       if (data.daily) {
         data.daily = data.daily.map((d: any) => ({
           ...d,
+          results: d.results ?? ((d.leads || 0) + (d.purchases || 0)),
           conversions: d.conversions ?? ((d.leads || 0) + (d.purchases || 0)),
         }));
       }

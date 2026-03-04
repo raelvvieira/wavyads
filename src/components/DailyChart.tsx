@@ -21,7 +21,7 @@ const LINES: LineConfig[] = [
   { key: 'impressions', label: 'Impressões',  color: '#3b82f6', yAxisId: 'count',    format: formatNumber },
   { key: 'leads',       label: 'Leads',       color: '#f59e0b', yAxisId: 'count',    format: (v) => v.toString() },
   { key: 'purchases',   label: 'Compras',     color: '#ec4899', yAxisId: 'count',    format: (v) => v.toString() },
-  { key: 'conversions', label: 'Resultados',  color: '#14b8a6', yAxisId: 'count',    format: (v) => v.toString() },
+  { key: 'results',     label: 'Resultados',  color: '#14b8a6', yAxisId: 'count',    format: (v) => v.toString() },
 ];
 
 const ChartTooltip = ({ active, payload, label }: any) => {

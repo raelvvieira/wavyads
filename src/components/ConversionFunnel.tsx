@@ -30,8 +30,8 @@ function rateColor(rate: number, warningThreshold: number, criticalThreshold: nu
 
 export function ConversionFunnel({ reach, impressions, clicks, leads, purchases, cpm, cpc, cpl, costPerPurchase }: ConversionFunnelProps) {
   const stages: FunnelStage[] = [
-    { label: 'Alcance', value: reach, costLabel: 'CPM', costValue: cpm },
-    { label: 'Impressões', value: impressions },
+    { label: 'Impressões', value: impressions, costLabel: 'CPM', costValue: cpm },
+    { label: 'Alcance', value: reach },
     { label: 'Cliques', value: clicks, costLabel: 'CPC', costValue: cpc },
     { label: 'Leads', value: leads, costLabel: 'CPL', costValue: cpl },
     { label: 'Compras', value: purchases, costLabel: 'Custo/Compra', costValue: costPerPurchase },
@@ -41,8 +41,8 @@ export function ConversionFunnel({ reach, impressions, clicks, leads, purchases,
 
   const rates = [
     null,
-    impressions && reach ? { rate: (impressions / reach) * 100, warn: 100, crit: 50 } : null,
-    clicks && impressions ? { rate: (clicks / impressions) * 100, warn: 1, crit: 0.5 } : null,
+    reach && impressions ? { rate: (reach / impressions) * 100, warn: 80, crit: 40 } : null,
+    clicks && reach ? { rate: (clicks / reach) * 100, warn: 1, crit: 0.5 } : null,
     leads && clicks ? { rate: (leads / clicks) * 100, warn: 3, crit: 1 } : null,
     purchases && leads ? { rate: (purchases / leads) * 100, warn: 5, crit: 1 } : null,
   ];
