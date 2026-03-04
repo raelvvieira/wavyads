@@ -16,7 +16,7 @@ export interface MetaCampaign {
   cost_per_purchase: number;
   results: number;
   cost_per_result: number;
-  result_type: string;
+  result_type?: string;
   conversions: number;
   ctr: number;
   cpc: number;
