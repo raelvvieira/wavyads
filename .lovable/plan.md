@@ -1,50 +1,114 @@
 
 
-# Funnel gradient, layout reorder, ranking upgrade & richer insights
+# Conectar Facebook via OAuth (Login com Facebook)
 
-## 1. ConversionFunnel — green gradient + all-green rate badges
-**File:** `src/components/ConversionFunnel.tsx`
-- Apply a gradient background to each funnel stage: darkest green at top (Impressões) → lighter green at bottom (Compras)
-  - Use inline styles with interpolated green shades: `rgba(26,205,138, 0.05)` → `rgba(26,205,138, 0.25)` or similar based on stage index
-  - Add a left border accent that also follows the gradient
-- Change `rateColor()` to always return green styling (emerald) for all percentage badges between stages, removing the red/amber logic
+## Resumo
 
-## 2. Reorder sections in ClientDashboard
-**File:** `src/pages/ClientDashboard.tsx` (lines 433-479)
-- New order:
-  1. GapAlert
-  2. KPI Cards
-  3. Daily Chart
-  4. Campaigns Table
-  5. **Ranking Charts** (already here)
-  6. **Conversion Funnel** (move up, before insights)
-  7. **Insights & Recommendations** (move down, after funnel)
-  8. **Strategic Summary** (stays last)
+Substituir o fluxo atual (colar token manualmente) por um botao "Conectar com Facebook" que abre a tela de login do Facebook, permite escolher o Business Manager e contas de anuncio, e salva o token automaticamente.
 
-## 3. RankingCharts — upgrade per spec
-**File:** `src/components/RankingCharts.tsx`
-- **Left chart (Leads)**: Use `results` instead of `leads` (or keep leads if that's the intent — the spec says "Leads por Campanha"). Give each bar a unique color from a palette array.
-- **Right chart (CPL)**: Already has green→yellow→red scale. Add value labels at end of each bar showing `R$ X.XX`. Keep sorted lowest→highest.
-- Both charts: ensure tooltip shows full campaign name on hover (already works).
+## Como vai funcionar para o usuario
 
-## 4. InsightsCards — richer, more detailed descriptions
-**File:** `src/components/InsightsCards.tsx`
-- Upgrade to match the reference image style: longer, more analytical descriptions with bold data points
-- Change layout to `grid-cols-1 md:grid-cols-2 lg:grid-cols-3` for better density
-- Add funnel-analysis insights:
-  - **Funnel health** (top-of-funnel CTR assessment)
-  - **Click→Lead conversion rate** with specific numbers and percentage
-  - **Lead→Purchase conversion** with revenue estimation logic
-  - **Regional/campaign concentration** analysis (which campaigns hold most leads)
-  - **Actionable recommendations** (reactivate leads, test budget increase)
-- Make descriptions multi-sentence with `<strong>` bold for key numbers
-- Remove the outer GlassCard wrapper, use standalone cards like the reference image
+1. Na aba Integracao, clica em **"Conectar com Facebook"**
+2. Abre popup do Facebook para login e autorizacao
+3. Escolhe qual Business Manager e conta de anuncios compartilhar
+4. Volta ao dashboard ja conectado -- sem colar nada manualmente
 
-## Files to modify
-| File | Change |
-|------|--------|
-| `src/components/ConversionFunnel.tsx` | Green gradient stages + all-green rate badges |
-| `src/pages/ClientDashboard.tsx` | Reorder: Funnel before Insights, Insights before Summary |
-| `src/components/RankingCharts.tsx` | Unique bar colors for leads, value labels |
-| `src/components/InsightsCards.tsx` | Richer descriptions, funnel insights, better layout |
+## Pre-requisitos
+
+Voce precisa ter um **Facebook App** em [developers.facebook.com](https://developers.facebook.com) com:
+- Produto **Facebook Login for Business** ativado
+- Permissoes: `ads_read`, `business_management`
+- URL de redirecionamento configurada para apontar ao seu app
+
+Eu vou pedir o **App ID** e o **App Secret** para armazenar como segredos no backend.
+
+## Etapas da implementacao
+
+### 1. Armazenar credenciais do Facebook App
+- Salvar `FACEBOOK_APP_ID` e `FACEBOOK_APP_SECRET` como segredos no backend
+- O App Secret nunca sera exposto no frontend
+
+### 2. Nova Edge Function: `facebook-oauth`
+- **Acao `auth-url`**: Gera a URL de autorizacao do Facebook com as permissoes necessarias (`ads_read`, `business_management`) e o redirect URI
+- **Acao `callback`**: Recebe o `code` retornado pelo Facebook, troca por um access token de longa duracao (60 dias) usando o App Secret, e salva na tabela `facebook_credentials`
+- **Acao `accounts`**: Apos autenticacao, lista as contas de anuncio disponiveis para o usuario escolher
+
+### 3. Atualizar a tabela `facebook_credentials`
+- Adicionar coluna `ad_account_name` (para exibir o nome da conta conectada)
+- Adicionar coluna `token_expires_at` (para controlar expiracao do token)
+
+### 4. Redesenhar a aba Integracao na tela de Configuracoes
+- **Estado desconectado**: Exibir botao "Conectar com Facebook" com icone do Meta
+- **Apos login no Facebook**: Exibir lista de contas de anuncio disponiveis para o usuario selecionar (similar a segunda tela de referencia)
+- **Estado conectado**: Exibir card com o nome da conta conectada, status de conexao e botao "Desconectar"
+- Remover os campos manuais de Access Token e Ad Account ID
+
+### 5. Fluxo de callback no frontend
+- Criar rota `/auth/facebook/callback` que recebe o `code` da URL
+- Chamar a edge function para trocar o code pelo token
+- Redirecionar de volta para a pagina de configuracoes
+
+## Detalhes tecnicos
+
+### Fluxo OAuth
+
+```text
+Frontend                    Facebook                   Edge Function
+   |                           |                           |
+   |-- Clica "Conectar" ------>|                           |
+   |                           |                           |
+   |   GET facebook-oauth      |                           |
+   |   action=auth-url --------|-------------------------->|
+   |   <-- retorna URL --------|---------------------------|
+   |                           |                           |
+   |-- Redireciona p/ Facebook |                           |
+   |                           |                           |
+   |<-- Callback com code -----|                           |
+   |                           |                           |
+   |   POST facebook-oauth     |                           |
+   |   action=callback --------|-------------------------->|
+   |                           |   Troca code por token    |
+   |                           |<--------------------------|
+   |                           |   Salva no banco          |
+   |                           |-------------------------->|
+   |<-- Sucesso! --------------|---------------------------|
+   |                           |                           |
+   |   GET facebook-oauth      |                           |
+   |   action=accounts --------|-------------------------->|
+   |                           |   Lista ad accounts       |
+   |<-- Lista de contas -------|---------------------------|
+   |                           |                           |
+   |-- Seleciona conta ------->|                           |
+   |   POST facebook-oauth     |                           |
+   |   action=select-account --|-------------------------->|
+   |                           |   Salva ad_account_id     |
+   |<-- Conectado! ------------|---------------------------|
+```
+
+### Edge Function: `facebook-oauth`
+
+Acoes:
+- `auth-url`: Retorna URL do Facebook OAuth com scopes e redirect_uri
+- `callback`: Recebe code, troca por token via `oauth/access_token`, gera token de longa duracao via endpoint de troca, salva no banco
+- `accounts`: Chama `me/adaccounts?fields=name,account_id,account_status` para listar contas disponiveis
+- `select-account`: Salva a conta selecionada na tabela `facebook_credentials` e marca como valida
+
+### Migracao do banco
+
+```text
+ALTER TABLE facebook_credentials
+  ADD COLUMN ad_account_name text,
+  ADD COLUMN token_expires_at timestamptz;
+```
+
+### Nova rota no frontend
+
+```text
+/auth/facebook/callback  -- Recebe code do OAuth e finaliza o fluxo
+```
+
+### Segredos necessarios
+
+- `FACEBOOK_APP_ID` -- ID do seu Facebook App
+- `FACEBOOK_APP_SECRET` -- Secret do seu Facebook App
 

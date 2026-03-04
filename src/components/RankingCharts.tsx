@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList,
 } from 'recharts';
 import { GlassCard } from './GlassCard';
 import { formatCurrency } from '@/data/mock';
@@ -16,6 +16,11 @@ function cplColor(value: number, max: number) {
   if (ratio < 0.66) return '#f59e0b';
   return '#ef4444';
 }
+
+const PALETTE = [
+  '#3b82f6', '#8b5cf6', '#06b6d4', '#f59e0b', '#ec4899',
+  '#10b981', '#f97316', '#6366f1',
+];
 
 const RankingTooltip = ({ active, payload }: any) => {
   if (!active || !payload?.length) return null;
@@ -38,11 +43,12 @@ export function RankingCharts({ campaigns }: RankingChartsProps) {
       .filter(c => (c.leads || 0) > 0)
       .sort((a, b) => (b.leads || 0) - (a.leads || 0))
       .slice(0, 8)
-      .map(c => ({
+      .map((c, i) => ({
         name: truncate(c.name),
         fullName: c.name,
         value: c.leads || 0,
         formattedValue: `${c.leads || 0} leads`,
+        color: PALETTE[i % PALETTE.length],
       }));
   }, [campaigns]);
 
@@ -69,11 +75,16 @@ export function RankingCharts({ campaigns }: RankingChartsProps) {
         <GlassCard className="animate-fade-in">
           <h3 className="text-lg font-semibold mb-4">Leads por Campanha</h3>
           <ResponsiveContainer width="100%" height={Math.max(200, leadsData.length * 40)}>
-            <BarChart data={leadsData} layout="vertical" margin={{ left: 10 }}>
+            <BarChart data={leadsData} layout="vertical" margin={{ left: 10, right: 40 }}>
               <XAxis type="number" tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis type="category" dataKey="name" tick={{ fill: 'rgba(255,255,255,0.6)', fontSize: 11 }} axisLine={false} tickLine={false} width={130} />
               <Tooltip content={<RankingTooltip />} />
-              <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={20} fill="#3b82f6" label={{ position: 'right', fill: 'rgba(255,255,255,0.6)', fontSize: 11 }} />
+              <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={20}>
+                {leadsData.map((d, i) => (
+                  <Cell key={i} fill={d.color} />
+                ))}
+                <LabelList dataKey="value" position="right" fill="rgba(255,255,255,0.6)" fontSize={11} />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </GlassCard>
@@ -83,7 +94,7 @@ export function RankingCharts({ campaigns }: RankingChartsProps) {
         <GlassCard className="animate-fade-in">
           <h3 className="text-lg font-semibold mb-4">CPL por Campanha</h3>
           <ResponsiveContainer width="100%" height={Math.max(200, cplData.length * 40)}>
-            <BarChart data={cplData} layout="vertical" margin={{ left: 10 }}>
+            <BarChart data={cplData} layout="vertical" margin={{ left: 10, right: 60 }}>
               <XAxis type="number" tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `R$${v}`} />
               <YAxis type="category" dataKey="name" tick={{ fill: 'rgba(255,255,255,0.6)', fontSize: 11 }} axisLine={false} tickLine={false} width={130} />
               <Tooltip content={<RankingTooltip />} />
@@ -91,6 +102,7 @@ export function RankingCharts({ campaigns }: RankingChartsProps) {
                 {cplData.map((d, i) => (
                   <Cell key={i} fill={cplColor(d.value, maxCpl)} />
                 ))}
+                <LabelList dataKey="formattedValue" position="right" fill="rgba(255,255,255,0.6)" fontSize={11} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
