@@ -34,6 +34,8 @@ export interface DailyMetric {
   purchases: number;
   results: number;
   conversions: number;
+  cost_per_purchase: number;
+  cost_per_result: number;
 }
 
 export interface MetaInsights {
