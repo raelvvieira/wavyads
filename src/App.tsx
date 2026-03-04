@@ -11,6 +11,7 @@ import DashboardPage from "@/pages/DashboardPage";
 import CampaignsPage from "@/pages/CampaignsPage";
 import ClientsPage from "@/pages/ClientsPage";
 import SettingsPage from "@/pages/SettingsPage";
+import FacebookCallbackPage from "@/pages/FacebookCallbackPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/auth/facebook/callback" element={<ProtectedRoute><FacebookCallbackPage /></ProtectedRoute>} />
             <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/campanhas" element={<CampaignsPage />} />
