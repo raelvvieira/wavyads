@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { TrendingUp, RefreshCw, ArrowLeft } from 'lucide-react';
+import { TrendingUp, RefreshCw, ArrowLeft, CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { GlassCard } from '@/components/GlassCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { KpiCard, getDefaultCards, saveCards, type MetricKey } from '@/components/KpiCard';
@@ -9,19 +11,22 @@ import { CampaignsTable } from '@/components/CampaignsTable';
 import { RankingCharts } from '@/components/RankingCharts';
 import { ConversionFunnel } from '@/components/ConversionFunnel';
 import { GapAlert } from '@/components/GapAlert';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
 import { useClient } from '@/hooks/useClients';
 import { useRole } from '@/hooks/useRole';
 import { useGetMetaAuthUrl, useSelectMetaAccount } from '@/hooks/useMetaOAuth';
-import { useMetaCampaigns, useMetaInsights, type DailyMetric } from '@/hooks/useMetaInsights';
+import { useMetaCampaigns, useMetaInsights, useMetaInsightsPrevious, type DailyMetric } from '@/hooks/useMetaInsights';
 import { generateDailySpend, formatCurrency, formatNumber, mockCampaigns } from '@/data/mock';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useClients } from '@/hooks/useClients';
 
-type Period = '7d' | '30d' | '90d';
+type Period = '7d' | '30d' | '90d' | 'custom';
 
-const periodToPreset: Record<Period, string> = {
+const periodToPreset: Record<string, string> = {
   '7d': 'last_7d',
   '30d': 'last_30d',
   '90d': 'last_90d',
@@ -31,6 +36,7 @@ const periods: { label: string; value: Period }[] = [
   { label: '7 dias', value: '7d' },
   { label: '30 dias', value: '30d' },
   { label: '90 dias', value: '90d' },
+  { label: 'Personalizado', value: 'custom' },
 ];
 
 export default function ClientDashboard() {
@@ -45,10 +51,17 @@ export default function ClientDashboard() {
 
   const { data: client, isLoading: clientLoading } = useClient(clientId);
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('30d');
+  const [customDateRange, setCustomDateRange] = useState<{ from?: Date; to?: Date }>({});
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   const isSynced = client?.is_synced ?? false;
-  const { data: campaigns, isLoading: campaignsLoading } = useMetaCampaigns(clientId, isSynced, periodToPreset[selectedPeriod]);
-  const { data: insights, isLoading: insightsLoading } = useMetaInsights(clientId, isSynced, periodToPreset[selectedPeriod]);
+
+  // Determine the date preset to use
+  const datePreset = selectedPeriod === 'custom' ? 'last_30d' : periodToPreset[selectedPeriod];
+
+  const { data: campaigns, isLoading: campaignsLoading } = useMetaCampaigns(clientId, isSynced, datePreset);
+  const { data: insights, isLoading: insightsLoading } = useMetaInsights(clientId, isSynced, datePreset);
+  const { data: previousInsights } = useMetaInsightsPrevious(clientId, isSynced, datePreset);
 
   const getAuthUrl = useGetMetaAuthUrl();
   const selectAccount = useSelectMetaAccount();
@@ -108,6 +121,15 @@ export default function ClientDashboard() {
     );
   };
 
+  const handlePeriodSelect = (period: Period) => {
+    if (period === 'custom') {
+      setDatePickerOpen(true);
+    } else {
+      setSelectedPeriod(period);
+      setDatePickerOpen(false);
+    }
+  };
+
   // Aggregate data
   const campaignList = useMemo(() => {
     if (isSynced && campaigns) return campaigns;
@@ -123,7 +145,7 @@ export default function ClientDashboard() {
   const dailyData: DailyMetric[] = useMemo(() => {
     if (isSynced && insights?.daily?.length) return insights.daily;
     if (!isSynced) {
-      const days = { '7d': 7, '30d': 30, '90d': 90 }[selectedPeriod];
+      const days = selectedPeriod === 'custom' ? 30 : { '7d': 7, '30d': 30, '90d': 90 }[selectedPeriod];
       return generateDailySpend(days).map(d => ({
         date: d.date, spend: d.value,
         impressions: Math.floor(d.value * 50), reach: Math.floor(d.value * 40),
@@ -159,6 +181,27 @@ export default function ClientDashboard() {
       frequency: i?.frequency ?? 0,
     };
   }, [insights, campaignList]);
+
+  // Previous period values for comparison
+  const previousValues: Record<MetricKey, number> | null = useMemo(() => {
+    const p = previousInsights;
+    if (!p) return null;
+    return {
+      spend: p.spend ?? 0,
+      impressions: p.impressions ?? 0,
+      reach: p.reach ?? 0,
+      clicks: p.clicks ?? 0,
+      ctr: p.ctr ?? 0,
+      cpm: p.cpm ?? 0,
+      cpc: p.cpc ?? 0,
+      leads: p.leads ?? 0,
+      cpl: p.cpl ?? 0,
+      purchases: p.purchases ?? 0,
+      cost_per_purchase: p.cost_per_purchase ?? 0,
+      roas: p.roas ?? 0,
+      frequency: p.frequency ?? 0,
+    };
+  }, [previousInsights]);
 
   if (clientLoading) {
     return (
@@ -239,20 +282,58 @@ export default function ClientDashboard() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex items-center gap-2 ml-auto flex-wrap">
           {periods.map((p) => (
-            <button
-              key={p.value}
-              onClick={() => setSelectedPeriod(p.value)}
-              className={cn(
-                'rounded-lg px-4 py-2 text-xs font-medium transition-all duration-300',
-                selectedPeriod === p.value
-                  ? 'btn-accent'
-                  : 'glass text-muted-foreground hover:text-foreground hover:bg-white/[0.08]'
-              )}
-            >
-              {p.label}
-            </button>
+            p.value !== 'custom' ? (
+              <button
+                key={p.value}
+                onClick={() => handlePeriodSelect(p.value)}
+                className={cn(
+                  'rounded-lg px-4 py-2 text-xs font-medium transition-all duration-300',
+                  selectedPeriod === p.value
+                    ? 'btn-accent'
+                    : 'glass text-muted-foreground hover:text-foreground hover:bg-white/[0.08]'
+                )}
+              >
+                {p.label}
+              </button>
+            ) : (
+              <Popover key={p.value} open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    className={cn(
+                      'rounded-lg px-4 py-2 text-xs font-medium transition-all duration-300 flex items-center gap-1.5',
+                      selectedPeriod === 'custom'
+                        ? 'btn-accent'
+                        : 'glass text-muted-foreground hover:text-foreground hover:bg-white/[0.08]'
+                    )}
+                  >
+                    <CalendarIcon className="h-3.5 w-3.5" />
+                    {selectedPeriod === 'custom' && customDateRange.from && customDateRange.to
+                      ? `${format(customDateRange.from, 'dd/MM')} - ${format(customDateRange.to, 'dd/MM')}`
+                      : 'Personalizado'}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 glass border-white/10" align="end">
+                  <Calendar
+                    mode="range"
+                    selected={customDateRange.from && customDateRange.to ? { from: customDateRange.from, to: customDateRange.to } : undefined}
+                    onSelect={(range) => {
+                      if (range?.from) {
+                        setCustomDateRange({ from: range.from, to: range.to });
+                        if (range.from && range.to) {
+                          setSelectedPeriod('custom');
+                          setDatePickerOpen(false);
+                        }
+                      }
+                    }}
+                    disabled={(date) => date > new Date()}
+                    numberOfMonths={2}
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            )
           ))}
 
           {isAdmin && (
@@ -317,6 +398,7 @@ export default function ClientDashboard() {
                   key={`${key}-${i}`}
                   metricKey={key}
                   value={metricValues[key]}
+                  previousValue={previousValues?.[key]}
                   onChangeMetric={(newKey) => handleChangeMetric(i, newKey)}
                 />
               ))

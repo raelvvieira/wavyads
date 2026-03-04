@@ -196,6 +196,56 @@ Deno.serve(async (req) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    if (action === "insights_previous") {
+      // Calculate previous period date range based on preset
+      const periodDays: Record<string, number> = {
+        last_7d: 7, last_14d: 14, last_30d: 30, last_60d: 60, last_90d: 90,
+      };
+      const days = periodDays[datePreset] || 30;
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() - days - 1);
+      const startDate = new Date(endDate);
+      startDate.setDate(startDate.getDate() - days + 1);
+      
+      const since = startDate.toISOString().split("T")[0];
+      const until = endDate.toISOString().split("T")[0];
+
+      const res = await fetch(
+        `${GRAPH_API}/${adAccountId}/insights?fields=spend,impressions,reach,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency&time_range={"since":"${since}","until":"${until}"}&access_token=${accessToken}`
+      );
+      const data = await res.json();
+
+      if (data.error) {
+        return new Response(JSON.stringify({ error: data.error.message }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const ins = data.data?.[0] || {};
+      const leads = extractAction(ins.actions, LEAD_TYPES);
+      const purchases = extractAction(ins.actions, PURCHASE_TYPES);
+      const cpl = extractCostPerAction(ins.cost_per_action_type, LEAD_TYPES);
+      const costPerPurchase = extractCostPerAction(ins.cost_per_action_type, PURCHASE_TYPES);
+      const spend = parseFloat(ins.spend || "0");
+
+      return new Response(JSON.stringify({
+        spend,
+        impressions: parseInt(ins.impressions || "0"),
+        reach: parseInt(ins.reach || "0"),
+        clicks: parseInt(ins.clicks || "0"),
+        leads,
+        cpl,
+        purchases,
+        cost_per_purchase: costPerPurchase,
+        conversions: leads + purchases,
+        ctr: parseFloat(ins.ctr || "0"),
+        cpc: parseFloat(ins.cpc || "0"),
+        cpm: parseFloat(ins.cpm || "0"),
+        frequency: parseFloat(ins.frequency || "0"),
+        roas: spend > 0 ? (purchases * costPerPurchase) / spend : 0,
+        daily: [],
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     return new Response(JSON.stringify({ error: "Ação não reconhecida" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
