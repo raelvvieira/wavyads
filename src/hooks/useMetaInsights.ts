@@ -8,21 +8,47 @@ export interface MetaCampaign {
   spend: number;
   budget: number;
   impressions: number;
+  reach: number;
   clicks: number;
+  leads: number;
+  cpl: number;
+  purchases: number;
+  cost_per_purchase: number;
   conversions: number;
   ctr: number;
   cpc: number;
+  cpm: number;
+  frequency: number;
+}
+
+export interface DailyMetric {
+  date: string;
+  spend: number;
+  impressions: number;
+  reach: number;
+  clicks: number;
+  leads: number;
+  purchases: number;
 }
 
 export interface MetaInsights {
   spend: number;
   impressions: number;
+  reach: number;
   clicks: number;
+  leads: number;
+  cpl: number;
+  purchases: number;
+  cost_per_purchase: number;
   conversions: number;
   ctr: number;
   cpc: number;
   cpm: number;
-  daily_spend: { date: string; value: number }[];
+  frequency: number;
+  roas: number;
+  daily: DailyMetric[];
+  // Legacy compat
+  daily_spend?: { date: string; value: number }[];
 }
 
 async function fetchInsights(action: string, clientId: string, datePreset: string) {
@@ -50,6 +76,10 @@ export function useMetaInsights(clientId: string | undefined, enabled: boolean, 
     queryKey: ['meta-insights', clientId, datePreset],
     queryFn: async () => {
       const data = await fetchInsights('insights', clientId!, datePreset);
+      // Build legacy daily_spend for backward compat
+      if (data.daily && !data.daily_spend) {
+        data.daily_spend = data.daily.map((d: DailyMetric) => ({ date: d.date, value: d.spend }));
+      }
       return data as MetaInsights;
     },
     enabled: enabled && !!clientId,
