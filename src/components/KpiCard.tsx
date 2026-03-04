@@ -9,7 +9,8 @@ import { formatCurrency, formatNumber } from '@/data/mock';
 
 export type MetricKey =
   | 'spend' | 'impressions' | 'reach' | 'clicks' | 'ctr' | 'cpm'
-  | 'cpc' | 'leads' | 'cpl' | 'purchases' | 'cost_per_purchase' | 'roas' | 'frequency';
+  | 'cpc' | 'leads' | 'cpl' | 'purchases' | 'cost_per_purchase' | 'roas' | 'frequency'
+  | 'conversions' | 'cost_per_conversion';
 
 interface MetricDef {
   label: string;
