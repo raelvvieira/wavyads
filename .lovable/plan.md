@@ -1,114 +1,76 @@
 
 
-# Conectar Facebook via OAuth (Login com Facebook)
+# Fixes + Insights & Strategic Summary
 
-## Resumo
+## 1. Fix "Resultados" extraction from Meta API
 
-Substituir o fluxo atual (colar token manualmente) por um botao "Conectar com Facebook" que abre a tela de login do Facebook, permite escolher o Business Manager e contas de anuncio, e salva o token automaticamente.
+**Problem:** Currently `conversions = leads + purchases`, but many campaigns have other result types (messaging, engagement, video views, etc.) that aren't being captured.
 
-## Como vai funcionar para o usuario
+**Fix in `meta-fetch-insights/index.ts`:**
+- Add a `RESULT_TYPES` array covering all common Meta objective results: `onsite_conversion.messaging_conversation_started_7d`, `landing_page_view`, `video_view`, `post_engagement`, `page_engagement`, `link_click`, plus existing lead/purchase types
+- Extract `results` as the sum of the FIRST matching action from the actions array (Meta orders by campaign objective relevance)
+- Extract `cost_per_result` from `cost_per_action_type` similarly
+- Return `results` and `cost_per_result` as separate fields alongside existing `leads`/`purchases`
+- Update campaigns mapping to include `results` and `cost_per_result`
+- Update daily breakdown to extract results per day
 
-1. Na aba Integracao, clica em **"Conectar com Facebook"**
-2. Abre popup do Facebook para login e autorizacao
-3. Escolhe qual Business Manager e conta de anuncios compartilhar
-4. Volta ao dashboard ja conectado -- sem colar nada manualmente
+**Update `useMetaInsights.ts`:**
+- Add `results` and `cost_per_result` to `MetaInsights` and `MetaCampaign` interfaces
+- Map `conversions` → `results` (or keep both, using `results` as the primary "Resultados" field)
 
-## Pre-requisitos
+**Update `KpiCard.tsx`:**
+- Change `conversions` metric to read from `results` field
+- Change `cost_per_conversion` to read from `cost_per_result`
 
-Voce precisa ter um **Facebook App** em [developers.facebook.com](https://developers.facebook.com) com:
-- Produto **Facebook Login for Business** ativado
-- Permissoes: `ads_read`, `business_management`
-- URL de redirecionamento configurada para apontar ao seu app
+**Update `DailyChart.tsx` and `DailyMetric`:**
+- Add `results` to daily data and chart line
 
-Eu vou pedir o **App ID** e o **App Secret** para armazenar como segredos no backend.
+## 2. Fix Funnel order: Impressões before Alcance
 
-## Etapas da implementacao
+**File:** `src/components/ConversionFunnel.tsx`
+- Swap order: Impressões → Alcance → Cliques → Leads → Compras
+- Impressões gets the CPM cost label (since CPM = cost per 1000 impressions)
+- Alcance loses the CPM label
+- Update rates array to match new order (alcance/impressions rate between them)
 
-### 1. Armazenar credenciais do Facebook App
-- Salvar `FACEBOOK_APP_ID` e `FACEBOOK_APP_SECRET` como segredos no backend
-- O App Secret nunca sera exposto no frontend
+## 3. Add Insights & Recommendations section
 
-### 2. Nova Edge Function: `facebook-oauth`
-- **Acao `auth-url`**: Gera a URL de autorizacao do Facebook com as permissoes necessarias (`ads_read`, `business_management`) e o redirect URI
-- **Acao `callback`**: Recebe o `code` retornado pelo Facebook, troca por um access token de longa duracao (60 dias) usando o App Secret, e salva na tabela `facebook_credentials`
-- **Acao `accounts`**: Apos autenticacao, lista as contas de anuncio disponiveis para o usuario escolher
+**New file:** `src/components/InsightsCards.tsx`
+- Grid of cards (2 cols desktop, 1 col mobile)
+- Rules-based generation from campaign data:
+  - Best campaign (lowest CPL with volume) → green card
+  - Worst campaign (highest CPL or zero conversions with spend) → red card
+  - CTR outlier (> 2x average) → info card
+  - High CPM (> 2x average) → yellow card
+  - Saturated audience (frequency > 3) → yellow card
+  - Spend with zero results → red card
+  - Scale suggestion (lowest CPL) → green CTA card
+- Each card: emoji icon, bold title, specific data description, colored border
 
-### 3. Atualizar a tabela `facebook_credentials`
-- Adicionar coluna `ad_account_name` (para exibir o nome da conta conectada)
-- Adicionar coluna `token_expires_at` (para controlar expiracao do token)
+## 4. Add Strategic Summary section
 
-### 4. Redesenhar a aba Integracao na tela de Configuracoes
-- **Estado desconectado**: Exibir botao "Conectar com Facebook" com icone do Meta
-- **Apos login no Facebook**: Exibir lista de contas de anuncio disponiveis para o usuario selecionar (similar a segunda tela de referencia)
-- **Estado conectado**: Exibir card com o nome da conta conectada, status de conexao e botao "Desconectar"
-- Remover os campos manuais de Access Token e Ad Account ID
+**New file:** `src/components/StrategicSummary.tsx`
+- Full-width card with narrative text
+- Template literal using real data: period, client name, total leads, total spend, CPL, best campaign, gap insight, recommended actions
+- Generated purely from data (no AI call for now)
 
-### 5. Fluxo de callback no frontend
-- Criar rota `/auth/facebook/callback` que recebe o `code` da URL
-- Chamar a edge function para trocar o code pelo token
-- Redirecionar de volta para a pagina de configuracoes
+## 5. Compose in ClientDashboard
 
-## Detalhes tecnicos
+**File:** `src/pages/ClientDashboard.tsx`
+- Add InsightsCards after RankingCharts
+- Add StrategicSummary after ConversionFunnel
+- Pass campaign list and metric values to both components
 
-### Fluxo OAuth
+## Files
 
-```text
-Frontend                    Facebook                   Edge Function
-   |                           |                           |
-   |-- Clica "Conectar" ------>|                           |
-   |                           |                           |
-   |   GET facebook-oauth      |                           |
-   |   action=auth-url --------|-------------------------->|
-   |   <-- retorna URL --------|---------------------------|
-   |                           |                           |
-   |-- Redireciona p/ Facebook |                           |
-   |                           |                           |
-   |<-- Callback com code -----|                           |
-   |                           |                           |
-   |   POST facebook-oauth     |                           |
-   |   action=callback --------|-------------------------->|
-   |                           |   Troca code por token    |
-   |                           |<--------------------------|
-   |                           |   Salva no banco          |
-   |                           |-------------------------->|
-   |<-- Sucesso! --------------|---------------------------|
-   |                           |                           |
-   |   GET facebook-oauth      |                           |
-   |   action=accounts --------|-------------------------->|
-   |                           |   Lista ad accounts       |
-   |<-- Lista de contas -------|---------------------------|
-   |                           |                           |
-   |-- Seleciona conta ------->|                           |
-   |   POST facebook-oauth     |                           |
-   |   action=select-account --|-------------------------->|
-   |                           |   Salva ad_account_id     |
-   |<-- Conectado! ------------|---------------------------|
-```
-
-### Edge Function: `facebook-oauth`
-
-Acoes:
-- `auth-url`: Retorna URL do Facebook OAuth com scopes e redirect_uri
-- `callback`: Recebe code, troca por token via `oauth/access_token`, gera token de longa duracao via endpoint de troca, salva no banco
-- `accounts`: Chama `me/adaccounts?fields=name,account_id,account_status` para listar contas disponiveis
-- `select-account`: Salva a conta selecionada na tabela `facebook_credentials` e marca como valida
-
-### Migracao do banco
-
-```text
-ALTER TABLE facebook_credentials
-  ADD COLUMN ad_account_name text,
-  ADD COLUMN token_expires_at timestamptz;
-```
-
-### Nova rota no frontend
-
-```text
-/auth/facebook/callback  -- Recebe code do OAuth e finaliza o fluxo
-```
-
-### Segredos necessarios
-
-- `FACEBOOK_APP_ID` -- ID do seu Facebook App
-- `FACEBOOK_APP_SECRET` -- Secret do seu Facebook App
+| Action | File |
+|--------|------|
+| Modify | `supabase/functions/meta-fetch-insights/index.ts` — fix results extraction |
+| Modify | `src/hooks/useMetaInsights.ts` — add results/cost_per_result fields |
+| Modify | `src/components/KpiCard.tsx` — map conversions to results |
+| Modify | `src/components/DailyChart.tsx` — add results line |
+| Modify | `src/components/ConversionFunnel.tsx` — swap impressões before alcance |
+| Create | `src/components/InsightsCards.tsx` — auto-generated insight cards |
+| Create | `src/components/StrategicSummary.tsx` — narrative summary |
+| Modify | `src/pages/ClientDashboard.tsx` — compose new sections, pass results data |
 
