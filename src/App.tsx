@@ -11,6 +11,7 @@ import DashboardPage from "@/pages/DashboardPage";
 import CampaignsPage from "@/pages/CampaignsPage";
 import ClientsPage from "@/pages/ClientsPage";
 import SettingsPage from "@/pages/SettingsPage";
+import FacebookCallbackPage from "@/pages/FacebookCallbackPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
