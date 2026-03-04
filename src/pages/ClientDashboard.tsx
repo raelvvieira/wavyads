@@ -418,7 +418,7 @@ export default function ClientDashboard() {
           <GapAlert leads={metricValues.leads} purchases={metricValues.purchases} />
 
           {/* KPI Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
             {isLoading ? (
               Array.from({ length: 6 }).map((_, i) => (
                 <GlassCard key={i}><Skeleton className="h-20 bg-white/5" /></GlassCard>
