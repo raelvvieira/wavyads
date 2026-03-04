@@ -62,9 +62,24 @@ interface CampaignsTableProps {
   campaigns: MetaCampaign[];
 }
 
+type StatusFilter = 'all' | 'active' | 'paused' | 'ended';
+
+const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
+  { value: 'all', label: 'Todas' },
+  { value: 'active', label: 'Ativas' },
+  { value: 'paused', label: 'Pausadas' },
+  { value: 'ended', label: 'Encerradas' },
+];
+
 export function CampaignsTable({ campaigns }: CampaignsTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('spend');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+
+  const filtered = useMemo(() => {
+    if (statusFilter === 'all') return campaigns;
+    return campaigns.filter(c => c.status === statusFilter);
+  }, [campaigns, statusFilter]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');

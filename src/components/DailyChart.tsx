@@ -16,12 +16,14 @@ interface LineConfig {
 }
 
 const LINES: LineConfig[] = [
-  { key: 'spend',       label: 'Gasto',       color: '#22c55e', yAxisId: 'currency', format: formatCurrency },
-  { key: 'clicks',      label: 'Cliques',     color: '#06b6d4', yAxisId: 'count',    format: formatNumber },
-  { key: 'impressions', label: 'Impressões',  color: '#3b82f6', yAxisId: 'count',    format: formatNumber },
-  { key: 'leads',       label: 'Leads',       color: '#f59e0b', yAxisId: 'count',    format: (v) => v.toString() },
-  { key: 'purchases',   label: 'Compras',     color: '#ec4899', yAxisId: 'count',    format: (v) => v.toString() },
-  { key: 'results',     label: 'Resultados',  color: '#14b8a6', yAxisId: 'count',    format: (v) => v.toString() },
+  { key: 'spend',              label: 'Gasto',             color: '#22c55e', yAxisId: 'currency', format: formatCurrency },
+  { key: 'clicks',             label: 'Cliques',           color: '#06b6d4', yAxisId: 'count',    format: formatNumber },
+  { key: 'impressions',        label: 'Impressões',        color: '#3b82f6', yAxisId: 'count',    format: formatNumber },
+  { key: 'leads',              label: 'Leads',             color: '#f59e0b', yAxisId: 'count',    format: (v) => v.toString() },
+  { key: 'purchases',          label: 'Compras',           color: '#ec4899', yAxisId: 'count',    format: (v) => v.toString() },
+  { key: 'results',            label: 'Resultados',        color: '#14b8a6', yAxisId: 'count',    format: (v) => v.toString() },
+  { key: 'cost_per_result',    label: 'Custo/Resultado',   color: '#a855f7', yAxisId: 'currency', format: formatCurrency },
+  { key: 'cost_per_purchase',  label: 'Custo/Compra',      color: '#f43f5e', yAxisId: 'currency', format: formatCurrency },
 ];
 
 const ChartTooltip = ({ active, payload, label }: any) => {
