@@ -1,114 +1,151 @@
 
 
-# Conectar Facebook via OAuth (Login com Facebook)
+# Full Multi-Client Meta OAuth Dashboard Overhaul
 
-## Resumo
+This is a significant restructuring of the entire app. The current system is single-user/single-account. The new system has admin and client roles, a `clients` table in the database, per-client Meta OAuth sync, and role-based views.
 
-Substituir o fluxo atual (colar token manualmente) por um botao "Conectar com Facebook" que abre a tela de login do Facebook, permite escolher o Business Manager e contas de anuncio, e salva o token automaticamente.
+## Database Changes
 
-## Como vai funcionar para o usuario
+### 1. Create `user_roles` table (security best practice)
+```sql
+CREATE TYPE public.app_role AS ENUM ('admin', 'client');
 
-1. Na aba Integracao, clica em **"Conectar com Facebook"**
-2. Abre popup do Facebook para login e autorizacao
-3. Escolhe qual Business Manager e conta de anuncios compartilhar
-4. Volta ao dashboard ja conectado -- sem colar nada manualmente
+CREATE TABLE public.user_roles (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  role app_role NOT NULL,
+  UNIQUE (user_id, role)
+);
 
-## Pre-requisitos
+ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
 
-Voce precisa ter um **Facebook App** em [developers.facebook.com](https://developers.facebook.com) com:
-- Produto **Facebook Login for Business** ativado
-- Permissoes: `ads_read`, `business_management`
-- URL de redirecionamento configurada para apontar ao seu app
+CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role)
+$$;
 
-Eu vou pedir o **App ID** e o **App Secret** para armazenar como segredos no backend.
-
-## Etapas da implementacao
-
-### 1. Armazenar credenciais do Facebook App
-- Salvar `FACEBOOK_APP_ID` e `FACEBOOK_APP_SECRET` como segredos no backend
-- O App Secret nunca sera exposto no frontend
-
-### 2. Nova Edge Function: `facebook-oauth`
-- **Acao `auth-url`**: Gera a URL de autorizacao do Facebook com as permissoes necessarias (`ads_read`, `business_management`) e o redirect URI
-- **Acao `callback`**: Recebe o `code` retornado pelo Facebook, troca por um access token de longa duracao (60 dias) usando o App Secret, e salva na tabela `facebook_credentials`
-- **Acao `accounts`**: Apos autenticacao, lista as contas de anuncio disponiveis para o usuario escolher
-
-### 3. Atualizar a tabela `facebook_credentials`
-- Adicionar coluna `ad_account_name` (para exibir o nome da conta conectada)
-- Adicionar coluna `token_expires_at` (para controlar expiracao do token)
-
-### 4. Redesenhar a aba Integracao na tela de Configuracoes
-- **Estado desconectado**: Exibir botao "Conectar com Facebook" com icone do Meta
-- **Apos login no Facebook**: Exibir lista de contas de anuncio disponiveis para o usuario selecionar (similar a segunda tela de referencia)
-- **Estado conectado**: Exibir card com o nome da conta conectada, status de conexao e botao "Desconectar"
-- Remover os campos manuais de Access Token e Ad Account ID
-
-### 5. Fluxo de callback no frontend
-- Criar rota `/auth/facebook/callback` que recebe o `code` da URL
-- Chamar a edge function para trocar o code pelo token
-- Redirecionar de volta para a pagina de configuracoes
-
-## Detalhes tecnicos
-
-### Fluxo OAuth
-
-```text
-Frontend                    Facebook                   Edge Function
-   |                           |                           |
-   |-- Clica "Conectar" ------>|                           |
-   |                           |                           |
-   |   GET facebook-oauth      |                           |
-   |   action=auth-url --------|-------------------------->|
-   |   <-- retorna URL --------|---------------------------|
-   |                           |                           |
-   |-- Redireciona p/ Facebook |                           |
-   |                           |                           |
-   |<-- Callback com code -----|                           |
-   |                           |                           |
-   |   POST facebook-oauth     |                           |
-   |   action=callback --------|-------------------------->|
-   |                           |   Troca code por token    |
-   |                           |<--------------------------|
-   |                           |   Salva no banco          |
-   |                           |-------------------------->|
-   |<-- Sucesso! --------------|---------------------------|
-   |                           |                           |
-   |   GET facebook-oauth      |                           |
-   |   action=accounts --------|-------------------------->|
-   |                           |   Lista ad accounts       |
-   |<-- Lista de contas -------|---------------------------|
-   |                           |                           |
-   |-- Seleciona conta ------->|                           |
-   |   POST facebook-oauth     |                           |
-   |   action=select-account --|-------------------------->|
-   |                           |   Salva ad_account_id     |
-   |<-- Conectado! ------------|---------------------------|
+-- RLS: users can read their own roles, admins can read all
+CREATE POLICY "Users can view own roles" ON public.user_roles FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Admins can view all roles" ON public.user_roles FOR SELECT USING (public.has_role(auth.uid(), 'admin'));
 ```
 
-### Edge Function: `facebook-oauth`
+### 2. Create `clients` table
+```sql
+CREATE TABLE public.clients (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  email text,
+  meta_ad_account_id text,
+  meta_access_token text,
+  meta_ad_account_name text,
+  token_expires_at timestamptz,
+  is_synced boolean DEFAULT false,
+  last_sync_at timestamptz,
+  created_at timestamptz DEFAULT now(),
+  user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL -- linked client user account (nullable)
+);
 
-Acoes:
-- `auth-url`: Retorna URL do Facebook OAuth com scopes e redirect_uri
-- `callback`: Recebe code, troca por token via `oauth/access_token`, gera token de longa duracao via endpoint de troca, salva no banco
-- `accounts`: Chama `me/adaccounts?fields=name,account_id,account_status` para listar contas disponiveis
-- `select-account`: Salva a conta selecionada na tabela `facebook_credentials` e marca como valida
+ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;
 
-### Migracao do banco
-
-```text
-ALTER TABLE facebook_credentials
-  ADD COLUMN ad_account_name text,
-  ADD COLUMN token_expires_at timestamptz;
+-- Admin can do everything
+CREATE POLICY "Admins full access" ON public.clients FOR ALL USING (public.has_role(auth.uid(), 'admin'));
+-- Clients can only view their own row
+CREATE POLICY "Clients view own" ON public.clients FOR SELECT USING (auth.uid() = user_id);
 ```
 
-### Nova rota no frontend
+### 3. Drop old `facebook_credentials` table
+The credentials are now stored per-client in the `clients` table. The old table becomes unnecessary.
 
-```text
-/auth/facebook/callback  -- Recebe code do OAuth e finaliza o fluxo
+## Edge Functions
+
+### Rename/Rewrite `facebook-oauth` -> `meta-oauth`
+Same OAuth flow but now accepts a `client_id` parameter:
+- **`auth-url`**: Generates Meta OAuth URL with `state={client_id}` so the callback knows which client to link the token to.
+- **`callback`**: Receives `code` + `state` (client_id), exchanges for long-lived token, saves to `clients.meta_access_token` for that client_id. Requires admin role.
+
+### Rewrite `facebook-ads` -> `meta-fetch-insights`
+- Accepts `client_id` parameter, reads that client's token and ad_account_id from the `clients` table.
+- Actions: `campaigns`, `insights` (same logic as current `facebook-ads` but scoped to a client).
+- Admin can fetch any client. Client users can only fetch their own.
+
+### New callback route: `/auth/meta/callback`
+Replaces `/auth/facebook/callback`. Reads `code` and `state` (client_id) from URL params, calls `meta-oauth` edge function.
+
+## Frontend Pages & Routes
+
+### Route restructuring
+```
+/login                    - Login page (unchanged)
+/dashboard                - Admin home (client cards list) OR client's own dashboard
+/dashboard/:clientId      - Admin viewing a specific client's dashboard
+/auth/meta/callback       - OAuth callback handler
+/configuracoes            - Settings (profile only, remove integration tab)
 ```
 
-### Segredos necessarios
+Remove `/campanhas` and `/clientes` routes (absorbed into the new dashboard structure).
 
-- `FACEBOOK_APP_ID` -- ID do seu Facebook App
-- `FACEBOOK_APP_SECRET` -- Secret do seu Facebook App
+### Admin Home (`/dashboard`)
+- Grid of client cards showing: name, ad account, sync status (green/gray badge), last sync date
+- "Add new client" button opens a modal (name, email, meta_ad_account_id)
+- Click card navigates to `/dashboard/:clientId`
 
+### Client Dashboard (`/dashboard/:clientId` or `/dashboard` for client users)
+- Header: client name + "Sync Facebook Ads" button (admin only)
+- If not synced: empty state with illustration and sync CTA
+- If synced: full dashboard with KPIs, charts, campaigns table (reuses existing dashboard components)
+- Date range selector: 7d, 30d, 90d
+- Data fetched via `meta-fetch-insights` edge function using the client's stored token
+
+### Sidebar updates
+- Admin sees: Dashboard (home), Settings
+- Client sees: Dashboard, Settings
+
+### ProtectedRoute update
+- After auth, check user role via `has_role()` function or query `user_roles` table
+- Redirect client users directly to their dashboard
+- Store role in auth context
+
+## Sync Flow (popup-based)
+1. Admin clicks "Sync Facebook Ads" on a client's dashboard
+2. Frontend calls `meta-oauth` with action `auth-url` and `client_id`
+3. Opens Meta OAuth URL in a popup window (not redirect) with `state={client_id}`
+4. After authorization, Meta redirects popup to `/auth/meta/callback?code=xxx&state={client_id}`
+5. Callback page calls edge function to exchange code, save token
+6. Popup closes itself and sends message to parent window via `window.opener.postMessage`
+7. Parent dashboard refreshes data
+
+## Accent Color Change
+- Update CSS variable `--primary` from orange (#FF6B35) to green (#1ACD8A)
+- Update `.btn-orange` class to `.btn-accent` with new gradient
+- Update all gradient references
+
+## Summary of files to create/modify
+
+**Create:**
+- `supabase/functions/meta-oauth/index.ts`
+- `supabase/functions/meta-fetch-insights/index.ts`
+- `src/pages/AdminDashboard.tsx` (client cards grid)
+- `src/pages/ClientDashboard.tsx` (per-client dashboard with sync)
+- `src/pages/MetaCallbackPage.tsx` (popup callback)
+- `src/hooks/useMetaOAuth.ts`
+- `src/hooks/useClients.ts` (CRUD for clients table)
+- `src/hooks/useRole.ts` (role checking)
+- Migration SQL
+
+**Modify:**
+- `src/App.tsx` (new routes)
+- `src/hooks/useAuth.tsx` (add role to context)
+- `src/components/AppSidebar.tsx` (role-based nav)
+- `src/components/ProtectedRoute.tsx` (role-based redirects)
+- `src/index.css` (accent color #1ACD8A)
+- `tailwind.config.ts` (new accent color)
+- `supabase/config.toml` (new edge functions)
+
+**Delete/deprecate:**
+- `src/pages/DashboardPage.tsx` (replaced by AdminDashboard + ClientDashboard)
+- `src/pages/CampaignsPage.tsx` (absorbed into ClientDashboard)
+- `src/pages/ClientsPage.tsx` (absorbed into AdminDashboard)
+- `src/pages/FacebookCallbackPage.tsx` (replaced by MetaCallbackPage)
+- `src/hooks/useFacebookOAuth.ts` (replaced by useMetaOAuth)
+- `src/hooks/useFacebookAds.ts` (replaced by meta-fetch-insights hook)
+- Old `facebook_credentials` table
