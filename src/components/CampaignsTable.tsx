@@ -122,21 +122,21 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
 
   // Totals
   const totals = useMemo(() => ({
-    reach: campaigns.reduce((s, c) => s + (c.reach || 0), 0),
-    impressions: campaigns.reduce((s, c) => s + c.impressions, 0),
-    clicks: campaigns.reduce((s, c) => s + c.clicks, 0),
-    results: campaigns.reduce((s, c) => s + (c.results || 0), 0),
-    purchases: campaigns.reduce((s, c) => s + (c.purchases || 0), 0),
-    spend: campaigns.reduce((s, c) => s + c.spend, 0),
-    ctr: campaigns.length ? campaigns.reduce((s, c) => s + c.ctr, 0) / campaigns.length : 0,
-    cpm: campaigns.length ? campaigns.reduce((s, c) => s + (c.cpm || 0), 0) / campaigns.length : 0,
+    reach: filtered.reduce((s, c) => s + (c.reach || 0), 0),
+    impressions: filtered.reduce((s, c) => s + c.impressions, 0),
+    clicks: filtered.reduce((s, c) => s + c.clicks, 0),
+    results: filtered.reduce((s, c) => s + (c.results || 0), 0),
+    purchases: filtered.reduce((s, c) => s + (c.purchases || 0), 0),
+    spend: filtered.reduce((s, c) => s + c.spend, 0),
+    ctr: filtered.length ? filtered.reduce((s, c) => s + c.ctr, 0) / filtered.length : 0,
+    cpm: filtered.length ? filtered.reduce((s, c) => s + (c.cpm || 0), 0) / filtered.length : 0,
     cost_per_result: (() => {
-      const totalResults = campaigns.reduce((s, c) => s + (c.results || 0), 0);
-      const totalSpend = campaigns.reduce((s, c) => s + c.spend, 0);
+      const totalResults = filtered.reduce((s, c) => s + (c.results || 0), 0);
+      const totalSpend = filtered.reduce((s, c) => s + c.spend, 0);
       return totalResults > 0 ? totalSpend / totalResults : 0;
     })(),
-    cost_per_purchase: (() => { const wp = campaigns.filter(c => (c.cost_per_purchase || 0) > 0); return wp.length ? wp.reduce((s, c) => s + c.cost_per_purchase, 0) / wp.length : 0; })(),
-  }), [campaigns]);
+    cost_per_purchase: (() => { const wp = filtered.filter(c => (c.cost_per_purchase || 0) > 0); return wp.length ? wp.reduce((s, c) => s + c.cost_per_purchase, 0) / wp.length : 0; })(),
+  }), [filtered]);
 
   const getTags = (c: MetaCampaign) => {
     const tags: { label: string; className: string }[] = [];
