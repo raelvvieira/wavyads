@@ -22,12 +22,6 @@ export default function SettingsPage() {
   const [profileCompany, setProfileCompany] = useState('');
   const [profileLoading, setProfileLoading] = useState(false);
 
-  // Facebook state
-  const [accessToken, setAccessToken] = useState('');
-  const [adAccountId, setAdAccountId] = useState('');
-  const { data: creds, isLoading: credsLoading } = useCredentials();
-  const saveCredentials = useSaveCredentials();
-  const testConnection = useTestConnection();
 
   useEffect(() => {
     if (user) {
