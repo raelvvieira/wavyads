@@ -11,7 +11,7 @@ interface LineConfig {
   key: keyof DailyMetric;
   label: string;
   color: string;
-  yAxisId: 'currency' | 'count';
+  yAxisId: 'currency' | 'count' | 'cost';
   format: (v: number) => string;
 }
 
