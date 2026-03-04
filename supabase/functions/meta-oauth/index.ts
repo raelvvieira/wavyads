@@ -75,6 +75,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (!roleData) {
+      console.error(`meta-oauth auth error: user ${userId} is not admin`);
       return new Response(JSON.stringify({ error: "Acesso negado. Apenas admin." }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
