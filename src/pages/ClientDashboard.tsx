@@ -180,6 +180,8 @@ export default function ClientDashboard() {
       cost_per_purchase: i?.cost_per_purchase ?? (purchases > 0 ? spend / purchases : 0),
       roas: i?.roas ?? 0,
       frequency: i?.frequency ?? 0,
+      conversions: i?.conversions ?? (leads + purchases),
+      cost_per_conversion: i?.cost_per_conversion ?? ((leads + purchases) > 0 ? spend / (leads + purchases) : 0),
     };
   }, [insights, campaignList]);
 
