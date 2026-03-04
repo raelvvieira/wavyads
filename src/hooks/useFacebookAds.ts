@@ -58,7 +58,7 @@ export function useCredentials() {
         .eq('user_id', user!.id)
         .maybeSingle();
       if (error) throw error;
-      return data as FacebookCredentials | null;
+      return data as unknown as FacebookCredentials | null;
     },
     enabled: !!user,
   });
