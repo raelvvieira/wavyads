@@ -97,28 +97,28 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
 
   // Tags
   const bestCplId = useMemo(() => {
-    const withLeads = campaigns.filter(c => c.leads > 0 && c.cpl > 0);
+    const withLeads = filtered.filter(c => c.leads > 0 && c.cpl > 0);
     if (!withLeads.length) return null;
     return withLeads.reduce((best, c) => c.cpl < best.cpl ? c : best).id;
-  }, [campaigns]);
+  }, [filtered]);
 
   const worstCplId = useMemo(() => {
-    const withLeads = campaigns.filter(c => c.leads > 0 && c.cpl > 0);
+    const withLeads = filtered.filter(c => c.leads > 0 && c.cpl > 0);
     if (!withLeads.length) return null;
     return withLeads.reduce((worst, c) => c.cpl > worst.cpl ? c : worst).id;
-  }, [campaigns]);
+  }, [filtered]);
 
   const mostLeadsId = useMemo(() => {
-    const withLeads = campaigns.filter(c => c.leads > 0);
+    const withLeads = filtered.filter(c => c.leads > 0);
     if (!withLeads.length) return null;
     return withLeads.reduce((best, c) => c.leads > best.leads ? c : best).id;
-  }, [campaigns]);
+  }, [filtered]);
 
   const avgCpl = useMemo(() => {
-    const withCpl = campaigns.filter(c => c.cpl > 0);
+    const withCpl = filtered.filter(c => c.cpl > 0);
     if (!withCpl.length) return 0;
     return withCpl.reduce((s, c) => s + c.cpl, 0) / withCpl.length;
-  }, [campaigns]);
+  }, [filtered]);
 
   // Totals
   const totals = useMemo(() => ({
