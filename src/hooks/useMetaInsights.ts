@@ -29,6 +29,7 @@ export interface DailyMetric {
   clicks: number;
   leads: number;
   purchases: number;
+  conversions: number;
 }
 
 export interface MetaInsights {
