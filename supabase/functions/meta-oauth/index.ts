@@ -50,6 +50,7 @@ Deno.serve(async (req) => {
     // All other actions require admin authentication
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
+      console.error("meta-oauth auth error: missing Authorization header");
       return new Response(JSON.stringify({ error: "Não autenticado" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -58,6 +59,7 @@ Deno.serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     if (userError || !user) {
+      console.error("meta-oauth auth error: invalid token", userError?.message ?? "no user");
       return new Response(JSON.stringify({ error: "Token inválido" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
