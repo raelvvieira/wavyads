@@ -31,6 +31,7 @@ export interface DailyMetric {
   clicks: number;
   leads: number;
   purchases: number;
+  results: number;
   conversions: number;
 }
 
