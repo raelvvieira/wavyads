@@ -102,8 +102,8 @@
   }
 
   .glass-input:focus {
-    border-color: #FF6B35;
-    box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.2);
+    border-color: #1ACD8A;
+    box-shadow: 0 0 0 2px rgba(26, 205, 138, 0.2);
     outline: none;
   }
 
