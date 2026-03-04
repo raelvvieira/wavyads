@@ -34,6 +34,8 @@ export interface DailyMetric {
   purchases: number;
   results: number;
   conversions: number;
+  cost_per_purchase: number;
+  cost_per_result: number;
 }
 
 export interface MetaInsights {
@@ -95,11 +97,19 @@ export function useMetaInsights(clientId: string | undefined, enabled: boolean, 
       }
       // Compute conversions (leads + purchases) for daily if not present
       if (data.daily) {
-        data.daily = data.daily.map((d: any) => ({
-          ...d,
-          results: d.results ?? ((d.leads || 0) + (d.purchases || 0)),
-          conversions: d.conversions ?? ((d.leads || 0) + (d.purchases || 0)),
-        }));
+        data.daily = data.daily.map((d: any) => {
+          const results = d.results ?? ((d.leads || 0) + (d.purchases || 0));
+          const conversions = d.conversions ?? ((d.leads || 0) + (d.purchases || 0));
+          const purchases = d.purchases || 0;
+          const spend = d.spend || 0;
+          return {
+            ...d,
+            results,
+            conversions,
+            cost_per_purchase: purchases > 0 ? spend / purchases : 0,
+            cost_per_result: results > 0 ? spend / results : 0,
+          };
+        });
       }
       // Compute aggregate conversions & cost_per_conversion
       if (data.conversions == null) {

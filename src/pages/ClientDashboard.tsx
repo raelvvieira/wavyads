@@ -150,13 +150,19 @@ export default function ClientDashboard() {
     if (isSynced && insights?.daily?.length) return insights.daily;
     if (!isSynced) {
       const days = selectedPeriod === 'custom' ? 30 : { '7d': 7, '30d': 30, '90d': 90 }[selectedPeriod];
-      return generateDailySpend(days).map(d => ({
-        date: d.date, spend: d.value,
-        impressions: Math.floor(d.value * 50), reach: Math.floor(d.value * 40),
-        clicks: Math.floor(d.value * 2), leads: Math.floor(d.value * 0.3), purchases: Math.floor(d.value * 0.05),
-        results: Math.floor(d.value * 0.3) + Math.floor(d.value * 0.05),
-        conversions: Math.floor(d.value * 0.3) + Math.floor(d.value * 0.05),
-      }));
+      return generateDailySpend(days).map(d => {
+        const leads = Math.floor(d.value * 0.3);
+        const purchases = Math.floor(d.value * 0.05);
+        const results = leads + purchases;
+        return {
+          date: d.date, spend: d.value,
+          impressions: Math.floor(d.value * 50), reach: Math.floor(d.value * 40),
+          clicks: Math.floor(d.value * 2), leads, purchases, results,
+          conversions: results,
+          cost_per_purchase: purchases > 0 ? d.value / purchases : 0,
+          cost_per_result: results > 0 ? d.value / results : 0,
+        };
+      });
     }
     return [];
   }, [isSynced, insights, selectedPeriod]);

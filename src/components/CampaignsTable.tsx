@@ -62,9 +62,24 @@ interface CampaignsTableProps {
   campaigns: MetaCampaign[];
 }
 
+type StatusFilter = 'all' | 'active' | 'paused' | 'ended';
+
+const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
+  { value: 'all', label: 'Todas' },
+  { value: 'active', label: 'Ativas' },
+  { value: 'paused', label: 'Pausadas' },
+  { value: 'ended', label: 'Encerradas' },
+];
+
 export function CampaignsTable({ campaigns }: CampaignsTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('spend');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+
+  const filtered = useMemo(() => {
+    if (statusFilter === 'all') return campaigns;
+    return campaigns.filter(c => c.status === statusFilter);
+  }, [campaigns, statusFilter]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -72,56 +87,56 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
   };
 
   const sorted = useMemo(() => {
-    return [...campaigns].sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       const av = a[sortKey] ?? 0;
       const bv = b[sortKey] ?? 0;
       const cmp = av < bv ? -1 : av > bv ? 1 : 0;
       return sortDir === 'asc' ? cmp : -cmp;
     });
-  }, [campaigns, sortKey, sortDir]);
+  }, [filtered, sortKey, sortDir]);
 
   // Tags
   const bestCplId = useMemo(() => {
-    const withLeads = campaigns.filter(c => c.leads > 0 && c.cpl > 0);
+    const withLeads = filtered.filter(c => c.leads > 0 && c.cpl > 0);
     if (!withLeads.length) return null;
     return withLeads.reduce((best, c) => c.cpl < best.cpl ? c : best).id;
-  }, [campaigns]);
+  }, [filtered]);
 
   const worstCplId = useMemo(() => {
-    const withLeads = campaigns.filter(c => c.leads > 0 && c.cpl > 0);
+    const withLeads = filtered.filter(c => c.leads > 0 && c.cpl > 0);
     if (!withLeads.length) return null;
     return withLeads.reduce((worst, c) => c.cpl > worst.cpl ? c : worst).id;
-  }, [campaigns]);
+  }, [filtered]);
 
   const mostLeadsId = useMemo(() => {
-    const withLeads = campaigns.filter(c => c.leads > 0);
+    const withLeads = filtered.filter(c => c.leads > 0);
     if (!withLeads.length) return null;
     return withLeads.reduce((best, c) => c.leads > best.leads ? c : best).id;
-  }, [campaigns]);
+  }, [filtered]);
 
   const avgCpl = useMemo(() => {
-    const withCpl = campaigns.filter(c => c.cpl > 0);
+    const withCpl = filtered.filter(c => c.cpl > 0);
     if (!withCpl.length) return 0;
     return withCpl.reduce((s, c) => s + c.cpl, 0) / withCpl.length;
-  }, [campaigns]);
+  }, [filtered]);
 
   // Totals
   const totals = useMemo(() => ({
-    reach: campaigns.reduce((s, c) => s + (c.reach || 0), 0),
-    impressions: campaigns.reduce((s, c) => s + c.impressions, 0),
-    clicks: campaigns.reduce((s, c) => s + c.clicks, 0),
-    results: campaigns.reduce((s, c) => s + (c.results || 0), 0),
-    purchases: campaigns.reduce((s, c) => s + (c.purchases || 0), 0),
-    spend: campaigns.reduce((s, c) => s + c.spend, 0),
-    ctr: campaigns.length ? campaigns.reduce((s, c) => s + c.ctr, 0) / campaigns.length : 0,
-    cpm: campaigns.length ? campaigns.reduce((s, c) => s + (c.cpm || 0), 0) / campaigns.length : 0,
+    reach: filtered.reduce((s, c) => s + (c.reach || 0), 0),
+    impressions: filtered.reduce((s, c) => s + c.impressions, 0),
+    clicks: filtered.reduce((s, c) => s + c.clicks, 0),
+    results: filtered.reduce((s, c) => s + (c.results || 0), 0),
+    purchases: filtered.reduce((s, c) => s + (c.purchases || 0), 0),
+    spend: filtered.reduce((s, c) => s + c.spend, 0),
+    ctr: filtered.length ? filtered.reduce((s, c) => s + c.ctr, 0) / filtered.length : 0,
+    cpm: filtered.length ? filtered.reduce((s, c) => s + (c.cpm || 0), 0) / filtered.length : 0,
     cost_per_result: (() => {
-      const totalResults = campaigns.reduce((s, c) => s + (c.results || 0), 0);
-      const totalSpend = campaigns.reduce((s, c) => s + c.spend, 0);
+      const totalResults = filtered.reduce((s, c) => s + (c.results || 0), 0);
+      const totalSpend = filtered.reduce((s, c) => s + c.spend, 0);
       return totalResults > 0 ? totalSpend / totalResults : 0;
     })(),
-    cost_per_purchase: (() => { const wp = campaigns.filter(c => (c.cost_per_purchase || 0) > 0); return wp.length ? wp.reduce((s, c) => s + c.cost_per_purchase, 0) / wp.length : 0; })(),
-  }), [campaigns]);
+    cost_per_purchase: (() => { const wp = filtered.filter(c => (c.cost_per_purchase || 0) > 0); return wp.length ? wp.reduce((s, c) => s + c.cost_per_purchase, 0) / wp.length : 0; })(),
+  }), [filtered]);
 
   const getTags = (c: MetaCampaign) => {
     const tags: { label: string; className: string }[] = [];
@@ -142,7 +157,23 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
 
   return (
     <GlassCard className="animate-fade-in">
-      <h3 className="text-lg font-semibold mb-4">Desempenho por Campanha</h3>
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <h3 className="text-lg font-semibold mr-auto">Desempenho por Campanha</h3>
+        {STATUS_FILTERS.map((f) => (
+          <button
+            key={f.value}
+            onClick={() => setStatusFilter(f.value)}
+            className={cn(
+              'px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 border',
+              statusFilter === f.value
+                ? 'border-white/20 bg-white/10 text-foreground shadow-sm'
+                : 'border-transparent bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06]'
+            )}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
       <div className="overflow-x-auto">
         <div className="max-h-[480px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
           <table className="w-full text-sm">
