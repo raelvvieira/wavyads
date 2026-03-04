@@ -96,6 +96,7 @@ Deno.serve(async (req) => {
       );
       const tokenData = await tokenRes.json();
       if (tokenData.error) {
+        console.error("Meta token exchange error:", JSON.stringify(tokenData.error));
         return new Response(JSON.stringify({ error: tokenData.error.message }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
@@ -106,6 +107,7 @@ Deno.serve(async (req) => {
       );
       const longData = await longRes.json();
       if (longData.error) {
+        console.error("Meta long-lived token error:", JSON.stringify(longData.error));
         return new Response(JSON.stringify({ error: longData.error.message }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
