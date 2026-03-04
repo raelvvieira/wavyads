@@ -102,7 +102,7 @@ export function KpiCard({ metricKey, value, previousValue, onChangeMetric }: Kpi
           <div className="flex items-start justify-between">
             <div className="space-y-1.5 min-w-0">
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">{def.label}</p>
-              <p className="text-2xl sm:text-3xl font-bold tracking-tight metric-number truncate">{def.format(value)}</p>
+              <p className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight metric-number">{def.format(value)}</p>
               {changePercent != null && (
                 <div
                   className={cn(
