@@ -435,19 +435,6 @@ export default function ClientDashboard() {
             <RankingCharts campaigns={campaignList} />
           )}
 
-          {/* Insights & Recommendations */}
-          {!isLoading && campaignList.length > 0 && (
-            <InsightsCards
-              campaigns={campaignList}
-              totalSpend={metricValues.spend}
-              totalLeads={metricValues.leads}
-              totalResults={metricValues.results}
-              avgCpl={metricValues.cpl}
-              avgCpm={metricValues.cpm}
-              avgCtr={metricValues.ctr}
-            />
-          )}
-
           {/* Conversion Funnel */}
           {!isLoading && (
             <ConversionFunnel
@@ -460,6 +447,19 @@ export default function ClientDashboard() {
               cpc={metricValues.cpc}
               cpl={metricValues.cpl}
               costPerPurchase={metricValues.cost_per_purchase}
+            />
+          )}
+
+          {/* Insights & Recommendations */}
+          {!isLoading && campaignList.length > 0 && (
+            <InsightsCards
+              campaigns={campaignList}
+              totalSpend={metricValues.spend}
+              totalLeads={metricValues.leads}
+              totalResults={metricValues.results}
+              avgCpl={metricValues.cpl}
+              avgCpm={metricValues.cpm}
+              avgCtr={metricValues.ctr}
             />
           )}
 
