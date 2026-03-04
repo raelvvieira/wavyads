@@ -157,7 +157,23 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
 
   return (
     <GlassCard className="animate-fade-in">
-      <h3 className="text-lg font-semibold mb-4">Desempenho por Campanha</h3>
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <h3 className="text-lg font-semibold mr-auto">Desempenho por Campanha</h3>
+        {STATUS_FILTERS.map((f) => (
+          <button
+            key={f.value}
+            onClick={() => setStatusFilter(f.value)}
+            className={cn(
+              'px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 border',
+              statusFilter === f.value
+                ? 'border-white/20 bg-white/10 text-foreground shadow-sm'
+                : 'border-transparent bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06]'
+            )}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
       <div className="overflow-x-auto">
         <div className="max-h-[480px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
           <table className="w-full text-sm">
