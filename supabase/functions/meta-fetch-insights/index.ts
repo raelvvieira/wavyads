@@ -44,19 +44,24 @@ function extractCostPerAction(costPerAction: any[], types: string[]): number {
   return 0;
 }
 
-// Extract total results: sum ALL matching result types (not just first)
+// Extract total results: return the FIRST matching result type value
 function extractResults(actions: any[]): number {
   if (!actions) return 0;
-  let total = 0;
-  const seen = new Set<string>();
   for (const t of RESULT_TYPES) {
     const found = actions.find((a: any) => a.action_type === t);
-    if (found && !seen.has(t)) {
-      // Return the FIRST matching result type (campaign objective result)
-      return parseInt(found.value || "0");
-    }
+    if (found) return parseInt(found.value || "0");
   }
-  return total;
+  return 0;
+}
+
+// Extract the action_type string of the primary result
+function extractResultType(actions: any[]): string {
+  if (!actions) return "";
+  for (const t of RESULT_TYPES) {
+    const found = actions.find((a: any) => a.action_type === t);
+    if (found) return t;
+  }
+  return "";
 }
 
 function extractCostPerResult(costPerAction: any[]): number {
@@ -162,6 +167,7 @@ Deno.serve(async (req) => {
         const spend = parseFloat(ins.spend || "0");
         const results = extractResults(ins.actions);
         const cost_per_result = extractCostPerResult(ins.cost_per_action_type);
+        const result_type = extractResultType(ins.actions);
 
         return {
           id: c.id,
@@ -178,6 +184,7 @@ Deno.serve(async (req) => {
           cost_per_purchase: costPerPurchase,
           results,
           cost_per_result,
+          result_type,
           conversions: leads + purchases,
           ctr: parseFloat(ins.ctr || "0"),
           cpc: parseFloat(ins.cpc || "0"),
