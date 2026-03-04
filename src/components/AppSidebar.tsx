@@ -3,8 +3,6 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import {
   LayoutDashboard,
-  Megaphone,
-  Users,
   Settings,
   LogOut,
   Menu,
@@ -15,8 +13,6 @@ import { cn } from '@/lib/utils';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/campanhas', icon: Megaphone, label: 'Campanhas' },
-  { to: '/clientes', icon: Users, label: 'Clientes' },
   { to: '/configuracoes', icon: Settings, label: 'Configurações' },
 ];
 
@@ -33,7 +29,6 @@ export function AppSidebar() {
 
   return (
     <>
-      {/* Mobile overlay */}
       <button
         className="fixed top-4 left-4 z-50 lg:hidden glass rounded-lg p-2"
         onClick={() => setCollapsed(!collapsed)}
@@ -49,18 +44,16 @@ export function AppSidebar() {
           collapsed ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
-        {/* Logo */}
         <div className="flex h-16 items-center gap-3 px-6 border-b border-white/10">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg btn-orange">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg btn-accent">
             <Zap className="h-5 w-5" />
           </div>
           <span className="text-lg font-semibold tracking-tight">AdsPro</span>
         </div>
 
-        {/* Nav */}
         <nav className="flex-1 space-y-1 p-4">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.to;
+            const isActive = location.pathname === item.to || (item.to === '/dashboard' && location.pathname.startsWith('/dashboard'));
             return (
               <NavLink
                 key={item.to}
@@ -69,7 +62,7 @@ export function AppSidebar() {
                 className={cn(
                   'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-300',
                   isActive
-                    ? 'bg-orange/20 border-l-2 border-l-orange text-white'
+                    ? 'bg-accent/20 border-l-2 border-l-accent text-white'
                     : 'text-white/70 hover:bg-white/5 hover:text-white'
                 )}
               >
@@ -80,7 +73,6 @@ export function AppSidebar() {
           })}
         </nav>
 
-        {/* Logout */}
         <div className="p-4 border-t border-white/10">
           <button onClick={handleLogout} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-white/60 transition-all duration-300 hover:bg-destructive/10 hover:text-destructive">
             <LogOut className="h-5 w-5" />

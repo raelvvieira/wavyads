@@ -4,24 +4,20 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { IntegrationTab } from '@/components/settings/IntegrationTab';
 
 const tabs = [
   { id: 'perfil', label: 'Perfil' },
   { id: 'notificacoes', label: 'Notificações' },
-  { id: 'integracao', label: 'Integração' },
 ];
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('perfil');
   const { user } = useAuth();
 
-  // Profile state
   const [profileName, setProfileName] = useState('');
   const [profileEmail, setProfileEmail] = useState('');
   const [profileCompany, setProfileCompany] = useState('');
   const [profileLoading, setProfileLoading] = useState(false);
-
 
   useEffect(() => {
     if (user) {
@@ -35,7 +31,6 @@ export default function SettingsPage() {
     }
   }, [user]);
 
-
   const handleSaveProfile = async () => {
     if (!user) return;
     setProfileLoading(true);
@@ -48,9 +43,6 @@ export default function SettingsPage() {
     else toast({ title: 'Perfil salvo!' });
   };
 
-
-
-
   return (
     <div className="p-6 pt-20 lg:pt-6 space-y-6">
       <h1 className="text-2xl font-semibold tracking-tight">Configurações</h1>
@@ -62,7 +54,7 @@ export default function SettingsPage() {
             onClick={() => setActiveTab(tab.id)}
             className={cn(
               'rounded-lg px-5 py-2.5 text-sm font-medium transition-all duration-300',
-              activeTab === tab.id ? 'btn-orange' : 'text-white/60 hover:text-white'
+              activeTab === tab.id ? 'btn-accent' : 'text-white/60 hover:text-white'
             )}
           >
             {tab.label}
@@ -86,7 +78,7 @@ export default function SettingsPage() {
               <label className="text-sm text-white/60">Empresa</label>
               <input value={profileCompany} onChange={(e) => setProfileCompany(e.target.value)} placeholder="Nome da empresa" className="glass-input w-full rounded-xl py-3 px-4 text-sm" />
             </div>
-            <button onClick={handleSaveProfile} disabled={profileLoading} className="btn-orange rounded-xl px-6 py-3 text-sm font-semibold mt-2 disabled:opacity-50">
+            <button onClick={handleSaveProfile} disabled={profileLoading} className="btn-accent rounded-xl px-6 py-3 text-sm font-semibold mt-2 disabled:opacity-50">
               {profileLoading ? 'Salvando...' : 'Salvar Alterações'}
             </button>
           </div>
@@ -109,15 +101,13 @@ export default function SettingsPage() {
                 </div>
                 <label className="relative inline-flex cursor-pointer">
                   <input type="checkbox" defaultChecked={i === 0} className="sr-only peer" />
-                  <div className="w-11 h-6 rounded-full glass peer-checked:bg-orange transition-colors peer-focus:ring-2 peer-focus:ring-orange/30 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
+                  <div className="w-11 h-6 rounded-full glass peer-checked:bg-accent transition-colors peer-focus:ring-2 peer-focus:ring-accent/30 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
                 </label>
               </div>
             ))}
           </div>
         </GlassCard>
       )}
-
-      {activeTab === 'integracao' && <IntegrationTab />}
     </div>
   );
 }
