@@ -87,13 +87,13 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
   };
 
   const sorted = useMemo(() => {
-    return [...campaigns].sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       const av = a[sortKey] ?? 0;
       const bv = b[sortKey] ?? 0;
       const cmp = av < bv ? -1 : av > bv ? 1 : 0;
       return sortDir === 'asc' ? cmp : -cmp;
     });
-  }, [campaigns, sortKey, sortDir]);
+  }, [filtered, sortKey, sortDir]);
 
   // Tags
   const bestCplId = useMemo(() => {
