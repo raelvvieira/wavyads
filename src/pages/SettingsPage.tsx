@@ -141,60 +141,7 @@ export default function SettingsPage() {
         </GlassCard>
       )}
 
-      {activeTab === 'integracao' && (
-        <GlassCard className="max-w-2xl animate-fade-in">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold">API do Facebook Ads</h2>
-            {creds && (
-              <div className="flex items-center gap-2 text-sm">
-                {creds.is_valid ? (
-                  <><CheckCircle className="h-4 w-4 text-green-400" /><span className="text-green-400">Conectado</span></>
-                ) : (
-                  <><XCircle className="h-4 w-4 text-red-400" /><span className="text-red-400">Desconectado</span></>
-                )}
-              </div>
-            )}
-          </div>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-sm text-white/60">Access Token</label>
-              <input
-                type="password"
-                value={accessToken}
-                onChange={(e) => setAccessToken(e.target.value)}
-                placeholder="Cole seu Access Token aqui"
-                className="glass-input w-full rounded-xl py-3 px-4 text-sm"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm text-white/60">Ad Account ID</label>
-              <input
-                value={adAccountId}
-                onChange={(e) => setAdAccountId(e.target.value)}
-                placeholder="act_XXXXXXXXX"
-                className="glass-input w-full rounded-xl py-3 px-4 text-sm"
-              />
-            </div>
-            <div className="flex gap-3 mt-2">
-              <button
-                onClick={handleTestConnection}
-                disabled={testConnection.isPending || !accessToken || !adAccountId}
-                className="glass rounded-xl px-6 py-3 text-sm font-semibold border border-white/10 hover:border-orange/50 transition-all disabled:opacity-50 flex items-center gap-2"
-              >
-                {testConnection.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                Testar Conexão
-              </button>
-              <button
-                onClick={handleSaveIntegration}
-                disabled={saveCredentials.isPending}
-                className="btn-orange rounded-xl px-6 py-3 text-sm font-semibold disabled:opacity-50"
-              >
-                {saveCredentials.isPending ? 'Salvando...' : 'Salvar Integração'}
-              </button>
-            </div>
-          </div>
-        </GlassCard>
-      )}
+      {activeTab === 'integracao' && <IntegrationTab />}
     </div>
   );
 }
