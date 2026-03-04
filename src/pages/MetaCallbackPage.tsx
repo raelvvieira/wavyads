@@ -24,7 +24,6 @@ export default function MetaCallbackPage() {
       {
         onSuccess: (data) => {
           setStatus('success');
-          // Send accounts to parent window
           if (window.opener) {
             window.opener.postMessage({ type: 'META_OAUTH_CALLBACK', accounts: data.accounts || [] }, '*');
             setTimeout(() => window.close(), 1500);
@@ -32,7 +31,9 @@ export default function MetaCallbackPage() {
         },
         onError: (err: any) => {
           setStatus('error');
-          setErrorMsg(err.message || 'Erro ao conectar');
+          // Try to extract the actual error message from the edge function response
+          const msg = err?.context?.body?.error || err?.message || 'Erro ao conectar';
+          setErrorMsg(typeof msg === 'string' ? msg : JSON.stringify(msg));
         },
       }
     );
