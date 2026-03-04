@@ -29,7 +29,7 @@ export function MetricCard({ label, value, change, icon: Icon }: MetricCardProps
             {isPositive ? '+' : ''}{change}%
           </div>
         </div>
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl btn-orange shrink-0">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl btn-accent shrink-0">
           <Icon className="h-6 w-6" />
         </div>
       </div>
