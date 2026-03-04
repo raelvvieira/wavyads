@@ -138,6 +138,8 @@ export default function ClientDashboard() {
       cpl: c.spend / Math.max(1, Math.floor(c.conversions * 0.7)),
       purchases: Math.floor(c.conversions * 0.3),
       cost_per_purchase: c.spend / Math.max(1, Math.floor(c.conversions * 0.3)),
+      results: c.conversions,
+      cost_per_result: c.spend / Math.max(1, c.conversions),
       cpm: (c.spend / c.impressions) * 1000, frequency: 1.5,
     }));
   }, [isSynced, campaigns]);
