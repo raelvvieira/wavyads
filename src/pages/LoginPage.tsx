@@ -49,7 +49,7 @@ export default function LoginPage() {
       <div className="relative z-10 w-full max-w-md px-6 animate-fade-in">
         <div className="glass rounded-2xl p-8 space-y-8">
           <div className="flex flex-col items-center gap-3">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl btn-orange orange-glow">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl btn-accent accent-glow">
               <Zap className="h-7 w-7" />
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">AdsPro</h1>
