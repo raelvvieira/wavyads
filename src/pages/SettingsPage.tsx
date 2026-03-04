@@ -35,12 +35,6 @@ export default function SettingsPage() {
     }
   }, [user]);
 
-  useEffect(() => {
-    if (creds) {
-      setAccessToken(creds.access_token);
-      setAdAccountId(creds.ad_account_id);
-    }
-  }, [creds]);
 
   const handleSaveProfile = async () => {
     if (!user) return;
