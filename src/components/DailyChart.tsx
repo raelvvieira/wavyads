@@ -121,6 +121,9 @@ export function DailyChart({ data }: DailyChartProps) {
               tickFormatter={formatNumber}
             />
           )}
+          {hasCostAxis && (
+            <YAxis yAxisId="cost" hide />
+          )}
           <Tooltip content={<ChartTooltip />} />
           {LINES.filter(l => activeLines.has(l.key)).map((l) => (
             <Area
