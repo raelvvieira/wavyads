@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMetaCallback } from '@/hooks/useMetaOAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 
 export default function MetaCallbackPage() {
@@ -18,25 +19,59 @@ export default function MetaCallbackPage() {
       return;
     }
 
-    const redirectUri = `${window.location.origin}/auth/meta/callback`;
-    metaCallback.mutate(
-      { code, clientId, redirectUri },
-      {
-        onSuccess: (data) => {
-          setStatus('success');
-          if (window.opener) {
-            window.opener.postMessage({ type: 'META_OAUTH_CALLBACK', accounts: data.accounts || [] }, '*');
-            setTimeout(() => window.close(), 1500);
-          }
-        },
-        onError: (err: any) => {
-          setStatus('error');
-          // Try to extract the actual error message from the edge function response
-          const msg = err?.context?.body?.error || err?.message || 'Erro ao conectar';
-          setErrorMsg(typeof msg === 'string' ? msg : JSON.stringify(msg));
-        },
+    const handleCallback = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        setStatus('error');
+        setErrorMsg('Sessão não encontrada nesta janela. Feche e tente conectar novamente.');
+        return;
       }
-    );
+
+      const redirectUri = `${window.location.origin}/auth/meta/callback`;
+      metaCallback.mutate(
+        { code, clientId, redirectUri, accessToken: session.access_token },
+        {
+          onSuccess: (data) => {
+            setStatus('success');
+            if (window.opener) {
+              window.opener.postMessage({ type: 'META_OAUTH_CALLBACK', accounts: data.accounts || [] }, '*');
+              setTimeout(() => window.close(), 1500);
+            }
+          },
+          onError: async (err: any) => {
+            setStatus('error');
+            let msg = 'Erro ao conectar';
+
+            try {
+              if (err?.context && typeof err.context.text === 'function') {
+                const raw = await err.context.text();
+                if (raw) {
+                  try {
+                    const parsed = JSON.parse(raw);
+                    msg = parsed?.error || raw;
+                  } catch {
+                    msg = raw;
+                  }
+                }
+              }
+
+              if ((!msg || msg === 'Erro ao conectar') && err?.message && !String(err.message).includes('non-2xx')) {
+                msg = String(err.message);
+              }
+            } catch {
+              if (err?.message && !String(err.message).includes('non-2xx')) {
+                msg = String(err.message);
+              }
+            }
+
+            setErrorMsg(msg);
+          },
+        }
+      );
+    };
+
+    handleCallback();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (

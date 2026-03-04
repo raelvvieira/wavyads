@@ -50,6 +50,7 @@ Deno.serve(async (req) => {
     // All other actions require admin authentication
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
+      console.error("meta-oauth auth error: missing Authorization header");
       return new Response(JSON.stringify({ error: "Não autenticado" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -58,6 +59,7 @@ Deno.serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     if (userError || !user) {
+      console.error("meta-oauth auth error: invalid token", userError?.message ?? "no user");
       return new Response(JSON.stringify({ error: "Token inválido" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -73,6 +75,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (!roleData) {
+      console.error(`meta-oauth auth error: user ${userId} is not admin`);
       return new Response(JSON.stringify({ error: "Acesso negado. Apenas admin." }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -212,7 +215,9 @@ Deno.serve(async (req) => {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    console.error("meta-oauth unhandled error:", err);
+    const message = err instanceof Error ? err.message : "Erro inesperado";
+    return new Response(JSON.stringify({ error: message }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
