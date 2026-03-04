@@ -274,7 +274,7 @@ export default function ClientDashboard() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <header className="sticky top-0 z-30 flex flex-wrap items-center gap-4 border-b border-white/10 bg-black/60 backdrop-blur-xl px-6 py-4">
+      <header className="sticky top-0 z-30 flex flex-wrap items-center gap-2 sm:gap-4 border-b border-white/10 bg-black/60 backdrop-blur-xl px-4 sm:px-6 py-3 sm:py-4 pt-14 lg:pt-4">
         {isAdmin && (
           <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="h-4 w-4" />
