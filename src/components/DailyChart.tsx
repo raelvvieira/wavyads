@@ -11,7 +11,7 @@ interface LineConfig {
   key: keyof DailyMetric;
   label: string;
   color: string;
-  yAxisId: 'currency' | 'count';
+  yAxisId: 'currency' | 'count' | 'cost';
   format: (v: number) => string;
 }
 
@@ -22,8 +22,8 @@ const LINES: LineConfig[] = [
   { key: 'leads',              label: 'Leads',             color: '#f59e0b', yAxisId: 'count',    format: (v) => v.toString() },
   { key: 'purchases',          label: 'Compras',           color: '#ec4899', yAxisId: 'count',    format: (v) => v.toString() },
   { key: 'results',            label: 'Resultados',        color: '#14b8a6', yAxisId: 'count',    format: (v) => v.toString() },
-  { key: 'cost_per_result',    label: 'Custo/Resultado',   color: '#a855f7', yAxisId: 'currency', format: formatCurrency },
-  { key: 'cost_per_purchase',  label: 'Custo/Compra',      color: '#f43f5e', yAxisId: 'currency', format: formatCurrency },
+  { key: 'cost_per_result',    label: 'Custo/Resultado',   color: '#a855f7', yAxisId: 'cost', format: formatCurrency },
+  { key: 'cost_per_purchase',  label: 'Custo/Compra',      color: '#f43f5e', yAxisId: 'cost', format: formatCurrency },
 ];
 
 const ChartTooltip = ({ active, payload, label }: any) => {
@@ -65,6 +65,7 @@ export function DailyChart({ data }: DailyChartProps) {
   };
 
   const hasCountAxis = LINES.some(l => l.yAxisId === 'count' && activeLines.has(l.key));
+  const hasCostAxis = LINES.some(l => l.yAxisId === 'cost' && activeLines.has(l.key));
 
   return (
     <GlassCard className="animate-fade-in">
@@ -119,6 +120,9 @@ export function DailyChart({ data }: DailyChartProps) {
               tickLine={false}
               tickFormatter={formatNumber}
             />
+          )}
+          {hasCostAxis && (
+            <YAxis yAxisId="cost" hide />
           )}
           <Tooltip content={<ChartTooltip />} />
           {LINES.filter(l => activeLines.has(l.key)).map((l) => (
