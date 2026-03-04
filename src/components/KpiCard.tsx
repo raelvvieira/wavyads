@@ -10,7 +10,7 @@ import { formatCurrency, formatNumber } from '@/data/mock';
 export type MetricKey =
   | 'spend' | 'impressions' | 'reach' | 'clicks' | 'ctr' | 'cpm'
   | 'cpc' | 'leads' | 'cpl' | 'purchases' | 'cost_per_purchase' | 'roas' | 'frequency'
-  | 'conversions' | 'cost_per_conversion' | 'results' | 'cost_per_result';
+  | 'results' | 'cost_per_result';
 
 interface MetricDef {
   label: string;
@@ -34,8 +34,6 @@ export const METRIC_DEFS: Record<MetricKey, MetricDef> = {
   cost_per_purchase: { label: 'Custo/Compra',    icon: ShoppingCart,  format: formatCurrency,            color: 'bg-rose-500', invertChange: true },
   roas:              { label: 'ROAS',            icon: TrendingUp,   format: (v) => v.toFixed(2) + 'x', color: 'bg-lime-500' },
   frequency:         { label: 'Frequência',      icon: Repeat,       format: (v) => v.toFixed(2),       color: 'bg-purple-500' },
-  conversions:       { label: 'Resultados',      icon: Target,       format: (v) => v.toString(),       color: 'bg-teal-500' },
-  cost_per_conversion: { label: 'Custo/Resultado', icon: DollarSign,  format: formatCurrency,            color: 'bg-red-500', invertChange: true },
   results:           { label: 'Resultados',      icon: Target,       format: (v) => v.toString(),       color: 'bg-teal-500' },
   cost_per_result:   { label: 'Custo/Resultado', icon: DollarSign,   format: formatCurrency,            color: 'bg-red-500', invertChange: true },
 };
