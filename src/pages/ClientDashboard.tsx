@@ -300,7 +300,7 @@ export default function ClientDashboard() {
                 key={p.value}
                 onClick={() => handlePeriodSelect(p.value)}
                 className={cn(
-                  'rounded-lg px-4 py-2 text-xs font-medium transition-all duration-300',
+                  'rounded-lg px-2.5 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-medium transition-all duration-300',
                   selectedPeriod === p.value
                     ? 'btn-accent'
                     : 'glass text-muted-foreground hover:text-foreground hover:bg-white/[0.08]'
