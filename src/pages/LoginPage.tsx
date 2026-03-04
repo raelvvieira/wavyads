@@ -109,7 +109,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="btn-orange w-full rounded-xl py-3 text-sm font-semibold transition-all duration-300 disabled:opacity-50"
+              className="btn-accent w-full rounded-xl py-3 text-sm font-semibold transition-all duration-300 disabled:opacity-50"
             >
               {loading ? 'Carregando...' : isSignUp ? 'Criar Conta' : 'Entrar'}
             </button>

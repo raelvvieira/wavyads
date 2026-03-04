@@ -152,12 +152,12 @@
     100% { background-position: 200% 0; }
   }
 
-  .orange-glow {
-    box-shadow: 0 0 30px rgba(255, 107, 53, 0.15);
+  .accent-glow {
+    box-shadow: 0 0 30px rgba(26, 205, 138, 0.15);
   }
 
-  .orange-glow-hover:hover {
-    box-shadow: 0 0 30px rgba(255, 107, 53, 0.25);
+  .accent-glow-hover:hover {
+    box-shadow: 0 0 30px rgba(26, 205, 138, 0.25);
   }
 }
 

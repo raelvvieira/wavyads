@@ -1,7 +1,7 @@
 project_id = "gmdulobvxkgcfkfeydug"
 
-[functions.facebook-ads]
+[functions.meta-oauth]
 verify_jwt = false
 
-[functions.facebook-oauth]
+[functions.meta-fetch-insights]
 verify_jwt = false

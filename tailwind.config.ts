@@ -61,10 +61,9 @@ export default {
           border: "hsl(var(--sidebar-border) / 0.1)",
           ring: "hsl(var(--sidebar-ring))",
         },
-        orange: {
-          DEFAULT: "#FF6B35",
-          light: "#FF8E53",
-          muted: "#FF9F66",
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
         },
         status: {
           active: "hsl(var(--status-active))",
