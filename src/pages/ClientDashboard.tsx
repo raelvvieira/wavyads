@@ -10,6 +10,8 @@ import { DailyChart } from '@/components/DailyChart';
 import { CampaignsTable } from '@/components/CampaignsTable';
 import { RankingCharts } from '@/components/RankingCharts';
 import { ConversionFunnel } from '@/components/ConversionFunnel';
+import { InsightsCards } from '@/components/InsightsCards';
+import { StrategicSummary } from '@/components/StrategicSummary';
 import { GapAlert } from '@/components/GapAlert';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -138,6 +140,8 @@ export default function ClientDashboard() {
       cpl: c.spend / Math.max(1, Math.floor(c.conversions * 0.7)),
       purchases: Math.floor(c.conversions * 0.3),
       cost_per_purchase: c.spend / Math.max(1, Math.floor(c.conversions * 0.3)),
+      results: c.conversions,
+      cost_per_result: c.spend / Math.max(1, c.conversions),
       cpm: (c.spend / c.impressions) * 1000, frequency: 1.5,
     }));
   }, [isSynced, campaigns]);
@@ -150,6 +154,7 @@ export default function ClientDashboard() {
         date: d.date, spend: d.value,
         impressions: Math.floor(d.value * 50), reach: Math.floor(d.value * 40),
         clicks: Math.floor(d.value * 2), leads: Math.floor(d.value * 0.3), purchases: Math.floor(d.value * 0.05),
+        results: Math.floor(d.value * 0.3) + Math.floor(d.value * 0.05),
         conversions: Math.floor(d.value * 0.3) + Math.floor(d.value * 0.05),
       }));
     }
@@ -165,6 +170,7 @@ export default function ClientDashboard() {
     const clicks = i?.clicks ?? fromCampaigns('clicks');
     const leads = i?.leads ?? fromCampaigns('leads');
     const purchases = i?.purchases ?? fromCampaigns('purchases');
+    const results = i?.results ?? fromCampaigns('results');
 
     return {
       spend,
@@ -182,6 +188,8 @@ export default function ClientDashboard() {
       frequency: i?.frequency ?? 0,
       conversions: i?.conversions ?? (leads + purchases),
       cost_per_conversion: i?.cost_per_conversion ?? ((leads + purchases) > 0 ? spend / (leads + purchases) : 0),
+      results,
+      cost_per_result: i?.cost_per_result ?? (results > 0 ? spend / results : 0),
     };
   }, [insights, campaignList]);
 
@@ -205,6 +213,8 @@ export default function ClientDashboard() {
       frequency: p.frequency ?? 0,
       conversions: p.conversions ?? ((p.leads || 0) + (p.purchases || 0)),
       cost_per_conversion: p.cost_per_conversion ?? 0,
+      results: p.results ?? 0,
+      cost_per_result: p.cost_per_result ?? 0,
     };
   }, [previousInsights]);
 
@@ -425,6 +435,19 @@ export default function ClientDashboard() {
             <RankingCharts campaigns={campaignList} />
           )}
 
+          {/* Insights & Recommendations */}
+          {!isLoading && campaignList.length > 0 && (
+            <InsightsCards
+              campaigns={campaignList}
+              totalSpend={metricValues.spend}
+              totalLeads={metricValues.leads}
+              totalResults={metricValues.results}
+              avgCpl={metricValues.cpl}
+              avgCpm={metricValues.cpm}
+              avgCtr={metricValues.ctr}
+            />
+          )}
+
           {/* Conversion Funnel */}
           {!isLoading && (
             <ConversionFunnel
@@ -437,6 +460,21 @@ export default function ClientDashboard() {
               cpc={metricValues.cpc}
               cpl={metricValues.cpl}
               costPerPurchase={metricValues.cost_per_purchase}
+            />
+          )}
+
+          {/* Strategic Summary */}
+          {!isLoading && campaignList.length > 0 && (
+            <StrategicSummary
+              clientName={client.name}
+              period={selectedPeriod}
+              totalSpend={metricValues.spend}
+              totalLeads={metricValues.leads}
+              totalResults={metricValues.results}
+              totalPurchases={metricValues.purchases}
+              avgCpl={metricValues.cpl}
+              costPerResult={metricValues.cost_per_result}
+              campaigns={campaignList}
             />
           )}
         </div>

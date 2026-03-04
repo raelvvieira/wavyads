@@ -8,6 +8,24 @@ const corsHeaders = {
 
 const GRAPH_API = "https://graph.facebook.com/v20.0";
 
+// All common Meta result action types ordered by specificity
+const RESULT_TYPES = [
+  "onsite_conversion.messaging_conversation_started_7d",
+  "lead",
+  "onsite_conversion.lead_grouped",
+  "offsite_conversion.fb_pixel_lead",
+  "purchase",
+  "offsite_conversion.fb_pixel_purchase",
+  "omni_purchase",
+  "landing_page_view",
+  "link_click",
+  "post_engagement",
+  "page_engagement",
+  "video_view",
+  "omni_app_install",
+  "app_install",
+];
+
 function extractAction(actions: any[], types: string[]): number {
   if (!actions) return 0;
   for (const t of types) {
@@ -20,6 +38,30 @@ function extractAction(actions: any[], types: string[]): number {
 function extractCostPerAction(costPerAction: any[], types: string[]): number {
   if (!costPerAction) return 0;
   for (const t of types) {
+    const found = costPerAction.find((a: any) => a.action_type === t);
+    if (found) return parseFloat(found.value || "0");
+  }
+  return 0;
+}
+
+// Extract total results: sum ALL matching result types (not just first)
+function extractResults(actions: any[]): number {
+  if (!actions) return 0;
+  let total = 0;
+  const seen = new Set<string>();
+  for (const t of RESULT_TYPES) {
+    const found = actions.find((a: any) => a.action_type === t);
+    if (found && !seen.has(t)) {
+      // Return the FIRST matching result type (campaign objective result)
+      return parseInt(found.value || "0");
+    }
+  }
+  return total;
+}
+
+function extractCostPerResult(costPerAction: any[]): number {
+  if (!costPerAction) return 0;
+  for (const t of RESULT_TYPES) {
     const found = costPerAction.find((a: any) => a.action_type === t);
     if (found) return parseFloat(found.value || "0");
   }
@@ -118,6 +160,8 @@ Deno.serve(async (req) => {
         const cpl = extractCostPerAction(ins.cost_per_action_type, LEAD_TYPES);
         const costPerPurchase = extractCostPerAction(ins.cost_per_action_type, PURCHASE_TYPES);
         const spend = parseFloat(ins.spend || "0");
+        const results = extractResults(ins.actions);
+        const cost_per_result = extractCostPerResult(ins.cost_per_action_type);
 
         return {
           id: c.id,
@@ -132,6 +176,8 @@ Deno.serve(async (req) => {
           cpl,
           purchases,
           cost_per_purchase: costPerPurchase,
+          results,
+          cost_per_result,
           conversions: leads + purchases,
           ctr: parseFloat(ins.ctr || "0"),
           cpc: parseFloat(ins.cpc || "0"),
@@ -161,6 +207,8 @@ Deno.serve(async (req) => {
       const cpl = extractCostPerAction(ins.cost_per_action_type, LEAD_TYPES);
       const costPerPurchase = extractCostPerAction(ins.cost_per_action_type, PURCHASE_TYPES);
       const spend = parseFloat(ins.spend || "0");
+      const results = extractResults(ins.actions);
+      const cost_per_result = extractCostPerResult(ins.cost_per_action_type);
 
       // Daily breakdown with more fields
       const dailyRes = await fetch(
@@ -175,6 +223,7 @@ Deno.serve(async (req) => {
         clicks: parseInt(d.clicks || "0"),
         leads: extractAction(d.actions, LEAD_TYPES),
         purchases: extractAction(d.actions, PURCHASE_TYPES),
+        results: extractResults(d.actions),
       }));
 
       return new Response(JSON.stringify({
@@ -186,6 +235,8 @@ Deno.serve(async (req) => {
         cpl,
         purchases,
         cost_per_purchase: costPerPurchase,
+        results,
+        cost_per_result,
         conversions: leads + purchases,
         ctr: parseFloat(ins.ctr || "0"),
         cpc: parseFloat(ins.cpc || "0"),
@@ -197,7 +248,6 @@ Deno.serve(async (req) => {
     }
 
     if (action === "insights_previous") {
-      // Calculate previous period date range based on preset
       const periodDays: Record<string, number> = {
         last_7d: 7, last_14d: 14, last_30d: 30, last_60d: 60, last_90d: 90,
       };
@@ -226,6 +276,8 @@ Deno.serve(async (req) => {
       const cpl = extractCostPerAction(ins.cost_per_action_type, LEAD_TYPES);
       const costPerPurchase = extractCostPerAction(ins.cost_per_action_type, PURCHASE_TYPES);
       const spend = parseFloat(ins.spend || "0");
+      const results = extractResults(ins.actions);
+      const cost_per_result = extractCostPerResult(ins.cost_per_action_type);
 
       return new Response(JSON.stringify({
         spend,
@@ -236,6 +288,8 @@ Deno.serve(async (req) => {
         cpl,
         purchases,
         cost_per_purchase: costPerPurchase,
+        results,
+        cost_per_result,
         conversions: leads + purchases,
         ctr: parseFloat(ins.ctr || "0"),
         cpc: parseFloat(ins.cpc || "0"),

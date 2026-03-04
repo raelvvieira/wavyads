@@ -14,6 +14,8 @@ export interface MetaCampaign {
   cpl: number;
   purchases: number;
   cost_per_purchase: number;
+  results: number;
+  cost_per_result: number;
   conversions: number;
   ctr: number;
   cpc: number;
@@ -29,6 +31,7 @@ export interface DailyMetric {
   clicks: number;
   leads: number;
   purchases: number;
+  results: number;
   conversions: number;
 }
 
@@ -41,6 +44,8 @@ export interface MetaInsights {
   cpl: number;
   purchases: number;
   cost_per_purchase: number;
+  results: number;
+  cost_per_result: number;
   conversions: number;
   ctr: number;
   cpc: number;
@@ -91,6 +96,7 @@ export function useMetaInsights(clientId: string | undefined, enabled: boolean, 
       if (data.daily) {
         data.daily = data.daily.map((d: any) => ({
           ...d,
+          results: d.results ?? ((d.leads || 0) + (d.purchases || 0)),
           conversions: d.conversions ?? ((d.leads || 0) + (d.purchases || 0)),
         }));
       }
