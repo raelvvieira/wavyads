@@ -10,6 +10,8 @@ import { DailyChart } from '@/components/DailyChart';
 import { CampaignsTable } from '@/components/CampaignsTable';
 import { RankingCharts } from '@/components/RankingCharts';
 import { ConversionFunnel } from '@/components/ConversionFunnel';
+import { InsightsCards } from '@/components/InsightsCards';
+import { StrategicSummary } from '@/components/StrategicSummary';
 import { GapAlert } from '@/components/GapAlert';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
