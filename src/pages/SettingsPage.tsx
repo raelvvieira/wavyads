@@ -48,32 +48,8 @@ export default function SettingsPage() {
     else toast({ title: 'Perfil salvo!' });
   };
 
-  const handleSaveIntegration = async () => {
-    if (!accessToken || !adAccountId) {
-      toast({ title: 'Preencha todos os campos', variant: 'destructive' });
-      return;
-    }
-    saveCredentials.mutate(
-      { accessToken, adAccountId },
-      {
-        onSuccess: () => toast({ title: 'Credenciais salvas!' }),
-        onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
-      }
-    );
-  };
 
-  const handleTestConnection = () => {
-    testConnection.mutate(undefined, {
-      onSuccess: (data: any) => {
-        if (data.success) {
-          toast({ title: 'Conexão OK!', description: `Conta: ${data.account_name}` });
-        } else {
-          toast({ title: 'Falha na conexão', description: data.error, variant: 'destructive' });
-        }
-      },
-      onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
-    });
-  };
+
 
   return (
     <div className="p-6 pt-20 lg:pt-6 space-y-6">
