@@ -47,6 +47,7 @@ export interface MetaInsights {
   cpm: number;
   frequency: number;
   roas: number;
+  cost_per_conversion: number;
   daily: DailyMetric[];
   daily_spend?: { date: string; value: number }[];
 }
