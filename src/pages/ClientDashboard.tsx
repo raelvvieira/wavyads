@@ -274,7 +274,7 @@ export default function ClientDashboard() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <header className="sticky top-0 z-30 flex flex-wrap items-center gap-4 border-b border-white/10 bg-black/60 backdrop-blur-xl px-6 py-4">
+      <header className="sticky top-0 z-30 flex flex-wrap items-center gap-2 sm:gap-4 border-b border-white/10 bg-black/60 backdrop-blur-xl px-4 sm:px-6 py-3 sm:py-4 pt-14 lg:pt-4">
         {isAdmin && (
           <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="h-4 w-4" />
@@ -300,7 +300,7 @@ export default function ClientDashboard() {
                 key={p.value}
                 onClick={() => handlePeriodSelect(p.value)}
                 className={cn(
-                  'rounded-lg px-4 py-2 text-xs font-medium transition-all duration-300',
+                  'rounded-lg px-2.5 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-medium transition-all duration-300',
                   selectedPeriod === p.value
                     ? 'btn-accent'
                     : 'glass text-muted-foreground hover:text-foreground hover:bg-white/[0.08]'
@@ -313,7 +313,7 @@ export default function ClientDashboard() {
                 <PopoverTrigger asChild>
                   <button
                     className={cn(
-                      'rounded-lg px-4 py-2 text-xs font-medium transition-all duration-300 flex items-center gap-1.5',
+                      'rounded-lg px-2.5 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-medium transition-all duration-300 flex items-center gap-1.5',
                       selectedPeriod === 'custom'
                         ? 'btn-accent'
                         : 'glass text-muted-foreground hover:text-foreground hover:bg-white/[0.08]'
@@ -413,12 +413,12 @@ export default function ClientDashboard() {
         </div>
       ) : (
         /* Dashboard content */
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Gap Alert */}
           <GapAlert leads={metricValues.leads} purchases={metricValues.purchases} />
 
           {/* KPI Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
             {isLoading ? (
               Array.from({ length: 6 }).map((_, i) => (
                 <GlassCard key={i}><Skeleton className="h-20 bg-white/5" /></GlassCard>

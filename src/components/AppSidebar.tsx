@@ -29,12 +29,15 @@ export function AppSidebar() {
 
   return (
     <>
-      <button
-        className="fixed top-4 left-4 z-50 lg:hidden glass rounded-lg p-2"
-        onClick={() => setCollapsed(!collapsed)}
-      >
-        {collapsed ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-      </button>
+      {/* Hamburger button — only visible when sidebar is closed */}
+      {!collapsed && (
+        <button
+          className="fixed top-4 left-4 z-50 lg:hidden glass rounded-lg p-2"
+          onClick={() => setCollapsed(true)}
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+      )}
 
       <aside
         className={cn(
@@ -49,6 +52,13 @@ export function AppSidebar() {
             <img src={wavyLogo} alt="WAVY" className="h-7 w-7 object-contain" />
           </div>
           <span className="text-lg font-semibold tracking-tight">WAVY Dash</span>
+          {/* Close button inside sidebar header — mobile only */}
+          <button
+            className="ml-auto lg:hidden p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+            onClick={() => setCollapsed(false)}
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
         <nav className="flex-1 space-y-1 p-4">
