@@ -1,22 +1,21 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
-import { DollarSign, Eye, MousePointer, Target, TrendingUp, RefreshCw, ArrowLeft } from 'lucide-react';
-import {
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  BarChart, Bar, CartesianGrid, Cell,
-} from 'recharts';
+import { useParams, useNavigate } from 'react-router-dom';
+import { TrendingUp, RefreshCw, ArrowLeft } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
-import { MetricCard } from '@/components/MetricCard';
-import { StatusBadge } from '@/components/StatusBadge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { KpiCard, getDefaultCards, saveCards, type MetricKey } from '@/components/KpiCard';
+import { DailyChart } from '@/components/DailyChart';
+import { CampaignsTable } from '@/components/CampaignsTable';
+import { RankingCharts } from '@/components/RankingCharts';
+import { ConversionFunnel } from '@/components/ConversionFunnel';
+import { GapAlert } from '@/components/GapAlert';
 import { useClient } from '@/hooks/useClients';
 import { useRole } from '@/hooks/useRole';
 import { useGetMetaAuthUrl, useSelectMetaAccount } from '@/hooks/useMetaOAuth';
-import { useMetaCampaigns, useMetaInsights } from '@/hooks/useMetaInsights';
+import { useMetaCampaigns, useMetaInsights, type DailyMetric } from '@/hooks/useMetaInsights';
 import { generateDailySpend, formatCurrency, formatNumber, mockCampaigns } from '@/data/mock';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useClients } from '@/hooks/useClients';
 
@@ -34,23 +33,12 @@ const periods: { label: string; value: Period }[] = [
   { label: '90 dias', value: '90d' },
 ];
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="glass rounded-lg px-3 py-2 text-xs">
-      <p className="text-white/60">{label}</p>
-      <p className="font-semibold">{formatCurrency(payload[0].value)}</p>
-    </div>
-  );
-};
-
 export default function ClientDashboard() {
   const { clientId: paramClientId } = useParams();
   const navigate = useNavigate();
   const { isAdmin } = useRole();
   const { user } = useAuth();
 
-  // For client users, find their own client record
   const { data: allClients } = useClients();
   const clientUserRecord = !isAdmin && allClients?.length ? allClients[0] : null;
   const clientId = paramClientId || clientUserRecord?.id;
@@ -65,6 +53,18 @@ export default function ClientDashboard() {
   const getAuthUrl = useGetMetaAuthUrl();
   const selectAccount = useSelectMetaAccount();
   const [pendingAccounts, setPendingAccounts] = useState<any[] | null>(null);
+
+  // KPI card customization
+  const [kpiCards, setKpiCards] = useState<MetricKey[]>(getDefaultCards);
+
+  const handleChangeMetric = (index: number, newKey: MetricKey) => {
+    setKpiCards(prev => {
+      const next = [...prev];
+      next[index] = newKey;
+      saveCards(next);
+      return next;
+    });
+  };
 
   const isLoading = clientLoading || (isSynced && (campaignsLoading || insightsLoading));
 
@@ -108,27 +108,57 @@ export default function ClientDashboard() {
     );
   };
 
-  // Data
-  const periodDays = { '7d': 7, '30d': 30, '90d': 90 };
-  const dailySpend = useMemo(() => {
-    if (isSynced && insights?.daily_spend?.length) return insights.daily_spend;
-    return isSynced ? [] : generateDailySpend(periodDays[selectedPeriod]);
-  }, [isSynced, insights, selectedPeriod]);
-
+  // Aggregate data
   const campaignList = useMemo(() => {
     if (isSynced && campaigns) return campaigns;
-    return isSynced ? [] : mockCampaigns.slice(0, 5);
+    return isSynced ? [] : mockCampaigns.slice(0, 5).map(c => ({
+      ...c, reach: c.impressions * 0.8, leads: Math.floor(c.conversions * 0.7),
+      cpl: c.spend / Math.max(1, Math.floor(c.conversions * 0.7)),
+      purchases: Math.floor(c.conversions * 0.3),
+      cost_per_purchase: c.spend / Math.max(1, Math.floor(c.conversions * 0.3)),
+      cpm: (c.spend / c.impressions) * 1000, frequency: 1.5,
+    }));
   }, [isSynced, campaigns]);
 
-  const totalSpend = isSynced && insights ? insights.spend : campaignList.reduce((s, c) => s + c.spend, 0);
-  const totalImpressions = isSynced && insights ? insights.impressions : campaignList.reduce((s, c) => s + c.impressions, 0);
-  const totalClicks = isSynced && insights ? insights.clicks : campaignList.reduce((s, c) => s + c.clicks, 0);
-  const totalConversions = isSynced && insights ? insights.conversions : campaignList.reduce((s, c) => s + c.conversions, 0);
+  const dailyData: DailyMetric[] = useMemo(() => {
+    if (isSynced && insights?.daily?.length) return insights.daily;
+    if (!isSynced) {
+      const days = { '7d': 7, '30d': 30, '90d': 90 }[selectedPeriod];
+      return generateDailySpend(days).map(d => ({
+        date: d.date, spend: d.value,
+        impressions: Math.floor(d.value * 50), reach: Math.floor(d.value * 40),
+        clicks: Math.floor(d.value * 2), leads: Math.floor(d.value * 0.3), purchases: Math.floor(d.value * 0.05),
+      }));
+    }
+    return [];
+  }, [isSynced, insights, selectedPeriod]);
 
-  const topCampaigns = [...campaignList]
-    .sort((a, b) => b.spend - a.spend)
-    .slice(0, 5)
-    .map((c) => ({ name: c.name.length > 22 ? c.name.slice(0, 22) + '…' : c.name, spend: c.spend }));
+  // Metric values for KPI cards
+  const metricValues: Record<MetricKey, number> = useMemo(() => {
+    const i = insights;
+    const fromCampaigns = (key: string) => campaignList.reduce((s, c) => s + ((c as any)[key] || 0), 0);
+    const spend = i?.spend ?? fromCampaigns('spend');
+    const impressions = i?.impressions ?? fromCampaigns('impressions');
+    const clicks = i?.clicks ?? fromCampaigns('clicks');
+    const leads = i?.leads ?? fromCampaigns('leads');
+    const purchases = i?.purchases ?? fromCampaigns('purchases');
+
+    return {
+      spend,
+      impressions,
+      reach: i?.reach ?? fromCampaigns('reach'),
+      clicks,
+      ctr: i?.ctr ?? (impressions > 0 ? (clicks / impressions) * 100 : 0),
+      cpm: i?.cpm ?? (impressions > 0 ? (spend / impressions) * 1000 : 0),
+      cpc: i?.cpc ?? (clicks > 0 ? spend / clicks : 0),
+      leads,
+      cpl: i?.cpl ?? (leads > 0 ? spend / leads : 0),
+      purchases,
+      cost_per_purchase: i?.cost_per_purchase ?? (purchases > 0 ? spend / purchases : 0),
+      roas: i?.roas ?? 0,
+      frequency: i?.frequency ?? 0,
+    };
+  }, [insights, campaignList]);
 
   if (clientLoading) {
     return (
@@ -218,7 +248,7 @@ export default function ClientDashboard() {
                 'rounded-lg px-4 py-2 text-xs font-medium transition-all duration-300',
                 selectedPeriod === p.value
                   ? 'btn-accent'
-                  : 'glass text-white/60 hover:text-white hover:bg-white/[0.08]'
+                  : 'glass text-muted-foreground hover:text-foreground hover:bg-white/[0.08]'
               )}
             >
               {p.label}
@@ -272,101 +302,56 @@ export default function ClientDashboard() {
       ) : (
         /* Dashboard content */
         <div className="p-6 space-y-6">
-          {/* KPIs */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+          {/* Gap Alert */}
+          <GapAlert leads={metricValues.leads} purchases={metricValues.purchases} />
+
+          {/* KPI Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
             {isLoading ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <GlassCard key={i}><Skeleton className="h-24 bg-white/5" /></GlassCard>
+              Array.from({ length: 6 }).map((_, i) => (
+                <GlassCard key={i}><Skeleton className="h-20 bg-white/5" /></GlassCard>
               ))
             ) : (
-              <>
-                <MetricCard label="Total Gasto" value={formatCurrency(totalSpend)} change={0} icon={DollarSign} />
-                <MetricCard label="Impressões" value={formatNumber(totalImpressions)} change={0} icon={Eye} />
-                <MetricCard label="Cliques" value={formatNumber(totalClicks)} change={0} icon={MousePointer} />
-                <MetricCard label="Conversões" value={totalConversions.toString()} change={0} icon={Target} />
-              </>
+              kpiCards.map((key, i) => (
+                <KpiCard
+                  key={`${key}-${i}`}
+                  metricKey={key}
+                  value={metricValues[key]}
+                  onChangeMetric={(newKey) => handleChangeMetric(i, newKey)}
+                />
+              ))
             )}
           </div>
 
-          {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            <GlassCard className="lg:col-span-3 animate-fade-in">
-              <h3 className="text-lg font-semibold mb-4">Gastos por dia</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={dailySpend}>
-                  <defs>
-                    <linearGradient id="accentGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--accent))" stopOpacity={0.3} />
-                      <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="date" tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Area type="monotone" dataKey="value" stroke="hsl(var(--accent))" strokeWidth={2} fill="url(#accentGrad)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </GlassCard>
-
-            <GlassCard className="lg:col-span-2 animate-fade-in">
-              <h3 className="text-lg font-semibold mb-4">Top 5 Campanhas</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={topCampaigns} layout="vertical" margin={{ left: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
-                  <XAxis type="number" tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis type="category" dataKey="name" tick={{ fill: 'rgba(255,255,255,0.6)', fontSize: 11 }} axisLine={false} tickLine={false} width={130} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="spend" radius={[0, 6, 6, 0]} barSize={24}>
-                    {topCampaigns.map((_, i) => (
-                      <Cell key={i} fill="url(#barGradAccent)" />
-                    ))}
-                  </Bar>
-                  <defs>
-                    <linearGradient id="barGradAccent" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="hsl(var(--accent))" />
-                      <stop offset="100%" stopColor="hsl(160, 80%, 55%)" />
-                    </linearGradient>
-                  </defs>
-                </BarChart>
-              </ResponsiveContainer>
-            </GlassCard>
-          </div>
+          {/* Daily Chart */}
+          {!isLoading && dailyData.length > 0 && (
+            <DailyChart data={dailyData} />
+          )}
 
           {/* Campaigns Table */}
-          <GlassCard className="animate-fade-in">
-            <h3 className="text-lg font-semibold mb-4">Todas as Campanhas</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-white/10">
-                    <th className="text-left py-3 px-4 text-white/60 font-medium">Campanha</th>
-                    <th className="text-left py-3 px-4 text-white/60 font-medium">Status</th>
-                    <th className="text-right py-3 px-4 text-white/60 font-medium">Gasto</th>
-                    <th className="text-right py-3 px-4 text-white/60 font-medium hidden md:table-cell">Impressões</th>
-                    <th className="text-right py-3 px-4 text-white/60 font-medium hidden md:table-cell">Cliques</th>
-                    <th className="text-right py-3 px-4 text-white/60 font-medium hidden lg:table-cell">CTR</th>
-                    <th className="text-right py-3 px-4 text-white/60 font-medium hidden lg:table-cell">CPC</th>
-                    <th className="text-right py-3 px-4 text-white/60 font-medium">Conv.</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {campaignList.map((c) => (
-                    <tr key={c.id} className="border-b border-white/5 transition-colors duration-200 hover:bg-white/[0.03]">
-                      <td className="py-3 px-4 font-medium">{c.name}</td>
-                      <td className="py-3 px-4"><StatusBadge status={c.status} /></td>
-                      <td className="py-3 px-4 text-right metric-number">{formatCurrency(c.spend)}</td>
-                      <td className="py-3 px-4 text-right text-white/60 hidden md:table-cell">{formatNumber(c.impressions)}</td>
-                      <td className="py-3 px-4 text-right text-white/60 hidden md:table-cell">{formatNumber(c.clicks)}</td>
-                      <td className="py-3 px-4 text-right text-white/60 hidden lg:table-cell">{typeof c.ctr === 'number' ? c.ctr.toFixed(2) : c.ctr}%</td>
-                      <td className="py-3 px-4 text-right text-white/60 hidden lg:table-cell">{formatCurrency(c.cpc)}</td>
-                      <td className="py-3 px-4 text-right metric-number">{c.conversions}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </GlassCard>
+          {!isLoading && campaignList.length > 0 && (
+            <CampaignsTable campaigns={campaignList} />
+          )}
+
+          {/* Ranking Charts */}
+          {!isLoading && campaignList.length > 0 && (
+            <RankingCharts campaigns={campaignList} />
+          )}
+
+          {/* Conversion Funnel */}
+          {!isLoading && (
+            <ConversionFunnel
+              reach={metricValues.reach}
+              impressions={metricValues.impressions}
+              clicks={metricValues.clicks}
+              leads={metricValues.leads}
+              purchases={metricValues.purchases}
+              cpm={metricValues.cpm}
+              cpc={metricValues.cpc}
+              cpl={metricValues.cpl}
+              costPerPurchase={metricValues.cost_per_purchase}
+            />
+          )}
         </div>
       )}
     </div>

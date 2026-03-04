@@ -8,6 +8,27 @@ const corsHeaders = {
 
 const GRAPH_API = "https://graph.facebook.com/v20.0";
 
+function extractAction(actions: any[], types: string[]): number {
+  if (!actions) return 0;
+  for (const t of types) {
+    const found = actions.find((a: any) => a.action_type === t);
+    if (found) return parseInt(found.value || "0");
+  }
+  return 0;
+}
+
+function extractCostPerAction(costPerAction: any[], types: string[]): number {
+  if (!costPerAction) return 0;
+  for (const t of types) {
+    const found = costPerAction.find((a: any) => a.action_type === t);
+    if (found) return parseFloat(found.value || "0");
+  }
+  return 0;
+}
+
+const LEAD_TYPES = ["lead", "onsite_conversion.lead_grouped", "offsite_conversion.fb_pixel_lead"];
+const PURCHASE_TYPES = ["purchase", "offsite_conversion.fb_pixel_purchase", "omni_purchase"];
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -46,7 +67,6 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Check access: admin can access any client, client users can only access their own
     const { data: isAdmin } = await supabase
       .from("user_roles")
       .select("role")
@@ -76,8 +96,9 @@ Deno.serve(async (req) => {
       : `act_${client.meta_ad_account_id}`;
 
     if (action === "campaigns") {
+      const fields = "name,status,daily_budget,insights.date_preset(" + datePreset + "){spend,impressions,reach,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency}";
       const res = await fetch(
-        `${GRAPH_API}/${adAccountId}/campaigns?fields=name,status,daily_budget,insights.date_preset(${datePreset}){spend,impressions,clicks,actions,ctr,cpc}&limit=100&access_token=${accessToken}`
+        `${GRAPH_API}/${adAccountId}/campaigns?fields=${fields}&limit=100&access_token=${accessToken}`
       );
       const data = await res.json();
 
@@ -92,20 +113,30 @@ Deno.serve(async (req) => {
 
       const campaigns = (data.data || []).map((c: any) => {
         const ins = c.insights?.data?.[0] || {};
-        const conv = (ins.actions || []).find(
-          (a: any) => a.action_type === "offsite_conversion.fb_pixel_purchase" || a.action_type === "lead"
-        );
+        const leads = extractAction(ins.actions, LEAD_TYPES);
+        const purchases = extractAction(ins.actions, PURCHASE_TYPES);
+        const cpl = extractCostPerAction(ins.cost_per_action_type, LEAD_TYPES);
+        const costPerPurchase = extractCostPerAction(ins.cost_per_action_type, PURCHASE_TYPES);
+        const spend = parseFloat(ins.spend || "0");
+
         return {
           id: c.id,
           name: c.name,
           status: statusMap[c.status] || "ended",
-          spend: parseFloat(ins.spend || "0"),
+          spend,
           budget: parseFloat(c.daily_budget || "0") / 100,
           impressions: parseInt(ins.impressions || "0"),
+          reach: parseInt(ins.reach || "0"),
           clicks: parseInt(ins.clicks || "0"),
-          conversions: parseInt(conv?.value || "0"),
+          leads,
+          cpl,
+          purchases,
+          cost_per_purchase: costPerPurchase,
+          conversions: leads + purchases,
           ctr: parseFloat(ins.ctr || "0"),
           cpc: parseFloat(ins.cpc || "0"),
+          cpm: parseFloat(ins.cpm || "0"),
+          frequency: parseFloat(ins.frequency || "0"),
         };
       });
 
@@ -115,7 +146,7 @@ Deno.serve(async (req) => {
 
     if (action === "insights") {
       const res = await fetch(
-        `${GRAPH_API}/${adAccountId}/insights?fields=spend,impressions,clicks,actions,ctr,cpc,cpm&date_preset=${datePreset}&access_token=${accessToken}`
+        `${GRAPH_API}/${adAccountId}/insights?fields=spend,impressions,reach,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency&date_preset=${datePreset}&access_token=${accessToken}`
       );
       const data = await res.json();
 
@@ -125,29 +156,43 @@ Deno.serve(async (req) => {
       }
 
       const ins = data.data?.[0] || {};
-      const conv = (ins.actions || []).find(
-        (a: any) => a.action_type === "offsite_conversion.fb_pixel_purchase" || a.action_type === "lead"
-      );
+      const leads = extractAction(ins.actions, LEAD_TYPES);
+      const purchases = extractAction(ins.actions, PURCHASE_TYPES);
+      const cpl = extractCostPerAction(ins.cost_per_action_type, LEAD_TYPES);
+      const costPerPurchase = extractCostPerAction(ins.cost_per_action_type, PURCHASE_TYPES);
+      const spend = parseFloat(ins.spend || "0");
 
-      // Daily breakdown
+      // Daily breakdown with more fields
       const dailyRes = await fetch(
-        `${GRAPH_API}/${adAccountId}/insights?fields=spend&date_preset=${datePreset}&time_increment=1&access_token=${accessToken}`
+        `${GRAPH_API}/${adAccountId}/insights?fields=spend,impressions,reach,clicks,actions&date_preset=${datePreset}&time_increment=1&access_token=${accessToken}`
       );
       const dailyData = await dailyRes.json();
-      const dailySpend = (dailyData.data || []).map((d: any) => ({
+      const daily = (dailyData.data || []).map((d: any) => ({
         date: new Date(d.date_start).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
-        value: parseFloat(d.spend || "0"),
+        spend: parseFloat(d.spend || "0"),
+        impressions: parseInt(d.impressions || "0"),
+        reach: parseInt(d.reach || "0"),
+        clicks: parseInt(d.clicks || "0"),
+        leads: extractAction(d.actions, LEAD_TYPES),
+        purchases: extractAction(d.actions, PURCHASE_TYPES),
       }));
 
       return new Response(JSON.stringify({
-        spend: parseFloat(ins.spend || "0"),
+        spend,
         impressions: parseInt(ins.impressions || "0"),
+        reach: parseInt(ins.reach || "0"),
         clicks: parseInt(ins.clicks || "0"),
-        conversions: parseInt(conv?.value || "0"),
+        leads,
+        cpl,
+        purchases,
+        cost_per_purchase: costPerPurchase,
+        conversions: leads + purchases,
         ctr: parseFloat(ins.ctr || "0"),
         cpc: parseFloat(ins.cpc || "0"),
         cpm: parseFloat(ins.cpm || "0"),
-        daily_spend: dailySpend,
+        frequency: parseFloat(ins.frequency || "0"),
+        roas: spend > 0 ? (purchases * costPerPurchase) / spend : 0,
+        daily,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
