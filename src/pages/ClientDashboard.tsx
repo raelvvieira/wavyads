@@ -463,10 +463,12 @@ export default function ClientDashboard() {
               clicks={metricValues.clicks}
               leads={metricValues.leads}
               purchases={metricValues.purchases}
+              results={metricValues.results}
               cpm={metricValues.cpm}
               cpc={metricValues.cpc}
               cpl={metricValues.cpl}
               costPerPurchase={metricValues.cost_per_purchase}
+              costPerResult={metricValues.cost_per_result}
             />
           )}
 
