@@ -16,9 +16,10 @@ export function useGetMetaAuthUrl() {
 export function useMetaCallback() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ code, clientId, redirectUri }: { code: string; clientId: string; redirectUri: string }) => {
+    mutationFn: async ({ code, clientId, redirectUri, accessToken }: { code: string; clientId: string; redirectUri: string; accessToken?: string }) => {
       const { data, error } = await supabase.functions.invoke('meta-oauth', {
         body: { action: 'callback', code, client_id: clientId, redirect_uri: redirectUri },
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
       });
       if (error) throw error;
       return data as { success: boolean; accounts: any[] };
