@@ -67,7 +67,6 @@ export function InsightsCards({ campaigns, totalSpend, totalLeads, totalResults,
     });
   } else if (withResults.length > 1) {
     const worst = withResults.reduce((a, b) => a.cost_per_result > b.cost_per_result ? a : b);
-    const diff = best => worst.cost_per_result / best.cost_per_result;
     insights.push({
       emoji: '⚠️',
       title: 'Campanha Mais Cara',
