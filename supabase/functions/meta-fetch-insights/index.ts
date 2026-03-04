@@ -167,6 +167,7 @@ Deno.serve(async (req) => {
         const spend = parseFloat(ins.spend || "0");
         const results = extractResults(ins.actions);
         const cost_per_result = extractCostPerResult(ins.cost_per_action_type);
+        const result_type = extractResultType(ins.actions);
 
         return {
           id: c.id,
@@ -183,6 +184,7 @@ Deno.serve(async (req) => {
           cost_per_purchase: costPerPurchase,
           results,
           cost_per_result,
+          result_type,
           conversions: leads + purchases,
           ctr: parseFloat(ins.ctr || "0"),
           cpc: parseFloat(ins.cpc || "0"),

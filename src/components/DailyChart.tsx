@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  AreaChart, Area, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 import { GlassCard } from './GlassCard';
 import { cn } from '@/lib/utils';
@@ -63,7 +63,6 @@ export function DailyChart({ data }: DailyChartProps) {
   };
 
   const hasCountAxis = LINES.some(l => l.yAxisId === 'count' && activeLines.has(l.key));
-  const onlySpend = activeLines.size === 1 && activeLines.has('spend');
 
   return (
     <GlassCard className="animate-fade-in">
@@ -91,70 +90,48 @@ export function DailyChart({ data }: DailyChartProps) {
       </div>
 
       <ResponsiveContainer width="100%" height={340}>
-        {onlySpend ? (
-          <AreaChart data={data}>
-            <defs>
-              <linearGradient id="spendGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#22c55e" stopOpacity={0.25} />
-                <stop offset="100%" stopColor="#22c55e" stopOpacity={0} />
+        <AreaChart data={data}>
+          <defs>
+            {LINES.map((l) => (
+              <linearGradient key={l.key} id={`gradient-${l.key}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={l.color} stopOpacity={0.25} />
+                <stop offset="100%" stopColor={l.color} stopOpacity={0} />
               </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-            <XAxis dataKey="date" tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} axisLine={false} tickLine={false} />
+            ))}
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+          <XAxis dataKey="date" tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} axisLine={false} tickLine={false} />
+          <YAxis
+            yAxisId="currency"
+            tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }}
+            axisLine={false}
+            tickLine={false}
+            tickFormatter={(v) => `R$${v}`}
+          />
+          {hasCountAxis && (
             <YAxis
-              yAxisId="currency"
+              yAxisId="count"
+              orientation="right"
               tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }}
               axisLine={false}
               tickLine={false}
-              tickFormatter={(v) => `R$${v}`}
+              tickFormatter={formatNumber}
             />
-            <Tooltip content={<ChartTooltip />} />
+          )}
+          <Tooltip content={<ChartTooltip />} />
+          {LINES.filter(l => activeLines.has(l.key)).map((l) => (
             <Area
-              yAxisId="currency"
+              key={l.key}
+              yAxisId={l.yAxisId}
               type="monotone"
-              dataKey="spend"
-              stroke="#22c55e"
+              dataKey={l.key}
+              stroke={l.color}
               strokeWidth={2.5}
-              fill="url(#spendGradient)"
+              fill={`url(#gradient-${l.key})`}
               animationDuration={600}
             />
-          </AreaChart>
-        ) : (
-          <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-            <XAxis dataKey="date" tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} axisLine={false} tickLine={false} />
-            <YAxis
-              yAxisId="currency"
-              tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }}
-              axisLine={false}
-              tickLine={false}
-              tickFormatter={(v) => `R$${v}`}
-            />
-            {hasCountAxis && (
-              <YAxis
-                yAxisId="count"
-                orientation="right"
-                tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={formatNumber}
-              />
-            )}
-            <Tooltip content={<ChartTooltip />} />
-            {LINES.filter(l => activeLines.has(l.key)).map((l) => (
-              <Line
-                key={l.key}
-                yAxisId={l.yAxisId}
-                type="monotone"
-                dataKey={l.key}
-                stroke={l.color}
-                strokeWidth={2}
-                dot={false}
-                animationDuration={500}
-              />
-            ))}
-          </LineChart>
-        )}
+          ))}
+        </AreaChart>
       </ResponsiveContainer>
     </GlassCard>
   );

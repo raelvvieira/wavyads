@@ -9,26 +9,48 @@ import type { MetaCampaign } from '@/hooks/useMetaInsights';
 type SortKey = keyof MetaCampaign;
 type SortDir = 'asc' | 'desc';
 
+const ACTION_TYPE_LABELS: Record<string, string> = {
+  'onsite_conversion.messaging_conversation_started_7d': 'Conversas por mensagem iniciadas',
+  'purchase': 'Compras no site',
+  'lead': 'Leads',
+  'link_click': 'Cliques no link',
+  'video_view': 'Visualizações de vídeo',
+  'offsite_conversion.fb_pixel_purchase': 'Compras (pixel)',
+  'offsite_conversion.fb_pixel_lead': 'Leads (pixel)',
+  'onsite_conversion.lead_grouped': 'Leads (agrupados)',
+  'omni_purchase': 'Compras (omni)',
+  'landing_page_view': 'Visualizações da página de destino',
+  'post_engagement': 'Envolvimento com a publicação',
+  'page_engagement': 'Envolvimento com a página',
+  'omni_app_install': 'Instalações do app',
+  'app_install': 'Instalações do app',
+};
+
+function getActionLabel(resultType: string): string {
+  return ACTION_TYPE_LABELS[resultType] || resultType || '';
+}
+
 interface Column {
   key: SortKey;
   label: string;
   format: (v: any) => string;
   align: 'left' | 'right';
   hideOn?: string;
+  custom?: boolean;
 }
 
 const COLUMNS: Column[] = [
-  { key: 'name',              label: 'Campanha',     format: (v) => v,                         align: 'left' },
-  { key: 'status',            label: 'Status',       format: () => '',                         align: 'left' },
-  { key: 'reach',             label: 'Alcance',      format: formatNumber,                     align: 'right', hideOn: 'md' },
-  { key: 'impressions',       label: 'Impressões',   format: formatNumber,                     align: 'right', hideOn: 'md' },
-  { key: 'clicks',            label: 'Cliques',      format: formatNumber,                     align: 'right', hideOn: 'md' },
-  { key: 'ctr',               label: 'CTR',          format: (v) => v.toFixed(2) + '%',        align: 'right', hideOn: 'lg' },
-  { key: 'cpm',               label: 'CPM',          format: formatCurrency,                   align: 'right', hideOn: 'lg' },
-  { key: 'leads',             label: 'Leads',        format: (v) => v.toString(),              align: 'right' },
-  { key: 'cpl',               label: 'CPL',          format: formatCurrency,                   align: 'right' },
-  { key: 'purchases',         label: 'Compras',      format: (v) => v.toString(),              align: 'right', hideOn: 'lg' },
-  { key: 'cost_per_purchase',  label: 'Custo/Compra', format: formatCurrency,                  align: 'right', hideOn: 'lg' },
+  { key: 'name',              label: 'Campanha',          format: (v) => v,                         align: 'left' },
+  { key: 'status',            label: 'Status',            format: () => '',                         align: 'left' },
+  { key: 'reach',             label: 'Alcance',           format: formatNumber,                     align: 'right', hideOn: 'md' },
+  { key: 'impressions',       label: 'Impressões',        format: formatNumber,                     align: 'right', hideOn: 'md' },
+  { key: 'clicks',            label: 'Cliques',           format: formatNumber,                     align: 'right', hideOn: 'md' },
+  { key: 'ctr',               label: 'CTR',               format: (v) => v.toFixed(2) + '%',        align: 'right', hideOn: 'lg' },
+  { key: 'cpm',               label: 'CPM',               format: formatCurrency,                   align: 'right', hideOn: 'lg' },
+  { key: 'results',           label: 'Resultados',        format: (v) => v.toString(),              align: 'right', custom: true },
+  { key: 'cost_per_result',   label: 'Custo por resultado', format: formatCurrency,                 align: 'right', custom: true },
+  { key: 'purchases',         label: 'Compras',           format: (v) => v.toString(),              align: 'right', hideOn: 'lg' },
+  { key: 'cost_per_purchase',  label: 'Custo/Compra',     format: formatCurrency,                   align: 'right', hideOn: 'lg' },
 ];
 
 function getHideClass(hideOn?: string) {
@@ -88,14 +110,18 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
     reach: campaigns.reduce((s, c) => s + (c.reach || 0), 0),
     impressions: campaigns.reduce((s, c) => s + c.impressions, 0),
     clicks: campaigns.reduce((s, c) => s + c.clicks, 0),
-    leads: campaigns.reduce((s, c) => s + (c.leads || 0), 0),
+    results: campaigns.reduce((s, c) => s + (c.results || 0), 0),
     purchases: campaigns.reduce((s, c) => s + (c.purchases || 0), 0),
     spend: campaigns.reduce((s, c) => s + c.spend, 0),
     ctr: campaigns.length ? campaigns.reduce((s, c) => s + c.ctr, 0) / campaigns.length : 0,
     cpm: campaigns.length ? campaigns.reduce((s, c) => s + (c.cpm || 0), 0) / campaigns.length : 0,
-    cpl: avgCpl,
+    cost_per_result: (() => {
+      const totalResults = campaigns.reduce((s, c) => s + (c.results || 0), 0);
+      const totalSpend = campaigns.reduce((s, c) => s + c.spend, 0);
+      return totalResults > 0 ? totalSpend / totalResults : 0;
+    })(),
     cost_per_purchase: (() => { const wp = campaigns.filter(c => (c.cost_per_purchase || 0) > 0); return wp.length ? wp.reduce((s, c) => s + c.cost_per_purchase, 0) / wp.length : 0; })(),
-  }), [campaigns, avgCpl]);
+  }), [campaigns]);
 
   const getTags = (c: MetaCampaign) => {
     const tags: { label: string; className: string }[] = [];
@@ -106,10 +132,11 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
     return tags;
   };
 
-  const getCplClass = (cpl: number) => {
-    if (!cpl || !avgCpl) return '';
-    if (cpl < avgCpl * 0.8) return 'bg-emerald-500/10';
-    if (cpl > avgCpl * 1.2) return 'bg-red-500/10';
+  const getCplClass = (cpr: number) => {
+    const avgCpr = totals.cost_per_result;
+    if (!cpr || !avgCpr) return '';
+    if (cpr < avgCpr * 0.8) return 'bg-emerald-500/10';
+    if (cpr > avgCpr * 1.2) return 'bg-red-500/10';
     return '';
   };
 
@@ -146,6 +173,7 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
             <tbody>
               {sorted.map((c) => {
                 const tags = getTags(c);
+                const actionLabel = getActionLabel(c.result_type || '');
                 return (
                   <tr key={c.id} className="border-b border-white/5 transition-colors duration-200 hover:bg-white/[0.03]">
                     <td className="py-3 px-3 font-medium">
@@ -168,8 +196,28 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
                     <td className={cn('py-3 px-3 text-right text-muted-foreground', getHideClass('md'))}>{formatNumber(c.clicks)}</td>
                     <td className={cn('py-3 px-3 text-right text-muted-foreground', getHideClass('lg'))}>{c.ctr.toFixed(2)}%</td>
                     <td className={cn('py-3 px-3 text-right text-muted-foreground', getHideClass('lg'))}>{formatCurrency(c.cpm || 0)}</td>
-                    <td className="py-3 px-3 text-right metric-number">{c.leads || 0}</td>
-                    <td className={cn('py-3 px-3 text-right metric-number', getCplClass(c.cpl || 0))}>{formatCurrency(c.cpl || 0)}</td>
+                    {/* Resultados - Meta style */}
+                    <td className="py-3 px-3 text-right">
+                      {c.results ? (
+                        <div className="flex flex-col">
+                          <span className="font-semibold metric-number">{c.results}</span>
+                          {actionLabel && <span className="text-[10px] text-muted-foreground leading-tight mt-0.5">{actionLabel}</span>}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    {/* Custo por resultado - Meta style */}
+                    <td className={cn('py-3 px-3 text-right', getCplClass(c.cost_per_result || 0))}>
+                      {c.cost_per_result ? (
+                        <div className="flex flex-col">
+                          <span className="font-semibold metric-number">{formatCurrency(c.cost_per_result)}</span>
+                          {actionLabel && <span className="text-[10px] text-muted-foreground leading-tight mt-0.5">Por {actionLabel.toLowerCase()}</span>}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
                     <td className={cn('py-3 px-3 text-right metric-number', getHideClass('lg'))}>{c.purchases || 0}</td>
                     <td className={cn('py-3 px-3 text-right text-muted-foreground', getHideClass('lg'))}>{formatCurrency(c.cost_per_purchase || 0)}</td>
                   </tr>
@@ -185,8 +233,8 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
                 <td className={cn('py-3 px-3 text-right font-semibold text-accent metric-number', getHideClass('md'))}>{formatNumber(totals.clicks)}</td>
                 <td className={cn('py-3 px-3 text-right font-semibold text-accent metric-number', getHideClass('lg'))}>{totals.ctr.toFixed(2)}%</td>
                 <td className={cn('py-3 px-3 text-right font-semibold text-accent metric-number', getHideClass('lg'))}>{formatCurrency(totals.cpm)}</td>
-                <td className="py-3 px-3 text-right font-semibold text-accent metric-number">{totals.leads}</td>
-                <td className="py-3 px-3 text-right font-semibold text-accent metric-number">{formatCurrency(totals.cpl)}</td>
+                <td className="py-3 px-3 text-right font-semibold text-accent metric-number">{totals.results}</td>
+                <td className="py-3 px-3 text-right font-semibold text-accent metric-number">{formatCurrency(totals.cost_per_result)}</td>
                 <td className={cn('py-3 px-3 text-right font-semibold text-accent metric-number', getHideClass('lg'))}>{totals.purchases}</td>
                 <td className={cn('py-3 px-3 text-right font-semibold text-accent metric-number', getHideClass('lg'))}>{formatCurrency(totals.cost_per_purchase)}</td>
               </tr>
