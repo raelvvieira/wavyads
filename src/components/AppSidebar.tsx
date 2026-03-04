@@ -7,9 +7,9 @@ import {
   LogOut,
   Menu,
   X,
-  Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import wavyLogo from '@/assets/wavy-logo.png';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
