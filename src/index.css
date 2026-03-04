@@ -15,7 +15,7 @@
     --popover: 0 0% 5%;
     --popover-foreground: 0 0% 100%;
 
-    --primary: 18 100% 60%;
+    --primary: 155 76% 46%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 100%;
@@ -24,7 +24,7 @@
     --muted: 0 0% 10%;
     --muted-foreground: 0 0% 60%;
 
-    --accent: 24 100% 70%;
+    --accent: 155 76% 46%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
@@ -32,18 +32,18 @@
 
     --border: 0 0% 100%;
     --input: 0 0% 100%;
-    --ring: 18 100% 60%;
+    --ring: 155 76% 46%;
 
     --radius: 0.75rem;
 
     --sidebar-background: 0 0% 2%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 18 100% 60%;
+    --sidebar-primary: 155 76% 46%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 5%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 0 0% 100%;
-    --sidebar-ring: 18 100% 60%;
+    --sidebar-ring: 155 76% 46%;
 
     /* Glass tokens */
     --glass-bg: rgba(255, 255, 255, 0.05);
@@ -54,9 +54,9 @@
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
     --glass-blur: blur(20px);
 
-    /* Orange gradient */
-    --gradient-orange: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);
-    --gradient-orange-glow: 0 0 20px rgba(255, 107, 53, 0.3);
+    /* Accent gradient */
+    --gradient-accent: linear-gradient(135deg, #1ACD8A 0%, #17B87C 100%);
+    --gradient-accent-glow: 0 0 20px rgba(26, 205, 138, 0.3);
 
     /* Status colors */
     --status-active: 142 76% 46%;
@@ -102,21 +102,21 @@
   }
 
   .glass-input:focus {
-    border-color: #FF6B35;
-    box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.2);
+    border-color: #1ACD8A;
+    box-shadow: 0 0 0 2px rgba(26, 205, 138, 0.2);
     outline: none;
   }
 
-  .btn-orange {
-    background: var(--gradient-orange);
+  .btn-accent {
+    background: var(--gradient-accent);
     color: white;
     border: none;
     transition: all 0.3s ease;
   }
 
-  .btn-orange:hover {
+  .btn-accent:hover {
     filter: brightness(1.15);
-    box-shadow: var(--gradient-orange-glow);
+    box-shadow: var(--gradient-accent-glow);
   }
 
   .btn-glass {
@@ -131,7 +131,7 @@
   }
 
   .gradient-text {
-    background: var(--gradient-orange);
+    background: var(--gradient-accent);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -152,12 +152,12 @@
     100% { background-position: 200% 0; }
   }
 
-  .orange-glow {
-    box-shadow: 0 0 30px rgba(255, 107, 53, 0.15);
+  .accent-glow {
+    box-shadow: 0 0 30px rgba(26, 205, 138, 0.15);
   }
 
-  .orange-glow-hover:hover {
-    box-shadow: 0 0 30px rgba(255, 107, 53, 0.25);
+  .accent-glow-hover:hover {
+    box-shadow: 0 0 30px rgba(26, 205, 138, 0.25);
   }
 }
 

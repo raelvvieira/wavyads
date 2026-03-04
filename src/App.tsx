@@ -8,10 +8,8 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import LoginPage from "@/pages/LoginPage";
 import DashboardPage from "@/pages/DashboardPage";
-import CampaignsPage from "@/pages/CampaignsPage";
-import ClientsPage from "@/pages/ClientsPage";
 import SettingsPage from "@/pages/SettingsPage";
-import FacebookCallbackPage from "@/pages/FacebookCallbackPage";
+import MetaCallbackPage from "@/pages/MetaCallbackPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,11 +24,10 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/auth/facebook/callback" element={<ProtectedRoute><FacebookCallbackPage /></ProtectedRoute>} />
+            <Route path="/auth/meta/callback" element={<MetaCallbackPage />} />
             <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/campanhas" element={<CampaignsPage />} />
-              <Route path="/clientes" element={<ClientsPage />} />
+              <Route path="/dashboard/:clientId" element={<DashboardPage />} />
               <Route path="/configuracoes" element={<SettingsPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />

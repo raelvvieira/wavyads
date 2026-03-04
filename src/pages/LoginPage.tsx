@@ -44,12 +44,12 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(255,107,53,0.08)_0%,_transparent_70%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(26,205,138,0.08)_0%,_transparent_70%)]" />
 
       <div className="relative z-10 w-full max-w-md px-6 animate-fade-in">
         <div className="glass rounded-2xl p-8 space-y-8">
           <div className="flex flex-col items-center gap-3">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl btn-orange orange-glow">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl btn-accent accent-glow">
               <Zap className="h-7 w-7" />
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">AdsPro</h1>
@@ -109,7 +109,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="btn-orange w-full rounded-xl py-3 text-sm font-semibold transition-all duration-300 disabled:opacity-50"
+              className="btn-accent w-full rounded-xl py-3 text-sm font-semibold transition-all duration-300 disabled:opacity-50"
             >
               {loading ? 'Carregando...' : isSignUp ? 'Criar Conta' : 'Entrar'}
             </button>
