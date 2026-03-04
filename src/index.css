@@ -107,16 +107,16 @@
     outline: none;
   }
 
-  .btn-orange {
-    background: var(--gradient-orange);
+  .btn-accent {
+    background: var(--gradient-accent);
     color: white;
     border: none;
     transition: all 0.3s ease;
   }
 
-  .btn-orange:hover {
+  .btn-accent:hover {
     filter: brightness(1.15);
-    box-shadow: var(--gradient-orange-glow);
+    box-shadow: var(--gradient-accent-glow);
   }
 
   .btn-glass {
