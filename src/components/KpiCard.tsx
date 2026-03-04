@@ -36,6 +36,8 @@ export const METRIC_DEFS: Record<MetricKey, MetricDef> = {
   frequency:         { label: 'Frequência',      icon: Repeat,       format: (v) => v.toFixed(2),       color: 'bg-purple-500' },
   conversions:       { label: 'Resultados',      icon: Target,       format: (v) => v.toString(),       color: 'bg-teal-500' },
   cost_per_conversion: { label: 'Custo/Resultado', icon: DollarSign,  format: formatCurrency,            color: 'bg-red-500', invertChange: true },
+  results:           { label: 'Resultados',      icon: Target,       format: (v) => v.toString(),       color: 'bg-teal-500' },
+  cost_per_result:   { label: 'Custo/Resultado', icon: DollarSign,   format: formatCurrency,            color: 'bg-red-500', invertChange: true },
 };
 
 const ALL_KEYS = Object.keys(METRIC_DEFS) as MetricKey[];
