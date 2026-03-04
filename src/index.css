@@ -54,9 +54,9 @@
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
     --glass-blur: blur(20px);
 
-    /* Orange gradient */
-    --gradient-orange: linear-gradient(135deg, #FF6B35 0%, #FF8E53 100%);
-    --gradient-orange-glow: 0 0 20px rgba(255, 107, 53, 0.3);
+    /* Accent gradient */
+    --gradient-accent: linear-gradient(135deg, #1ACD8A 0%, #17B87C 100%);
+    --gradient-accent-glow: 0 0 20px rgba(26, 205, 138, 0.3);
 
     /* Status colors */
     --status-active: 142 76% 46%;
