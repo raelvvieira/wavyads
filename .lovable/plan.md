@@ -1,60 +1,114 @@
 
 
-# Fix Critical Bugs Before Testing Sync Flow
+# Conectar Facebook via OAuth (Login com Facebook)
 
-I found 3 critical issues that will break the app:
+## Resumo
 
-## Bug 1: RLS Policies are RESTRICTIVE instead of PERMISSIVE
+Substituir o fluxo atual (colar token manualmente) por um botao "Conectar com Facebook" que abre a tela de login do Facebook, permite escolher o Business Manager e contas de anuncio, e salva o token automaticamente.
 
-Both `user_roles` and `clients` tables have all policies set as **RESTRICTIVE** (Permissive: No). This means ALL restrictive policies must pass simultaneously. For client users doing a SELECT on `user_roles`, they'd need both `has_role(auth.uid(), 'admin')` AND `auth.uid() = user_id` to be true -- impossible for non-admin users.
+## Como vai funcionar para o usuario
 
-**Fix:** Drop and recreate the policies as PERMISSIVE (the default). This way any ONE matching policy allows access.
+1. Na aba Integracao, clica em **"Conectar com Facebook"**
+2. Abre popup do Facebook para login e autorizacao
+3. Escolhe qual Business Manager e conta de anuncios compartilhar
+4. Volta ao dashboard ja conectado -- sem colar nada manualmente
 
-## Bug 2: `getClaims()` is not a valid Supabase Auth method
+## Pre-requisitos
 
-The `meta-oauth` edge function uses `supabase.auth.getClaims(token)` which doesn't exist in the Supabase JS client. It should use `supabase.auth.getUser(token)` instead.
+Voce precisa ter um **Facebook App** em [developers.facebook.com](https://developers.facebook.com) com:
+- Produto **Facebook Login for Business** ativado
+- Permissoes: `ads_read`, `business_management`
+- URL de redirecionamento configurada para apontar ao seu app
 
-**Fix:** Replace `getClaims` with `getUser` and extract `user.id` from the result.
+Eu vou pedir o **App ID** e o **App Secret** para armazenar como segredos no backend.
 
-## Bug 3: `meta-fetch-insights` edge function likely has same auth issue
+## Etapas da implementacao
 
-Need to verify and fix the same `getClaims` usage.
+### 1. Armazenar credenciais do Facebook App
+- Salvar `FACEBOOK_APP_ID` e `FACEBOOK_APP_SECRET` como segredos no backend
+- O App Secret nunca sera exposto no frontend
 
-## Implementation
+### 2. Nova Edge Function: `facebook-oauth`
+- **Acao `auth-url`**: Gera a URL de autorizacao do Facebook com as permissoes necessarias (`ads_read`, `business_management`) e o redirect URI
+- **Acao `callback`**: Recebe o `code` retornado pelo Facebook, troca por um access token de longa duracao (60 dias) usando o App Secret, e salva na tabela `facebook_credentials`
+- **Acao `accounts`**: Apos autenticacao, lista as contas de anuncio disponiveis para o usuario escolher
 
-### 1. Database migration to fix RLS policies
-```sql
--- Fix user_roles: drop restrictive, create permissive
-DROP POLICY IF EXISTS "Admins can manage all roles" ON public.user_roles;
-DROP POLICY IF EXISTS "Users can view own roles" ON public.user_roles;
+### 3. Atualizar a tabela `facebook_credentials`
+- Adicionar coluna `ad_account_name` (para exibir o nome da conta conectada)
+- Adicionar coluna `token_expires_at` (para controlar expiracao do token)
 
-CREATE POLICY "Users can view own roles" ON public.user_roles
-  FOR SELECT TO authenticated USING (auth.uid() = user_id);
+### 4. Redesenhar a aba Integracao na tela de Configuracoes
+- **Estado desconectado**: Exibir botao "Conectar com Facebook" com icone do Meta
+- **Apos login no Facebook**: Exibir lista de contas de anuncio disponiveis para o usuario selecionar (similar a segunda tela de referencia)
+- **Estado conectado**: Exibir card com o nome da conta conectada, status de conexao e botao "Desconectar"
+- Remover os campos manuais de Access Token e Ad Account ID
 
-CREATE POLICY "Admins can manage all roles" ON public.user_roles
-  FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'::app_role));
+### 5. Fluxo de callback no frontend
+- Criar rota `/auth/facebook/callback` que recebe o `code` da URL
+- Chamar a edge function para trocar o code pelo token
+- Redirecionar de volta para a pagina de configuracoes
 
--- Fix clients: drop restrictive, create permissive
-DROP POLICY IF EXISTS "Admins full access on clients" ON public.clients;
-DROP POLICY IF EXISTS "Clients view own record" ON public.clients;
+## Detalhes tecnicos
 
-CREATE POLICY "Admins full access on clients" ON public.clients
-  FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'::app_role));
+### Fluxo OAuth
 
-CREATE POLICY "Clients view own record" ON public.clients
-  FOR SELECT TO authenticated USING (auth.uid() = user_id);
+```text
+Frontend                    Facebook                   Edge Function
+   |                           |                           |
+   |-- Clica "Conectar" ------>|                           |
+   |                           |                           |
+   |   GET facebook-oauth      |                           |
+   |   action=auth-url --------|-------------------------->|
+   |   <-- retorna URL --------|---------------------------|
+   |                           |                           |
+   |-- Redireciona p/ Facebook |                           |
+   |                           |                           |
+   |<-- Callback com code -----|                           |
+   |                           |                           |
+   |   POST facebook-oauth     |                           |
+   |   action=callback --------|-------------------------->|
+   |                           |   Troca code por token    |
+   |                           |<--------------------------|
+   |                           |   Salva no banco          |
+   |                           |-------------------------->|
+   |<-- Sucesso! --------------|---------------------------|
+   |                           |                           |
+   |   GET facebook-oauth      |                           |
+   |   action=accounts --------|-------------------------->|
+   |                           |   Lista ad accounts       |
+   |<-- Lista de contas -------|---------------------------|
+   |                           |                           |
+   |-- Seleciona conta ------->|                           |
+   |   POST facebook-oauth     |                           |
+   |   action=select-account --|-------------------------->|
+   |                           |   Salva ad_account_id     |
+   |<-- Conectado! ------------|---------------------------|
 ```
 
-### 2. Fix `meta-oauth` edge function auth
-Replace `getClaims` with `getUser`:
-```typescript
-const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-if (userError || !user) { ... }
-const userId = user.id;
+### Edge Function: `facebook-oauth`
+
+Acoes:
+- `auth-url`: Retorna URL do Facebook OAuth com scopes e redirect_uri
+- `callback`: Recebe code, troca por token via `oauth/access_token`, gera token de longa duracao via endpoint de troca, salva no banco
+- `accounts`: Chama `me/adaccounts?fields=name,account_id,account_status` para listar contas disponiveis
+- `select-account`: Salva a conta selecionada na tabela `facebook_credentials` e marca como valida
+
+### Migracao do banco
+
+```text
+ALTER TABLE facebook_credentials
+  ADD COLUMN ad_account_name text,
+  ADD COLUMN token_expires_at timestamptz;
 ```
 
-### 3. Fix `meta-fetch-insights` edge function (same pattern)
+### Nova rota no frontend
 
-### 4. After fixes, test the sync flow manually
-Click a client card, click "Sync Facebook Ads", authorize in the Meta popup, select an ad account.
+```text
+/auth/facebook/callback  -- Recebe code do OAuth e finaliza o fluxo
+```
+
+### Segredos necessarios
+
+- `FACEBOOK_APP_ID` -- ID do seu Facebook App
+- `FACEBOOK_APP_SECRET` -- Secret do seu Facebook App
 
