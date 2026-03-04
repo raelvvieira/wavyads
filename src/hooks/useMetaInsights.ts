@@ -87,6 +87,20 @@ export function useMetaInsights(clientId: string | undefined, enabled: boolean, 
       if (data.daily && !data.daily_spend) {
         data.daily_spend = data.daily.map((d: DailyMetric) => ({ date: d.date, value: d.spend }));
       }
+      // Compute conversions (leads + purchases) for daily if not present
+      if (data.daily) {
+        data.daily = data.daily.map((d: any) => ({
+          ...d,
+          conversions: d.conversions ?? ((d.leads || 0) + (d.purchases || 0)),
+        }));
+      }
+      // Compute aggregate conversions & cost_per_conversion
+      if (data.conversions == null) {
+        data.conversions = (data.leads || 0) + (data.purchases || 0);
+      }
+      if (data.cost_per_conversion == null) {
+        data.cost_per_conversion = data.conversions > 0 ? (data.spend || 0) / data.conversions : 0;
+      }
       return data as MetaInsights;
     },
     enabled: enabled && !!clientId,
