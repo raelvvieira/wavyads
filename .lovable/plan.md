@@ -1,60 +1,114 @@
 
 
-# Fix custom date picker + customizable funnel bottom stages
+# Conectar Facebook via OAuth (Login com Facebook)
 
-## 1. Fix custom date range picker — click-to-toggle days
+## Resumo
 
-**File:** `src/pages/ClientDashboard.tsx`
+Substituir o fluxo atual (colar token manualmente) por um botao "Conectar com Facebook" que abre a tela de login do Facebook, permite escolher o Business Manager e contas de anuncio, e salva o token automaticamente.
 
-**Problem:** The calendar requires selecting a range (from→to), which is unintuitive. User wants to simply click days to toggle them on/off, and the selected range auto-derives from the earliest and latest selected dates.
+## Como vai funcionar para o usuario
 
-**Fix:**
-- Switch from `mode="range"` to `mode="multiple"` on the Calendar
-- Store selected dates as `Date[]` in state
-- On each click, toggle the date (add if not present, remove if present)
-- Derive `from` and `to` from `Math.min/max` of selected dates
-- Auto-apply: as soon as there are 2+ dates selected, set `selectedPeriod = 'custom'` and compute the date range
-- Show the range in the button label: `dd/MM - dd/MM`
-- Send the custom date range to the edge function as `since`/`until` ISO strings (requires updating `datePreset` logic to pass actual dates instead of a preset string)
-- Keep the popover open so user can keep clicking days; add a small "Aplicar" button or auto-close on second click
+1. Na aba Integracao, clica em **"Conectar com Facebook"**
+2. Abre popup do Facebook para login e autorizacao
+3. Escolhe qual Business Manager e conta de anuncios compartilhar
+4. Volta ao dashboard ja conectado -- sem colar nada manualmente
 
-**Simpler approach:** Keep `mode="range"` but fix the UX by:
-- Allowing partial selection (show `from` immediately when first day clicked)
-- Setting `selected` to `{ from, to: undefined }` after first click so user sees the start highlighted
-- The current code already does this but requires `range.from && range.to` to close — the issue is likely `pointer-events-auto` or the popover closing. Let me check the Calendar component...
+## Pre-requisitos
 
-Actually, looking at the reference image, the user shows a range selection with two months visible and green-highlighted days. The current code already uses `mode="range"` with `numberOfMonths={2}`. The issue is likely that the calendar isn't receiving clicks due to missing `pointer-events-auto` or the popover behavior.
+Voce precisa ter um **Facebook App** em [developers.facebook.com](https://developers.facebook.com) com:
+- Produto **Facebook Login for Business** ativado
+- Permissoes: `ads_read`, `business_management`
+- URL de redirecionamento configurada para apontar ao seu app
 
-The current code already has `pointer-events-auto`. The real fix: remove the condition that auto-closes popover on `range.to` selection, and instead let user freely click. Change approach:
-- Use `mode="range"` (keep it)
-- Remove auto-close on range complete
-- Add an "Aplicar" button below the calendar
-- Make sure the `selected` state works with partial ranges (from only)
+Eu vou pedir o **App ID** e o **App Secret** para armazenar como segredos no backend.
 
-## 2. Customizable funnel bottom stages
+## Etapas da implementacao
 
-**File:** `src/components/ConversionFunnel.tsx`
+### 1. Armazenar credenciais do Facebook App
+- Salvar `FACEBOOK_APP_ID` e `FACEBOOK_APP_SECRET` como segredos no backend
+- O App Secret nunca sera exposto no frontend
 
-**Problem:** The last two stages are hardcoded as "Leads" and "Compras". User wants to choose between leads, results, purchases for the bottom funnel stages.
+### 2. Nova Edge Function: `facebook-oauth`
+- **Acao `auth-url`**: Gera a URL de autorizacao do Facebook com as permissoes necessarias (`ads_read`, `business_management`) e o redirect URI
+- **Acao `callback`**: Recebe o `code` retornado pelo Facebook, troca por um access token de longa duracao (60 dias) usando o App Secret, e salva na tabela `facebook_credentials`
+- **Acao `accounts`**: Apos autenticacao, lista as contas de anuncio disponiveis para o usuario escolher
 
-**Fix:**
-- Add a new prop `bottomStages` or handle it internally with state
-- Add small dropdown/toggle buttons above or beside the last 2 funnel stages
-- Options: `leads`, `results`, `purchases` (with labels "Leads", "Resultados", "Compras")
-- Store selection in `useState` with localStorage persistence
-- Update `ConversionFunnelProps` to also accept `results` and `cost_per_result` values
-- Pass `results` and `cost_per_result` from `ClientDashboard.tsx`
+### 3. Atualizar a tabela `facebook_credentials`
+- Adicionar coluna `ad_account_name` (para exibir o nome da conta conectada)
+- Adicionar coluna `token_expires_at` (para controlar expiracao do token)
 
-**Implementation:**
-- Add `results` and `costPerResult` to props
-- Add state for stage 4 and stage 5 selection (default: leads, purchases)
-- Render small select/toggle above the funnel or inline with each stage label
-- Recalculate rates dynamically based on selected stages
+### 4. Redesenhar a aba Integracao na tela de Configuracoes
+- **Estado desconectado**: Exibir botao "Conectar com Facebook" com icone do Meta
+- **Apos login no Facebook**: Exibir lista de contas de anuncio disponiveis para o usuario selecionar (similar a segunda tela de referencia)
+- **Estado conectado**: Exibir card com o nome da conta conectada, status de conexao e botao "Desconectar"
+- Remover os campos manuais de Access Token e Ad Account ID
 
-## Files
+### 5. Fluxo de callback no frontend
+- Criar rota `/auth/facebook/callback` que recebe o `code` da URL
+- Chamar a edge function para trocar o code pelo token
+- Redirecionar de volta para a pagina de configuracoes
 
-| File | Change |
-|------|--------|
-| `src/pages/ClientDashboard.tsx` | Fix calendar: add "Aplicar" button, remove auto-close, pass custom dates |
-| `src/components/ConversionFunnel.tsx` | Add stage selector for last 2 funnel stages, accept results prop |
+## Detalhes tecnicos
+
+### Fluxo OAuth
+
+```text
+Frontend                    Facebook                   Edge Function
+   |                           |                           |
+   |-- Clica "Conectar" ------>|                           |
+   |                           |                           |
+   |   GET facebook-oauth      |                           |
+   |   action=auth-url --------|-------------------------->|
+   |   <-- retorna URL --------|---------------------------|
+   |                           |                           |
+   |-- Redireciona p/ Facebook |                           |
+   |                           |                           |
+   |<-- Callback com code -----|                           |
+   |                           |                           |
+   |   POST facebook-oauth     |                           |
+   |   action=callback --------|-------------------------->|
+   |                           |   Troca code por token    |
+   |                           |<--------------------------|
+   |                           |   Salva no banco          |
+   |                           |-------------------------->|
+   |<-- Sucesso! --------------|---------------------------|
+   |                           |                           |
+   |   GET facebook-oauth      |                           |
+   |   action=accounts --------|-------------------------->|
+   |                           |   Lista ad accounts       |
+   |<-- Lista de contas -------|---------------------------|
+   |                           |                           |
+   |-- Seleciona conta ------->|                           |
+   |   POST facebook-oauth     |                           |
+   |   action=select-account --|-------------------------->|
+   |                           |   Salva ad_account_id     |
+   |<-- Conectado! ------------|---------------------------|
+```
+
+### Edge Function: `facebook-oauth`
+
+Acoes:
+- `auth-url`: Retorna URL do Facebook OAuth com scopes e redirect_uri
+- `callback`: Recebe code, troca por token via `oauth/access_token`, gera token de longa duracao via endpoint de troca, salva no banco
+- `accounts`: Chama `me/adaccounts?fields=name,account_id,account_status` para listar contas disponiveis
+- `select-account`: Salva a conta selecionada na tabela `facebook_credentials` e marca como valida
+
+### Migracao do banco
+
+```text
+ALTER TABLE facebook_credentials
+  ADD COLUMN ad_account_name text,
+  ADD COLUMN token_expires_at timestamptz;
+```
+
+### Nova rota no frontend
+
+```text
+/auth/facebook/callback  -- Recebe code do OAuth e finaliza o fluxo
+```
+
+### Segredos necessarios
+
+- `FACEBOOK_APP_ID` -- ID do seu Facebook App
+- `FACEBOOK_APP_SECRET` -- Secret do seu Facebook App
 

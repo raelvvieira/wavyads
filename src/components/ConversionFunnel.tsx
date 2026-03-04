@@ -1,7 +1,14 @@
+import { useState } from 'react';
 import { GlassCard } from './GlassCard';
 import { cn } from '@/lib/utils';
 import { formatNumber, formatCurrency } from '@/data/mock';
-import { ArrowDown } from 'lucide-react';
+import { ArrowDown, ChevronDown } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface FunnelStage {
   label: string;
@@ -10,16 +17,26 @@ interface FunnelStage {
   costValue?: number;
 }
 
+type BottomStageOption = 'leads' | 'results' | 'purchases';
+
+const STAGE_OPTIONS: { value: BottomStageOption; label: string }[] = [
+  { value: 'leads', label: 'Leads' },
+  { value: 'results', label: 'Resultados' },
+  { value: 'purchases', label: 'Compras' },
+];
+
 interface ConversionFunnelProps {
   reach: number;
   impressions: number;
   clicks: number;
   leads: number;
   purchases: number;
+  results?: number;
   cpm: number;
   cpc: number;
   cpl: number;
   costPerPurchase: number;
+  costPerResult?: number;
 }
 
 // Green gradient from dark (top) to light (bottom)
@@ -31,24 +48,76 @@ const STAGE_GREENS = [
   { bg: 'rgba(26,205,138,0.25)', border: 'rgba(26,205,138,0.70)' },
 ];
 
-export function ConversionFunnel({ reach, impressions, clicks, leads, purchases, cpm, cpc, cpl, costPerPurchase }: ConversionFunnelProps) {
+function getStoredStage(key: string, fallback: BottomStageOption): BottomStageOption {
+  try {
+    const v = localStorage.getItem(key);
+    if (v && ['leads', 'results', 'purchases'].includes(v)) return v as BottomStageOption;
+  } catch {}
+  return fallback;
+}
+
+export function ConversionFunnel({ reach, impressions, clicks, leads, purchases, results = 0, cpm, cpc, cpl, costPerPurchase, costPerResult = 0 }: ConversionFunnelProps) {
+  const [stage4, setStage4] = useState<BottomStageOption>(() => getStoredStage('funnel_stage4', 'leads'));
+  const [stage5, setStage5] = useState<BottomStageOption>(() => getStoredStage('funnel_stage5', 'purchases'));
+
+  const stageData: Record<BottomStageOption, { label: string; value: number; costLabel: string; costValue: number }> = {
+    leads: { label: 'Leads', value: leads, costLabel: 'CPL', costValue: cpl },
+    results: { label: 'Resultados', value: results, costLabel: 'Custo/Resultado', costValue: costPerResult },
+    purchases: { label: 'Compras', value: purchases, costLabel: 'Custo/Compra', costValue: costPerPurchase },
+  };
+
+  const s4 = stageData[stage4];
+  const s5 = stageData[stage5];
+
   const stages: FunnelStage[] = [
     { label: 'Impressões', value: impressions, costLabel: 'CPM', costValue: cpm },
     { label: 'Alcance', value: reach },
     { label: 'Cliques', value: clicks, costLabel: 'CPC', costValue: cpc },
-    { label: 'Leads', value: leads, costLabel: 'CPL', costValue: cpl },
-    { label: 'Compras', value: purchases, costLabel: 'Custo/Compra', costValue: costPerPurchase },
+    { label: s4.label, value: s4.value, costLabel: s4.costLabel, costValue: s4.costValue },
+    { label: s5.label, value: s5.value, costLabel: s5.costLabel, costValue: s5.costValue },
   ];
 
   const maxValue = Math.max(...stages.map(s => s.value), 1);
 
-  const rates = [
-    null,
-    reach && impressions ? (reach / impressions) * 100 : null,
-    clicks && reach ? (clicks / reach) * 100 : null,
-    leads && clicks ? (leads / clicks) * 100 : null,
-    purchases && leads ? (purchases / leads) * 100 : null,
-  ];
+  const prevValues = [impressions, reach, clicks, s4.value, s5.value];
+  const rates = prevValues.map((_, i) => {
+    if (i === 0) return null;
+    const prev = prevValues[i - 1];
+    const curr = prevValues[i];
+    return prev > 0 && curr > 0 ? (curr / prev) * 100 : null;
+  });
+
+  const handleSetStage = (pos: 4 | 5, val: BottomStageOption) => {
+    if (pos === 4) {
+      setStage4(val);
+      localStorage.setItem('funnel_stage4', val);
+    } else {
+      setStage5(val);
+      localStorage.setItem('funnel_stage5', val);
+    }
+  };
+
+  const renderStageSelector = (pos: 4 | 5, current: BottomStageOption) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className="inline-flex items-center gap-0.5 text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
+          {stageData[current].label}
+          <ChevronDown className="h-3 w-3" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="center" className="min-w-[120px]">
+        {STAGE_OPTIONS.map(opt => (
+          <DropdownMenuItem
+            key={opt.value}
+            onClick={() => handleSetStage(pos, opt.value)}
+            className={cn(current === opt.value && 'bg-accent/20')}
+          >
+            {opt.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   return (
     <GlassCard className="animate-fade-in">
@@ -59,9 +128,10 @@ export function ConversionFunnel({ reach, impressions, clicks, leads, purchases,
           const widthPercent = Math.max(20, (stage.value / maxValue) * 100);
           const rate = rates[i];
           const green = STAGE_GREENS[i];
+          const isCustomizable = i === 3 || i === 4;
 
           return (
-            <div key={stage.label} className="w-full flex flex-col items-center">
+            <div key={`${stage.label}-${i}`} className="w-full flex flex-col items-center">
               {i > 0 && rate !== null && (
                 <div className="flex items-center gap-2 py-1.5">
                   <ArrowDown className="h-4 w-4 text-emerald-400/60" />
@@ -80,7 +150,10 @@ export function ConversionFunnel({ reach, impressions, clicks, leads, purchases,
                   borderLeftColor: green.border,
                 }}
               >
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{stage.label}</p>
+                {isCustomizable
+                  ? renderStageSelector(i === 3 ? 4 : 5, i === 3 ? stage4 : stage5)
+                  : <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{stage.label}</p>
+                }
                 <p className="text-xl font-bold metric-number">{formatNumber(stage.value)}</p>
                 {stage.costLabel && stage.costValue !== undefined && stage.costValue > 0 && (
                   <p className="text-[10px] text-muted-foreground mt-0.5">
@@ -98,8 +171,8 @@ export function ConversionFunnel({ reach, impressions, clicks, leads, purchases,
         <div className="mt-6 glass rounded-xl p-4 text-center text-sm text-muted-foreground">
           Para cada <span className="text-foreground font-semibold">{formatNumber(reach)}</span> alcançadas →{' '}
           <span className="text-foreground font-semibold">{formatNumber(clicks)}</span> clicaram →{' '}
-          <span className="text-foreground font-semibold">{leads}</span> viraram leads →{' '}
-          <span className="text-foreground font-semibold">{purchases}</span> compraram
+          <span className="text-foreground font-semibold">{formatNumber(s4.value)}</span> {s4.label.toLowerCase()} →{' '}
+          <span className="text-foreground font-semibold">{formatNumber(s5.value)}</span> {s5.label.toLowerCase()}
         </div>
       )}
     </GlassCard>
