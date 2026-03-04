@@ -330,22 +330,42 @@ export default function ClientDashboard() {
                   </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0 glass border-white/10" align="end">
-                  <Calendar
-                    mode="range"
-                    selected={customDateRange.from && customDateRange.to ? { from: customDateRange.from, to: customDateRange.to } : undefined}
-                    onSelect={(range) => {
-                      if (range?.from) {
-                        setCustomDateRange({ from: range.from, to: range.to });
-                        if (range.from && range.to) {
+                  <div className="flex flex-col">
+                    <Calendar
+                      mode="range"
+                      selected={customDateRange.from ? { from: customDateRange.from, to: customDateRange.to } : undefined}
+                      onSelect={(range) => {
+                        if (range?.from) {
+                          setCustomDateRange({ from: range.from, to: range.to });
+                        } else {
+                          setCustomDateRange({});
+                        }
+                      }}
+                      disabled={(date) => date > new Date()}
+                      numberOfMonths={2}
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                    <div className="flex items-center justify-between px-4 pb-3">
+                      <span className="text-xs text-muted-foreground">
+                        {customDateRange.from && customDateRange.to
+                          ? `${format(customDateRange.from, 'dd/MM/yyyy')} — ${format(customDateRange.to, 'dd/MM/yyyy')}`
+                          : customDateRange.from
+                            ? `${format(customDateRange.from, 'dd/MM/yyyy')} — …`
+                            : 'Selecione as datas'}
+                      </span>
+                      <Button
+                        size="sm"
+                        disabled={!customDateRange.from || !customDateRange.to}
+                        onClick={() => {
                           setSelectedPeriod('custom');
                           setDatePickerOpen(false);
-                        }
-                      }
-                    }}
-                    disabled={(date) => date > new Date()}
-                    numberOfMonths={2}
-                    className={cn("p-3 pointer-events-auto")}
-                  />
+                        }}
+                        className="btn-accent text-xs px-4"
+                      >
+                        Aplicar
+                      </Button>
+                    </div>
+                  </div>
                 </PopoverContent>
               </Popover>
             )
