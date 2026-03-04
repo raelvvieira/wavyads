@@ -44,6 +44,8 @@ export interface MetaInsights {
   cpl: number;
   purchases: number;
   cost_per_purchase: number;
+  results: number;
+  cost_per_result: number;
   conversions: number;
   ctr: number;
   cpc: number;
