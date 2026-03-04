@@ -152,6 +152,7 @@ export default function ClientDashboard() {
         date: d.date, spend: d.value,
         impressions: Math.floor(d.value * 50), reach: Math.floor(d.value * 40),
         clicks: Math.floor(d.value * 2), leads: Math.floor(d.value * 0.3), purchases: Math.floor(d.value * 0.05),
+        results: Math.floor(d.value * 0.3) + Math.floor(d.value * 0.05),
         conversions: Math.floor(d.value * 0.3) + Math.floor(d.value * 0.05),
       }));
     }
