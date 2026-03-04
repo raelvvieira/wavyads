@@ -2,10 +2,9 @@ import { useState, useEffect } from 'react';
 import { GlassCard } from '@/components/GlassCard';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
-import { useCredentials, useSaveCredentials, useTestConnection } from '@/hooks/useFacebookAds';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { IntegrationTab } from '@/components/settings/IntegrationTab';
 
 const tabs = [
   { id: 'perfil', label: 'Perfil' },
