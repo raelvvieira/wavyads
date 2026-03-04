@@ -47,7 +47,6 @@ export interface MetaInsights {
   frequency: number;
   roas: number;
   daily: DailyMetric[];
-  // Legacy compat
   daily_spend?: { date: string; value: number }[];
 }
 
@@ -58,6 +57,13 @@ async function fetchInsights(action: string, clientId: string, datePreset: strin
   if (error) throw error;
   return data;
 }
+
+// Map period presets to their "previous" equivalents
+const PREVIOUS_PRESET: Record<string, string> = {
+  last_7d: 'last_14d',    // we'll slice the first half
+  last_30d: 'last_60d',
+  last_90d: 'last_180d',
+};
 
 export function useMetaCampaigns(clientId: string | undefined, enabled: boolean, datePreset = 'last_30d') {
   return useQuery({
@@ -76,10 +82,32 @@ export function useMetaInsights(clientId: string | undefined, enabled: boolean, 
     queryKey: ['meta-insights', clientId, datePreset],
     queryFn: async () => {
       const data = await fetchInsights('insights', clientId!, datePreset);
-      // Build legacy daily_spend for backward compat
       if (data.daily && !data.daily_spend) {
         data.daily_spend = data.daily.map((d: DailyMetric) => ({ date: d.date, value: d.spend }));
       }
+      return data as MetaInsights;
+    },
+    enabled: enabled && !!clientId,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+// Fetch previous period for comparison
+export function useMetaInsightsPrevious(clientId: string | undefined, enabled: boolean, datePreset = 'last_30d') {
+  // Meta API supports these presets for previous period comparison
+  const previousPresetMap: Record<string, string> = {
+    last_7d: 'last_7d',
+    last_30d: 'last_30d',
+    last_90d: 'last_90d',
+  };
+
+  // We fetch the same preset but with "previous" action
+  return useQuery({
+    queryKey: ['meta-insights-prev', clientId, datePreset],
+    queryFn: async () => {
+      // Use the Meta API's date_preset for the previous period
+      // We send a custom action to the edge function
+      const data = await fetchInsights('insights_previous', clientId!, datePreset);
       return data as MetaInsights;
     },
     enabled: enabled && !!clientId,
