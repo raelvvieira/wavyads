@@ -38,12 +38,12 @@
 
     --sidebar-background: 0 0% 2%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 18 100% 60%;
+    --sidebar-primary: 155 76% 46%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 5%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 0 0% 100%;
-    --sidebar-ring: 18 100% 60%;
+    --sidebar-ring: 155 76% 46%;
 
     /* Glass tokens */
     --glass-bg: rgba(255, 255, 255, 0.05);
