@@ -211,6 +211,8 @@ export default function ClientDashboard() {
       frequency: p.frequency ?? 0,
       conversions: p.conversions ?? ((p.leads || 0) + (p.purchases || 0)),
       cost_per_conversion: p.cost_per_conversion ?? 0,
+      results: p.results ?? 0,
+      cost_per_result: p.cost_per_result ?? 0,
     };
   }, [previousInsights]);
 
