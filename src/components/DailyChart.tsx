@@ -65,6 +65,7 @@ export function DailyChart({ data }: DailyChartProps) {
   };
 
   const hasCountAxis = LINES.some(l => l.yAxisId === 'count' && activeLines.has(l.key));
+  const hasCostAxis = LINES.some(l => l.yAxisId === 'cost' && activeLines.has(l.key));
 
   return (
     <GlassCard className="animate-fade-in">
