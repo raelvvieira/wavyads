@@ -168,6 +168,7 @@ export default function ClientDashboard() {
     const clicks = i?.clicks ?? fromCampaigns('clicks');
     const leads = i?.leads ?? fromCampaigns('leads');
     const purchases = i?.purchases ?? fromCampaigns('purchases');
+    const results = i?.results ?? fromCampaigns('results');
 
     return {
       spend,
@@ -185,6 +186,8 @@ export default function ClientDashboard() {
       frequency: i?.frequency ?? 0,
       conversions: i?.conversions ?? (leads + purchases),
       cost_per_conversion: i?.cost_per_conversion ?? ((leads + purchases) > 0 ? spend / (leads + purchases) : 0),
+      results,
+      cost_per_result: i?.cost_per_result ?? (results > 0 ? spend / results : 0),
     };
   }, [insights, campaignList]);
 
