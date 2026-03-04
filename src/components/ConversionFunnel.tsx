@@ -22,11 +22,14 @@ interface ConversionFunnelProps {
   costPerPurchase: number;
 }
 
-function rateColor(rate: number, warningThreshold: number, criticalThreshold: number) {
-  if (rate < criticalThreshold) return 'bg-red-500/20 text-red-400 border-red-500/30';
-  if (rate < warningThreshold) return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
-  return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
-}
+// Green gradient from dark (top) to light (bottom)
+const STAGE_GREENS = [
+  { bg: 'rgba(26,205,138,0.08)', border: 'rgba(26,205,138,0.35)' },
+  { bg: 'rgba(26,205,138,0.12)', border: 'rgba(26,205,138,0.40)' },
+  { bg: 'rgba(26,205,138,0.16)', border: 'rgba(26,205,138,0.50)' },
+  { bg: 'rgba(26,205,138,0.20)', border: 'rgba(26,205,138,0.60)' },
+  { bg: 'rgba(26,205,138,0.25)', border: 'rgba(26,205,138,0.70)' },
+];
 
 export function ConversionFunnel({ reach, impressions, clicks, leads, purchases, cpm, cpc, cpl, costPerPurchase }: ConversionFunnelProps) {
   const stages: FunnelStage[] = [
@@ -41,10 +44,10 @@ export function ConversionFunnel({ reach, impressions, clicks, leads, purchases,
 
   const rates = [
     null,
-    reach && impressions ? { rate: (reach / impressions) * 100, warn: 80, crit: 40 } : null,
-    clicks && reach ? { rate: (clicks / reach) * 100, warn: 1, crit: 0.5 } : null,
-    leads && clicks ? { rate: (leads / clicks) * 100, warn: 3, crit: 1 } : null,
-    purchases && leads ? { rate: (purchases / leads) * 100, warn: 5, crit: 1 } : null,
+    reach && impressions ? (reach / impressions) * 100 : null,
+    clicks && reach ? (clicks / reach) * 100 : null,
+    leads && clicks ? (leads / clicks) * 100 : null,
+    purchases && leads ? (purchases / leads) * 100 : null,
   ];
 
   return (
@@ -55,21 +58,27 @@ export function ConversionFunnel({ reach, impressions, clicks, leads, purchases,
         {stages.map((stage, i) => {
           const widthPercent = Math.max(20, (stage.value / maxValue) * 100);
           const rate = rates[i];
+          const green = STAGE_GREENS[i];
 
           return (
             <div key={stage.label} className="w-full flex flex-col items-center">
-              {i > 0 && rate && (
+              {i > 0 && rate !== null && (
                 <div className="flex items-center gap-2 py-1.5">
-                  <ArrowDown className="h-4 w-4 text-muted-foreground" />
-                  <span className={cn('text-[10px] font-medium px-2 py-0.5 rounded-full border', rateColor(rate.rate, rate.warn, rate.crit))}>
-                    {rate.rate.toFixed(1)}%
+                  <ArrowDown className="h-4 w-4 text-emerald-400/60" />
+                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                    {rate.toFixed(1)}%
                   </span>
                 </div>
               )}
 
               <div
-                className="relative glass rounded-xl py-3 px-4 text-center transition-all duration-300"
-                style={{ width: `${widthPercent}%`, minWidth: '160px' }}
+                className="relative rounded-xl py-3 px-4 text-center transition-all duration-300 border-l-4"
+                style={{
+                  width: `${widthPercent}%`,
+                  minWidth: '160px',
+                  background: green.bg,
+                  borderLeftColor: green.border,
+                }}
               >
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{stage.label}</p>
                 <p className="text-xl font-bold metric-number">{formatNumber(stage.value)}</p>

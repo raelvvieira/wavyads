@@ -1,4 +1,3 @@
-import { GlassCard } from './GlassCard';
 import { formatCurrency, formatNumber } from '@/data/mock';
 import type { MetaCampaign } from '@/hooks/useMetaInsights';
 
@@ -39,53 +38,87 @@ export function InsightsCards({ campaigns, totalSpend, totalLeads, totalResults,
   const activeCampaigns = campaigns.filter(c => c.status === 'active' && c.spend > 0);
   if (activeCampaigns.length === 0) return null;
 
-  // Best campaign by lowest cost_per_result (with results > 0)
+  const totalClicks = activeCampaigns.reduce((s, c) => s + (c.clicks || 0), 0);
+  const totalImpressions = activeCampaigns.reduce((s, c) => s + (c.impressions || 0), 0);
+  const totalPurchases = activeCampaigns.reduce((s, c) => s + (c.purchases || 0), 0);
+
+  // Best campaign by lowest cost_per_result
   const withResults = activeCampaigns.filter(c => c.results > 0 && c.cost_per_result > 0);
   if (withResults.length > 0) {
     const best = withResults.reduce((a, b) => a.cost_per_result < b.cost_per_result ? a : b);
+    const pctSpend = totalSpend > 0 ? ((best.spend / totalSpend) * 100).toFixed(0) : '0';
     insights.push({
       emoji: '🏆',
       title: 'Melhor Campanha',
-      description: `"${best.name}" tem o menor custo por resultado: ${formatCurrency(best.cost_per_result)} com ${best.results} resultados.`,
+      description: `A campanha "${best.name}" apresenta o menor custo por resultado: ${formatCurrency(best.cost_per_result)}, com ${best.results} resultados gerados. Ela representa ${pctSpend}% do investimento total. Considere aumentar o orçamento desta campanha para escalar os resultados.`,
       color: 'green',
     });
   }
 
-  // Worst campaign: highest cost_per_result or spend with zero results
+  // Worst campaign: spend with zero results
   const zeroResults = activeCampaigns.filter(c => c.results === 0 && c.spend > 10);
   if (zeroResults.length > 0) {
     const worst = zeroResults.reduce((a, b) => a.spend > b.spend ? a : b);
     insights.push({
       emoji: '🚨',
       title: 'Gasto sem Resultado',
-      description: `"${worst.name}" gastou ${formatCurrency(worst.spend)} sem gerar nenhum resultado. Considere pausar.`,
+      description: `A campanha "${worst.name}" consumiu ${formatCurrency(worst.spend)} sem gerar nenhum resultado. Isso representa desperdício de orçamento. Recomenda-se pausar imediatamente e realocar o investimento para campanhas com melhor desempenho.`,
       color: 'red',
     });
   } else if (withResults.length > 1) {
     const worst = withResults.reduce((a, b) => a.cost_per_result > b.cost_per_result ? a : b);
+    const diff = best => worst.cost_per_result / best.cost_per_result;
     insights.push({
       emoji: '⚠️',
       title: 'Campanha Mais Cara',
-      description: `"${worst.name}" tem o maior custo por resultado: ${formatCurrency(worst.cost_per_result)}.`,
+      description: `A campanha "${worst.name}" tem o maior custo por resultado: ${formatCurrency(worst.cost_per_result)}, com apenas ${worst.results} resultados para ${formatCurrency(worst.spend)} investidos. Avalie se o público ou criativo precisa de ajustes.`,
       color: 'red',
     });
   }
 
-  // CTR outlier (> 2x average)
-  if (avgCtr > 0) {
-    const highCtr = activeCampaigns.filter(c => c.ctr > avgCtr * 2 && c.impressions > 100);
-    if (highCtr.length > 0) {
-      const top = highCtr[0];
+  // Funnel health: CTR assessment
+  if (totalImpressions > 0 && totalClicks > 0) {
+    const overallCtr = (totalClicks / totalImpressions) * 100;
+    if (overallCtr < 1) {
+      insights.push({
+        emoji: '📉',
+        title: 'Saúde do Funil — CTR Baixo',
+        description: `O CTR geral está em ${overallCtr.toFixed(2)}%, abaixo do benchmark de 1%. De ${formatNumber(totalImpressions)} impressões, apenas ${formatNumber(totalClicks)} cliques foram gerados. Isso sugere que os criativos ou a segmentação precisam de otimização para atrair mais cliques.`,
+        color: 'red',
+      });
+    } else if (overallCtr >= 2) {
       insights.push({
         emoji: '🎯',
-        title: 'CTR Excepcional',
-        description: `"${top.name}" tem CTR de ${top.ctr.toFixed(2)}%, mais que o dobro da média (${avgCtr.toFixed(2)}%).`,
-        color: 'blue',
+        title: 'CTR Acima da Média',
+        description: `O CTR geral está em ${overallCtr.toFixed(2)}%, acima do benchmark de 1%. Os criativos estão performando bem em atrair cliques. Foque agora em otimizar a conversão pós-clique para maximizar resultados.`,
+        color: 'green',
       });
     }
   }
 
-  // High CPM (> 2x average)
+  // Click → Lead conversion
+  if (totalClicks > 0 && totalLeads > 0) {
+    const clickToLead = (totalLeads / totalClicks) * 100;
+    insights.push({
+      emoji: '🔄',
+      title: 'Conversão Clique → Lead',
+      description: `De ${formatNumber(totalClicks)} cliques totais, ${formatNumber(totalLeads)} se tornaram leads — uma taxa de conversão de ${clickToLead.toFixed(1)}%. ${clickToLead < 3 ? 'A taxa está abaixo do ideal (3-5%). Revise a landing page e a proposta de valor.' : 'A taxa está saudável. Mantenha a estratégia atual.'}`,
+      color: clickToLead < 3 ? 'yellow' : 'green',
+    });
+  }
+
+  // Lead → Purchase conversion
+  if (totalLeads > 0 && totalPurchases > 0) {
+    const leadToPurchase = (totalPurchases / totalLeads) * 100;
+    insights.push({
+      emoji: '💰',
+      title: 'Conversão Lead → Compra',
+      description: `De ${formatNumber(totalLeads)} leads gerados, ${formatNumber(totalPurchases)} realizaram compra — taxa de ${leadToPurchase.toFixed(1)}%. ${leadToPurchase < 5 ? 'Considere implementar uma sequência de nutrição para reativar leads que não converteram.' : 'A taxa de fechamento está dentro do esperado.'}`,
+      color: leadToPurchase < 5 ? 'yellow' : 'green',
+    });
+  }
+
+  // High CPM
   if (avgCpm > 0) {
     const highCpm = activeCampaigns.filter(c => c.cpm > avgCpm * 2 && c.impressions > 100);
     if (highCpm.length > 0) {
@@ -93,32 +126,49 @@ export function InsightsCards({ campaigns, totalSpend, totalLeads, totalResults,
       insights.push({
         emoji: '💸',
         title: 'CPM Elevado',
-        description: `"${worst.name}" tem CPM de ${formatCurrency(worst.cpm)}, mais que o dobro da média (${formatCurrency(avgCpm)}).`,
+        description: `A campanha "${worst.name}" tem CPM de ${formatCurrency(worst.cpm)}, mais que o dobro da média (${formatCurrency(avgCpm)}). Isso encarece toda a cadeia de aquisição. Teste públicos diferentes ou formatos de anúncio mais econômicos.`,
         color: 'yellow',
       });
     }
   }
 
-  // Saturated audience (frequency > 3)
+  // Saturated audience
   const saturated = activeCampaigns.filter(c => c.frequency > 3);
   if (saturated.length > 0) {
     const top = saturated.reduce((a, b) => a.frequency > b.frequency ? a : b);
     insights.push({
-      emoji: '🔄',
+      emoji: '🔁',
       title: 'Público Saturado',
-      description: `"${top.name}" tem frequência de ${top.frequency.toFixed(1)}x. O público pode estar cansado do anúncio.`,
+      description: `A campanha "${top.name}" tem frequência de ${top.frequency.toFixed(1)}x — cada pessoa viu o anúncio mais de ${Math.floor(top.frequency)} vezes. Isso pode causar fadiga e aumentar custos. Renove os criativos ou expanda o público-alvo.`,
       color: 'yellow',
     });
   }
 
-  // Scale suggestion
+  // Campaign concentration
+  if (withResults.length > 1) {
+    const sorted = [...withResults].sort((a, b) => b.results - a.results);
+    const topCampaign = sorted[0];
+    const totalRes = sorted.reduce((s, c) => s + c.results, 0);
+    const concentration = totalRes > 0 ? (topCampaign.results / totalRes) * 100 : 0;
+    if (concentration > 60) {
+      insights.push({
+        emoji: '📊',
+        title: 'Concentração de Resultados',
+        description: `${concentration.toFixed(0)}% dos resultados vêm de uma única campanha ("${topCampaign.name}"). Alta dependência de uma campanha é arriscado. Diversifique investimentos para reduzir risco e descobrir novos públicos.`,
+        color: 'blue',
+      });
+    }
+  }
+
+  // Scale opportunity
   if (withResults.length > 0) {
     const scalable = withResults.reduce((a, b) => a.cost_per_result < b.cost_per_result ? a : b);
-    if (scalable.cost_per_result < avgCpl * 0.8 || (avgCpl === 0 && scalable.cost_per_result > 0)) {
+    const avgCostPerResult = totalSpend / Math.max(1, totalResults);
+    if (scalable.cost_per_result < avgCostPerResult * 0.8) {
       insights.push({
         emoji: '🚀',
         title: 'Oportunidade de Escala',
-        description: `"${scalable.name}" performa bem com custo de ${formatCurrency(scalable.cost_per_result)}/resultado. Considere aumentar o orçamento.`,
+        description: `A campanha "${scalable.name}" performa ${((1 - scalable.cost_per_result / avgCostPerResult) * 100).toFixed(0)}% abaixo do custo médio por resultado, com ${formatCurrency(scalable.cost_per_result)}/resultado. Teste um aumento gradual de 20-30% no orçamento para validar se a eficiência se mantém.`,
         color: 'green',
       });
     }
@@ -127,24 +177,24 @@ export function InsightsCards({ campaigns, totalSpend, totalLeads, totalResults,
   if (insights.length === 0) return null;
 
   return (
-    <GlassCard className="animate-fade-in">
-      <h3 className="text-lg font-semibold mb-4">💡 Insights & Recomendações</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div className="animate-fade-in space-y-4">
+      <h3 className="text-lg font-semibold">💡 Insights & Recomendações</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {insights.map((insight, i) => (
           <div
             key={i}
             className={`rounded-xl border p-4 ${borderColors[insight.color]} ${bgColors[insight.color]}`}
           >
             <div className="flex items-start gap-3">
-              <span className="text-2xl">{insight.emoji}</span>
+              <span className="text-2xl flex-shrink-0">{insight.emoji}</span>
               <div className="min-w-0">
-                <p className="font-semibold text-sm">{insight.title}</p>
-                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{insight.description}</p>
+                <p className="font-semibold text-sm mb-1">{insight.title}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">{insight.description}</p>
               </div>
             </div>
           </div>
         ))}
       </div>
-    </GlassCard>
+    </div>
   );
 }
