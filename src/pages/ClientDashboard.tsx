@@ -209,8 +209,6 @@ export default function ClientDashboard() {
       cost_per_purchase: p.cost_per_purchase ?? 0,
       roas: p.roas ?? 0,
       frequency: p.frequency ?? 0,
-      conversions: p.conversions ?? ((p.leads || 0) + (p.purchases || 0)),
-      cost_per_conversion: p.cost_per_conversion ?? 0,
       results: p.results ?? 0,
       cost_per_result: p.cost_per_result ?? 0,
     };

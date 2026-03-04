@@ -45,10 +45,10 @@ export function AppSidebar() {
         )}
       >
         <div className="flex h-16 items-center gap-3 px-6 border-b border-white/10">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg btn-accent">
-            <Zap className="h-5 w-5" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-black overflow-hidden">
+            <img src={wavyLogo} alt="WAVY" className="h-7 w-7 object-contain" />
           </div>
-          <span className="text-lg font-semibold tracking-tight">AdsPro</span>
+          <span className="text-lg font-semibold tracking-tight">WAVY Dash</span>
         </div>
 
         <nav className="flex-1 space-y-1 p-4">
