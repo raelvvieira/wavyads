@@ -248,6 +248,36 @@ export default function AdminDashboard() {
         </DialogContent>
       </Dialog>
 
+      {/* Delete Confirmation */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="glass border-white/10 bg-card">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apagar cliente "{deleteName}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja apagar este cliente? Todos os dados de anúncios e o acesso do cliente serão removidos permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteClient.isPending}
+              onClick={() => {
+                deleteClient.mutate(deleteId, {
+                  onSuccess: () => {
+                    toast({ title: 'Cliente apagado', description: 'Todos os dados foram removidos.' });
+                    setDeleteDialogOpen(false);
+                  },
+                  onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
+                });
+              }}
+            >
+              {deleteClient.isPending ? 'Apagando...' : 'Apagar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
           {Array.from({ length: 3 }).map((_, i) => (
