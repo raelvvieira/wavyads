@@ -85,8 +85,12 @@ export function useDeleteClient() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (clientId: string) => {
-      const { error } = await supabase.from('clients').delete().eq('id', clientId);
+      const { data, error } = await supabase.functions.invoke('delete-client', {
+        body: { clientId },
+      });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['clients'] }),
   });
