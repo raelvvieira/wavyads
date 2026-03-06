@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { TrendingUp, RefreshCw, ArrowLeft, CalendarIcon } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth, subMonths, subDays, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { GlassCard } from '@/components/GlassCard';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -19,27 +19,53 @@ import { Button } from '@/components/ui/button';
 import { useClient } from '@/hooks/useClients';
 import { useRole } from '@/hooks/useRole';
 import { useGetMetaAuthUrl, useSelectMetaAccount } from '@/hooks/useMetaOAuth';
-import { useMetaCampaigns, useMetaInsights, useMetaInsightsPrevious, type DailyMetric } from '@/hooks/useMetaInsights';
+import { useMetaCampaigns, useMetaInsights, useMetaInsightsPrevious, type DailyMetric, type TimeRange } from '@/hooks/useMetaInsights';
 import { generateDailySpend, formatCurrency, formatNumber, mockCampaigns } from '@/data/mock';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useClients } from '@/hooks/useClients';
 
-type Period = '7d' | '30d' | '90d' | 'custom';
+type PresetKey = 'today' | 'yesterday' | 'last_7d' | 'last_14d' | 'last_30d' | 'this_month' | 'last_month' | 'custom';
 
-const periodToPreset: Record<string, string> = {
-  '7d': 'last_7d',
-  '30d': 'last_30d',
-  '90d': 'last_90d',
-};
-
-const periods: { label: string; value: Period }[] = [
-  { label: '7 dias', value: '7d' },
-  { label: '30 dias', value: '30d' },
-  { label: '90 dias', value: '90d' },
+const PRESETS: { label: string; value: PresetKey }[] = [
+  { label: 'Hoje', value: 'today' },
+  { label: 'Ontem', value: 'yesterday' },
+  { label: 'Últimos 7 dias', value: 'last_7d' },
+  { label: 'Últimos 14 dias', value: 'last_14d' },
+  { label: 'Últimos 30 dias', value: 'last_30d' },
+  { label: 'Este mês', value: 'this_month' },
+  { label: 'Mês passado', value: 'last_month' },
   { label: 'Personalizado', value: 'custom' },
 ];
+
+function computeTimeRange(preset: PresetKey): TimeRange {
+  const today = startOfDay(new Date());
+  const fmt = (d: Date) => format(d, 'yyyy-MM-dd');
+
+  switch (preset) {
+    case 'today':
+      return { since: fmt(today), until: fmt(today) };
+    case 'yesterday': {
+      const y = subDays(today, 1);
+      return { since: fmt(y), until: fmt(y) };
+    }
+    case 'last_7d':
+      return { since: fmt(subDays(today, 6)), until: fmt(today) };
+    case 'last_14d':
+      return { since: fmt(subDays(today, 13)), until: fmt(today) };
+    case 'last_30d':
+      return { since: fmt(subDays(today, 29)), until: fmt(today) };
+    case 'this_month':
+      return { since: fmt(startOfMonth(today)), until: fmt(today) };
+    case 'last_month': {
+      const lastMonth = subMonths(today, 1);
+      return { since: fmt(startOfMonth(lastMonth)), until: fmt(endOfMonth(lastMonth)) };
+    }
+    default:
+      return { since: fmt(subDays(today, 29)), until: fmt(today) };
+  }
+}
 
 export default function ClientDashboard() {
   const { clientId: paramClientId } = useParams();
@@ -52,18 +78,29 @@ export default function ClientDashboard() {
   const clientId = paramClientId || clientUserRecord?.id;
 
   const { data: client, isLoading: clientLoading } = useClient(clientId);
-  const [selectedPeriod, setSelectedPeriod] = useState<Period>('30d');
+  const [selectedPreset, setSelectedPreset] = useState<PresetKey>('last_30d');
   const [customDateRange, setCustomDateRange] = useState<{ from?: Date; to?: Date }>({});
   const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   const isSynced = client?.is_synced ?? false;
 
-  // Determine the date preset to use
-  const datePreset = selectedPeriod === 'custom' ? 'last_30d' : periodToPreset[selectedPeriod];
+  // Compute the time range based on preset or custom
+  const timeRange: TimeRange | undefined = useMemo(() => {
+    if (selectedPreset === 'custom') {
+      if (customDateRange.from && customDateRange.to) {
+        return {
+          since: format(customDateRange.from, 'yyyy-MM-dd'),
+          until: format(customDateRange.to, 'yyyy-MM-dd'),
+        };
+      }
+      return undefined;
+    }
+    return computeTimeRange(selectedPreset);
+  }, [selectedPreset, customDateRange]);
 
-  const { data: campaigns, isLoading: campaignsLoading } = useMetaCampaigns(clientId, isSynced, datePreset);
-  const { data: insights, isLoading: insightsLoading } = useMetaInsights(clientId, isSynced, datePreset);
-  const { data: previousInsights } = useMetaInsightsPrevious(clientId, isSynced, datePreset);
+  const { data: campaigns, isLoading: campaignsLoading } = useMetaCampaigns(clientId, isSynced, timeRange);
+  const { data: insights, isLoading: insightsLoading } = useMetaInsights(clientId, isSynced, timeRange);
+  const { data: previousInsights } = useMetaInsightsPrevious(clientId, isSynced, timeRange);
 
   const getAuthUrl = useGetMetaAuthUrl();
   const selectAccount = useSelectMetaAccount();
@@ -123,11 +160,11 @@ export default function ClientDashboard() {
     );
   };
 
-  const handlePeriodSelect = (period: Period) => {
-    if (period === 'custom') {
+  const handlePresetSelect = (preset: PresetKey) => {
+    if (preset === 'custom') {
       setDatePickerOpen(true);
     } else {
-      setSelectedPeriod(period);
+      setSelectedPreset(preset);
       setDatePickerOpen(false);
     }
   };
@@ -149,7 +186,7 @@ export default function ClientDashboard() {
   const dailyData: DailyMetric[] = useMemo(() => {
     if (isSynced && insights?.daily?.length) return insights.daily;
     if (!isSynced) {
-      const days = selectedPeriod === 'custom' ? 30 : { '7d': 7, '30d': 30, '90d': 90 }[selectedPeriod];
+      const days = selectedPreset === 'custom' ? 30 : { 'today': 1, 'yesterday': 1, 'last_7d': 7, 'last_14d': 14, 'last_30d': 30, 'this_month': 30, 'last_month': 30 }[selectedPreset] || 30;
       return generateDailySpend(days).map(d => {
         const leads = Math.floor(d.value * 0.3);
         const purchases = Math.floor(d.value * 0.05);
@@ -165,7 +202,7 @@ export default function ClientDashboard() {
       });
     }
     return [];
-  }, [isSynced, insights, selectedPeriod]);
+  }, [isSynced, insights, selectedPreset]);
 
   // Metric values for KPI cards
   const metricValues: Record<MetricKey, number> = useMemo(() => {
@@ -299,15 +336,15 @@ export default function ClientDashboard() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 ml-auto flex-wrap">
-          {periods.map((p) => (
+        <div className="flex items-center gap-1.5 ml-auto flex-wrap">
+          {PRESETS.map((p) => (
             p.value !== 'custom' ? (
               <button
                 key={p.value}
-                onClick={() => handlePeriodSelect(p.value)}
+                onClick={() => handlePresetSelect(p.value)}
                 className={cn(
-                  'rounded-lg px-2.5 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-medium transition-all duration-300',
-                  selectedPeriod === p.value
+                  'rounded-lg px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium transition-all duration-300',
+                  selectedPreset === p.value
                     ? 'btn-accent'
                     : 'glass text-muted-foreground hover:text-foreground hover:bg-white/[0.08]'
                 )}
@@ -319,14 +356,14 @@ export default function ClientDashboard() {
                 <PopoverTrigger asChild>
                   <button
                     className={cn(
-                      'rounded-lg px-2.5 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-medium transition-all duration-300 flex items-center gap-1.5',
-                      selectedPeriod === 'custom'
+                      'rounded-lg px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium transition-all duration-300 flex items-center gap-1.5',
+                      selectedPreset === 'custom'
                         ? 'btn-accent'
                         : 'glass text-muted-foreground hover:text-foreground hover:bg-white/[0.08]'
                     )}
                   >
                     <CalendarIcon className="h-3.5 w-3.5" />
-                    {selectedPeriod === 'custom' && customDateRange.from && customDateRange.to
+                    {selectedPreset === 'custom' && customDateRange.from && customDateRange.to
                       ? `${format(customDateRange.from, 'dd/MM')} - ${format(customDateRange.to, 'dd/MM')}`
                       : 'Personalizado'}
                   </button>
@@ -359,7 +396,7 @@ export default function ClientDashboard() {
                         size="sm"
                         disabled={!customDateRange.from || !customDateRange.to}
                         onClick={() => {
-                          setSelectedPeriod('custom');
+                          setSelectedPreset('custom');
                           setDatePickerOpen(false);
                         }}
                         className="btn-accent text-xs px-4"
@@ -372,17 +409,6 @@ export default function ClientDashboard() {
               </Popover>
             )
           ))}
-
-          {isAdmin && (
-            <button
-              onClick={handleSync}
-              disabled={getAuthUrl.isPending}
-              className="btn-accent rounded-lg px-4 py-2 text-xs font-semibold flex items-center gap-2 ml-2"
-            >
-              <RefreshCw className={cn('h-3.5 w-3.5', getAuthUrl.isPending && 'animate-spin')} />
-              Sync Facebook Ads
-            </button>
-          )}
         </div>
       </header>
 
@@ -491,7 +517,7 @@ export default function ClientDashboard() {
           {!isLoading && campaignList.length > 0 && (
             <StrategicSummary
               clientName={client.name}
-              period={selectedPeriod}
+              period={selectedPreset}
               totalSpend={metricValues.spend}
               totalLeads={metricValues.leads}
               totalResults={metricValues.results}

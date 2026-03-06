@@ -60,42 +60,39 @@ export interface MetaInsights {
   daily_spend?: { date: string; value: number }[];
 }
 
-async function fetchInsights(action: string, clientId: string, datePreset: string) {
+export interface TimeRange {
+  since: string; // YYYY-MM-DD
+  until: string; // YYYY-MM-DD
+}
+
+async function fetchInsights(action: string, clientId: string, timeRange: TimeRange) {
   const { data, error } = await supabase.functions.invoke('meta-fetch-insights', {
-    body: { action, client_id: clientId, date_preset: datePreset },
+    body: { action, client_id: clientId, time_range: timeRange },
   });
   if (error) throw error;
   return data;
 }
 
-// Map period presets to their "previous" equivalents
-const PREVIOUS_PRESET: Record<string, string> = {
-  last_7d: 'last_14d',    // we'll slice the first half
-  last_30d: 'last_60d',
-  last_90d: 'last_180d',
-};
-
-export function useMetaCampaigns(clientId: string | undefined, enabled: boolean, datePreset = 'last_30d') {
+export function useMetaCampaigns(clientId: string | undefined, enabled: boolean, timeRange: TimeRange | undefined) {
   return useQuery({
-    queryKey: ['meta-campaigns', clientId, datePreset],
+    queryKey: ['meta-campaigns', clientId, timeRange?.since, timeRange?.until],
     queryFn: async () => {
-      const data = await fetchInsights('campaigns', clientId!, datePreset);
+      const data = await fetchInsights('campaigns', clientId!, timeRange!);
       return data.campaigns as MetaCampaign[];
     },
-    enabled: enabled && !!clientId,
+    enabled: enabled && !!clientId && !!timeRange,
     staleTime: 5 * 60 * 1000,
   });
 }
 
-export function useMetaInsights(clientId: string | undefined, enabled: boolean, datePreset = 'last_30d') {
+export function useMetaInsights(clientId: string | undefined, enabled: boolean, timeRange: TimeRange | undefined) {
   return useQuery({
-    queryKey: ['meta-insights', clientId, datePreset],
+    queryKey: ['meta-insights', clientId, timeRange?.since, timeRange?.until],
     queryFn: async () => {
-      const data = await fetchInsights('insights', clientId!, datePreset);
+      const data = await fetchInsights('insights', clientId!, timeRange!);
       if (data.daily && !data.daily_spend) {
         data.daily_spend = data.daily.map((d: DailyMetric) => ({ date: d.date, value: d.spend }));
       }
-      // Compute conversions (leads + purchases) for daily if not present
       if (data.daily) {
         data.daily = data.daily.map((d: any) => {
           const results = d.results ?? ((d.leads || 0) + (d.purchases || 0));
@@ -111,7 +108,6 @@ export function useMetaInsights(clientId: string | undefined, enabled: boolean, 
           };
         });
       }
-      // Compute aggregate conversions & cost_per_conversion
       if (data.conversions == null) {
         data.conversions = (data.leads || 0) + (data.purchases || 0);
       }
@@ -120,30 +116,20 @@ export function useMetaInsights(clientId: string | undefined, enabled: boolean, 
       }
       return data as MetaInsights;
     },
-    enabled: enabled && !!clientId,
+    enabled: enabled && !!clientId && !!timeRange,
     staleTime: 5 * 60 * 1000,
   });
 }
 
 // Fetch previous period for comparison
-export function useMetaInsightsPrevious(clientId: string | undefined, enabled: boolean, datePreset = 'last_30d') {
-  // Meta API supports these presets for previous period comparison
-  const previousPresetMap: Record<string, string> = {
-    last_7d: 'last_7d',
-    last_30d: 'last_30d',
-    last_90d: 'last_90d',
-  };
-
-  // We fetch the same preset but with "previous" action
+export function useMetaInsightsPrevious(clientId: string | undefined, enabled: boolean, timeRange: TimeRange | undefined) {
   return useQuery({
-    queryKey: ['meta-insights-prev', clientId, datePreset],
+    queryKey: ['meta-insights-prev', clientId, timeRange?.since, timeRange?.until],
     queryFn: async () => {
-      // Use the Meta API's date_preset for the previous period
-      // We send a custom action to the edge function
-      const data = await fetchInsights('insights_previous', clientId!, datePreset);
+      const data = await fetchInsights('insights_previous', clientId!, timeRange!);
       return data as MetaInsights;
     },
-    enabled: enabled && !!clientId,
+    enabled: enabled && !!clientId && !!timeRange,
     staleTime: 5 * 60 * 1000,
   });
 }

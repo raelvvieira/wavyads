@@ -1,54 +1,114 @@
 
 
-# Plan: Date filters, calendar styling, access control, and cleanup
+# Conectar Facebook via OAuth (Login com Facebook)
 
-## 1. Fix date filtering — support custom date ranges end-to-end
+## Resumo
 
-**Problem:** When `selectedPeriod === 'custom'`, the code falls back to `datePreset = 'last_30d'` (line 62 of ClientDashboard). Custom dates are never sent to the API.
+Substituir o fluxo atual (colar token manualmente) por um botao "Conectar com Facebook" que abre a tela de login do Facebook, permite escolher o Business Manager e contas de anuncio, e salva o token automaticamente.
 
-**Files:** `src/pages/ClientDashboard.tsx`, `src/hooks/useMetaInsights.ts`, `supabase/functions/meta-fetch-insights/index.ts`
+## Como vai funcionar para o usuario
 
-- Pass `time_range: { since, until }` alongside `date_preset` to the edge function when custom dates are selected
-- In the edge function, if `time_range` is provided, use `time_range={"since":"...","until":"..."}` instead of `date_preset=...` for both aggregate and daily API calls
-- Update `useMetaInsights` and `useMetaCampaigns` hooks to accept optional `timeRange` parameter
-- In `ClientDashboard`, compute and pass the time range when period is `custom`
+1. Na aba Integracao, clica em **"Conectar com Facebook"**
+2. Abre popup do Facebook para login e autorizacao
+3. Escolhe qual Business Manager e conta de anuncios compartilhar
+4. Volta ao dashboard ja conectado -- sem colar nada manualmente
 
-## 2. Add Meta-style date preset buttons
+## Pre-requisitos
 
-**File:** `src/pages/ClientDashboard.tsx`
+Voce precisa ter um **Facebook App** em [developers.facebook.com](https://developers.facebook.com) com:
+- Produto **Facebook Login for Business** ativado
+- Permissoes: `ads_read`, `business_management`
+- URL de redirecionamento configurada para apontar ao seu app
 
-Replace current period buttons (7d, 30d, 90d, Personalizado) with Meta Ads-style presets:
-- Hoje, Ontem, Últimos 7 dias, Últimos 14 dias, Últimos 30 dias, Este mês, Mês passado, Personalizado
-- Each preset computes a `since`/`until` date range sent to the API via `time_range`
-- Remove `date_preset` usage entirely — always use explicit date ranges for consistency
-- Keep the calendar popover for "Personalizado"
+Eu vou pedir o **App ID** e o **App Secret** para armazenar como segredos no backend.
 
-## 3. Calendar today styling
+## Etapas da implementacao
 
-**File:** `src/components/ui/calendar.tsx`
+### 1. Armazenar credenciais do Facebook App
+- Salvar `FACEBOOK_APP_ID` e `FACEBOOK_APP_SECRET` como segredos no backend
+- O App Secret nunca sera exposto no frontend
 
-Change `day_today` from `"bg-accent text-accent-foreground"` to `"text-accent font-bold"` — no green background, just green number text.
+### 2. Nova Edge Function: `facebook-oauth`
+- **Acao `auth-url`**: Gera a URL de autorizacao do Facebook com as permissoes necessarias (`ads_read`, `business_management`) e o redirect URI
+- **Acao `callback`**: Recebe o `code` retornado pelo Facebook, troca por um access token de longa duracao (60 dias) usando o App Secret, e salva na tabela `facebook_credentials`
+- **Acao `accounts`**: Apos autenticacao, lista as contas de anuncio disponiveis para o usuario escolher
 
-## 4. Remove "Sync Facebook Ads" button from header
+### 3. Atualizar a tabela `facebook_credentials`
+- Adicionar coluna `ad_account_name` (para exibir o nome da conta conectada)
+- Adicionar coluna `token_expires_at` (para controlar expiracao do token)
 
-**File:** `src/pages/ClientDashboard.tsx`
+### 4. Redesenhar a aba Integracao na tela de Configuracoes
+- **Estado desconectado**: Exibir botao "Conectar com Facebook" com icone do Meta
+- **Apos login no Facebook**: Exibir lista de contas de anuncio disponiveis para o usuario selecionar (similar a segunda tela de referencia)
+- **Estado conectado**: Exibir card com o nome da conta conectada, status de conexao e botao "Desconectar"
+- Remover os campos manuais de Access Token e Ad Account ID
 
-Remove the sync button block (lines 376-385) from the header. Keep the sync flow accessible only from the unsynced state card (which is already admin-only).
+### 5. Fluxo de callback no frontend
+- Criar rota `/auth/facebook/callback` que recebe o `code` da URL
+- Chamar a edge function para trocar o code pelo token
+- Redirecionar de volta para a pagina de configuracoes
 
-## 5. Client access control — skip admin client cards
+## Detalhes tecnicos
 
-**File:** `src/pages/DashboardPage.tsx`
+### Fluxo OAuth
 
-For non-admin users, skip `AdminDashboard` entirely and render `ClientDashboard` directly (already done via `!isAdmin` check). The client's `useClients` query already returns only their own record via RLS, and `ClientDashboard` picks it up via `allClients[0]`.
+```text
+Frontend                    Facebook                   Edge Function
+   |                           |                           |
+   |-- Clica "Conectar" ------>|                           |
+   |                           |                           |
+   |   GET facebook-oauth      |                           |
+   |   action=auth-url --------|-------------------------->|
+   |   <-- retorna URL --------|---------------------------|
+   |                           |                           |
+   |-- Redireciona p/ Facebook |                           |
+   |                           |                           |
+   |<-- Callback com code -----|                           |
+   |                           |                           |
+   |   POST facebook-oauth     |                           |
+   |   action=callback --------|-------------------------->|
+   |                           |   Troca code por token    |
+   |                           |<--------------------------|
+   |                           |   Salva no banco          |
+   |                           |-------------------------->|
+   |<-- Sucesso! --------------|---------------------------|
+   |                           |                           |
+   |   GET facebook-oauth      |                           |
+   |   action=accounts --------|-------------------------->|
+   |                           |   Lista ad accounts       |
+   |<-- Lista de contas -------|---------------------------|
+   |                           |                           |
+   |-- Seleciona conta ------->|                           |
+   |   POST facebook-oauth     |                           |
+   |   action=select-account --|-------------------------->|
+   |                           |   Salva ad_account_id     |
+   |<-- Conectado! ------------|---------------------------|
+```
 
-No database changes needed — RLS already restricts clients to their own row.
+### Edge Function: `facebook-oauth`
 
-## Files to modify
+Acoes:
+- `auth-url`: Retorna URL do Facebook OAuth com scopes e redirect_uri
+- `callback`: Recebe code, troca por token via `oauth/access_token`, gera token de longa duracao via endpoint de troca, salva no banco
+- `accounts`: Chama `me/adaccounts?fields=name,account_id,account_status` para listar contas disponiveis
+- `select-account`: Salva a conta selecionada na tabela `facebook_credentials` e marca como valida
 
-| File | Change |
-|------|--------|
-| `src/pages/ClientDashboard.tsx` | Meta-style presets, pass time_range, remove sync button |
-| `src/hooks/useMetaInsights.ts` | Accept optional `timeRange` param, pass to edge function |
-| `supabase/functions/meta-fetch-insights/index.ts` | Support `time_range` in campaigns + insights + insights_previous |
-| `src/components/ui/calendar.tsx` | Today = green text only, no green bg |
+### Migracao do banco
+
+```text
+ALTER TABLE facebook_credentials
+  ADD COLUMN ad_account_name text,
+  ADD COLUMN token_expires_at timestamptz;
+```
+
+### Nova rota no frontend
+
+```text
+/auth/facebook/callback  -- Recebe code do OAuth e finaliza o fluxo
+```
+
+### Segredos necessarios
+
+- `FACEBOOK_APP_ID` -- ID do seu Facebook App
+- `FACEBOOK_APP_SECRET` -- Secret do seu Facebook App
 
