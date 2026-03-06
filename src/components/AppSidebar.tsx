@@ -1,35 +1,38 @@
 import { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useRole } from '@/hooks/useRole';
 import {
   LayoutDashboard,
   Settings,
   LogOut,
   Menu,
   X,
+  Lightbulb,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import wavyLogo from '@/assets/wavy-logo.png';
-
-const navItems = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/configuracoes', icon: Settings, label: 'Configurações' },
-];
 
 export function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
+  const { isAdmin } = useRole();
 
   const handleLogout = async () => {
     await signOut();
     navigate('/login');
   };
 
+  const navItems = [
+    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', show: true },
+    { to: '/insights', icon: Lightbulb, label: 'Insights', show: isAdmin },
+    { to: '/configuracoes', icon: Settings, label: 'Configurações', show: true },
+  ];
+
   return (
     <>
-      {/* Hamburger button — only visible when sidebar is closed */}
       {!collapsed && (
         <button
           className="fixed top-4 left-4 z-50 lg:hidden glass rounded-lg p-2"
@@ -52,7 +55,6 @@ export function AppSidebar() {
             <img src={wavyLogo} alt="WAVY" className="h-7 w-7 object-contain" />
           </div>
           <span className="text-lg font-semibold tracking-tight">WAVY Dash</span>
-          {/* Close button inside sidebar header — mobile only */}
           <button
             className="ml-auto lg:hidden p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
             onClick={() => setCollapsed(false)}
@@ -62,7 +64,7 @@ export function AppSidebar() {
         </div>
 
         <nav className="flex-1 space-y-1 p-4">
-          {navItems.map((item) => {
+          {navItems.filter(item => item.show).map((item) => {
             const isActive = location.pathname === item.to || (item.to === '/dashboard' && location.pathname.startsWith('/dashboard'));
             return (
               <NavLink
