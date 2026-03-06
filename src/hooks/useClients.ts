@@ -52,17 +52,12 @@ export function useClient(clientId: string | undefined) {
 export function useCreateClient() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { name: string; email?: string; meta_ad_account_id?: string }) => {
-      const { data, error } = await supabase
-        .from('clients')
-        .insert({
-          name: input.name,
-          email: input.email || null,
-          meta_ad_account_id: input.meta_ad_account_id || null,
-        })
-        .select()
-        .single();
+    mutationFn: async (input: { name: string; email: string }) => {
+      const { data, error } = await supabase.functions.invoke('invite-client', {
+        body: { name: input.name, email: input.email },
+      });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       return data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['clients'] }),

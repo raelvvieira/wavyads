@@ -20,13 +20,13 @@ export default function AdminDashboard() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newName.trim()) return;
+    if (!newName.trim() || !newEmail.trim()) return;
 
     createClient.mutate(
-      { name: newName.trim(), email: newEmail.trim() || undefined },
+      { name: newName.trim(), email: newEmail.trim() },
       {
-        onSuccess: () => {
-          toast({ title: 'Cliente adicionado!' });
+        onSuccess: (data: any) => {
+          toast({ title: 'Convite enviado!', description: data?.message || 'O cliente receberá um email para criar sua senha.' });
           setDialogOpen(false);
           setNewName('');
           setNewEmail('');
@@ -68,14 +68,18 @@ export default function AdminDashboard() {
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm text-muted-foreground">Email</label>
+                <label className="text-sm text-muted-foreground">Email *</label>
                 <input
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
                   placeholder="email@exemplo.com"
                   type="email"
+                  required
                   className="glass-input w-full rounded-xl py-3 px-4 text-sm"
                 />
+                <p className="text-xs text-muted-foreground">
+                  O cliente receberá um email para criar sua senha
+                </p>
               </div>
               <button
                 type="submit"

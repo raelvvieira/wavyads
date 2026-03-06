@@ -1,51 +1,114 @@
 
 
-# Fluxo de convite de clientes com link para criar senha
+# Conectar Facebook via OAuth (Login com Facebook)
 
-## Como vai funcionar
+## Resumo
 
-Sim! Em vez de senha temporária, o cliente receberá um **email com um botão "Criar minha senha"**. Ao clicar, ele é redirecionado para uma página onde define sua própria senha. Muito mais seguro e simples.
+Substituir o fluxo atual (colar token manualmente) por um botao "Conectar com Facebook" que abre a tela de login do Facebook, permite escolher o Business Manager e contas de anuncio, e salva o token automaticamente.
 
-**Fluxo do ponto de vista do cliente:**
-1. Você cadastra o cliente com nome e email no painel admin
-2. O cliente recebe um email com um botão **"Criar minha senha"**
-3. Ele clica, abre a página de redefinição de senha, define a senha dele
-4. Pronto — agora ele pode fazer login normalmente
+## Como vai funcionar para o usuario
 
-## Etapas
+1. Na aba Integracao, clica em **"Conectar com Facebook"**
+2. Abre popup do Facebook para login e autorizacao
+3. Escolhe qual Business Manager e conta de anuncios compartilhar
+4. Volta ao dashboard ja conectado -- sem colar nada manualmente
 
-### 1. Edge Function `invite-client`
-Nova função backend que:
-- Cria a conta de autenticação do cliente (`auth.admin.createUser` com `email_confirm: true`)
-- Insere o role `'client'` na tabela `user_roles`
-- Vincula o `user_id` na tabela `clients`
-- Gera um link de recuperação de senha (`auth.admin.generateLink({ type: 'recovery' })`) — esse link funciona como "Criar minha senha"
-- Envia o email automaticamente (o próprio sistema de auth envia o email de recovery)
+## Pre-requisitos
 
-### 2. Atualizar criação de cliente no Admin
-- `useCreateClient` passa a chamar a edge function `invite-client` em vez de inserir direto no banco
-- Após sucesso, exibe confirmação de que o convite foi enviado por email
+Voce precisa ter um **Facebook App** em [developers.facebook.com](https://developers.facebook.com) com:
+- Produto **Facebook Login for Business** ativado
+- Permissoes: `ads_read`, `business_management`
+- URL de redirecionamento configurada para apontar ao seu app
 
-### 3. Página `/reset-password`
-Nova página onde o cliente define sua senha:
-- Detecta o token de recovery na URL
-- Exibe formulário para digitar nova senha
-- Chama `supabase.auth.updateUser({ password })` para salvar
+Eu vou pedir o **App ID** e o **App Secret** para armazenar como segredos no backend.
 
-### 4. Login — adicionar "Esqueci minha senha"
-- Adicionar link "Esqueci minha senha" na tela de login
-- Chama `supabase.auth.resetPasswordForEmail(email)` para reenviar o link
-- Remover a opção "Criar conta" (apenas admin cadastra clientes)
+## Etapas da implementacao
 
-## Arquivos
+### 1. Armazenar credenciais do Facebook App
+- Salvar `FACEBOOK_APP_ID` e `FACEBOOK_APP_SECRET` como segredos no backend
+- O App Secret nunca sera exposto no frontend
 
-| Arquivo | Mudança |
-|---------|---------|
-| `supabase/functions/invite-client/index.ts` | Nova edge function: cria conta, role, link de recovery |
-| `supabase/config.toml` | Registrar `invite-client` com `verify_jwt = false` |
-| `src/hooks/useClients.ts` | `useCreateClient` chama edge function |
-| `src/pages/AdminDashboard.tsx` | Feedback de convite enviado |
-| `src/pages/ResetPasswordPage.tsx` | Nova página para definir senha |
-| `src/pages/LoginPage.tsx` | Adicionar "Esqueci minha senha", remover "Criar conta" |
-| `src/App.tsx` | Adicionar rota `/reset-password` |
+### 2. Nova Edge Function: `facebook-oauth`
+- **Acao `auth-url`**: Gera a URL de autorizacao do Facebook com as permissoes necessarias (`ads_read`, `business_management`) e o redirect URI
+- **Acao `callback`**: Recebe o `code` retornado pelo Facebook, troca por um access token de longa duracao (60 dias) usando o App Secret, e salva na tabela `facebook_credentials`
+- **Acao `accounts`**: Apos autenticacao, lista as contas de anuncio disponiveis para o usuario escolher
+
+### 3. Atualizar a tabela `facebook_credentials`
+- Adicionar coluna `ad_account_name` (para exibir o nome da conta conectada)
+- Adicionar coluna `token_expires_at` (para controlar expiracao do token)
+
+### 4. Redesenhar a aba Integracao na tela de Configuracoes
+- **Estado desconectado**: Exibir botao "Conectar com Facebook" com icone do Meta
+- **Apos login no Facebook**: Exibir lista de contas de anuncio disponiveis para o usuario selecionar (similar a segunda tela de referencia)
+- **Estado conectado**: Exibir card com o nome da conta conectada, status de conexao e botao "Desconectar"
+- Remover os campos manuais de Access Token e Ad Account ID
+
+### 5. Fluxo de callback no frontend
+- Criar rota `/auth/facebook/callback` que recebe o `code` da URL
+- Chamar a edge function para trocar o code pelo token
+- Redirecionar de volta para a pagina de configuracoes
+
+## Detalhes tecnicos
+
+### Fluxo OAuth
+
+```text
+Frontend                    Facebook                   Edge Function
+   |                           |                           |
+   |-- Clica "Conectar" ------>|                           |
+   |                           |                           |
+   |   GET facebook-oauth      |                           |
+   |   action=auth-url --------|-------------------------->|
+   |   <-- retorna URL --------|---------------------------|
+   |                           |                           |
+   |-- Redireciona p/ Facebook |                           |
+   |                           |                           |
+   |<-- Callback com code -----|                           |
+   |                           |                           |
+   |   POST facebook-oauth     |                           |
+   |   action=callback --------|-------------------------->|
+   |                           |   Troca code por token    |
+   |                           |<--------------------------|
+   |                           |   Salva no banco          |
+   |                           |-------------------------->|
+   |<-- Sucesso! --------------|---------------------------|
+   |                           |                           |
+   |   GET facebook-oauth      |                           |
+   |   action=accounts --------|-------------------------->|
+   |                           |   Lista ad accounts       |
+   |<-- Lista de contas -------|---------------------------|
+   |                           |                           |
+   |-- Seleciona conta ------->|                           |
+   |   POST facebook-oauth     |                           |
+   |   action=select-account --|-------------------------->|
+   |                           |   Salva ad_account_id     |
+   |<-- Conectado! ------------|---------------------------|
+```
+
+### Edge Function: `facebook-oauth`
+
+Acoes:
+- `auth-url`: Retorna URL do Facebook OAuth com scopes e redirect_uri
+- `callback`: Recebe code, troca por token via `oauth/access_token`, gera token de longa duracao via endpoint de troca, salva no banco
+- `accounts`: Chama `me/adaccounts?fields=name,account_id,account_status` para listar contas disponiveis
+- `select-account`: Salva a conta selecionada na tabela `facebook_credentials` e marca como valida
+
+### Migracao do banco
+
+```text
+ALTER TABLE facebook_credentials
+  ADD COLUMN ad_account_name text,
+  ADD COLUMN token_expires_at timestamptz;
+```
+
+### Nova rota no frontend
+
+```text
+/auth/facebook/callback  -- Recebe code do OAuth e finaliza o fluxo
+```
+
+### Segredos necessarios
+
+- `FACEBOOK_APP_ID` -- ID do seu Facebook App
+- `FACEBOOK_APP_SECRET` -- Secret do seu Facebook App
 
