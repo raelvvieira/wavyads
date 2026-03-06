@@ -68,14 +68,18 @@ export default function AdminDashboard() {
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm text-muted-foreground">Email</label>
+                <label className="text-sm text-muted-foreground">Email *</label>
                 <input
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
                   placeholder="email@exemplo.com"
                   type="email"
+                  required
                   className="glass-input w-full rounded-xl py-3 px-4 text-sm"
                 />
+                <p className="text-xs text-muted-foreground">
+                  O cliente receberá um email para criar sua senha
+                </p>
               </div>
               <button
                 type="submit"
