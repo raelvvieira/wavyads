@@ -8,7 +8,6 @@ const corsHeaders = {
 
 const GRAPH_API = "https://graph.facebook.com/v20.0";
 
-// All common Meta result action types ordered by specificity
 const RESULT_TYPES = [
   "onsite_conversion.messaging_conversation_started_7d",
   "lead",
@@ -44,7 +43,6 @@ function extractCostPerAction(costPerAction: any[], types: string[]): number {
   return 0;
 }
 
-// Extract total results: return the FIRST matching result type value
 function extractResults(actions: any[]): number {
   if (!actions) return 0;
   for (const t of RESULT_TYPES) {
@@ -54,7 +52,6 @@ function extractResults(actions: any[]): number {
   return 0;
 }
 
-// Extract the action_type string of the primary result
 function extractResultType(actions: any[]): string {
   if (!actions) return "";
   for (const t of RESULT_TYPES) {
@@ -75,6 +72,11 @@ function extractCostPerResult(costPerAction: any[]): number {
 
 const LEAD_TYPES = ["lead", "onsite_conversion.lead_grouped", "offsite_conversion.fb_pixel_lead"];
 const PURCHASE_TYPES = ["purchase", "offsite_conversion.fb_pixel_purchase", "omni_purchase"];
+
+// Build time_range query param string from { since, until }
+function timeRangeParam(tr: { since: string; until: string }): string {
+  return `time_range={"since":"${tr.since}","until":"${tr.until}"}`;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -107,6 +109,9 @@ Deno.serve(async (req) => {
 
     const action = body.action || "insights";
     const clientId = body.client_id;
+    const timeRange = body.time_range as { since: string; until: string } | undefined;
+
+    // Backward compat: support date_preset if time_range not provided
     const datePreset = body.date_preset || "last_30d";
 
     if (!clientId) {
@@ -142,8 +147,18 @@ Deno.serve(async (req) => {
       ? client.meta_ad_account_id
       : `act_${client.meta_ad_account_id}`;
 
+    // Build the date filter string for the Graph API
+    const dateFilter = timeRange
+      ? timeRangeParam(timeRange)
+      : `date_preset=${datePreset}`;
+
     if (action === "campaigns") {
-      const fields = "name,status,daily_budget,insights.date_preset(" + datePreset + "){spend,impressions,reach,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency}";
+      // For campaigns with nested insights, we need to use the inline syntax
+      const insightsDateParam = timeRange
+        ? `time_range({"since":"${timeRange.since}","until":"${timeRange.until}"})`
+        : `date_preset(${datePreset})`;
+      
+      const fields = `name,status,daily_budget,insights.${insightsDateParam}{spend,impressions,reach,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency}`;
       const res = await fetch(
         `${GRAPH_API}/${adAccountId}/campaigns?fields=${fields}&limit=100&access_token=${accessToken}`
       );
@@ -199,7 +214,7 @@ Deno.serve(async (req) => {
 
     if (action === "insights") {
       const res = await fetch(
-        `${GRAPH_API}/${adAccountId}/insights?fields=spend,impressions,reach,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency&date_preset=${datePreset}&access_token=${accessToken}`
+        `${GRAPH_API}/${adAccountId}/insights?fields=spend,impressions,reach,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency&${dateFilter}&access_token=${accessToken}`
       );
       const data = await res.json();
 
@@ -217,9 +232,9 @@ Deno.serve(async (req) => {
       const results = extractResults(ins.actions);
       const cost_per_result = extractCostPerResult(ins.cost_per_action_type);
 
-      // Daily breakdown with more fields
+      // Daily breakdown
       const dailyRes = await fetch(
-        `${GRAPH_API}/${adAccountId}/insights?fields=spend,impressions,reach,clicks,actions&date_preset=${datePreset}&time_increment=1&access_token=${accessToken}`
+        `${GRAPH_API}/${adAccountId}/insights?fields=spend,impressions,reach,clicks,actions&${dateFilter}&time_increment=1&access_token=${accessToken}`
       );
       const dailyData = await dailyRes.json();
       const daily = (dailyData.data || []).map((d: any) => ({
@@ -255,20 +270,35 @@ Deno.serve(async (req) => {
     }
 
     if (action === "insights_previous") {
-      const periodDays: Record<string, number> = {
-        last_7d: 7, last_14d: 14, last_30d: 30, last_60d: 60, last_90d: 90,
-      };
-      const days = periodDays[datePreset] || 30;
-      const endDate = new Date();
-      endDate.setDate(endDate.getDate() - days - 1);
-      const startDate = new Date(endDate);
-      startDate.setDate(startDate.getDate() - days + 1);
-      
-      const since = startDate.toISOString().split("T")[0];
-      const until = endDate.toISOString().split("T")[0];
+      // Calculate previous period: same duration, ending right before current period starts
+      let prevSince: string;
+      let prevUntil: string;
+
+      if (timeRange) {
+        const sinceDate = new Date(timeRange.since + "T00:00:00");
+        const untilDate = new Date(timeRange.until + "T00:00:00");
+        const days = Math.round((untilDate.getTime() - sinceDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        const prevEnd = new Date(sinceDate);
+        prevEnd.setDate(prevEnd.getDate() - 1);
+        const prevStart = new Date(prevEnd);
+        prevStart.setDate(prevStart.getDate() - days + 1);
+        prevSince = prevStart.toISOString().split("T")[0];
+        prevUntil = prevEnd.toISOString().split("T")[0];
+      } else {
+        const periodDays: Record<string, number> = {
+          last_7d: 7, last_14d: 14, last_30d: 30, last_60d: 60, last_90d: 90,
+        };
+        const days = periodDays[datePreset] || 30;
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() - days - 1);
+        const startDate = new Date(endDate);
+        startDate.setDate(startDate.getDate() - days + 1);
+        prevSince = startDate.toISOString().split("T")[0];
+        prevUntil = endDate.toISOString().split("T")[0];
+      }
 
       const res = await fetch(
-        `${GRAPH_API}/${adAccountId}/insights?fields=spend,impressions,reach,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency&time_range={"since":"${since}","until":"${until}"}&access_token=${accessToken}`
+        `${GRAPH_API}/${adAccountId}/insights?fields=spend,impressions,reach,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency&${timeRangeParam({ since: prevSince, until: prevUntil })}&access_token=${accessToken}`
       );
       const data = await res.json();
 
