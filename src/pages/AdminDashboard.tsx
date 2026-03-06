@@ -262,17 +262,31 @@ export default function AdminDashboard() {
               key={client.id}
               className="relative transition-all duration-300 hover:border-accent/50 hover:shadow-lg hover:shadow-accent/5 animate-fade-in"
             >
-              {/* Edit button */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openEdit(client);
-                }}
-                className="absolute top-4 right-4 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors z-10"
-                title="Editar cliente"
-              >
-                <Pencil className="h-4 w-4" />
-              </button>
+              {/* Action buttons */}
+              <div className="absolute top-4 right-4 flex items-center gap-1 z-10">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openEdit(client);
+                  }}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+                  title="Editar cliente"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteId(client.id);
+                    setDeleteName(client.name);
+                    setDeleteDialogOpen(true);
+                  }}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-white/10 transition-colors"
+                  title="Apagar cliente"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
 
               <div
                 className="cursor-pointer"
