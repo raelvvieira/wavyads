@@ -1,20 +1,25 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, CheckCircle, XCircle, Loader2, Users, Calendar, Pencil, RefreshCw } from 'lucide-react';
+import { Plus, CheckCircle, XCircle, Loader2, Users, Calendar, Pencil, RefreshCw, Trash2 } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
-import { useClients, useCreateClient, useUpdateClient } from '@/hooks/useClients';
+import { useClients, useCreateClient, useUpdateClient, useDeleteClient } from '@/hooks/useClients';
 import { useGetMetaAuthUrl, useSelectMetaAccount } from '@/hooks/useMetaOAuth';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { data: clients, isLoading } = useClients();
   const createClient = useCreateClient();
   const updateClient = useUpdateClient();
+  const deleteClient = useDeleteClient();
   const getAuthUrl = useGetMetaAuthUrl();
   const selectAccount = useSelectMetaAccount();
 
@@ -27,6 +32,11 @@ export default function AdminDashboard() {
   const [editId, setEditId] = useState('');
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
+
+  // Delete state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState('');
+  const [deleteName, setDeleteName] = useState('');
 
   // Meta sync state
   const [syncingClientId, setSyncingClientId] = useState<string | null>(null);
@@ -238,6 +248,36 @@ export default function AdminDashboard() {
         </DialogContent>
       </Dialog>
 
+      {/* Delete Confirmation */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="glass border-white/10 bg-card">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apagar cliente "{deleteName}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja apagar este cliente? Todos os dados de anúncios e o acesso do cliente serão removidos permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteClient.isPending}
+              onClick={() => {
+                deleteClient.mutate(deleteId, {
+                  onSuccess: () => {
+                    toast({ title: 'Cliente apagado', description: 'Todos os dados foram removidos.' });
+                    setDeleteDialogOpen(false);
+                  },
+                  onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
+                });
+              }}
+            >
+              {deleteClient.isPending ? 'Apagando...' : 'Apagar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -257,17 +297,31 @@ export default function AdminDashboard() {
               key={client.id}
               className="relative transition-all duration-300 hover:border-accent/50 hover:shadow-lg hover:shadow-accent/5 animate-fade-in"
             >
-              {/* Edit button */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openEdit(client);
-                }}
-                className="absolute top-4 right-4 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors z-10"
-                title="Editar cliente"
-              >
-                <Pencil className="h-4 w-4" />
-              </button>
+              {/* Action buttons */}
+              <div className="absolute top-4 right-4 flex items-center gap-1 z-10">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openEdit(client);
+                  }}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+                  title="Editar cliente"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteId(client.id);
+                    setDeleteName(client.name);
+                    setDeleteDialogOpen(true);
+                  }}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-white/10 transition-colors"
+                  title="Apagar cliente"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
 
               <div
                 className="cursor-pointer"
