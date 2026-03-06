@@ -33,6 +33,11 @@ export default function AdminDashboard() {
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
 
+  // Delete state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState('');
+  const [deleteName, setDeleteName] = useState('');
+
   // Meta sync state
   const [syncingClientId, setSyncingClientId] = useState<string | null>(null);
   const [pendingAccounts, setPendingAccounts] = useState<any[] | null>(null);
