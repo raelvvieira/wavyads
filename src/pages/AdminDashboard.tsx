@@ -20,13 +20,13 @@ export default function AdminDashboard() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newName.trim()) return;
+    if (!newName.trim() || !newEmail.trim()) return;
 
     createClient.mutate(
-      { name: newName.trim(), email: newEmail.trim() || undefined },
+      { name: newName.trim(), email: newEmail.trim() },
       {
-        onSuccess: () => {
-          toast({ title: 'Cliente adicionado!' });
+        onSuccess: (data: any) => {
+          toast({ title: 'Convite enviado!', description: data?.message || 'O cliente receberá um email para criar sua senha.' });
           setDialogOpen(false);
           setNewName('');
           setNewEmail('');
