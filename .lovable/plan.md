@@ -1,146 +1,114 @@
 
 
-# Plan: Admin Client Cards Edit + Insights Intelligence Page
+# Conectar Facebook via OAuth (Login com Facebook)
 
-## Part 1 — Editable Client Cards + Re-sync Button
+## Resumo
 
-**File:** `src/pages/AdminDashboard.tsx`
+Substituir o fluxo atual (colar token manualmente) por um botao "Conectar com Facebook" que abre a tela de login do Facebook, permite escolher o Business Manager e contas de anuncio, e salva o token automaticamente.
 
-- Add edit functionality to each client card: click a pencil icon to open an edit dialog with name and email fields
-- Create `useUpdateClient` hook in `src/hooks/useClients.ts` that updates the `clients` table
-- Add a "Re-sincronizar" button on each card that triggers the Meta OAuth flow (`handleSync`) for that specific client
-- Keep the existing sync status badge (Sincronizado / Não sincronizado)
-- Structure: each card gets an edit icon (top-right area) and a re-sync button (bottom of card, only for synced clients or as a general action)
+## Como vai funcionar para o usuario
 
-**File:** `src/hooks/useClients.ts`
-- Add `useUpdateClient()` mutation that updates name/email on the `clients` table
+1. Na aba Integracao, clica em **"Conectar com Facebook"**
+2. Abre popup do Facebook para login e autorizacao
+3. Escolhe qual Business Manager e conta de anuncios compartilhar
+4. Volta ao dashboard ja conectado -- sem colar nada manualmente
 
-## Part 2 — Insights Page (Intelligence Engine)
+## Pre-requisitos
 
-This is the largest piece. It involves:
+Voce precisa ter um **Facebook App** em [developers.facebook.com](https://developers.facebook.com) com:
+- Produto **Facebook Login for Business** ativado
+- Permissoes: `ads_read`, `business_management`
+- URL de redirecionamento configurada para apontar ao seu app
 
-### 2a. Sidebar — Add "Insights" nav item (admin-only)
+Eu vou pedir o **App ID** e o **App Secret** para armazenar como segredos no backend.
 
-**File:** `src/components/AppSidebar.tsx`
-- Import `useRole` hook
-- Add `{ to: '/insights', icon: Lightbulb, label: 'Insights' }` between Dashboard and Configurações
-- Only render this item if `isAdmin === true`
+## Etapas da implementacao
 
-### 2b. Route
+### 1. Armazenar credenciais do Facebook App
+- Salvar `FACEBOOK_APP_ID` e `FACEBOOK_APP_SECRET` como segredos no backend
+- O App Secret nunca sera exposto no frontend
 
-**File:** `src/App.tsx`
-- Add `/insights` route inside the protected layout, pointing to new `InsightsPage`
+### 2. Nova Edge Function: `facebook-oauth`
+- **Acao `auth-url`**: Gera a URL de autorizacao do Facebook com as permissoes necessarias (`ads_read`, `business_management`) e o redirect URI
+- **Acao `callback`**: Recebe o `code` retornado pelo Facebook, troca por um access token de longa duracao (60 dias) usando o App Secret, e salva na tabela `facebook_credentials`
+- **Acao `accounts`**: Apos autenticacao, lista as contas de anuncio disponiveis para o usuario escolher
 
-### 2c. Data Fetching — New Edge Function action
+### 3. Atualizar a tabela `facebook_credentials`
+- Adicionar coluna `ad_account_name` (para exibir o nome da conta conectada)
+- Adicionar coluna `token_expires_at` (para controlar expiracao do token)
 
-**File:** `supabase/functions/meta-fetch-insights/index.ts`
-- Add new action `insights_all_clients` that fetches data for ALL synced clients in one call
-- For each client: fetch campaigns with insights for last 7Now I have a thorough understanding of the codebase. Let me present the plan.
+### 4. Redesenhar a aba Integracao na tela de Configuracoes
+- **Estado desconectado**: Exibir botao "Conectar com Facebook" com icone do Meta
+- **Apos login no Facebook**: Exibir lista de contas de anuncio disponiveis para o usuario selecionar (similar a segunda tela de referencia)
+- **Estado conectado**: Exibir card com o nome da conta conectada, status de conexao e botao "Desconectar"
+- Remover os campos manuais de Access Token e Ad Account ID
 
-<lov-plan>
+### 5. Fluxo de callback no frontend
+- Criar rota `/auth/facebook/callback` que recebe o `code` da URL
+- Chamar a edge function para trocar o code pelo token
+- Redirecionar de volta para a pagina de configuracoes
 
-# Plan: Admin Client Card Editing + Insights Intelligence Page
+## Detalhes tecnicos
 
-## Part 1 — Editable Client Cards in AdminDashboard
+### Fluxo OAuth
 
-**File:** `src/pages/AdminDashboard.tsx`
-
-Add inline edit capability to each client card:
-- Edit button (pencil icon) opens a Dialog with name/email fields pre-filled
-- Save calls `supabase.from('clients').update({ name, email })` via a new `useUpdateClient` mutation
-- Add "Resincronizar Meta" button on each card that triggers `handleSync` (same OAuth flow already in ClientDashboard)
-- Show sync status badge as already exists, plus a re-sync button for synced clients
-
-**File:** `src/hooks/useClients.ts`
-
-Add `useUpdateClient` mutation:
+```text
+Frontend                    Facebook                   Edge Function
+   |                           |                           |
+   |-- Clica "Conectar" ------>|                           |
+   |                           |                           |
+   |   GET facebook-oauth      |                           |
+   |   action=auth-url --------|-------------------------->|
+   |   <-- retorna URL --------|---------------------------|
+   |                           |                           |
+   |-- Redireciona p/ Facebook |                           |
+   |                           |                           |
+   |<-- Callback com code -----|                           |
+   |                           |                           |
+   |   POST facebook-oauth     |                           |
+   |   action=callback --------|-------------------------->|
+   |                           |   Troca code por token    |
+   |                           |<--------------------------|
+   |                           |   Salva no banco          |
+   |                           |-------------------------->|
+   |<-- Sucesso! --------------|---------------------------|
+   |                           |                           |
+   |   GET facebook-oauth      |                           |
+   |   action=accounts --------|-------------------------->|
+   |                           |   Lista ad accounts       |
+   |<-- Lista de contas -------|---------------------------|
+   |                           |                           |
+   |-- Seleciona conta ------->|                           |
+   |   POST facebook-oauth     |                           |
+   |   action=select-account --|-------------------------->|
+   |                           |   Salva ad_account_id     |
+   |<-- Conectado! ------------|---------------------------|
 ```
-mutationFn: async ({ id, name, email }) => supabase.from('clients').update({ name, email }).eq('id', id)
+
+### Edge Function: `facebook-oauth`
+
+Acoes:
+- `auth-url`: Retorna URL do Facebook OAuth com scopes e redirect_uri
+- `callback`: Recebe code, troca por token via `oauth/access_token`, gera token de longa duracao via endpoint de troca, salva no banco
+- `accounts`: Chama `me/adaccounts?fields=name,account_id,account_status` para listar contas disponiveis
+- `select-account`: Salva a conta selecionada na tabela `facebook_credentials` e marca como valida
+
+### Migracao do banco
+
+```text
+ALTER TABLE facebook_credentials
+  ADD COLUMN ad_account_name text,
+  ADD COLUMN token_expires_at timestamptz;
 ```
 
-## Part 2 — Insights Intelligence Page
+### Nova rota no frontend
 
-This is a large feature. Here's the breakdown:
+```text
+/auth/facebook/callback  -- Recebe code do OAuth e finaliza o fluxo
+```
 
-### 2a. Sidebar + Routing
+### Segredos necessarios
 
-**File:** `src/components/AppSidebar.tsx`
-- Add "Insights" nav item between Dashboard and Configurações
-- Only render if user role is admin (use `useRole`)
-
-**File:** `src/App.tsx`
-- Add route `/insights` inside the protected layout
-
-### 2b. Intelligence Engine (Pure Frontend Logic)
-
-**New file:** `src/lib/intelligenceEngine.ts`
-
-A pure function `runIntelligenceEngine(clientsData)` that:
-- Takes an array of `{ client, campaigns, insights, previousInsights, historicalInsights }` per client
-- Computes periods: current 7d, previous 7d (days 8-14), historical average
-- Runs all flag rules (R1-R5, P1-P5, E1-E4) as described
-- Returns `IntelligenceFlag[]` sorted by priority
-- Computes `healthScore` per client (0-100) based on the formula provided
-
-The engine needs **multiple time periods per client** from the Meta API. The current hooks fetch one period at a time. The Insights page will call `meta-fetch-insights` directly for each client with different time ranges (last 7d, days 8-14, last 21d, and full history for week-1 data).
-
-### 2c. Data Fetching for Insights Page
-
-**New file:** `src/hooks/useInsightsData.ts`
-
-For each synced client, fetch:
-- Campaigns with `time_range` = last 7 days (current)
-- Campaigns with `time_range` = days 8-14 (previous)  
-- Account insights last 21 days with `time_increment=1` for daily data (to compute historical averages)
-- Pass all data to `runIntelligenceEngine`
-
-### 2d. Insights Page with 3 Sub-tabs
-
-**New file:** `src/pages/InsightsPage.tsx`
-
-Uses Shadcn Tabs component with 3 tabs:
-
-**Tab 1 — 🔍 Rastreio (default)**
-- Red dark banner at top with left red border: 3-column grid showing total campaigns with spend+zero results, clients with critical tracking flags, total spend on tracking-problem campaigns
-- Expandable cards for `type === "tracking"` flags with priority filter badges
-- Expanded state: dark block with recommended action, two side-by-side blocks (estimated impact + detected data), fix badge
-- Empty state: "✓ Nenhum problema de rastreio detectado"
-
-**Tab 2 — 💡 Performance & Estratégia**
-- Expandable cards for `type !== "tracking"` flags, same card structure
-- Summary panel at bottom: urgent actions count, clients with scale opportunity, total spend on campaigns with CPR above historical average
-
-**Tab 3 — 👥 Clientes**
-- Client list sorted by health score ascending (worst first)
-- Each card expandable showing:
-  - Health score bar with color + number
-  - Score breakdown by category (tracking, results, efficiency, structure)
-  - Alert badges: critical, high, medium flag counts
-  - Campaign list with status dot, name, primary result + volume, CPR/ROAS colored by variation vs history, frequency, flag icons
-- Alternative sort by spend
-
-### 2e. Edge Function Update
-
-**File:** `supabase/functions/meta-fetch-insights/index.ts`
-
-Add new action `campaigns_extended` that returns campaign-level daily data and campaign creation dates (needed for "week 1" comparisons). Use `created_time` field from Meta API and `time_increment=1` for campaign-level daily breakdowns.
-
-## Design
-
-All components follow the existing glass/dark theme — `GlassCard`, `glass` class, green accent (`accent`), `border-white/10`, same spacing and typography patterns.
-
-## Files Summary
-
-| File | Action |
-|------|--------|
-| `src/pages/AdminDashboard.tsx` | Add edit dialog, re-sync button per card |
-| `src/hooks/useClients.ts` | Add `useUpdateClient` mutation |
-| `src/components/AppSidebar.tsx` | Add Insights nav (admin-only) |
-| `src/App.tsx` | Add `/insights` route |
-| `src/lib/intelligenceEngine.ts` | New — all flag rules + health score |
-| `src/hooks/useInsightsData.ts` | New — multi-period data fetching per client |
-| `src/pages/InsightsPage.tsx` | New — 3-tab Insights page |
-| `supabase/functions/meta-fetch-insights/index.ts` | Add `campaigns_extended` action |
-
-No database migrations needed — all data comes from Meta API, no new tables required.
+- `FACEBOOK_APP_ID` -- ID do seu Facebook App
+- `FACEBOOK_APP_SECRET` -- Secret do seu Facebook App
 
