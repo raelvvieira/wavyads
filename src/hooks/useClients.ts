@@ -8,10 +8,14 @@ export interface ClientRecord {
   email: string | null;
   meta_ad_account_id: string | null;
   meta_ad_account_name: string | null;
-  meta_access_token: string | null;
   token_expires_at: string | null;
   is_synced: boolean;
   last_sync_at: string | null;
+  google_ads_synced: boolean;
+  google_ads_customer_id: string | null;
+  google_ads_customer_name: string | null;
+  google_ads_last_sync_at: string | null;
+  google_ads_token_expires_at: string | null;
   user_id: string | null;
   created_at: string;
 }
@@ -23,7 +27,7 @@ export function useClients() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clients')
-        .select('*')
+        .select('id,name,email,meta_ad_account_id,meta_ad_account_name,is_synced,last_sync_at,token_expires_at,google_ads_synced,google_ads_customer_id,google_ads_customer_name,google_ads_last_sync_at,google_ads_token_expires_at,created_at,user_id')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data as ClientRecord[];
@@ -39,7 +43,7 @@ export function useClient(clientId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clients')
-        .select('*')
+        .select('id,name,email,meta_ad_account_id,meta_ad_account_name,is_synced,last_sync_at,token_expires_at,google_ads_synced,google_ads_customer_id,google_ads_customer_name,google_ads_last_sync_at,google_ads_token_expires_at,created_at,user_id')
         .eq('id', clientId!)
         .maybeSingle();
       if (error) throw error;
