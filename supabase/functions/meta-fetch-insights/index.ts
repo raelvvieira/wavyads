@@ -25,6 +25,12 @@ const RESULT_TYPES = [
   "app_install",
 ];
 
+const LEAD_TYPES = ["lead", "onsite_conversion.lead_grouped", "offsite_conversion.fb_pixel_lead"];
+const PURCHASE_TYPES = ["purchase", "offsite_conversion.fb_pixel_purchase", "omni_purchase"];
+const LANDING_PAGE_TYPES = ["landing_page_view"];
+const ADD_TO_CART_TYPES = ["add_to_cart", "offsite_conversion.fb_pixel_add_to_cart", "omni_add_to_cart"];
+const INITIATE_CHECKOUT_TYPES = ["initiate_checkout", "offsite_conversion.fb_pixel_initiate_checkout", "omni_initiate_checkout"];
+
 function extractAction(actions: any[], types: string[]): number {
   if (!actions) return 0;
   for (const t of types) {
@@ -70,12 +76,93 @@ function extractCostPerResult(costPerAction: any[]): number {
   return 0;
 }
 
-const LEAD_TYPES = ["lead", "onsite_conversion.lead_grouped", "offsite_conversion.fb_pixel_lead"];
-const PURCHASE_TYPES = ["purchase", "offsite_conversion.fb_pixel_purchase", "omni_purchase"];
+function extractVideoMetric(videoActions: any[], metricType: string): number {
+  if (!videoActions) return 0;
+  const found = videoActions.find((a: any) => a.action_type === metricType);
+  return found ? parseInt(found.value || "0") : 0;
+}
 
-// Build time_range query param string from { since, until }
 function timeRangeParam(tr: { since: string; until: string }): string {
   return `time_range={"since":"${tr.since}","until":"${tr.until}"}`;
+}
+
+async function authenticateRequest(req: Request, supabase: any) {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader) {
+    return { error: "Não autenticado", status: 401 };
+  }
+  const token = authHeader.replace("Bearer ", "");
+  const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+  if (userError || !user) {
+    return { error: "Token inválido", status: 401 };
+  }
+  return { user };
+}
+
+async function getClient(supabase: any, userId: string, clientId: string) {
+  const { data: isAdmin } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("role", "admin")
+    .maybeSingle();
+
+  let clientQuery = supabase.from("clients").select("*").eq("id", clientId);
+  if (!isAdmin) {
+    clientQuery = clientQuery.eq("user_id", userId);
+  }
+
+  const { data: client, error: clientError } = await clientQuery.maybeSingle();
+  if (clientError || !client) {
+    return { error: "Cliente não encontrado ou sem acesso", status: 404 };
+  }
+
+  if (!client.meta_access_token || !client.meta_ad_account_id) {
+    return { error: "Cliente não sincronizado com Meta", status: 400 };
+  }
+
+  return { client };
+}
+
+function parseCampaign(c: any, ins: any) {
+  const leads = extractAction(ins.actions, LEAD_TYPES);
+  const purchases = extractAction(ins.actions, PURCHASE_TYPES);
+  const cpl = extractCostPerAction(ins.cost_per_action_type, LEAD_TYPES);
+  const costPerPurchase = extractCostPerAction(ins.cost_per_action_type, PURCHASE_TYPES);
+  const spend = parseFloat(ins.spend || "0");
+  const results = extractResults(ins.actions);
+  const cost_per_result = extractCostPerResult(ins.cost_per_action_type);
+  const result_type = extractResultType(ins.actions);
+  const landingPageViews = extractAction(ins.actions, LANDING_PAGE_TYPES);
+  const addToCart = extractAction(ins.actions, ADD_TO_CART_TYPES);
+  const initiateCheckout = extractAction(ins.actions, INITIATE_CHECKOUT_TYPES);
+
+  return {
+    id: c.id,
+    name: c.name,
+    status: ({ ACTIVE: "active", PAUSED: "paused", DELETED: "ended", ARCHIVED: "ended" } as Record<string, string>)[c.status] || "ended",
+    spend,
+    budget: parseFloat(c.daily_budget || "0") / 100,
+    impressions: parseInt(ins.impressions || "0"),
+    reach: parseInt(ins.reach || "0"),
+    clicks: parseInt(ins.clicks || "0"),
+    leads,
+    cpl,
+    purchases,
+    cost_per_purchase: costPerPurchase,
+    results,
+    cost_per_result,
+    result_type,
+    conversions: leads + purchases,
+    ctr: parseFloat(ins.ctr || "0"),
+    cpc: parseFloat(ins.cpc || "0"),
+    cpm: parseFloat(ins.cpm || "0"),
+    frequency: parseFloat(ins.frequency || "0"),
+    landing_page_views: landingPageViews,
+    add_to_cart: addToCart,
+    initiate_checkout: initiateCheckout,
+    created_time: c.created_time || null,
+  };
 }
 
 Deno.serve(async (req) => {
@@ -88,21 +175,13 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Não autenticado" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    const auth = await authenticateRequest(req, supabase);
+    if ("error" in auth) {
+      return new Response(JSON.stringify({ error: auth.error }), {
+        status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Token inválido" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    const userId = user.id;
+    const userId = auth.user.id;
 
     let body: any = {};
     try { body = await req.json(); } catch { /* empty */ }
@@ -110,8 +189,6 @@ Deno.serve(async (req) => {
     const action = body.action || "insights";
     const clientId = body.client_id;
     const timeRange = body.time_range as { since: string; until: string } | undefined;
-
-    // Backward compat: support date_preset if time_range not provided
     const datePreset = body.date_preset || "last_30d";
 
     if (!clientId) {
@@ -119,46 +196,29 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { data: isAdmin } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "admin")
-      .maybeSingle();
-
-    let clientQuery = supabase.from("clients").select("*").eq("id", clientId);
-    if (!isAdmin) {
-      clientQuery = clientQuery.eq("user_id", userId);
+    const clientResult = await getClient(supabase, userId, clientId);
+    if ("error" in clientResult) {
+      return new Response(JSON.stringify({ error: clientResult.error }),
+        { status: clientResult.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-
-    const { data: client, error: clientError } = await clientQuery.maybeSingle();
-    if (clientError || !client) {
-      return new Response(JSON.stringify({ error: "Cliente não encontrado ou sem acesso" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
-    if (!client.meta_access_token || !client.meta_ad_account_id) {
-      return new Response(JSON.stringify({ error: "Cliente não sincronizado com Meta" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
+    const client = clientResult.client;
 
     const accessToken = client.meta_access_token;
     const adAccountId = client.meta_ad_account_id.startsWith("act_")
       ? client.meta_ad_account_id
       : `act_${client.meta_ad_account_id}`;
 
-    // Build the date filter string for the Graph API
     const dateFilter = timeRange
       ? timeRangeParam(timeRange)
       : `date_preset=${datePreset}`;
 
+    // ==================== CAMPAIGNS ====================
     if (action === "campaigns") {
-      // For campaigns with nested insights, we need to use the inline syntax
       const insightsDateParam = timeRange
         ? `time_range({"since":"${timeRange.since}","until":"${timeRange.until}"})`
         : `date_preset(${datePreset})`;
-      
-      const fields = `name,status,daily_budget,insights.${insightsDateParam}{spend,impressions,reach,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency}`;
+
+      const fields = `name,status,daily_budget,created_time,insights.${insightsDateParam}{spend,impressions,reach,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency}`;
       const res = await fetch(
         `${GRAPH_API}/${adAccountId}/campaigns?fields=${fields}&limit=100&access_token=${accessToken}`
       );
@@ -169,49 +229,72 @@ Deno.serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      const statusMap: Record<string, string> = {
-        ACTIVE: "active", PAUSED: "paused", DELETED: "ended", ARCHIVED: "ended",
-      };
-
       const campaigns = (data.data || []).map((c: any) => {
         const ins = c.insights?.data?.[0] || {};
-        const leads = extractAction(ins.actions, LEAD_TYPES);
-        const purchases = extractAction(ins.actions, PURCHASE_TYPES);
-        const cpl = extractCostPerAction(ins.cost_per_action_type, LEAD_TYPES);
-        const costPerPurchase = extractCostPerAction(ins.cost_per_action_type, PURCHASE_TYPES);
-        const spend = parseFloat(ins.spend || "0");
-        const results = extractResults(ins.actions);
-        const cost_per_result = extractCostPerResult(ins.cost_per_action_type);
-        const result_type = extractResultType(ins.actions);
-
-        return {
-          id: c.id,
-          name: c.name,
-          status: statusMap[c.status] || "ended",
-          spend,
-          budget: parseFloat(c.daily_budget || "0") / 100,
-          impressions: parseInt(ins.impressions || "0"),
-          reach: parseInt(ins.reach || "0"),
-          clicks: parseInt(ins.clicks || "0"),
-          leads,
-          cpl,
-          purchases,
-          cost_per_purchase: costPerPurchase,
-          results,
-          cost_per_result,
-          result_type,
-          conversions: leads + purchases,
-          ctr: parseFloat(ins.ctr || "0"),
-          cpc: parseFloat(ins.cpc || "0"),
-          cpm: parseFloat(ins.cpm || "0"),
-          frequency: parseFloat(ins.frequency || "0"),
-        };
+        return parseCampaign(c, ins);
       });
 
       return new Response(JSON.stringify({ campaigns }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // ==================== ADS ====================
+    if (action === "ads") {
+      const insightsDateParam = timeRange
+        ? `time_range({"since":"${timeRange.since}","until":"${timeRange.until}"})`
+        : `date_preset(${datePreset})`;
+
+      const fields = `name,status,campaign_id,campaign{name},insights.${insightsDateParam}{spend,impressions,reach,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency,video_3_sec_watched_actions,video_thruplay_watched_actions}`;
+      const res = await fetch(
+        `${GRAPH_API}/${adAccountId}/ads?fields=${fields}&limit=200&access_token=${accessToken}`
+      );
+      const data = await res.json();
+
+      if (data.error) {
+        return new Response(JSON.stringify({ error: data.error.message }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const ads = (data.data || []).map((ad: any) => {
+        const ins = ad.insights?.data?.[0] || {};
+        const spend = parseFloat(ins.spend || "0");
+        const impressions = parseInt(ins.impressions || "0");
+        const clicks = parseInt(ins.clicks || "0");
+        const results = extractResults(ins.actions);
+        const cost_per_result = extractCostPerResult(ins.cost_per_action_type);
+        const result_type = extractResultType(ins.actions);
+        const video3s = extractVideoMetric(ins.video_3_sec_watched_actions, "video_view");
+        const thruplay = extractVideoMetric(ins.video_thruplay_watched_actions, "video_view");
+
+        return {
+          id: ad.id,
+          name: ad.name,
+          status: ad.status === "ACTIVE" ? "active" : "paused",
+          campaign_id: ad.campaign_id,
+          campaign_name: ad.campaign?.name || "",
+          spend,
+          impressions,
+          reach: parseInt(ins.reach || "0"),
+          clicks,
+          results,
+          cost_per_result,
+          result_type,
+          ctr: parseFloat(ins.ctr || "0"),
+          cpc: parseFloat(ins.cpc || "0"),
+          cpm: parseFloat(ins.cpm || "0"),
+          frequency: parseFloat(ins.frequency || "0"),
+          video_3s_views: video3s,
+          video_thruplay: thruplay,
+          hook_rate: impressions > 0 ? (video3s / impressions) * 100 : 0,
+          hold_rate: video3s > 0 ? (thruplay / video3s) * 100 : 0,
+        };
+      });
+
+      return new Response(JSON.stringify({ ads }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ==================== INSIGHTS ====================
     if (action === "insights") {
       const res = await fetch(
         `${GRAPH_API}/${adAccountId}/insights?fields=spend,impressions,reach,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency&${dateFilter}&access_token=${accessToken}`
@@ -231,6 +314,9 @@ Deno.serve(async (req) => {
       const spend = parseFloat(ins.spend || "0");
       const results = extractResults(ins.actions);
       const cost_per_result = extractCostPerResult(ins.cost_per_action_type);
+      const landingPageViews = extractAction(ins.actions, LANDING_PAGE_TYPES);
+      const addToCart = extractAction(ins.actions, ADD_TO_CART_TYPES);
+      const initiateCheckout = extractAction(ins.actions, INITIATE_CHECKOUT_TYPES);
 
       // Daily breakdown
       const dailyRes = await fetch(
@@ -239,6 +325,7 @@ Deno.serve(async (req) => {
       const dailyData = await dailyRes.json();
       const daily = (dailyData.data || []).map((d: any) => ({
         date: new Date(d.date_start).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
+        date_raw: d.date_start,
         spend: parseFloat(d.spend || "0"),
         impressions: parseInt(d.impressions || "0"),
         reach: parseInt(d.reach || "0"),
@@ -265,12 +352,15 @@ Deno.serve(async (req) => {
         cpm: parseFloat(ins.cpm || "0"),
         frequency: parseFloat(ins.frequency || "0"),
         roas: spend > 0 ? (purchases * costPerPurchase) / spend : 0,
+        landing_page_views: landingPageViews,
+        add_to_cart: addToCart,
+        initiate_checkout: initiateCheckout,
         daily,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // ==================== INSIGHTS_PREVIOUS ====================
     if (action === "insights_previous") {
-      // Calculate previous period: same duration, ending right before current period starts
       let prevSince: string;
       let prevUntil: string;
 
