@@ -1,114 +1,41 @@
 
 
-# Conectar Facebook via OAuth (Login com Facebook)
+## Plan: Fix Intelligence Engine — Too Few Insights Generated
 
-## Resumo
+The engine has several bugs causing most insights to be silently skipped. Only E1 (learning phase) fires because its conditions are the easiest to meet. Here's what's wrong and the fix:
 
-Substituir o fluxo atual (colar token manualmente) por um botao "Conectar com Facebook" que abre a tela de login do Facebook, permite escolher o Business Manager e contas de anuncio, e salva o token automaticamente.
+### Root Causes
 
-## Como vai funcionar para o usuario
+1. **Deduplication too aggressive**: `addFlag` deduplicates by `${type}-${fix}` per client. So if Client A has 3 campaigns stuck in learning, only 1 insight shows. The key should include campaign/ad name.
 
-1. Na aba Integracao, clica em **"Conectar com Facebook"**
-2. Abre popup do Facebook para login e autorizacao
-3. Escolhe qual Business Manager e conta de anuncios compartilhar
-4. Volta ao dashboard ja conectado -- sem colar nada manualmente
+2. **E1 uses `conversions` (leads+purchases) instead of `results`**: Messaging campaigns have results but 0 `conversions`, so E1 fires for every campaign even those performing well. Should use `results` field.
 
-## Pre-requisitos
+3. **Historical averages are account-level, not campaign-level**: `historicalCPR`, `historicalCTR`, `historicalConvRate` are computed from `dailyHistory` which is account-level 21-day data. But Layer 3 compares individual campaign CPR against the account average — if one campaign is cheap and another expensive, the average masks both. Should compare campaign current vs previous period.
 
-Voce precisa ter um **Facebook App** em [developers.facebook.com](https://developers.facebook.com) com:
-- Produto **Facebook Login for Business** ativado
-- Permissoes: `ads_read`, `business_management`
-- URL de redirecionamento configurada para apontar ao seu app
+4. **Layer 2 (Funnel) minimum 300 clicks is too strict for 7-day window**: Many campaigns won't hit 300 clicks in 7 days. Lower to 100.
 
-Eu vou pedir o **App ID** e o **App Secret** para armazenar como segredos no backend.
+5. **Layer 3 (Performance) minimum 5 results is fine, but comparison logic is wrong**: It compares `camp.cost_per_result` against `historicalCPR` (account average), not against that campaign's own previous period CPR (`prevCamp.cost_per_result`). A campaign could have CPR 2x the account average and that's just how it operates — not an insight.
 
-## Etapas da implementacao
+6. **No "basic" performance insights**: There are no insights for simple things like "this campaign has excellent performance" or "this campaign's CTR is dropping week-over-week". The engine only fires on extreme conditions.
 
-### 1. Armazenar credenciais do Facebook App
-- Salvar `FACEBOOK_APP_ID` e `FACEBOOK_APP_SECRET` como segredos no backend
-- O App Secret nunca sera exposto no frontend
+### Changes
 
-### 2. Nova Edge Function: `facebook-oauth`
-- **Acao `auth-url`**: Gera a URL de autorizacao do Facebook com as permissoes necessarias (`ads_read`, `business_management`) e o redirect URI
-- **Acao `callback`**: Recebe o `code` retornado pelo Facebook, troca por um access token de longa duracao (60 dias) usando o App Secret, e salva na tabela `facebook_credentials`
-- **Acao `accounts`**: Apos autenticacao, lista as contas de anuncio disponiveis para o usuario escolher
+**File: `src/lib/intelligenceEngine.ts`**
 
-### 3. Atualizar a tabela `facebook_credentials`
-- Adicionar coluna `ad_account_name` (para exibir o nome da conta conectada)
-- Adicionar coluna `token_expires_at` (para controlar expiracao do token)
+1. **Fix deduplication key** — change from `${flag.type}-${flag.fix}` to `${flag.type}-${flag.fix}-${flag.campaign}-${flag.adName || ''}`. This allows multiple insights of the same type across different campaigns.
 
-### 4. Redesenhar a aba Integracao na tela de Configuracoes
-- **Estado desconectado**: Exibir botao "Conectar com Facebook" com icone do Meta
-- **Apos login no Facebook**: Exibir lista de contas de anuncio disponiveis para o usuario selecionar (similar a segunda tela de referencia)
-- **Estado conectado**: Exibir card com o nome da conta conectada, status de conexao e botao "Desconectar"
-- Remover os campos manuais de Access Token e Ad Account ID
+2. **Fix E1** — use `results` instead of `conversions` for the threshold check. Also lower threshold to 50 total (not per week as stated in the description — the code checks total, which is correct but should use results).
 
-### 5. Fluxo de callback no frontend
-- Criar rota `/auth/facebook/callback` que recebe o `code` da URL
-- Chamar a edge function para trocar o code pelo token
-- Redirecionar de volta para a pagina de configuracoes
+3. **Fix Layer 3 comparisons** — use `prevCamp.cost_per_result` (same campaign, previous period) instead of `historicalCPR` (account average) for P1/P5 campaign-level analysis. Keep account-level `historicalCPR` only for P2 (ROAS) and health score.
 
-## Detalhes tecnicos
+4. **Lower funnel minimum** from 300 to 100 clicks.
 
-### Fluxo OAuth
+5. **Add new basic insights** that fire more easily:
+   - **P6 — Campaign performing well**: CPR < 70% of account average with >= 5 results → "opportunity" priority, positive insight
+   - **P7 — Week-over-week spend drop**: Spend dropped > 50% vs previous period for active campaign → medium priority, budget issue
+   - **General account insight**: If total spend > 0 but < R$50/day average, flag as "budget too low for meaningful optimization"
 
-```text
-Frontend                    Facebook                   Edge Function
-   |                           |                           |
-   |-- Clica "Conectar" ------>|                           |
-   |                           |                           |
-   |   GET facebook-oauth      |                           |
-   |   action=auth-url --------|-------------------------->|
-   |   <-- retorna URL --------|---------------------------|
-   |                           |                           |
-   |-- Redireciona p/ Facebook |                           |
-   |                           |                           |
-   |<-- Callback com code -----|                           |
-   |                           |                           |
-   |   POST facebook-oauth     |                           |
-   |   action=callback --------|-------------------------->|
-   |                           |   Troca code por token    |
-   |                           |<--------------------------|
-   |                           |   Salva no banco          |
-   |                           |-------------------------->|
-   |<-- Sucesso! --------------|---------------------------|
-   |                           |                           |
-   |   GET facebook-oauth      |                           |
-   |   action=accounts --------|-------------------------->|
-   |                           |   Lista ad accounts       |
-   |<-- Lista de contas -------|---------------------------|
-   |                           |                           |
-   |-- Seleciona conta ------->|                           |
-   |   POST facebook-oauth     |                           |
-   |   action=select-account --|-------------------------->|
-   |                           |   Salva ad_account_id     |
-   |<-- Conectado! ------------|---------------------------|
-```
+6. **Fix ROAS calculation in edge function** — currently `roas = (purchases * costPerPurchase) / spend` which calculates cost-based ROAS (always ~1). Should use purchase_value from actions if available, or document that ROAS may not be available without value tracking.
 
-### Edge Function: `facebook-oauth`
-
-Acoes:
-- `auth-url`: Retorna URL do Facebook OAuth com scopes e redirect_uri
-- `callback`: Recebe code, troca por token via `oauth/access_token`, gera token de longa duracao via endpoint de troca, salva no banco
-- `accounts`: Chama `me/adaccounts?fields=name,account_id,account_status` para listar contas disponiveis
-- `select-account`: Salva a conta selecionada na tabela `facebook_credentials` e marca como valida
-
-### Migracao do banco
-
-```text
-ALTER TABLE facebook_credentials
-  ADD COLUMN ad_account_name text,
-  ADD COLUMN token_expires_at timestamptz;
-```
-
-### Nova rota no frontend
-
-```text
-/auth/facebook/callback  -- Recebe code do OAuth e finaliza o fluxo
-```
-
-### Segredos necessarios
-
-- `FACEBOOK_APP_ID` -- ID do seu Facebook App
-- `FACEBOOK_APP_SECRET` -- Secret do seu Facebook App
+Single file change: `src/lib/intelligenceEngine.ts`
 
