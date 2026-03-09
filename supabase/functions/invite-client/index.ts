@@ -197,6 +197,11 @@ Deno.serve(async (req) => {
                     <strong>4.</strong> Acesse seu dashboard com os dados das suas campanhas
                   </td>
                 </tr>
+                <tr>
+                  <td style="padding:16px 0 8px 0; font-size:14px; color:#3f3f46; line-height:1.6;">
+                    📌 Sempre que quiser acessar seu dashboard, entre em: <a href="https://dashboard.wavydigital.com.br/" style="color:#18181b; font-weight:600;">dashboard.wavydigital.com.br</a>
+                  </td>
+                </tr>
               </table>
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
