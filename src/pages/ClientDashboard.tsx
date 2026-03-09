@@ -362,6 +362,30 @@ export default function ClientDashboard() {
           </div>
         </div>
 
+        {/* Platform Toggle */}
+        {(isMetaSynced || isGoogleSynced) && (
+          <div className="flex items-center gap-1 glass rounded-xl p-1">
+            <button
+              onClick={() => setPlatform('meta')}
+              className={cn(
+                'rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-300',
+                platform === 'meta' ? 'btn-accent' : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              Meta Ads
+            </button>
+            <button
+              onClick={() => setPlatform('google')}
+              className={cn(
+                'rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-300',
+                platform === 'google' ? 'btn-accent' : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              Google Ads
+            </button>
+          </div>
+        )}
+
         <div className="flex items-center gap-1.5 ml-auto flex-wrap">
           {PRESETS.map((p) => (
             p.value !== 'custom' ? (
