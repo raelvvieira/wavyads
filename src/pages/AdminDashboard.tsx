@@ -516,6 +516,33 @@ export default function AdminDashboard() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Google Ads Account Picker Dialog */}
+      <Dialog open={!!pendingGoogleAccounts && pendingGoogleAccounts.length > 1} onOpenChange={(open) => {
+        if (!open) {
+          setPendingGoogleAccounts(null);
+          setPendingGoogleSyncClientId(null);
+        }
+      }}>
+        <DialogContent className="glass border-white/10 bg-card max-w-md">
+          <DialogHeader>
+            <DialogTitle>Escolha a conta Google Ads</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 mt-2 max-h-80 overflow-y-auto">
+            {pendingGoogleAccounts?.map((acc: any) => (
+              <button
+                key={acc.id}
+                onClick={() => handlePickGoogleAccount(acc)}
+                disabled={selectGoogleAccount.isPending}
+                className="w-full text-left glass rounded-xl p-4 hover:border-accent/50 hover:bg-white/5 transition-all disabled:opacity-50"
+              >
+                <p className="font-medium text-sm">{acc.name}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">ID: {acc.id}</p>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
