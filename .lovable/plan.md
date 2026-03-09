@@ -1,114 +1,83 @@
 
 
-# Conectar Facebook via OAuth (Login com Facebook)
+## Plan: Google Ads Dashboard com Toggle de Plataforma
 
-## Resumo
+### Resumo
+Adicionar integração Google Ads mantendo o dashboard Meta existente. No topo do dashboard do cliente, um toggle **Meta Ads | Google Ads** alterna entre as duas fontes de dados. No card de cada cliente (AdminDashboard), um segundo botão "Sincronizar Google" aparece ao lado do "Sincronizar Meta".
 
-Substituir o fluxo atual (colar token manualmente) por um botao "Conectar com Facebook" que abre a tela de login do Facebook, permite escolher o Business Manager e contas de anuncio, e salva o token automaticamente.
+### Pré-requisitos — 3 Secrets
+Antes de implementar, você precisará fornecer:
+- `GOOGLE_ADS_CLIENT_ID` — do Google Cloud Console
+- `GOOGLE_ADS_CLIENT_SECRET` — do Google Cloud Console  
+- `GOOGLE_ADS_DEVELOPER_TOKEN` — do Google Ads MCC (API Center)
 
-## Como vai funcionar para o usuario
+No Google Cloud Console, configure:
+- **Origens JavaScript autorizadas**: `https://dashboard.wavydigital.com.br`
+- **URI de redirecionamento autorizado**: `https://dashboard.wavydigital.com.br/auth/google-ads/callback`
 
-1. Na aba Integracao, clica em **"Conectar com Facebook"**
-2. Abre popup do Facebook para login e autorizacao
-3. Escolhe qual Business Manager e conta de anuncios compartilhar
-4. Volta ao dashboard ja conectado -- sem colar nada manualmente
+### 1. Migração SQL — Novas colunas na tabela `clients`
 
-## Pre-requisitos
-
-Voce precisa ter um **Facebook App** em [developers.facebook.com](https://developers.facebook.com) com:
-- Produto **Facebook Login for Business** ativado
-- Permissoes: `ads_read`, `business_management`
-- URL de redirecionamento configurada para apontar ao seu app
-
-Eu vou pedir o **App ID** e o **App Secret** para armazenar como segredos no backend.
-
-## Etapas da implementacao
-
-### 1. Armazenar credenciais do Facebook App
-- Salvar `FACEBOOK_APP_ID` e `FACEBOOK_APP_SECRET` como segredos no backend
-- O App Secret nunca sera exposto no frontend
-
-### 2. Nova Edge Function: `facebook-oauth`
-- **Acao `auth-url`**: Gera a URL de autorizacao do Facebook com as permissoes necessarias (`ads_read`, `business_management`) e o redirect URI
-- **Acao `callback`**: Recebe o `code` retornado pelo Facebook, troca por um access token de longa duracao (60 dias) usando o App Secret, e salva na tabela `facebook_credentials`
-- **Acao `accounts`**: Apos autenticacao, lista as contas de anuncio disponiveis para o usuario escolher
-
-### 3. Atualizar a tabela `facebook_credentials`
-- Adicionar coluna `ad_account_name` (para exibir o nome da conta conectada)
-- Adicionar coluna `token_expires_at` (para controlar expiracao do token)
-
-### 4. Redesenhar a aba Integracao na tela de Configuracoes
-- **Estado desconectado**: Exibir botao "Conectar com Facebook" com icone do Meta
-- **Apos login no Facebook**: Exibir lista de contas de anuncio disponiveis para o usuario selecionar (similar a segunda tela de referencia)
-- **Estado conectado**: Exibir card com o nome da conta conectada, status de conexao e botao "Desconectar"
-- Remover os campos manuais de Access Token e Ad Account ID
-
-### 5. Fluxo de callback no frontend
-- Criar rota `/auth/facebook/callback` que recebe o `code` da URL
-- Chamar a edge function para trocar o code pelo token
-- Redirecionar de volta para a pagina de configuracoes
-
-## Detalhes tecnicos
-
-### Fluxo OAuth
-
-```text
-Frontend                    Facebook                   Edge Function
-   |                           |                           |
-   |-- Clica "Conectar" ------>|                           |
-   |                           |                           |
-   |   GET facebook-oauth      |                           |
-   |   action=auth-url --------|-------------------------->|
-   |   <-- retorna URL --------|---------------------------|
-   |                           |                           |
-   |-- Redireciona p/ Facebook |                           |
-   |                           |                           |
-   |<-- Callback com code -----|                           |
-   |                           |                           |
-   |   POST facebook-oauth     |                           |
-   |   action=callback --------|-------------------------->|
-   |                           |   Troca code por token    |
-   |                           |<--------------------------|
-   |                           |   Salva no banco          |
-   |                           |-------------------------->|
-   |<-- Sucesso! --------------|---------------------------|
-   |                           |                           |
-   |   GET facebook-oauth      |                           |
-   |   action=accounts --------|-------------------------->|
-   |                           |   Lista ad accounts       |
-   |<-- Lista de contas -------|---------------------------|
-   |                           |                           |
-   |-- Seleciona conta ------->|                           |
-   |   POST facebook-oauth     |                           |
-   |   action=select-account --|-------------------------->|
-   |                           |   Salva ad_account_id     |
-   |<-- Conectado! ------------|---------------------------|
+```sql
+ALTER TABLE public.clients
+  ADD COLUMN google_ads_access_token text,
+  ADD COLUMN google_ads_refresh_token text,
+  ADD COLUMN google_ads_customer_id text,
+  ADD COLUMN google_ads_customer_name text,
+  ADD COLUMN google_ads_synced boolean NOT NULL DEFAULT false,
+  ADD COLUMN google_ads_token_expires_at timestamptz,
+  ADD COLUMN google_ads_last_sync_at timestamptz;
 ```
 
-### Edge Function: `facebook-oauth`
+### 2. Edge Function — `google-ads-oauth/index.ts`
+Mesmo padrão do `meta-oauth`:
+- **auth-url**: Gera URL OAuth Google com scope `https://www.googleapis.com/auth/adwords`, `access_type=offline`, `prompt=consent`
+- **callback**: Troca code por access+refresh tokens, busca contas acessíveis via Google Ads API (`/customers:listAccessibleCustomers`), retorna lista
+- **select-account**: Salva customer ID no `clients`, marca `google_ads_synced = true`
+- **disconnect**: Limpa campos Google Ads
 
-Acoes:
-- `auth-url`: Retorna URL do Facebook OAuth com scopes e redirect_uri
-- `callback`: Recebe code, troca por token via `oauth/access_token`, gera token de longa duracao via endpoint de troca, salva no banco
-- `accounts`: Chama `me/adaccounts?fields=name,account_id,account_status` para listar contas disponiveis
-- `select-account`: Salva a conta selecionada na tabela `facebook_credentials` e marca como valida
+### 3. Edge Function — `google-ads-fetch-insights/index.ts`
+Mesmo padrão do `meta-fetch-insights`, usando Google Ads API v18 REST:
+- Usa GAQL para queries: `SELECT campaign.name, campaign.status, metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions, metrics.ctr, metrics.average_cpc, metrics.average_cpm FROM campaign WHERE segments.date BETWEEN '{since}' AND '{until}'`
+- Actions: `campaigns`, `insights` (agregado), `insights_previous`
+- Auto-refresh do token usando refresh_token quando expirado
+- Retorna dados no mesmo formato (`MetaCampaign[]`, `MetaInsights`) para reusar todos os componentes existentes
 
-### Migracao do banco
+### 4. Frontend — Novos arquivos
 
-```text
-ALTER TABLE facebook_credentials
-  ADD COLUMN ad_account_name text,
-  ADD COLUMN token_expires_at timestamptz;
-```
+| Arquivo | Descrição |
+|---------|-----------|
+| `src/hooks/useGoogleAdsOAuth.ts` | Mesmo padrão `useMetaOAuth` — mutations para auth-url, select-account |
+| `src/hooks/useGoogleAdsInsights.ts` | Mesmo padrão `useMetaInsights` — queries para campaigns, insights, insights_previous |
+| `src/pages/GoogleAdsCallbackPage.tsx` | Popup callback (mesmo padrão `MetaCallbackPage`) |
 
-### Nova rota no frontend
+### 5. Frontend — Edições
 
-```text
-/auth/facebook/callback  -- Recebe code do OAuth e finaliza o fluxo
-```
+#### `ClientDashboard.tsx`
+- Adicionar estado `platform: 'meta' | 'google'` 
+- No header, antes dos filtros de data, renderizar toggle com dois botões:
+  - **Meta Ads** (ativo quando `platform === 'meta'`)
+  - **Google Ads** (ativo quando `platform === 'google'`)
+- Toggle só aparece se pelo menos uma plataforma está sincronizada
+- Quando `platform === 'google'`, usar hooks `useGoogleAdsCampaigns/Insights` em vez dos Meta
+- Toda a lógica de KPIs, charts, tabela, funil, insights reutiliza os mesmos componentes (dados no mesmo formato)
+- Estado "não sincronizado" mostra botão "Sync Google Ads" (para admin) ou "Aguardando sincronização" (para cliente)
 
-### Segredos necessarios
+#### `AdminDashboard.tsx`
+- No card de cada cliente, adicionar segundo botão "Sincronizar Google" abaixo do botão Meta existente
+- Mostrar status de sync Google Ads (✓ Sincronizado / ✗ Não sincronizado) separado do Meta
+- Listener de `postMessage` para `GOOGLE_ADS_OAUTH_CALLBACK`
 
-- `FACEBOOK_APP_ID` -- ID do seu Facebook App
-- `FACEBOOK_APP_SECRET` -- Secret do seu Facebook App
+#### `App.tsx`
+- Adicionar rota `/auth/google-ads/callback` → `GoogleAdsCallbackPage`
+
+#### `supabase/config.toml`
+- Registrar `google-ads-oauth` e `google-ads-fetch-insights`
+
+### Ordem de Implementação
+1. Coletar os 3 secrets do usuário
+2. Migração SQL
+3. `google-ads-oauth` edge function + `GoogleAdsCallbackPage` + `useGoogleAdsOAuth` hook
+4. `google-ads-fetch-insights` edge function + `useGoogleAdsInsights` hook
+5. Atualizar `AdminDashboard` com botão "Sincronizar Google"
+6. Atualizar `ClientDashboard` com toggle de plataforma
 
