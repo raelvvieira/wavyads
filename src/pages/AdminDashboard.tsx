@@ -23,6 +23,8 @@ export default function AdminDashboard() {
   const deleteClient = useDeleteClient();
   const getAuthUrl = useGetMetaAuthUrl();
   const selectAccount = useSelectMetaAccount();
+  const getGoogleAuthUrl = useGetGoogleAdsAuthUrl();
+  const selectGoogleAccount = useSelectGoogleAdsAccount();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newName, setNewName] = useState('');
