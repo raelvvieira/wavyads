@@ -15,6 +15,14 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+
+    if (!resendApiKey) {
+      return new Response(JSON.stringify({ error: "RESEND_API_KEY não configurada" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Verify caller is admin
     const authHeader = req.headers.get("Authorization");
@@ -118,19 +126,22 @@ Deno.serve(async (req) => {
     }
 
     // 4. Generate recovery link (acts as "Create your password")
+    const redirectTo = `${req.headers.get("origin") || "https://wavyads.lovable.app"}/reset-password`;
     const { data: linkData, error: linkError } =
       await adminClient.auth.admin.generateLink({
         type: "recovery",
         email,
+        options: {
+          redirectTo,
+        },
       });
 
     if (linkError) {
       console.error("Error generating recovery link:", linkError);
-      // Client was created, just couldn't generate link
       return new Response(
         JSON.stringify({
           client: clientData,
-          warning: "Cliente criado mas não foi possível gerar o link de convite. Use 'Esqueci minha senha' no login.",
+          warning: "Cliente criado mas não foi possível gerar o link de convite.",
         }),
         {
           status: 200,
@@ -139,21 +150,107 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Send recovery email via resetPasswordForEmail (this sends the actual email)
-    const { error: resetError } = await adminClient.auth.admin.generateLink({
-      type: "recovery",
-      email,
-      options: {
-        redirectTo: `${req.headers.get("origin") || "https://wavyads.lovable.app"}/reset-password`,
+    const recoveryLink = linkData.properties?.action_link;
+
+    // 5. Send custom email via Resend
+    const emailHtml = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0; padding:0; background-color:#f4f4f5; font-family:Arial, Helvetica, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5; padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px; background-color:#ffffff; border-radius:12px; padding:40px 32px;">
+          <tr>
+            <td>
+              <h1 style="margin:0 0 24px 0; font-size:22px; font-weight:700; color:#18181b; text-align:center;">
+                BEM-VINDO AO WAVY DASHBOARD!
+              </h1>
+              <p style="margin:0 0 16px 0; font-size:15px; color:#3f3f46; line-height:1.6;">
+                Olá, <strong>${name}</strong>!
+              </p>
+              <p style="margin:0 0 24px 0; font-size:15px; color:#3f3f46; line-height:1.6;">
+                Sua conta foi criada no Wavy Dashboard. Siga o passo a passo abaixo para acessar:
+              </p>
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px 0;">
+                <tr>
+                  <td style="padding:8px 0; font-size:14px; color:#3f3f46; line-height:1.6;">
+                    <strong>1.</strong> Clique no botão abaixo para criar sua senha
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0; font-size:14px; color:#3f3f46; line-height:1.6;">
+                    <strong>2.</strong> Defina uma senha segura (mínimo 6 caracteres)
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0; font-size:14px; color:#3f3f46; line-height:1.6;">
+                    <strong>3.</strong> Após criar sua senha, faça login com seu email e a senha criada
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0; font-size:14px; color:#3f3f46; line-height:1.6;">
+                    <strong>4.</strong> Acesse seu dashboard com os dados das suas campanhas
+                  </td>
+                </tr>
+              </table>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center" style="padding:0 0 28px 0;">
+                    <a href="${recoveryLink}" target="_blank" style="display:inline-block; background-color:#18181b; color:#ffffff; font-size:15px; font-weight:600; text-decoration:none; padding:14px 32px; border-radius:8px;">
+                      CRIAR MINHA SENHA
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0 0 8px 0; font-size:13px; color:#a1a1aa; line-height:1.5;">
+                Seu email de acesso: <strong>${email}</strong>
+              </p>
+              <hr style="border:none; border-top:1px solid #e4e4e7; margin:20px 0;">
+              <p style="margin:0; font-size:12px; color:#a1a1aa; line-height:1.5;">
+                Se você não esperava este email, pode ignorá-lo com segurança.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+    const resendResponse = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${resendApiKey}`,
       },
+      body: JSON.stringify({
+        from: "Wavy Dashboard <onboarding@resend.dev>",
+        to: [email],
+        subject: "BEM-VINDO AO WAVY DASHBOARD!",
+        html: emailHtml,
+      }),
     });
 
-    // Also use resetPasswordForEmail to trigger the email
-    // generateLink alone doesn't send an email, so we use the client method
-    const resetClient = createClient(supabaseUrl, serviceRoleKey);
-    await resetClient.auth.resetPasswordForEmail(email, {
-      redirectTo: `${req.headers.get("origin") || "https://wavyads.lovable.app"}/reset-password`,
-    });
+    if (!resendResponse.ok) {
+      const resendError = await resendResponse.text();
+      console.error("Resend error:", resendError);
+      return new Response(
+        JSON.stringify({
+          client: clientData,
+          warning: "Cliente criado mas houve erro ao enviar o email de convite.",
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
 
     return new Response(
       JSON.stringify({ client: clientData, message: "Convite enviado por email" }),
