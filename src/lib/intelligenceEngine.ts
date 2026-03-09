@@ -1,5 +1,5 @@
-// Intelligence Engine v2 — Deep Analysis with 5 Layers
-// Processes Meta Ads data and returns prioritized flags + health scores
+// Intelligence Engine v2.1 — Deep Analysis with 5 Layers
+// Fixed: deduplication, E1 logic, Layer 3 comparisons, lower thresholds, new basic insights
 
 export interface MetricComparison {
   label: string;
@@ -205,20 +205,18 @@ export function runIntelligenceEngine(clientsData: ClientInsightsData[]): {
     const historicalCTR = computeHistoricalAvgCTR(dailyHistory);
     const historicalConvRate = computeConversionRate(dailyHistory);
 
-    // Track which flag types we've generated per client to deduplicate
+    // FIX #1: Deduplication now uses campaign + adName so multiple campaigns can generate same insight type
     const generatedTypes = new Map<string, IntelligenceFlag>();
 
     function addFlag(flag: Omit<IntelligenceFlag, 'id'>) {
-      const dedupeKey = `${flag.type}-${flag.fix}`;
+      const dedupeKey = `${flag.type}-${flag.fix}-${flag.campaign}-${flag.adName || ''}`;
       const existing = generatedTypes.get(dedupeKey);
       if (existing) {
-        // Keep the one with higher impact
         if (flag.impact > existing.impact) {
-          // Remove old, add new
           const idx = clientFlags.indexOf(existing);
           if (idx >= 0) clientFlags.splice(idx, 1);
         } else {
-          return; // skip, existing has more impact
+          return;
         }
       }
       const newFlag: IntelligenceFlag = { ...flag, id: `flag-${++flagCounter}` };
@@ -268,12 +266,11 @@ export function runIntelligenceEngine(clientsData: ClientInsightsData[]): {
       }
 
       // R3 — Results zeroed after consistent history
-      const prevCamp = prevCampaigns.find(p => p.id === camp.id);
-      if (prevCamp && prevCamp.results >= 3 && camp.results === 0 && camp.spend > 50) {
-        // Check last 5 days from daily
+      const prevCampR3 = prevCampaigns.find(p => p.id === camp.id);
+      if (prevCampR3 && prevCampR3.results >= 3 && camp.results === 0 && camp.spend > 50) {
         const last5 = (dailyHistory || []).slice(-5);
         const last5Results = last5.reduce((s, d) => s + d.results, 0);
-        const avgHistorical = prevCamp.results;
+        const avgHistorical = prevCampR3.results;
 
         addFlag({
           type: 'tracking', priority: 'critical', icon: '📉', category: 'rastreio',
@@ -282,7 +279,7 @@ export function runIntelligenceEngine(clientsData: ClientInsightsData[]): {
           diagnosis: 'Campanha tinha histórico consistente mas parou abruptamente. Provável atualização no site quebrou a página de conversão ou o código do pixel.',
           metrics: [
             { label: 'Resultados anteriores', atual: '0', historico: String(avgHistorical), variacao: '-100%' },
-            { label: 'Gasto atual', atual: fmt(camp.spend), historico: fmt(prevCamp.spend), variacao: 'Continua' },
+            { label: 'Gasto atual', atual: fmt(camp.spend), historico: fmt(prevCampR3.spend), variacao: 'Continua' },
             { label: 'Últimos 5 dias', atual: String(last5Results), historico: '—', variacao: '—' },
           ],
           action: `Verificar se houve atualização no site. Confirmar URL da página de obrigado. Testar pixel com Meta Pixel Helper em "${camp.name}".`,
@@ -331,9 +328,10 @@ export function runIntelligenceEngine(clientsData: ClientInsightsData[]): {
     }
 
     // ==================== LAYER 2 — FUNNEL ====================
+    // FIX #4: Lowered minimum from 300 to 100 clicks
 
     for (const camp of activeCampaigns) {
-      if (camp.clicks < 300) continue;
+      if (camp.clicks < 100) continue;
 
       const currentConvRate = camp.clicks > 0 ? (camp.results / camp.clicks) * 100 : 0;
 
@@ -350,7 +348,7 @@ export function runIntelligenceEngine(clientsData: ClientInsightsData[]): {
           ],
           action: `Revisar landing page de "${camp.name}": oferta, preço, congruência entre anúncio e página. O criativo está atraindo o público certo — o funil pós-clique precisa de ajuste.`,
           impact: camp.spend * (1 - currentConvRate / historicalConvRate),
-          fix: 'optimize',
+          fix: 'landing_page',
         });
       }
 
@@ -369,7 +367,7 @@ export function runIntelligenceEngine(clientsData: ClientInsightsData[]): {
           ],
           action: `Testar novos hooks e criativos para "${camp.name}" mantendo o mesmo público. O funil funciona — precisa de mais volume no topo.`,
           impact: (potentialResults - camp.results) * (camp.cost_per_result || 0),
-          fix: 'creative',
+          fix: 'creative_volume',
         });
       }
 
@@ -411,7 +409,7 @@ export function runIntelligenceEngine(clientsData: ClientInsightsData[]): {
             ],
             action: `Revisar experiência do carrinho: frete, opções de pagamento, elementos de confiança.`,
             impact: lost * (camp.cost_per_result || camp.cpc || 0),
-            fix: 'optimize',
+            fix: 'cart_optimization',
           });
         }
       }
@@ -433,42 +431,42 @@ export function runIntelligenceEngine(clientsData: ClientInsightsData[]): {
             ],
             action: `Verificar métodos de pagamento, custo de frete visível antecipadamente, elementos de confiança na página de checkout.`,
             impact: lost * (camp.cost_per_purchase || camp.cost_per_result || 0),
-            fix: 'optimize',
+            fix: 'checkout_optimization',
           });
         }
       }
     }
 
     // ==================== LAYER 3 — PERFORMANCE ====================
+    // FIX #3 & #5: Compare campaign against its own previous period, not account average
 
     for (const camp of activeCampaigns) {
       if (camp.results < 5) continue;
 
       const prevCamp = prevCampaigns.find(p => p.id === camp.id);
 
-      // P1 — CPR rising significantly
-      if (historicalCPR > 0 && camp.cost_per_result > 0) {
-        const cprChange = pctChange(camp.cost_per_result, historicalCPR);
+      // P1 — CPR rising significantly (campaign vs its own previous period)
+      if (prevCamp && prevCamp.cost_per_result > 0 && camp.cost_per_result > 0) {
+        const cprChange = pctChange(camp.cost_per_result, prevCamp.cost_per_result);
         if (cprChange > 40) {
-          // Identify cause
           let cause = 'Causa indeterminada — investigar criativo, público e leilão';
           let causeMetric: MetricComparison | null = null;
 
           if (camp.frequency > 3.5) {
             cause = 'Saturação de público — frequência acima de 3.5 indica que o mesmo público está vendo o anúncio repetidamente';
             causeMetric = { label: 'Frequência', atual: camp.frequency.toFixed(1), historico: '<3.0', variacao: 'Saturado' };
-          } else if (prevCamp && prevCamp.cpm > 0 && pctChange(camp.cpm, prevCamp.cpm) > 30) {
+          } else if (prevCamp.cpm > 0 && pctChange(camp.cpm, prevCamp.cpm) > 30) {
             cause = 'Competição no leilão — CPM subiu proporcionalmente, indicando mais anunciantes competindo pelo mesmo público';
             causeMetric = { label: 'CPM', atual: fmt(camp.cpm), historico: fmt(prevCamp.cpm), variacao: fmtPct(pctChange(camp.cpm, prevCamp.cpm)) };
-          } else if (historicalCTR > 0 && camp.ctr < historicalCTR * 0.6) {
+          } else if (prevCamp.ctr > 0 && camp.ctr < prevCamp.ctr * 0.6) {
             cause = 'Fadiga de criativo — CTR caiu significativamente, o público parou de responder ao anúncio';
-            causeMetric = { label: 'CTR', atual: `${camp.ctr.toFixed(2)}%`, historico: `${historicalCTR.toFixed(2)}%`, variacao: fmtPct(pctChange(camp.ctr, historicalCTR)) };
+            causeMetric = { label: 'CTR', atual: `${camp.ctr.toFixed(2)}%`, historico: `${prevCamp.ctr.toFixed(2)}%`, variacao: fmtPct(pctChange(camp.ctr, prevCamp.ctr)) };
           }
 
-          const extraCost = (camp.cost_per_result - historicalCPR) * camp.results;
+          const extraCost = (camp.cost_per_result - prevCamp.cost_per_result) * camp.results;
 
           const metricsArr: MetricComparison[] = [
-            { label: 'CPR', atual: fmt(camp.cost_per_result), historico: fmt(historicalCPR), variacao: fmtPct(cprChange) },
+            { label: 'CPR', atual: fmt(camp.cost_per_result), historico: fmt(prevCamp.cost_per_result), variacao: fmtPct(cprChange) },
             { label: 'Custo adicional', atual: fmt(extraCost), historico: '—', variacao: '—' },
           ];
           if (causeMetric) metricsArr.push(causeMetric);
@@ -476,14 +474,14 @@ export function runIntelligenceEngine(clientsData: ClientInsightsData[]): {
           addFlag({
             type: 'performance', priority: cprChange > 70 ? 'high' : 'medium', icon: '📈', category: 'custo',
             client: clientName, clientId, campaign: camp.name, adName: null,
-            title: `CPR subiu de ${fmt(historicalCPR)} para ${fmt(camp.cost_per_result)} — aumento de ${cprChange.toFixed(0)}%`,
+            title: `CPR subiu de ${fmt(prevCamp.cost_per_result)} para ${fmt(camp.cost_per_result)} em "${camp.name}" — aumento de ${cprChange.toFixed(0)}%`,
             diagnosis: cause,
             metrics: metricsArr,
             action: camp.frequency > 3.5
               ? `Criar novo conjunto com público expandido ou Lookalike diferente para "${camp.name}". Preservar histórico de aprendizado — não pausar, trocar público.`
               : `Revisar criativo e público de "${camp.name}". Testar variações de criativo mantendo segmentação.`,
             impact: extraCost,
-            fix: camp.frequency > 3.5 ? 'audience' : 'optimize',
+            fix: camp.frequency > 3.5 ? 'audience' : 'optimize_cpr',
           });
         }
       }
@@ -496,7 +494,7 @@ export function runIntelligenceEngine(clientsData: ClientInsightsData[]): {
           addFlag({
             type: 'performance', priority: 'medium', icon: '💰', category: 'custo',
             client: clientName, clientId, campaign: camp.name, adName: null,
-            title: `CPM subiu ${cpmChange.toFixed(0)}% sem melhora proporcional de resultado`,
+            title: `CPM subiu ${cpmChange.toFixed(0)}% em "${camp.name}" sem melhora proporcional de resultado`,
             diagnosis: camp.frequency > 3 ? 'Criativo com baixo score de relevância nesta campanha específica — renovar.' : 'Aumento generalizado no leilão — avaliar sazonalidade ou concorrência.',
             metrics: [
               { label: 'CPM', atual: fmt(camp.cpm), historico: fmt(prevCamp.cpm), variacao: fmtPct(cpmChange) },
@@ -504,7 +502,7 @@ export function runIntelligenceEngine(clientsData: ClientInsightsData[]): {
             ],
             action: `Avaliar se o aumento de CPM em "${camp.name}" é isolado ou generalizado na conta. Se isolado, renovar criativo. Se generalizado, aguardar normalização.`,
             impact: (camp.cpm - prevCamp.cpm) / 1000 * camp.impressions,
-            fix: 'creative',
+            fix: 'cpm_rising',
           });
         }
       }
@@ -514,11 +512,11 @@ export function runIntelligenceEngine(clientsData: ClientInsightsData[]): {
         const spendChange = pctChange(camp.spend, prevCamp.spend);
         const resultsChange = prevCamp.results > 0 ? pctChange(camp.results, prevCamp.results) : 0;
         if (spendChange > 30 && resultsChange < 10 && camp.spend > 100) {
-          const wastedSpend = (camp.spend - prevCamp.spend) - ((camp.results - prevCamp.results) * historicalCPR);
+          const wastedSpend = (camp.spend - prevCamp.spend) - ((camp.results - prevCamp.results) * (prevCamp.cost_per_result || historicalCPR));
           addFlag({
             type: 'performance', priority: 'high', icon: '⚡', category: 'custo',
             client: clientName, clientId, campaign: camp.name, adName: null,
-            title: `Gasto aumentou ${spendChange.toFixed(0)}% mas resultados apenas ${resultsChange.toFixed(0)}% — escala ineficiente`,
+            title: `Gasto aumentou ${spendChange.toFixed(0)}% em "${camp.name}" mas resultados apenas ${resultsChange.toFixed(0)}%`,
             diagnosis: 'Escala forçada saiu da zona eficiente do leilão. O budget adicional não está gerando resultado proporcional.',
             metrics: [
               { label: 'Gasto', atual: fmt(camp.spend), historico: fmt(prevCamp.spend), variacao: fmtPct(spendChange) },
@@ -527,29 +525,89 @@ export function runIntelligenceEngine(clientsData: ClientInsightsData[]): {
             ],
             action: `Reduzir budget de "${camp.name}" para o nível anterior e escalar gradualmente (15-20%/semana).`,
             impact: Math.max(0, wastedSpend),
-            fix: 'budget',
+            fix: 'budget_inefficient',
           });
         }
       }
 
-      // P5 — High frequency with rising CPR
-      if (camp.frequency > 4.0 && historicalCPR > 0) {
-        const cprChange = pctChange(camp.cost_per_result, historicalCPR);
+      // P5 — High frequency with rising CPR (campaign vs its own previous)
+      if (camp.frequency > 4.0 && prevCamp && prevCamp.cost_per_result > 0) {
+        const cprChange = pctChange(camp.cost_per_result, prevCamp.cost_per_result);
         if (cprChange > 30) {
-          const extraCost = (camp.cost_per_result - historicalCPR) * camp.results;
+          const extraCost = (camp.cost_per_result - prevCamp.cost_per_result) * camp.results;
           addFlag({
             type: 'performance', priority: 'high', icon: '🔄', category: 'custo',
             client: clientName, clientId, campaign: camp.name, adName: null,
-            title: `Frequência ${camp.frequency.toFixed(1)} com CPR subindo ${cprChange.toFixed(0)}% — público saturado`,
+            title: `Frequência ${camp.frequency.toFixed(1)} com CPR subindo ${cprChange.toFixed(0)}% em "${camp.name}"`,
             diagnosis: 'Frequência alta combinada com CPR subindo é o sinal mais claro de saturação. O mesmo público vê o anúncio repetidamente e para de converter.',
             metrics: [
               { label: 'Frequência', atual: camp.frequency.toFixed(1), historico: '<3.0', variacao: 'Saturado' },
-              { label: 'CPR', atual: fmt(camp.cost_per_result), historico: fmt(historicalCPR), variacao: fmtPct(cprChange) },
+              { label: 'CPR', atual: fmt(camp.cost_per_result), historico: fmt(prevCamp.cost_per_result), variacao: fmtPct(cprChange) },
               { label: 'Custo adicional', atual: fmt(extraCost), historico: '—', variacao: '—' },
             ],
             action: `Criar novo conjunto em "${camp.name}" com público expandido ou Lookalike diferente. Não pausar — preservar histórico de aprendizado trocando público.`,
             impact: extraCost,
-            fix: 'audience',
+            fix: 'audience_saturated',
+          });
+        }
+      }
+
+      // === NEW P6 — Campaign performing well (positive insight) ===
+      if (historicalCPR > 0 && camp.cost_per_result > 0 && camp.cost_per_result < historicalCPR * 0.7 && camp.results >= 5) {
+        const savings = (historicalCPR - camp.cost_per_result) * camp.results;
+        addFlag({
+          type: 'opportunity', priority: 'low', icon: '🏆', category: 'escala',
+          client: clientName, clientId, campaign: camp.name, adName: null,
+          title: `"${camp.name}" com CPR ${Math.abs(pctChange(camp.cost_per_result, historicalCPR)).toFixed(0)}% abaixo da média da conta — performance excelente`,
+          diagnosis: 'Esta campanha está entregando resultado a um custo significativamente melhor que a média da conta. Candidata a receber mais budget.',
+          metrics: [
+            { label: 'CPR da campanha', atual: fmt(camp.cost_per_result), historico: fmt(historicalCPR), variacao: fmtPct(pctChange(camp.cost_per_result, historicalCPR)) },
+            { label: 'Resultados', atual: String(camp.results), historico: '—', variacao: '—' },
+            { label: 'Economia vs média', atual: fmt(savings), historico: '—', variacao: '—' },
+          ],
+          action: `Considerar aumentar budget de "${camp.name}" em 15-20%. Esta campanha está abaixo da média de custo e pode absorver mais investimento.`,
+          impact: savings,
+          fix: 'scale_campaign',
+        });
+      }
+
+      // === NEW P7 — Week-over-week spend drop for active campaign ===
+      if (prevCamp && prevCamp.spend > 50 && camp.spend > 0) {
+        const spendDrop = pctChange(camp.spend, prevCamp.spend);
+        if (spendDrop < -50) {
+          addFlag({
+            type: 'performance', priority: 'medium', icon: '📉', category: 'custo',
+            client: clientName, clientId, campaign: camp.name, adName: null,
+            title: `Gasto de "${camp.name}" caiu ${Math.abs(spendDrop).toFixed(0)}% — de ${fmt(prevCamp.spend)} para ${fmt(camp.spend)}`,
+            diagnosis: 'Queda brusca no gasto pode indicar budget manual reduzido, regras automáticas ativas, ou campanha com delivery restrito pelo leilão.',
+            metrics: [
+              { label: 'Gasto atual', atual: fmt(camp.spend), historico: fmt(prevCamp.spend), variacao: fmtPct(spendDrop) },
+              { label: 'Resultados', atual: String(camp.results), historico: String(prevCamp.results), variacao: fmtPct(prevCamp.results > 0 ? pctChange(camp.results, prevCamp.results) : 0) },
+            ],
+            action: `Verificar se a redução de gasto em "${camp.name}" foi intencional. Se não, checar regras automáticas e limites de budget.`,
+            impact: Math.abs(prevCamp.spend - camp.spend),
+            fix: 'spend_drop',
+          });
+        }
+      }
+
+      // === NEW: CTR dropping week-over-week ===
+      if (prevCamp && prevCamp.ctr > 0 && camp.ctr > 0) {
+        const ctrDrop = pctChange(camp.ctr, prevCamp.ctr);
+        if (ctrDrop < -30 && camp.impressions > 2000) {
+          addFlag({
+            type: 'performance', priority: 'medium', icon: '👆', category: 'custo',
+            client: clientName, clientId, campaign: camp.name, adName: null,
+            title: `CTR de "${camp.name}" caiu ${Math.abs(ctrDrop).toFixed(0)}% — de ${prevCamp.ctr.toFixed(2)}% para ${camp.ctr.toFixed(2)}%`,
+            diagnosis: 'Queda significativa no CTR indica que o público está perdendo interesse no criativo. Pode ser fadiga de criativo ou mudança no público.',
+            metrics: [
+              { label: 'CTR', atual: `${camp.ctr.toFixed(2)}%`, historico: `${prevCamp.ctr.toFixed(2)}%`, variacao: fmtPct(ctrDrop) },
+              { label: 'Impressões', atual: fmtNum(camp.impressions), historico: fmtNum(prevCamp.impressions), variacao: '—' },
+              { label: 'Frequência', atual: camp.frequency.toFixed(1), historico: prevCamp.frequency?.toFixed(1) || '—', variacao: '—' },
+            ],
+            action: `Considerar novos criativos para "${camp.name}". A queda de CTR precede aumento de CPR — agir preventivamente.`,
+            impact: camp.spend * 0.15,
+            fix: 'ctr_dropping',
           });
         }
       }
@@ -559,7 +617,6 @@ export function runIntelligenceEngine(clientsData: ClientInsightsData[]): {
     if (ins && prevIns && ins.purchases >= 8 && prevIns.roas > 0 && ins.roas > 0) {
       const roasChange = pctChange(ins.roas, prevIns.roas);
       if (roasChange < -35) {
-        // Find worst campaign
         const worstCamp = activeCampaigns
           .filter(c => c.purchases > 0)
           .sort((a, b) => {
@@ -579,14 +636,34 @@ export function runIntelligenceEngine(clientsData: ClientInsightsData[]): {
           ],
           action: `Reduzir budget nas campanhas com pior ROAS e realocar para as que mantiveram eficiência.`,
           impact: (prevIns.roas - ins.roas) * ins.spend,
-          fix: 'budget',
+          fix: 'roas_falling',
+        });
+      }
+    }
+
+    // === NEW: Account-level low budget insight ===
+    if (totalSpend > 0 && activeCampaigns.length > 0) {
+      const avgDailySpend = totalSpend / 7;
+      if (avgDailySpend < 50 && avgDailySpend > 0) {
+        addFlag({
+          type: 'structure', priority: 'medium', icon: '💸', category: 'estrutura',
+          client: clientName, clientId, campaign: 'Conta geral', adName: null,
+          title: `Budget médio de ${fmt(avgDailySpend)}/dia — abaixo do mínimo para otimização eficiente`,
+          diagnosis: 'Com menos de R$50/dia, o algoritmo da Meta não coleta dados suficientes para otimizar a entrega. As campanhas ficam mais tempo em aprendizado e os resultados são menos previsíveis.',
+          metrics: [
+            { label: 'Gasto diário médio', atual: fmt(avgDailySpend), historico: '>R$50', variacao: fmt(avgDailySpend - 50) },
+            { label: 'Gasto total (7 dias)', atual: fmt(totalSpend), historico: '—', variacao: '—' },
+            { label: 'Campanhas ativas', atual: String(activeCampaigns.length), historico: '—', variacao: '—' },
+          ],
+          action: `Considerar concentrar budget em menos campanhas para que cada uma tenha volume suficiente de dados. Ideal: pelo menos R$50/dia por campanha.`,
+          impact: totalSpend * 0.1,
+          fix: 'low_budget',
         });
       }
     }
 
     // ==================== LAYER 4 — CREATIVE ====================
 
-    // Group ads by campaign
     const adsByCampaign = new Map<string, AdData[]>();
     for (const ad of ads) {
       if (!adsByCampaign.has(ad.campaign_id)) adsByCampaign.set(ad.campaign_id, []);
@@ -602,7 +679,7 @@ export function runIntelligenceEngine(clientsData: ClientInsightsData[]): {
       const avgCPR = totalCampResults > 0 ? totalCampSpend / totalCampResults : 0;
 
       for (const ad of campaignAds) {
-        if (ad.impressions < 1000) continue; // skip low volume
+        if (ad.impressions < 1000) continue;
 
         const adSpendPct = totalCampSpend > 0 ? (ad.spend / totalCampSpend) * 100 : 0;
 
@@ -683,8 +760,7 @@ export function runIntelligenceEngine(clientsData: ClientInsightsData[]): {
           }
         }
 
-        // C5 — Progressive creative fatigue (need week1 data approximation)
-        // We approximate by checking if CTR is below 50% of campaign average with high impressions
+        // C5 — Progressive creative fatigue
         if (ad.impressions > 20000 && ad.ctr > 0 && historicalCTR > 0 && ad.ctr < historicalCTR * 0.5) {
           addFlag({
             type: 'creative', priority: 'medium', icon: '😴', category: 'criativo',
@@ -724,7 +800,7 @@ export function runIntelligenceEngine(clientsData: ClientInsightsData[]): {
             ],
             action: `Adicionar mais criativos ativos em "${campData.name}" para distribuir o risco. Testar pelo menos 3-4 variações ativas.`,
             impact: isBadCPR ? topAd.spend * 0.3 : topAd.spend * 0.1,
-            fix: 'diversify',
+            fix: 'diversify_ads',
           });
         }
       }
@@ -732,22 +808,22 @@ export function runIntelligenceEngine(clientsData: ClientInsightsData[]): {
 
     // ==================== LAYER 5 — STRUCTURE & OPPORTUNITY ====================
 
-    // E1 — Campaign stuck in learning
+    // FIX #2: E1 — Use `results` instead of `conversions`
     for (const camp of activeCampaigns) {
       const daysActive = camp.created_time
         ? Math.round((Date.now() - new Date(camp.created_time).getTime()) / (1000 * 60 * 60 * 24))
         : (camp.daily ? camp.daily.length : 14);
 
-      if (daysActive >= 14 && camp.conversions < 50) {
+      if (daysActive >= 14 && camp.results < 50) {
         addFlag({
           type: 'structure', priority: 'medium', icon: '🔁', category: 'estrutura',
           client: clientName, clientId, campaign: camp.name, adName: null,
-          title: `"${camp.name}" presa em aprendizado há ${daysActive} dias — ${camp.conversions} de 50 conversões necessárias`,
+          title: `"${camp.name}" presa em aprendizado há ${daysActive} dias — ${camp.results} de 50 resultados necessários`,
           diagnosis: 'A Meta precisa de ~50 conversões/semana por conjunto para sair da fase de aprendizado. Sem isso, o algoritmo não consegue otimizar a entrega.',
           metrics: [
             { label: 'Dias ativos', atual: String(daysActive), historico: '<14', variacao: `+${daysActive - 14} dias` },
-            { label: 'Conversões', atual: String(camp.conversions), historico: '50', variacao: `${camp.conversions - 50}` },
-            { label: 'Média semanal', atual: (camp.conversions / Math.max(1, daysActive / 7)).toFixed(1), historico: '>50', variacao: '—' },
+            { label: 'Resultados', atual: String(camp.results), historico: '50', variacao: `${camp.results - 50}` },
+            { label: 'Média semanal', atual: (camp.results / Math.max(1, daysActive / 7)).toFixed(1), historico: '>50', variacao: '—' },
           ],
           action: `Consolidar conjuntos de anúncios em "${camp.name}" — menos conjuntos com mais budget. Se ainda não funcionar, usar evento de conversão mais frequente no funil.`,
           impact: camp.spend * 0.2,
@@ -800,7 +876,7 @@ export function runIntelligenceEngine(clientsData: ClientInsightsData[]): {
           ],
           action: `Distribuir budget em pelo menos 2-3 campanhas com públicos ou objetivos diferentes.`,
           impact: totalSpend * 0.1,
-          fix: 'diversify',
+          fix: 'diversify_campaigns',
         });
       }
     }
@@ -860,9 +936,9 @@ export function runIntelligenceEngine(clientsData: ClientInsightsData[]): {
     const efficiencyScore = cprStable ? 20 : (cprRisingLess40 ? 10 : 0);
 
     const retargetingPts = hasRetargeting && totalClicks > 1000 ? 8 : 0;
-    const notConcentrated = !clientFlags.some(f => f.fix === 'diversify' && f.type === 'structure');
+    const notConcentrated = !clientFlags.some(f => f.fix === 'diversify_campaigns');
     const concentrationPts = notConcentrated ? 6 : 0;
-    const hasLearningOk = activeCampaigns.some(c => c.conversions >= 50);
+    const hasLearningOk = activeCampaigns.some(c => c.results >= 50);
     const learningPts = hasLearningOk ? 6 : 0;
     const structureScore = retargetingPts + concentrationPts + learningPts;
 
