@@ -29,6 +29,7 @@ const App = () => (
             <Route path="/login" element={<LoginPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/auth/meta/callback" element={<MetaCallbackPage />} />
+            <Route path="/auth/google-ads/callback" element={<GoogleAdsCallbackPage />} />
             <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/dashboard/:clientId" element={<DashboardPage />} />

@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.invite-admin]
 verify_jwt = false
+
+[functions.google-ads-oauth]
+verify_jwt = false
+
+[functions.google-ads-fetch-insights]
+verify_jwt = false
