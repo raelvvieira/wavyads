@@ -46,6 +46,11 @@ export default function AdminDashboard() {
   const [pendingAccounts, setPendingAccounts] = useState<any[] | null>(null);
   const [pendingSyncClientId, setPendingSyncClientId] = useState<string | null>(null);
 
+  // Google Ads sync state
+  const [syncingGoogleClientId, setSyncingGoogleClientId] = useState<string | null>(null);
+  const [pendingGoogleAccounts, setPendingGoogleAccounts] = useState<any[] | null>(null);
+  const [pendingGoogleSyncClientId, setPendingGoogleSyncClientId] = useState<string | null>(null);
+
   // Listen for popup message
   useEffect(() => {
     const handler = (event: MessageEvent) => {
