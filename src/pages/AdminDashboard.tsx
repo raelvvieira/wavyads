@@ -325,14 +325,12 @@ export default function AdminDashboard() {
                 className="cursor-pointer"
                 onClick={() => navigate(`/dashboard/${client.id}`)}
               >
-                <div className="flex items-start justify-between mb-4 pr-8">
-                  <div>
-                    <h3 className="font-semibold text-base">{client.name}</h3>
-                    {client.email && (
-                      <p className="text-xs text-muted-foreground mt-0.5">{client.email}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5">
+                <div className="mb-4 pr-16">
+                  <h3 className="font-semibold text-base">{client.name}</h3>
+                  {client.email && (
+                    <p className="text-xs text-muted-foreground mt-0.5">{client.email}</p>
+                  )}
+                  <div className="flex items-center gap-1.5 mt-1.5">
                     {client.is_synced ? (
                       <>
                         <CheckCircle className="h-4 w-4 text-accent" />
