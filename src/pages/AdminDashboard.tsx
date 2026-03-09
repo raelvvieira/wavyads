@@ -401,27 +401,50 @@ export default function AdminDashboard() {
                     {client.is_synced ? (
                       <>
                         <CheckCircle className="h-4 w-4 text-accent" />
-                        <span className="text-xs text-accent font-medium">Sincronizado</span>
+                        <span className="text-xs text-accent font-medium">Meta ✓</span>
                       </>
                     ) : (
                       <>
                         <XCircle className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">Não sincronizado</span>
+                        <span className="text-xs text-muted-foreground">Meta ✗</span>
+                      </>
+                    )}
+                    <span className="text-muted-foreground/30">|</span>
+                    {(client as any).google_ads_synced ? (
+                      <>
+                        <CheckCircle className="h-4 w-4 text-accent" />
+                        <span className="text-xs text-accent font-medium">Google ✓</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">Google ✗</span>
                       </>
                     )}
                   </div>
                 </div>
 
                 {client.meta_ad_account_name && (
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Conta: {client.meta_ad_account_name}
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Meta: {client.meta_ad_account_name}
+                  </p>
+                )}
+                {(client as any).google_ads_customer_name && (
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Google: {(client as any).google_ads_customer_name}
                   </p>
                 )}
 
                 {client.last_sync_at && (
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Calendar className="h-3 w-3" />
-                    Último sync: {new Date(client.last_sync_at).toLocaleDateString('pt-BR')}
+                    Meta sync: {new Date(client.last_sync_at).toLocaleDateString('pt-BR')}
+                  </div>
+                )}
+                {(client as any).google_ads_last_sync_at && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Calendar className="h-3 w-3" />
+                    Google sync: {new Date((client as any).google_ads_last_sync_at).toLocaleDateString('pt-BR')}
                   </div>
                 )}
               </div>
