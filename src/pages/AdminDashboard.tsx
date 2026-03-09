@@ -449,8 +449,8 @@ export default function AdminDashboard() {
                 )}
               </div>
 
-              {/* Re-sync button */}
-              <div className="mt-4 pt-3 border-t border-white/10">
+              {/* Sync buttons */}
+              <div className="mt-4 pt-3 border-t border-white/10 space-y-2">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -465,6 +465,21 @@ export default function AdminDashboard() {
                     <RefreshCw className="h-3.5 w-3.5" />
                   )}
                   {client.is_synced ? 'Resincronizar Meta' : 'Sincronizar Meta'}
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleGoogleSync(client.id);
+                  }}
+                  disabled={syncingGoogleClientId === client.id}
+                  className="btn-glass w-full rounded-xl py-2.5 text-xs font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {syncingGoogleClientId === client.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  )}
+                  {(client as any).google_ads_synced ? 'Resincronizar Google' : 'Sincronizar Google'}
                 </button>
               </div>
             </GlassCard>
