@@ -85,6 +85,24 @@ export default function AdminDashboard() {
     }
   }, [pendingAccounts, pendingSyncClientId, selectAccount]);
 
+  // Google Ads auto-select if single account
+  useEffect(() => {
+    if (pendingGoogleAccounts && pendingGoogleSyncClientId && pendingGoogleAccounts.length === 1) {
+      const acc = pendingGoogleAccounts[0];
+      selectGoogleAccount.mutate(
+        { clientId: pendingGoogleSyncClientId, customerId: acc.id, customerName: acc.name },
+        {
+          onSuccess: () => {
+            toast({ title: 'Sincronizado!', description: `Conta Google ${acc.name} vinculada.` });
+            setPendingGoogleAccounts(null);
+            setPendingGoogleSyncClientId(null);
+          },
+          onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
+        }
+      );
+    }
+  }, [pendingGoogleAccounts, pendingGoogleSyncClientId, selectGoogleAccount]);
+
   const handlePickAccount = (acc: any) => {
     if (!pendingSyncClientId) return;
     selectAccount.mutate(
