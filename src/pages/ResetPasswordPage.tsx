@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Zap, Lock } from 'lucide-react';
+import { Lock } from 'lucide-react';
+import wavyLogo from '@/assets/wavy-logo.png';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -54,10 +55,8 @@ export default function ResetPasswordPage() {
       <div className="relative z-10 w-full max-w-md px-6 animate-fade-in">
         <div className="glass rounded-2xl p-8 space-y-8">
           <div className="flex flex-col items-center gap-3">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl btn-accent accent-glow">
-              <Zap className="h-7 w-7" />
-            </div>
-            <h1 className="text-2xl font-semibold tracking-tight">Criar sua senha</h1>
+            <img src={wavyLogo} alt="WAVY" className="h-14 w-14 rounded-2xl object-contain" />
+            <h1 className="text-2xl font-semibold tracking-tight">WAVY Dash</h1>
             <p className="text-sm text-muted-foreground text-center">
               Defina uma senha para acessar seu dashboard
             </p>
