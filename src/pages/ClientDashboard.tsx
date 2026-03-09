@@ -469,18 +469,28 @@ export default function ClientDashboard() {
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/10 mx-auto mb-6">
               <TrendingUp className="h-8 w-8 text-accent" />
             </div>
-            <h2 className="text-xl font-semibold mb-2">Sincronize com Meta Ads</h2>
+            <h2 className="text-xl font-semibold mb-2">
+              {platform === 'meta' ? 'Sincronize com Meta Ads' : 'Sincronize com Google Ads'}
+            </h2>
             <p className="text-sm text-muted-foreground mb-6">
-              Conecte a conta de anúncios do Facebook para visualizar dados reais de campanhas.
+              {platform === 'meta'
+                ? 'Conecte a conta de anúncios do Facebook para visualizar dados reais de campanhas.'
+                : 'Conecte a conta do Google Ads para visualizar dados reais de campanhas.'}
             </p>
-            <button
-              onClick={handleSync}
-              disabled={getAuthUrl.isPending}
-              className="btn-accent rounded-xl px-6 py-3 text-sm font-semibold flex items-center gap-2 mx-auto"
-            >
-              <RefreshCw className={cn('h-4 w-4', getAuthUrl.isPending && 'animate-spin')} />
-              Sync Facebook Ads
-            </button>
+            {platform === 'meta' ? (
+              <button
+                onClick={handleSync}
+                disabled={getAuthUrl.isPending}
+                className="btn-accent rounded-xl px-6 py-3 text-sm font-semibold flex items-center gap-2 mx-auto"
+              >
+                <RefreshCw className={cn('h-4 w-4', getAuthUrl.isPending && 'animate-spin')} />
+                Sync Meta Ads
+              </button>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Sincronize pelo painel de clientes do admin.
+              </p>
+            )}
           </GlassCard>
         </div>
       ) : !isSynced && !isAdmin ? (
@@ -489,7 +499,7 @@ export default function ClientDashboard() {
             <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h2 className="text-xl font-semibold mb-2">Aguardando sincronização</h2>
             <p className="text-sm text-muted-foreground">
-              Seu dashboard será exibido assim que o administrador sincronizar sua conta com Meta Ads.
+              Seu dashboard será exibido assim que o administrador sincronizar sua conta com {platform === 'meta' ? 'Meta Ads' : 'Google Ads'}.
             </p>
           </GlassCard>
         </div>
