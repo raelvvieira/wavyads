@@ -55,40 +55,38 @@ export default function AdminDashboard() {
     return () => window.removeEventListener('message', handler);
   }, []);
 
-  // Auto-select if single account
+  // Auto-select if single account; show picker if multiple
   useEffect(() => {
-    if (pendingAccounts && pendingSyncClientId) {
-      if (pendingAccounts.length === 1) {
-        const acc = pendingAccounts[0];
-        selectAccount.mutate(
-          { clientId: pendingSyncClientId, adAccountId: acc.id, adAccountName: acc.name },
-          {
-            onSuccess: () => {
-              toast({ title: 'Sincronizado!', description: `Conta ${acc.name} vinculada.` });
-              setPendingAccounts(null);
-              setPendingSyncClientId(null);
-            },
-            onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
-          }
-        );
-      }
-      // If multiple accounts, for now just pick the first (could show a picker)
-      if (pendingAccounts.length > 1) {
-        const acc = pendingAccounts[0];
-        selectAccount.mutate(
-          { clientId: pendingSyncClientId, adAccountId: acc.id, adAccountName: acc.name },
-          {
-            onSuccess: () => {
-              toast({ title: 'Sincronizado!', description: `Conta ${acc.name} vinculada.` });
-              setPendingAccounts(null);
-              setPendingSyncClientId(null);
-            },
-            onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
-          }
-        );
-      }
+    if (pendingAccounts && pendingSyncClientId && pendingAccounts.length === 1) {
+      const acc = pendingAccounts[0];
+      selectAccount.mutate(
+        { clientId: pendingSyncClientId, adAccountId: acc.id, adAccountName: acc.name },
+        {
+          onSuccess: () => {
+            toast({ title: 'Sincronizado!', description: `Conta ${acc.name} vinculada.` });
+            setPendingAccounts(null);
+            setPendingSyncClientId(null);
+          },
+          onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
+        }
+      );
     }
   }, [pendingAccounts, pendingSyncClientId, selectAccount]);
+
+  const handlePickAccount = (acc: any) => {
+    if (!pendingSyncClientId) return;
+    selectAccount.mutate(
+      { clientId: pendingSyncClientId, adAccountId: acc.id, adAccountName: acc.name },
+      {
+        onSuccess: () => {
+          toast({ title: 'Sincronizado!', description: `Conta ${acc.name} vinculada.` });
+          setPendingAccounts(null);
+          setPendingSyncClientId(null);
+        },
+        onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
+      }
+    );
+  };
 
   const handleSync = useCallback((clientId: string) => {
     setSyncingClientId(clientId);
