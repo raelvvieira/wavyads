@@ -85,7 +85,17 @@ export default function ClientDashboard() {
   const [customDateRange, setCustomDateRange] = useState<{ from?: Date; to?: Date }>({});
   const [datePickerOpen, setDatePickerOpen] = useState(false);
 
-  const isSynced = client?.is_synced ?? false;
+  const isMetaSynced = client?.is_synced ?? false;
+  const isGoogleSynced = (client as any)?.google_ads_synced ?? false;
+
+  // Platform toggle — default to whichever is synced
+  const [platform, setPlatform] = useState<Platform>('meta');
+  useEffect(() => {
+    if (isMetaSynced && !isGoogleSynced) setPlatform('meta');
+    else if (!isMetaSynced && isGoogleSynced) setPlatform('google');
+  }, [isMetaSynced, isGoogleSynced]);
+
+  const isSynced = platform === 'meta' ? isMetaSynced : isGoogleSynced;
 
   // Compute the time range based on preset or custom
   const timeRange: TimeRange | undefined = useMemo(() => {
@@ -101,9 +111,22 @@ export default function ClientDashboard() {
     return computeTimeRange(selectedPreset);
   }, [selectedPreset, customDateRange]);
 
-  const { data: campaigns, isLoading: campaignsLoading } = useMetaCampaigns(clientId, isSynced, timeRange);
-  const { data: insights, isLoading: insightsLoading } = useMetaInsights(clientId, isSynced, timeRange);
-  const { data: previousInsights } = useMetaInsightsPrevious(clientId, isSynced, timeRange);
+  // Meta hooks
+  const { data: metaCampaigns, isLoading: metaCampaignsLoading } = useMetaCampaigns(clientId, platform === 'meta' && isMetaSynced, timeRange);
+  const { data: metaInsights, isLoading: metaInsightsLoading } = useMetaInsights(clientId, platform === 'meta' && isMetaSynced, timeRange);
+  const { data: metaPreviousInsights } = useMetaInsightsPrevious(clientId, platform === 'meta' && isMetaSynced, timeRange);
+
+  // Google Ads hooks
+  const { data: googleCampaigns, isLoading: googleCampaignsLoading } = useGoogleAdsCampaigns(clientId, platform === 'google' && isGoogleSynced, timeRange);
+  const { data: googleInsights, isLoading: googleInsightsLoading } = useGoogleAdsInsights(clientId, platform === 'google' && isGoogleSynced, timeRange);
+  const { data: googlePreviousInsights } = useGoogleAdsInsightsPrevious(clientId, platform === 'google' && isGoogleSynced, timeRange);
+
+  // Active data based on platform
+  const campaigns = platform === 'meta' ? metaCampaigns : googleCampaigns;
+  const campaignsLoading = platform === 'meta' ? metaCampaignsLoading : googleCampaignsLoading;
+  const insights = platform === 'meta' ? metaInsights : googleInsights;
+  const insightsLoading = platform === 'meta' ? metaInsightsLoading : googleInsightsLoading;
+  const previousInsights = platform === 'meta' ? metaPreviousInsights : googlePreviousInsights;
 
   const getAuthUrl = useGetMetaAuthUrl();
   const selectAccount = useSelectMetaAccount();
