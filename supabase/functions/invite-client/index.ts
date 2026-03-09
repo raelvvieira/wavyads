@@ -230,7 +230,7 @@ Deno.serve(async (req) => {
         Authorization: `Bearer ${resendApiKey}`,
       },
       body: JSON.stringify({
-        from: "Wavy Dashboard <onboarding@resend.dev>",
+        from: "Wavy Dashboard <contato@wavydigital.com.br>",
         to: [email],
         subject: "BEM-VINDO AO WAVY DASHBOARD!",
         html: emailHtml,
