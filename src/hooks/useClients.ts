@@ -39,7 +39,7 @@ export function useClient(clientId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clients')
-        .select('*')
+        .select('id,name,email,meta_ad_account_id,meta_ad_account_name,is_synced,last_sync_at,token_expires_at,google_ads_synced,google_ads_customer_id,google_ads_customer_name,google_ads_last_sync_at,google_ads_token_expires_at,created_at,user_id')
         .eq('id', clientId!)
         .maybeSingle();
       if (error) throw error;
