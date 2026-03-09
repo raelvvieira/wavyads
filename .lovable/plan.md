@@ -1,114 +1,107 @@
 
 
-# Conectar Facebook via OAuth (Login com Facebook)
+# Plan: Rebuild Insights Page — Deep Analysis Engine
 
-## Resumo
+This is a major rebuild involving 4 files: the edge function (to fetch ad-level + video data), the intelligence engine (complete rewrite with 5 layers), the data fetching hook (to fetch ad-level data), and the Insights page (single-page layout with filters).
 
-Substituir o fluxo atual (colar token manualmente) por um botao "Conectar com Facebook" que abre a tela de login do Facebook, permite escolher o Business Manager e contas de anuncio, e salva o token automaticamente.
+---
 
-## Como vai funcionar para o usuario
+## Current State
 
-1. Na aba Integracao, clica em **"Conectar com Facebook"**
-2. Abre popup do Facebook para login e autorizacao
-3. Escolhe qual Business Manager e conta de anuncios compartilhar
-4. Volta ao dashboard ja conectado -- sem colar nada manualmente
+- **Edge function** fetches campaign-level data only. No ad-level data. No video metrics (3s views, thruplay). No `created_time` field.
+- **Intelligence engine** has ~5 tracking rules + ~5 performance rules + ~4 structure rules. No creative/ad-level analysis. No funnel analysis. No metrics crossover object in flags.
+- **Insights page** uses 3 tabs (Rastreio, Performance, Clientes). Flags have `description`, `action`, `impact`, `metric` as strings.
+- **Data hook** fetches campaigns + account insights for current/previous 7d + 21d daily.
 
-## Pre-requisitos
+---
 
-Voce precisa ter um **Facebook App** em [developers.facebook.com](https://developers.facebook.com) com:
-- Produto **Facebook Login for Business** ativado
-- Permissoes: `ads_read`, `business_management`
-- URL de redirecionamento configurada para apontar ao seu app
+## Changes
 
-Eu vou pedir o **App ID** e o **App Secret** para armazenar como segredos no backend.
+### 1. Edge Function — `supabase/functions/meta-fetch-insights/index.ts`
 
-## Etapas da implementacao
+Add new action `"ads"` that fetches ad-level data from Meta Graph API:
 
-### 1. Armazenar credenciais do Facebook App
-- Salvar `FACEBOOK_APP_ID` e `FACEBOOK_APP_SECRET` como segredos no backend
-- O App Secret nunca sera exposto no frontend
-
-### 2. Nova Edge Function: `facebook-oauth`
-- **Acao `auth-url`**: Gera a URL de autorizacao do Facebook com as permissoes necessarias (`ads_read`, `business_management`) e o redirect URI
-- **Acao `callback`**: Recebe o `code` retornado pelo Facebook, troca por um access token de longa duracao (60 dias) usando o App Secret, e salva na tabela `facebook_credentials`
-- **Acao `accounts`**: Apos autenticacao, lista as contas de anuncio disponiveis para o usuario escolher
-
-### 3. Atualizar a tabela `facebook_credentials`
-- Adicionar coluna `ad_account_name` (para exibir o nome da conta conectada)
-- Adicionar coluna `token_expires_at` (para controlar expiracao do token)
-
-### 4. Redesenhar a aba Integracao na tela de Configuracoes
-- **Estado desconectado**: Exibir botao "Conectar com Facebook" com icone do Meta
-- **Apos login no Facebook**: Exibir lista de contas de anuncio disponiveis para o usuario selecionar (similar a segunda tela de referencia)
-- **Estado conectado**: Exibir card com o nome da conta conectada, status de conexao e botao "Desconectar"
-- Remover os campos manuais de Access Token e Ad Account ID
-
-### 5. Fluxo de callback no frontend
-- Criar rota `/auth/facebook/callback` que recebe o `code` da URL
-- Chamar a edge function para trocar o code pelo token
-- Redirecionar de volta para a pagina de configuracoes
-
-## Detalhes tecnicos
-
-### Fluxo OAuth
-
-```text
-Frontend                    Facebook                   Edge Function
-   |                           |                           |
-   |-- Clica "Conectar" ------>|                           |
-   |                           |                           |
-   |   GET facebook-oauth      |                           |
-   |   action=auth-url --------|-------------------------->|
-   |   <-- retorna URL --------|---------------------------|
-   |                           |                           |
-   |-- Redireciona p/ Facebook |                           |
-   |                           |                           |
-   |<-- Callback com code -----|                           |
-   |                           |                           |
-   |   POST facebook-oauth     |                           |
-   |   action=callback --------|-------------------------->|
-   |                           |   Troca code por token    |
-   |                           |<--------------------------|
-   |                           |   Salva no banco          |
-   |                           |-------------------------->|
-   |<-- Sucesso! --------------|---------------------------|
-   |                           |                           |
-   |   GET facebook-oauth      |                           |
-   |   action=accounts --------|-------------------------->|
-   |                           |   Lista ad accounts       |
-   |<-- Lista de contas -------|---------------------------|
-   |                           |                           |
-   |-- Seleciona conta ------->|                           |
-   |   POST facebook-oauth     |                           |
-   |   action=select-account --|-------------------------->|
-   |                           |   Salva ad_account_id     |
-   |<-- Conectado! ------------|---------------------------|
+```
+GET /{adAccountId}/ads?fields=name,status,campaign_id,creative{id,name},
+  insights.{dateParam}{spend,impressions,reach,clicks,actions,cost_per_action_type,
+  ctr,cpc,cpm,frequency,video_3_sec_watched_actions,video_thruplay_watched_actions}
 ```
 
-### Edge Function: `facebook-oauth`
+Also extend the `"campaigns"` action to include `created_time` in the fields.
 
-Acoes:
-- `auth-url`: Retorna URL do Facebook OAuth com scopes e redirect_uri
-- `callback`: Recebe code, troca por token via `oauth/access_token`, gera token de longa duracao via endpoint de troca, salva no banco
-- `accounts`: Chama `me/adaccounts?fields=name,account_id,account_status` para listar contas disponiveis
-- `select-account`: Salva a conta selecionada na tabela `facebook_credentials` e marca como valida
+Add `landing_page_view` and funnel events (`add_to_cart`, `initiate_checkout`) extraction to existing helpers.
 
-### Migracao do banco
+### 2. Data Fetching Hook — `src/hooks/useInsightsData.ts`
 
-```text
-ALTER TABLE facebook_credentials
-  ADD COLUMN ad_account_name text,
-  ADD COLUMN token_expires_at timestamptz;
+Add parallel fetch for `ads` action (current period) per client. Pass ad-level data into the engine via extended `ClientInsightsData` interface.
+
+### 3. Intelligence Engine — `src/lib/intelligenceEngine.ts`
+
+Complete rewrite. New flag interface with `metrics` object (not string), `diagnosis`, `adName`, `impact` as number (R$). New structure:
+
+```typescript
+interface IntelligenceFlag {
+  id: string;
+  type: 'tracking' | 'performance' | 'creative' | 'structure' | 'opportunity';
+  priority: 'critical' | 'high' | 'medium' | 'low';
+  icon: string;
+  category: 'rastreio' | 'funil' | 'custo' | 'criativo' | 'estrutura' | 'escala';
+  client: string;
+  clientId: string;
+  campaign: string;
+  adName: string | null;
+  title: string;
+  diagnosis: string;
+  metrics: { label: string; atual: string; historico: string; variacao: string }[];
+  action: string;
+  impact: number; // R$ value
+  fix: string;
+}
 ```
 
-### Nova rota no frontend
+Implement all 5 layers as specified:
+- **Layer 1 — Tracking** (R1-R5): Spend with zero results, clicks incompatible with zero conversion, results zeroed after history, impossible ROAS, messaging without conversations
+- **Layer 2 — Funnel** (F1-F5): CTR high + low conversion, CTR low + high conversion, low landing page rate, cart→checkout abandonment, checkout→purchase abandonment
+- **Layer 3 — Performance** (P1-P5): CPR rising with cause identification (frequency/CPM/CTR crossover), ROAS falling, CPM rising without results, spend up without proportional results, frequency + CPR rising
+- **Layer 4 — Creative** (C1-C6): Ad draining budget, winning ad underinvested, low hook rate, low hold rate with high hook, progressive creative fatigue, excessive concentration in one ad
+- **Layer 5 — Structure & Opportunity** (E1-E4): Learning phase stuck, no retargeting with real volume, budget concentration, confirmed scale opportunity
 
-```text
-/auth/facebook/callback  -- Recebe code do OAuth e finaliza o fluxo
-```
+Sorting: priority order, then by descending `impact` (R$) within same priority.
 
-### Segredos necessarios
+Deduplication: Only show the most financially impactful flag of each type per client.
 
-- `FACEBOOK_APP_ID` -- ID do seu Facebook App
-- `FACEBOOK_APP_SECRET` -- Secret do seu Facebook App
+Health score calculation uses the specified formula with 4 pillars (tracking 35, results 25, efficiency 20, structure 20).
+
+### 4. Insights Page — `src/pages/InsightsPage.tsx`
+
+Complete rewrite. Single page, no tabs:
+
+**Section 1 — Insights Cards**
+- Horizontal filter bar: Priority (Todos/Crítico/Urgente/Médio/Oportunidade), Type (Todos/Rastreio/Performance/Criativo/Estrutura), Client dropdown
+- Filters work in conjunction (AND)
+- Card closed: colored left border by priority, type badge with type color, priority badge, client name, title with real numbers, campaign/ad name
+- Card expanded: diagnosis block, metrics table (atual vs historico side by side), recommended action, impact in R$, fix badge
+- ADMIN ONLY badge at page top
+
+**Section 2 — Client Health Scores**
+- Cards sorted by lowest score first, toggle to sort by spend
+- Closed: name, health bar, problem count badges, total spend
+- Expanded: score breakdown (4 categories), campaign list with status dots, CPR/ROAS colored by trend, frequency, flag icons per campaign
+
+**Design tokens:**
+- Priority colors: critical `#FF2222`, high `#FF6B2B`, medium `#F59E0B`, low `#1ACD8A`
+- Type colors: rastreio `#FF2222`, performance `#FF6B2B`, criativo `#A855F7`, estrutura `#3B82F6`, oportunidade `#1ACD8A`
+- Left border on closed cards, full border + shadow on expanded
+- `font-mono` for numeric values
+
+---
+
+## File Summary
+
+| File | Action |
+|------|--------|
+| `supabase/functions/meta-fetch-insights/index.ts` | Add `ads` action, extend `campaigns` with `created_time`, add funnel event extraction |
+| `src/lib/intelligenceEngine.ts` | Complete rewrite — 5 layers, new flag interface, ad-level analysis |
+| `src/hooks/useInsightsData.ts` | Add ads data fetching, extend `ClientInsightsData` |
+| `src/pages/InsightsPage.tsx` | Complete rewrite — single page, filters, new card design |
 
