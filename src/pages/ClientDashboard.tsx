@@ -29,6 +29,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useClients } from '@/hooks/useClients';
 
 type PresetKey = 'today' | 'yesterday' | 'last_7d' | 'last_14d' | 'last_30d' | 'this_month' | 'last_month' | 'custom';
+type Platform = 'meta' | 'google';
 
 const PRESETS: { label: string; value: PresetKey }[] = [
   { label: 'Hoje', value: 'today' },
