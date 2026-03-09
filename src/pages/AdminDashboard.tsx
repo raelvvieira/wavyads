@@ -155,6 +155,28 @@ export default function AdminDashboard() {
     );
   }, [getAuthUrl]);
 
+  const handleGoogleSync = useCallback((clientId: string) => {
+    setSyncingGoogleClientId(clientId);
+    setPendingGoogleSyncClientId(clientId);
+    const redirectUri = `${window.location.origin}/auth/google-ads/callback`;
+    getGoogleAuthUrl.mutate(
+      { clientId, redirectUri },
+      {
+        onSuccess: (url) => {
+          const popup = window.open(url, 'google-ads-oauth', 'width=600,height=700,scrollbars=yes');
+          if (!popup) {
+            toast({ title: 'Erro', description: 'Popup bloqueado. Permita popups para este site.', variant: 'destructive' });
+            setSyncingGoogleClientId(null);
+          }
+        },
+        onError: (err: any) => {
+          toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+          setSyncingGoogleClientId(null);
+        },
+      }
+    );
+  }, [getGoogleAuthUrl]);
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim() || !newEmail.trim()) return;
