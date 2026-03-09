@@ -4,6 +4,7 @@ import { Plus, CheckCircle, XCircle, Loader2, Users, Calendar, Pencil, RefreshCw
 import { GlassCard } from '@/components/GlassCard';
 import { useClients, useCreateClient, useUpdateClient, useDeleteClient } from '@/hooks/useClients';
 import { useGetMetaAuthUrl, useSelectMetaAccount } from '@/hooks/useMetaOAuth';
+import { useGetGoogleAdsAuthUrl, useSelectGoogleAdsAccount } from '@/hooks/useGoogleAdsOAuth';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
