@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Zap, Lock } from 'lucide-react';
+import { Lock } from 'lucide-react';
+import wavyLogo from '@/assets/wavy-logo.png';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
