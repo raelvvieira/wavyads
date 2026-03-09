@@ -244,7 +244,7 @@ Deno.serve(async (req) => {
         ? `time_range({"since":"${timeRange.since}","until":"${timeRange.until}"})`
         : `date_preset(${datePreset})`;
 
-      const fields = `name,status,campaign_id,campaign{name},insights.${insightsDateParam}{spend,impressions,reach,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency,video_3_sec_watched_actions,video_thruplay_watched_actions}`;
+      const fields = `name,status,campaign_id,campaign{name},insights.${insightsDateParam}{spend,impressions,reach,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency}`;
       const res = await fetch(
         `${GRAPH_API}/${adAccountId}/ads?fields=${fields}&limit=200&access_token=${accessToken}`
       );
@@ -263,8 +263,9 @@ Deno.serve(async (req) => {
         const results = extractResults(ins.actions);
         const cost_per_result = extractCostPerResult(ins.cost_per_action_type);
         const result_type = extractResultType(ins.actions);
-        const video3s = extractVideoMetric(ins.video_3_sec_watched_actions, "video_view");
-        const thruplay = extractVideoMetric(ins.video_thruplay_watched_actions, "video_view");
+        // Extract video metrics from actions array (video_view = 3s views)
+        const video3s = extractAction(ins.actions, ["video_view"]);
+        const thruplay = extractAction(ins.actions, ["video_thruplay"]);
 
         return {
           id: ad.id,
