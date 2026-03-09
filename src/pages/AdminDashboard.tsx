@@ -58,6 +58,10 @@ export default function AdminDashboard() {
         setPendingAccounts(event.data.accounts);
         setSyncingClientId(null);
       }
+      if (event.data?.type === 'GOOGLE_ADS_OAUTH_CALLBACK' && event.data?.accounts) {
+        setPendingGoogleAccounts(event.data.accounts);
+        setSyncingGoogleClientId(null);
+      }
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
