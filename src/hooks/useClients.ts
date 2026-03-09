@@ -8,10 +8,14 @@ export interface ClientRecord {
   email: string | null;
   meta_ad_account_id: string | null;
   meta_ad_account_name: string | null;
-  meta_access_token: string | null;
   token_expires_at: string | null;
   is_synced: boolean;
   last_sync_at: string | null;
+  google_ads_synced: boolean;
+  google_ads_customer_id: string | null;
+  google_ads_customer_name: string | null;
+  google_ads_last_sync_at: string | null;
+  google_ads_token_expires_at: string | null;
   user_id: string | null;
   created_at: string;
 }
