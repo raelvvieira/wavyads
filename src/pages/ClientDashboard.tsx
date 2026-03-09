@@ -19,7 +19,9 @@ import { Button } from '@/components/ui/button';
 import { useClient } from '@/hooks/useClients';
 import { useRole } from '@/hooks/useRole';
 import { useGetMetaAuthUrl, useSelectMetaAccount } from '@/hooks/useMetaOAuth';
+import { useGetGoogleAdsAuthUrl, useSelectGoogleAdsAccount } from '@/hooks/useGoogleAdsOAuth';
 import { useMetaCampaigns, useMetaInsights, useMetaInsightsPrevious, type DailyMetric, type TimeRange } from '@/hooks/useMetaInsights';
+import { useGoogleAdsCampaigns, useGoogleAdsInsights, useGoogleAdsInsightsPrevious } from '@/hooks/useGoogleAdsInsights';
 import { generateDailySpend, formatCurrency, formatNumber, mockCampaigns } from '@/data/mock';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -27,6 +29,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useClients } from '@/hooks/useClients';
 
 type PresetKey = 'today' | 'yesterday' | 'last_7d' | 'last_14d' | 'last_30d' | 'this_month' | 'last_month' | 'custom';
+type Platform = 'meta' | 'google';
 
 const PRESETS: { label: string; value: PresetKey }[] = [
   { label: 'Hoje', value: 'today' },
@@ -82,7 +85,17 @@ export default function ClientDashboard() {
   const [customDateRange, setCustomDateRange] = useState<{ from?: Date; to?: Date }>({});
   const [datePickerOpen, setDatePickerOpen] = useState(false);
 
-  const isSynced = client?.is_synced ?? false;
+  const isMetaSynced = client?.is_synced ?? false;
+  const isGoogleSynced = (client as any)?.google_ads_synced ?? false;
+
+  // Platform toggle — default to whichever is synced
+  const [platform, setPlatform] = useState<Platform>('meta');
+  useEffect(() => {
+    if (isMetaSynced && !isGoogleSynced) setPlatform('meta');
+    else if (!isMetaSynced && isGoogleSynced) setPlatform('google');
+  }, [isMetaSynced, isGoogleSynced]);
+
+  const isSynced = platform === 'meta' ? isMetaSynced : isGoogleSynced;
 
   // Compute the time range based on preset or custom
   const timeRange: TimeRange | undefined = useMemo(() => {
@@ -98,9 +111,22 @@ export default function ClientDashboard() {
     return computeTimeRange(selectedPreset);
   }, [selectedPreset, customDateRange]);
 
-  const { data: campaigns, isLoading: campaignsLoading } = useMetaCampaigns(clientId, isSynced, timeRange);
-  const { data: insights, isLoading: insightsLoading } = useMetaInsights(clientId, isSynced, timeRange);
-  const { data: previousInsights } = useMetaInsightsPrevious(clientId, isSynced, timeRange);
+  // Meta hooks
+  const { data: metaCampaigns, isLoading: metaCampaignsLoading } = useMetaCampaigns(clientId, platform === 'meta' && isMetaSynced, timeRange);
+  const { data: metaInsights, isLoading: metaInsightsLoading } = useMetaInsights(clientId, platform === 'meta' && isMetaSynced, timeRange);
+  const { data: metaPreviousInsights } = useMetaInsightsPrevious(clientId, platform === 'meta' && isMetaSynced, timeRange);
+
+  // Google Ads hooks
+  const { data: googleCampaigns, isLoading: googleCampaignsLoading } = useGoogleAdsCampaigns(clientId, platform === 'google' && isGoogleSynced, timeRange);
+  const { data: googleInsights, isLoading: googleInsightsLoading } = useGoogleAdsInsights(clientId, platform === 'google' && isGoogleSynced, timeRange);
+  const { data: googlePreviousInsights } = useGoogleAdsInsightsPrevious(clientId, platform === 'google' && isGoogleSynced, timeRange);
+
+  // Active data based on platform
+  const campaigns = platform === 'meta' ? metaCampaigns : googleCampaigns;
+  const campaignsLoading = platform === 'meta' ? metaCampaignsLoading : googleCampaignsLoading;
+  const insights = platform === 'meta' ? metaInsights : googleInsights;
+  const insightsLoading = platform === 'meta' ? metaInsightsLoading : googleInsightsLoading;
+  const previousInsights = platform === 'meta' ? metaPreviousInsights : googlePreviousInsights;
 
   const getAuthUrl = useGetMetaAuthUrl();
   const selectAccount = useSelectMetaAccount();
@@ -336,6 +362,30 @@ export default function ClientDashboard() {
           </div>
         </div>
 
+        {/* Platform Toggle */}
+        {(isMetaSynced || isGoogleSynced) && (
+          <div className="flex items-center gap-1 glass rounded-xl p-1">
+            <button
+              onClick={() => setPlatform('meta')}
+              className={cn(
+                'rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-300',
+                platform === 'meta' ? 'btn-accent' : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              Meta Ads
+            </button>
+            <button
+              onClick={() => setPlatform('google')}
+              className={cn(
+                'rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-300',
+                platform === 'google' ? 'btn-accent' : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              Google Ads
+            </button>
+          </div>
+        )}
+
         <div className="flex items-center gap-1.5 ml-auto flex-wrap">
           {PRESETS.map((p) => (
             p.value !== 'custom' ? (
@@ -419,18 +469,28 @@ export default function ClientDashboard() {
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/10 mx-auto mb-6">
               <TrendingUp className="h-8 w-8 text-accent" />
             </div>
-            <h2 className="text-xl font-semibold mb-2">Sincronize com Meta Ads</h2>
+            <h2 className="text-xl font-semibold mb-2">
+              {platform === 'meta' ? 'Sincronize com Meta Ads' : 'Sincronize com Google Ads'}
+            </h2>
             <p className="text-sm text-muted-foreground mb-6">
-              Conecte a conta de anúncios do Facebook para visualizar dados reais de campanhas.
+              {platform === 'meta'
+                ? 'Conecte a conta de anúncios do Facebook para visualizar dados reais de campanhas.'
+                : 'Conecte a conta do Google Ads para visualizar dados reais de campanhas.'}
             </p>
-            <button
-              onClick={handleSync}
-              disabled={getAuthUrl.isPending}
-              className="btn-accent rounded-xl px-6 py-3 text-sm font-semibold flex items-center gap-2 mx-auto"
-            >
-              <RefreshCw className={cn('h-4 w-4', getAuthUrl.isPending && 'animate-spin')} />
-              Sync Facebook Ads
-            </button>
+            {platform === 'meta' ? (
+              <button
+                onClick={handleSync}
+                disabled={getAuthUrl.isPending}
+                className="btn-accent rounded-xl px-6 py-3 text-sm font-semibold flex items-center gap-2 mx-auto"
+              >
+                <RefreshCw className={cn('h-4 w-4', getAuthUrl.isPending && 'animate-spin')} />
+                Sync Meta Ads
+              </button>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Sincronize pelo painel de clientes do admin.
+              </p>
+            )}
           </GlassCard>
         </div>
       ) : !isSynced && !isAdmin ? (
@@ -439,7 +499,7 @@ export default function ClientDashboard() {
             <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h2 className="text-xl font-semibold mb-2">Aguardando sincronização</h2>
             <p className="text-sm text-muted-foreground">
-              Seu dashboard será exibido assim que o administrador sincronizar sua conta com Meta Ads.
+              Seu dashboard será exibido assim que o administrador sincronizar sua conta com {platform === 'meta' ? 'Meta Ads' : 'Google Ads'}.
             </p>
           </GlassCard>
         </div>

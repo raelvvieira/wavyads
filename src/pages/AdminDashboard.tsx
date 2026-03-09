@@ -4,6 +4,7 @@ import { Plus, CheckCircle, XCircle, Loader2, Users, Calendar, Pencil, RefreshCw
 import { GlassCard } from '@/components/GlassCard';
 import { useClients, useCreateClient, useUpdateClient, useDeleteClient } from '@/hooks/useClients';
 import { useGetMetaAuthUrl, useSelectMetaAccount } from '@/hooks/useMetaOAuth';
+import { useGetGoogleAdsAuthUrl, useSelectGoogleAdsAccount } from '@/hooks/useGoogleAdsOAuth';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -22,6 +23,8 @@ export default function AdminDashboard() {
   const deleteClient = useDeleteClient();
   const getAuthUrl = useGetMetaAuthUrl();
   const selectAccount = useSelectMetaAccount();
+  const getGoogleAuthUrl = useGetGoogleAdsAuthUrl();
+  const selectGoogleAccount = useSelectGoogleAdsAccount();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newName, setNewName] = useState('');
@@ -43,12 +46,21 @@ export default function AdminDashboard() {
   const [pendingAccounts, setPendingAccounts] = useState<any[] | null>(null);
   const [pendingSyncClientId, setPendingSyncClientId] = useState<string | null>(null);
 
+  // Google Ads sync state
+  const [syncingGoogleClientId, setSyncingGoogleClientId] = useState<string | null>(null);
+  const [pendingGoogleAccounts, setPendingGoogleAccounts] = useState<any[] | null>(null);
+  const [pendingGoogleSyncClientId, setPendingGoogleSyncClientId] = useState<string | null>(null);
+
   // Listen for popup message
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       if (event.data?.type === 'META_OAUTH_CALLBACK' && event.data?.accounts) {
         setPendingAccounts(event.data.accounts);
         setSyncingClientId(null);
+      }
+      if (event.data?.type === 'GOOGLE_ADS_OAUTH_CALLBACK' && event.data?.accounts) {
+        setPendingGoogleAccounts(event.data.accounts);
+        setSyncingGoogleClientId(null);
       }
     };
     window.addEventListener('message', handler);
@@ -73,6 +85,24 @@ export default function AdminDashboard() {
     }
   }, [pendingAccounts, pendingSyncClientId, selectAccount]);
 
+  // Google Ads auto-select if single account
+  useEffect(() => {
+    if (pendingGoogleAccounts && pendingGoogleSyncClientId && pendingGoogleAccounts.length === 1) {
+      const acc = pendingGoogleAccounts[0];
+      selectGoogleAccount.mutate(
+        { clientId: pendingGoogleSyncClientId, customerId: acc.id, customerName: acc.name },
+        {
+          onSuccess: () => {
+            toast({ title: 'Sincronizado!', description: `Conta Google ${acc.name} vinculada.` });
+            setPendingGoogleAccounts(null);
+            setPendingGoogleSyncClientId(null);
+          },
+          onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
+        }
+      );
+    }
+  }, [pendingGoogleAccounts, pendingGoogleSyncClientId, selectGoogleAccount]);
+
   const handlePickAccount = (acc: any) => {
     if (!pendingSyncClientId) return;
     selectAccount.mutate(
@@ -82,6 +112,21 @@ export default function AdminDashboard() {
           toast({ title: 'Sincronizado!', description: `Conta ${acc.name} vinculada.` });
           setPendingAccounts(null);
           setPendingSyncClientId(null);
+        },
+        onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
+      }
+    );
+  };
+
+  const handlePickGoogleAccount = (acc: any) => {
+    if (!pendingGoogleSyncClientId) return;
+    selectGoogleAccount.mutate(
+      { clientId: pendingGoogleSyncClientId, customerId: acc.id, customerName: acc.name },
+      {
+        onSuccess: () => {
+          toast({ title: 'Sincronizado!', description: `Conta Google ${acc.name} vinculada.` });
+          setPendingGoogleAccounts(null);
+          setPendingGoogleSyncClientId(null);
         },
         onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
       }
@@ -109,6 +154,28 @@ export default function AdminDashboard() {
       }
     );
   }, [getAuthUrl]);
+
+  const handleGoogleSync = useCallback((clientId: string) => {
+    setSyncingGoogleClientId(clientId);
+    setPendingGoogleSyncClientId(clientId);
+    const redirectUri = `${window.location.origin}/auth/google-ads/callback`;
+    getGoogleAuthUrl.mutate(
+      { clientId, redirectUri },
+      {
+        onSuccess: (url) => {
+          const popup = window.open(url, 'google-ads-oauth', 'width=600,height=700,scrollbars=yes');
+          if (!popup) {
+            toast({ title: 'Erro', description: 'Popup bloqueado. Permita popups para este site.', variant: 'destructive' });
+            setSyncingGoogleClientId(null);
+          }
+        },
+        onError: (err: any) => {
+          toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+          setSyncingGoogleClientId(null);
+        },
+      }
+    );
+  }, [getGoogleAuthUrl]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -334,33 +401,56 @@ export default function AdminDashboard() {
                     {client.is_synced ? (
                       <>
                         <CheckCircle className="h-4 w-4 text-accent" />
-                        <span className="text-xs text-accent font-medium">Sincronizado</span>
+                        <span className="text-xs text-accent font-medium">Meta ✓</span>
                       </>
                     ) : (
                       <>
                         <XCircle className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">Não sincronizado</span>
+                        <span className="text-xs text-muted-foreground">Meta ✗</span>
+                      </>
+                    )}
+                    <span className="text-muted-foreground/30">|</span>
+                    {(client as any).google_ads_synced ? (
+                      <>
+                        <CheckCircle className="h-4 w-4 text-accent" />
+                        <span className="text-xs text-accent font-medium">Google ✓</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">Google ✗</span>
                       </>
                     )}
                   </div>
                 </div>
 
                 {client.meta_ad_account_name && (
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Conta: {client.meta_ad_account_name}
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Meta: {client.meta_ad_account_name}
+                  </p>
+                )}
+                {(client as any).google_ads_customer_name && (
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Google: {(client as any).google_ads_customer_name}
                   </p>
                 )}
 
                 {client.last_sync_at && (
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Calendar className="h-3 w-3" />
-                    Último sync: {new Date(client.last_sync_at).toLocaleDateString('pt-BR')}
+                    Meta sync: {new Date(client.last_sync_at).toLocaleDateString('pt-BR')}
+                  </div>
+                )}
+                {(client as any).google_ads_last_sync_at && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Calendar className="h-3 w-3" />
+                    Google sync: {new Date((client as any).google_ads_last_sync_at).toLocaleDateString('pt-BR')}
                   </div>
                 )}
               </div>
 
-              {/* Re-sync button */}
-              <div className="mt-4 pt-3 border-t border-white/10">
+              {/* Sync buttons */}
+              <div className="mt-4 pt-3 border-t border-white/10 space-y-2">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -375,6 +465,21 @@ export default function AdminDashboard() {
                     <RefreshCw className="h-3.5 w-3.5" />
                   )}
                   {client.is_synced ? 'Resincronizar Meta' : 'Sincronizar Meta'}
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleGoogleSync(client.id);
+                  }}
+                  disabled={syncingGoogleClientId === client.id}
+                  className="btn-glass w-full rounded-xl py-2.5 text-xs font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {syncingGoogleClientId === client.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  )}
+                  {(client as any).google_ads_synced ? 'Resincronizar Google' : 'Sincronizar Google'}
                 </button>
               </div>
             </GlassCard>
@@ -405,6 +510,33 @@ export default function AdminDashboard() {
                 {acc.business_name && (
                   <p className="text-xs text-muted-foreground mt-0.5">{acc.business_name}</p>
                 )}
+                <p className="text-xs text-muted-foreground mt-0.5">ID: {acc.id}</p>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Google Ads Account Picker Dialog */}
+      <Dialog open={!!pendingGoogleAccounts && pendingGoogleAccounts.length > 1} onOpenChange={(open) => {
+        if (!open) {
+          setPendingGoogleAccounts(null);
+          setPendingGoogleSyncClientId(null);
+        }
+      }}>
+        <DialogContent className="glass border-white/10 bg-card max-w-md">
+          <DialogHeader>
+            <DialogTitle>Escolha a conta Google Ads</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 mt-2 max-h-80 overflow-y-auto">
+            {pendingGoogleAccounts?.map((acc: any) => (
+              <button
+                key={acc.id}
+                onClick={() => handlePickGoogleAccount(acc)}
+                disabled={selectGoogleAccount.isPending}
+                className="w-full text-left glass rounded-xl p-4 hover:border-accent/50 hover:bg-white/5 transition-all disabled:opacity-50"
+              >
+                <p className="font-medium text-sm">{acc.name}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">ID: {acc.id}</p>
               </button>
             ))}
