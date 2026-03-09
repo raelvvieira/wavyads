@@ -118,6 +118,21 @@ export default function AdminDashboard() {
     );
   };
 
+  const handlePickGoogleAccount = (acc: any) => {
+    if (!pendingGoogleSyncClientId) return;
+    selectGoogleAccount.mutate(
+      { clientId: pendingGoogleSyncClientId, customerId: acc.id, customerName: acc.name },
+      {
+        onSuccess: () => {
+          toast({ title: 'Sincronizado!', description: `Conta Google ${acc.name} vinculada.` });
+          setPendingGoogleAccounts(null);
+          setPendingGoogleSyncClientId(null);
+        },
+        onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
+      }
+    );
+  };
+
   const handleSync = useCallback((clientId: string) => {
     setSyncingClientId(clientId);
     setPendingSyncClientId(clientId);
