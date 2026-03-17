@@ -51,7 +51,6 @@ async function callAI(systemPrompt: string, userPrompt: string, toolName: string
   const data = await response.json();
   const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
   if (!toolCall) {
-    // Fallback: try parsing content as JSON
     const content = data.choices?.[0]?.message?.content;
     if (content) {
       try {
@@ -65,16 +64,21 @@ async function callAI(systemPrompt: string, userPrompt: string, toolName: string
   return JSON.parse(toolCall.function.arguments);
 }
 
+function cidadeWarning(cidadeCampanha: string) {
+  if (!cidadeCampanha) return "";
+  return `\n\nATENÇÃO: Esta campanha é exclusiva para a cidade ${cidadeCampanha}. Todos os títulos, descrições e palavras-chave devem referenciar apenas esta cidade. Nunca misture cidades diferentes no mesmo grupo.`;
+}
+
 // ── CHAMADA 0: ANÁLISE ──
 const SYSTEM_ANALYZE = `Você é especialista em Google Ads Performance Max para o mercado brasileiro. Analise sites e identifique frentes de anúncios de alta conversão. Responda APENAS JSON puro. Sem markdown. Sem backticks. Sem texto fora do JSON. Português do Brasil. Nunca use portuguesismos de Portugal.`;
 
-function buildAnalyzePrompt(site: string, descricao: string) {
+function buildAnalyzePrompt(site: string, descricao: string, cidadeCampanha: string) {
   return `Analise o site ${site} com base nestas informações adicionais:
 ${descricao}
 
 Identifique empresa, cidade, diferenciais e as melhores frentes de anúncio para Google Ads Performance Max.
 
-Retorne os dados estruturados com: empresa, segmento, cidade, cta (whatsapp/formulario/telefone), diferenciais (array de strings), e frentes (array com id, nome, icone emoji, descricao curta, potencial alto/medio).`;
+Retorne os dados estruturados com: empresa, segmento, cidade, cta (whatsapp/formulario/telefone), diferenciais (array de strings), e frentes (array com id, nome, icone emoji, descricao curta, potencial alto/medio).${cidadeWarning(cidadeCampanha)}`;
 }
 
 const ANALYZE_TOOL_PARAMS = {
@@ -119,14 +123,14 @@ REGRAS ABSOLUTAS:
 - Inclua prova social com números reais quando possível
 - Texto único: 200-280 caracteres descrevendo o negócio de forma objetiva, rico em keywords`;
 
-function buildTitlesPrompt(p: { empresa: string; servico: string; cidade: string; diferenciais: string; cta: string }) {
+function buildTitlesPrompt(p: { empresa: string; servico: string; cidade: string; diferenciais: string; cta: string; cidadeCampanha: string }) {
   return `Empresa: ${p.empresa}
 Serviço: ${p.servico}
-Cidade: ${p.cidade}
+Cidade: ${p.cidadeCampanha || p.cidade}
 Diferenciais: ${p.diferenciais}
 CTA: ${p.cta}
 
-Crie 15 títulos curtos (máx 30 chars), 5 títulos longos (máx 90 chars), caminho de exibição e texto único para Google Ads Performance Max para este grupo.`;
+Crie 15 títulos curtos (máx 30 chars), 5 títulos longos (máx 90 chars), caminho de exibição e texto único para Google Ads Performance Max para este grupo.${cidadeWarning(p.cidadeCampanha)}`;
 }
 
 const TITLES_TOOL_PARAMS = {
@@ -180,14 +184,14 @@ REGRAS ABSOLUTAS:
 - Nunca repita informação entre descrições
 - Nunca use preços, portuguesismos, superlativos absolutos`;
 
-function buildDescriptionsPrompt(p: { empresa: string; servico: string; cidade: string; diferenciais: string; cta: string }) {
+function buildDescriptionsPrompt(p: { empresa: string; servico: string; cidade: string; diferenciais: string; cta: string; cidadeCampanha: string }) {
   return `Empresa: ${p.empresa}
 Serviço: ${p.servico}
-Cidade: ${p.cidade}
+Cidade: ${p.cidadeCampanha || p.cidade}
 Diferenciais: ${p.diferenciais}
 CTA: ${p.cta}
 
-Crie 5 descrições de Google Ads Performance Max para este grupo.`;
+Crie 5 descrições de Google Ads Performance Max para este grupo.${cidadeWarning(p.cidadeCampanha)}`;
 }
 
 const DESCRIPTIONS_TOOL_PARAMS = {
@@ -221,16 +225,22 @@ REGRAS:
 - Sitelinks: 6 sitelinks com texto (máx 25 chars), descricao1 e descricao2 (máx 35 chars cada), url
 - Segmento público: mínimo 10 termos que pessoas realmente pesquisam no Google
 - Diretrizes: exclusões e restrições de texto
-- Instruções de campanha: tipo Performance Max, método de conversão, expansão URL false, otimização true, público 25-54`;
+- Instruções de campanha: tipo Performance Max, método de conversão, expansão URL false, otimização true, público 25-54
 
-function buildKeywordsPrompt(p: { empresa: string; servico: string; cidade: string; segmento: string; diferenciais: string }) {
+SNIPPETS: cada snippet deve ter no máximo 25 caracteres. Devem ser termos curtos e diretos como: Iniciantes, Avançados, Aulas Individuais, Aulas em Grupo, Certificado IKO, Equipamento Incluso. Nunca use frases longas nos snippets.
+
+REGRA CRÍTICA DE ACENTUAÇÃO: Todas as palavras-chave devem usar português brasileiro correto com acentuação completa. Exemplos corretos: florianópolis, são paulo, goiânia, curitiba. Nunca omita acentos. O Google Ads no Brasil trata termos com e sem acento de forma diferente.
+
+FRASES DE DESTAQUE: nunca use pontuação no final das frases de destaque (sem ponto, sem exclamação, sem interrogação). O Google Ads rejeita automaticamente frases de destaque com pontuação. Correto: 'Instrutores Certificados IKO'. Errado: 'Instrutores Certificados IKO!'.`;
+
+function buildKeywordsPrompt(p: { empresa: string; servico: string; cidade: string; segmento: string; diferenciais: string; cidadeCampanha: string }) {
   return `Empresa: ${p.empresa}
 Serviço: ${p.servico}
-Cidade: ${p.cidade}
+Cidade: ${p.cidadeCampanha || p.cidade}
 Segmento: ${p.segmento}
 Diferenciais: ${p.diferenciais}
 
-Crie temas de pesquisa, extensões e configurações para Google Ads Performance Max.`;
+Crie temas de pesquisa, extensões e configurações para Google Ads Performance Max.${cidadeWarning(p.cidadeCampanha)}`;
 }
 
 const KEYWORDS_TOOL_PARAMS = {
@@ -285,12 +295,25 @@ const KEYWORDS_TOOL_PARAMS = {
   additionalProperties: false,
 };
 
+// ── CHAMADA EXTRA: REGENERAR TEXTO ÚNICO ──
+const SYSTEM_REGENERATE_TEXTO = `Você é especialista em Google Ads Performance Max para o mercado brasileiro. Reescreva o texto único de um anúncio. Responda APENAS JSON puro. Português do Brasil. Nunca use portuguesismos de Portugal.`;
+
+const REGENERATE_TEXTO_TOOL_PARAMS = {
+  type: "object",
+  properties: {
+    textoUnico: { type: "string" },
+  },
+  required: ["textoUnico"],
+  additionalProperties: false,
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const body = await req.json();
     const { action } = body;
+    const cidadeCampanha = body.cidadeCampanha || "";
 
     let result: unknown;
 
@@ -298,25 +321,32 @@ serve(async (req) => {
       case "analyze": {
         const { site, descricao } = body;
         if (!site && !descricao) throw new Error("Informe o site ou a descrição da empresa");
-        result = await callAI(SYSTEM_ANALYZE, buildAnalyzePrompt(site || "", descricao || ""), "analyze_site", ANALYZE_TOOL_PARAMS);
+        result = await callAI(SYSTEM_ANALYZE, buildAnalyzePrompt(site || "", descricao || "", cidadeCampanha), "analyze_site", ANALYZE_TOOL_PARAMS);
         break;
       }
       case "titles": {
         const { empresa, servico, cidade, diferenciais, cta } = body;
         if (!empresa || !servico) throw new Error("empresa e servico são obrigatórios");
-        result = await callAI(SYSTEM_TITLES, buildTitlesPrompt({ empresa, servico, cidade, diferenciais, cta }), "generate_titles", TITLES_TOOL_PARAMS);
+        result = await callAI(SYSTEM_TITLES, buildTitlesPrompt({ empresa, servico, cidade, diferenciais, cta, cidadeCampanha }), "generate_titles", TITLES_TOOL_PARAMS);
         break;
       }
       case "descriptions": {
         const { empresa, servico, cidade, diferenciais, cta } = body;
         if (!empresa || !servico) throw new Error("empresa e servico são obrigatórios");
-        result = await callAI(SYSTEM_DESCRIPTIONS, buildDescriptionsPrompt({ empresa, servico, cidade, diferenciais, cta }), "generate_descriptions", DESCRIPTIONS_TOOL_PARAMS);
+        result = await callAI(SYSTEM_DESCRIPTIONS, buildDescriptionsPrompt({ empresa, servico, cidade, diferenciais, cta, cidadeCampanha }), "generate_descriptions", DESCRIPTIONS_TOOL_PARAMS);
         break;
       }
       case "keywords": {
         const { empresa, servico, cidade, segmento, diferenciais } = body;
         if (!empresa || !servico) throw new Error("empresa e servico são obrigatórios");
-        result = await callAI(SYSTEM_KEYWORDS, buildKeywordsPrompt({ empresa, servico, cidade, segmento, diferenciais }), "generate_keywords", KEYWORDS_TOOL_PARAMS);
+        result = await callAI(SYSTEM_KEYWORDS, buildKeywordsPrompt({ empresa, servico, cidade, segmento, diferenciais, cidadeCampanha }), "generate_keywords", KEYWORDS_TOOL_PARAMS);
+        break;
+      }
+      case "regenerate_texto_unico": {
+        const { empresa, servico, cidade, diferenciais, cta, textoAtual } = body;
+        if (!textoAtual) throw new Error("textoAtual é obrigatório");
+        const userPrompt = `O texto único anterior ficou com ${textoAtual.length} caracteres. Reescreva em no máximo 270 caracteres mantendo: nome da empresa (${empresa}), cidade (${cidadeCampanha || cidade}), especialidade (${servico}), 2 diferenciais principais (${diferenciais}) e CTA WhatsApp. Seja objetivo, sem texto poético.${cidadeWarning(cidadeCampanha)}`;
+        result = await callAI(SYSTEM_REGENERATE_TEXTO, userPrompt, "regenerate_texto", REGENERATE_TEXTO_TOOL_PARAMS);
         break;
       }
       default:
