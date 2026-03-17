@@ -29,6 +29,7 @@ export function AppSidebar() {
   const navItems = [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', show: true },
     { to: '/insights', icon: Lightbulb, label: 'Insights', show: isAdmin },
+    { to: '/google-ads-ai', icon: Sparkles, label: 'Google Ads I.A', show: isAdmin },
     { to: '/configuracoes', icon: Settings, label: 'Configurações', show: true },
   ];
 

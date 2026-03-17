@@ -35,6 +35,7 @@ const App = () => (
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/dashboard/:clientId" element={<DashboardPage />} />
               <Route path="/insights" element={<InsightsPage />} />
+              <Route path="/google-ads-ai" element={<GoogleAdsAIPage />} />
               <Route path="/configuracoes" element={<SettingsPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
