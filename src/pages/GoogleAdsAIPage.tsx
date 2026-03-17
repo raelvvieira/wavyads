@@ -316,7 +316,7 @@ export default function GoogleAdsAIPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 pt-20 lg:pt-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Google Ads I.A</h1>
