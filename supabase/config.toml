@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.google-ads-fetch-insights]
 verify_jwt = false
+
+[functions.google-ads-ai-gen]
+verify_jwt = false
