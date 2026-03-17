@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sparkles, Globe, FileText, Copy, Check, RotateCcw, ChevronRight, Download, Pin, AlertTriangle } from 'lucide-react';
+import { Sparkles, Globe, FileText, Copy, Check, RotateCcw, ChevronRight, Download, Lock, X, Plus, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -60,8 +60,56 @@ function SkeletonSection({ title }: { title: string }) {
   );
 }
 
-function FrenteResultView({ result }: { result: FrenteResult }) {
-  const { titles, descriptions, keywords, loadingTitles, loadingDescriptions, loadingKeywords } = result;
+function EditableExclusions({ initial }: { initial: string[] }) {
+  const [exclusions, setExclusions] = useState<string[]>(initial);
+  const [adding, setAdding] = useState(false);
+  const [newValue, setNewValue] = useState('');
+
+  const remove = (index: number) => setExclusions(prev => prev.filter((_, i) => i !== index));
+  const add = () => {
+    const val = newValue.trim();
+    if (val && !exclusions.includes(val)) {
+      setExclusions(prev => [...prev, val]);
+    }
+    setNewValue('');
+    setAdding(false);
+  };
+
+  return (
+    <div>
+      <p className="text-xs font-medium text-foreground mb-1">Exclusões:</p>
+      <div className="flex flex-wrap gap-1.5 mb-2">
+        {exclusions.map((e, i) => (
+          <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-muted text-foreground border border-white/10">
+            {e}
+            <button onClick={() => remove(i)} className="hover:text-destructive transition-colors"><X className="h-3 w-3" /></button>
+          </span>
+        ))}
+      </div>
+      {adding ? (
+        <div className="flex items-center gap-2">
+          <Input
+            value={newValue}
+            onChange={e => setNewValue(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && add()}
+            placeholder="Novo termo..."
+            className="glass-input h-7 text-xs"
+            autoFocus
+          />
+          <Button variant="ghost" size="sm" onClick={add} className="h-7 text-xs">OK</Button>
+          <Button variant="ghost" size="sm" onClick={() => { setAdding(false); setNewValue(''); }} className="h-7 text-xs">Cancelar</Button>
+        </div>
+      ) : (
+        <button onClick={() => setAdding(true)} className="text-xs text-accent hover:underline flex items-center gap-1">
+          <Plus className="h-3 w-3" /> Adicionar exclusão
+        </button>
+      )}
+    </div>
+  );
+}
+
+function FrenteResultView({ result, frenteId, onRegenerateTexto }: { result: FrenteResult; frenteId: string; onRegenerateTexto: (id: string) => void }) {
+  const { titles, descriptions, keywords, loadingTitles, loadingDescriptions, loadingKeywords, regeneratingTexto } = result;
 
   const exportAll = () => {
     const lines: string[] = [];
@@ -97,6 +145,11 @@ function FrenteResultView({ result }: { result: FrenteResult }) {
     navigator.clipboard.writeText(lines.join('\n'));
   };
 
+  // C7: merge exclusões from diretrizes + negativasGlobais
+  const mergedExclusions = keywords
+    ? [...new Set([...keywords.diretrizes.exclusoes, ...keywords.negativasGlobais])]
+    : [];
+
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
@@ -112,15 +165,29 @@ function FrenteResultView({ result }: { result: FrenteResult }) {
         </SectionCard>
       )}
 
-      {/* 2. Texto Único */}
+      {/* 2. Texto Único — C1: botão regenerar se > 280 */}
       {loadingTitles ? <SkeletonSection title="Texto Único" /> : titles && (
         <SectionCard title="Texto Único" copyText={titles.textoUnico}>
           <p className="text-sm text-muted-foreground">{titles.textoUnico}</p>
-          <CharBadge length={titles.textoUnico.length} max={280} />
+          <div className="flex items-center gap-2">
+            <CharBadge length={titles.textoUnico.length} max={280} />
+            {titles.textoUnico.length > 280 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onRegenerateTexto(frenteId)}
+                disabled={regeneratingTexto}
+                className="h-6 text-xs gap-1 border-white/10 text-foreground hover:bg-muted"
+              >
+                {regeneratingTexto ? <Sparkles className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                Regenerar Texto Único
+              </Button>
+            )}
+          </div>
         </SectionCard>
       )}
 
-      {/* 3. Títulos Curtos */}
+      {/* 3. Títulos Curtos — C2: lock icon for 1-2 */}
       {loadingTitles ? <SkeletonSection title="Títulos Curtos (15)" /> : titles && (
         <SectionCard title="Títulos Curtos (15)" copyText={titles.titulos.map(t => t.texto).join('\n')}>
           <div className="overflow-x-auto">
@@ -135,12 +202,14 @@ function FrenteResultView({ result }: { result: FrenteResult }) {
                 </tr>
               </thead>
               <tbody>
-                {titles.titulos.map(t => (
+                {titles.titulos.map((t, idx) => (
                   <tr key={t.num} className="border-b border-white/5">
                     <td className="py-2 text-muted-foreground">{t.num}</td>
                     <td className="py-2 text-foreground">{t.texto}</td>
                     <td className="py-2 text-center"><CharBadge length={t.texto.length} max={30} /></td>
-                    <td className="py-2 text-center">{t.fixar && <Pin className="h-3.5 w-3.5 text-accent mx-auto" />}</td>
+                    <td className="py-2 text-center">
+                      {idx < 2 ? <Lock className="h-3.5 w-3.5 text-accent mx-auto" /> : null}
+                    </td>
                     <td className="py-2"><CopyButton text={t.texto} /></td>
                   </tr>
                 ))}
@@ -203,10 +272,16 @@ function FrenteResultView({ result }: { result: FrenteResult }) {
             </ul>
           </SectionCard>
 
+          {/* C3: Snippets with 25 char validation */}
           <SectionCard title="Snippets" copyText={keywords.snippets.join('\n')}>
-            <ul className="space-y-1">
-              {keywords.snippets.map((s, i) => <li key={i} className="text-sm text-muted-foreground">• {s}</li>)}
-            </ul>
+            <div className="space-y-1">
+              {keywords.snippets.map((s, i) => (
+                <div key={i} className="flex items-center justify-between gap-2">
+                  <span className="text-sm text-muted-foreground">• {s}</span>
+                  <CharBadge length={s.length} max={25} />
+                </div>
+              ))}
+            </div>
           </SectionCard>
 
           <SectionCard title="Negativos Específicos" copyText={keywords.negativasEspecificas.join('\n')}>
@@ -255,12 +330,10 @@ function FrenteResultView({ result }: { result: FrenteResult }) {
             </div>
           </SectionCard>
 
+          {/* C7: Editable exclusions pre-filled with negativasGlobais */}
           <SectionCard title="Diretrizes de Texto">
             <div className="space-y-2">
-              <div>
-                <p className="text-xs font-medium text-foreground mb-1">Exclusões:</p>
-                <ul>{keywords.diretrizes.exclusoes.map((e, i) => <li key={i} className="text-xs text-muted-foreground">• {e}</li>)}</ul>
-              </div>
+              <EditableExclusions initial={mergedExclusions} />
               <div>
                 <p className="text-xs font-medium text-foreground mb-1">Restrições:</p>
                 <ul>{keywords.diretrizes.restricoes.map((r, i) => <li key={i} className="text-xs text-muted-foreground">• {r}</li>)}</ul>
@@ -292,8 +365,9 @@ export default function GoogleAdsAIPage() {
     step, analyzing, analyze, analyzeResult,
     selectedFrentes, setSelectedFrentes,
     cta, setCta,
+    cidadeCampanha, setCidadeCampanha,
     frentesResults, generating, generateForFrentes,
-    currentFrenteIndex, reset,
+    currentFrenteIndex, regenerateTextoUnico, reset,
   } = useGoogleAdsAI();
 
   const [site, setSite] = useState('');
@@ -350,7 +424,7 @@ export default function GoogleAdsAIPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left column: Steps 1 & 2 */}
         <div className="lg:col-span-4 space-y-4">
-          {/* Step 1 */}
+          {/* Step 1 — C4: campo cidade obrigatório */}
           <GlassCard className="p-5 space-y-4">
             <div className="flex items-center gap-2">
               <Globe className="h-5 w-5 text-accent" />
@@ -368,11 +442,21 @@ export default function GoogleAdsAIPage() {
                 />
               </div>
               <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Cidade desta campanha <span className="text-destructive">*</span></label>
+                <Input
+                  value={cidadeCampanha}
+                  onChange={e => setCidadeCampanha(e.target.value)}
+                  placeholder="Ex: Florianópolis, Porto Alegre, São Paulo"
+                  className="glass-input"
+                  disabled={step > 1}
+                />
+              </div>
+              <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Descrição da empresa / oferta</label>
                 <Textarea
                   value={descricao}
                   onChange={e => setDescricao(e.target.value)}
-                  placeholder="Descreva a empresa, serviços, cidade de atuação, diferenciais..."
+                  placeholder="Descreva a empresa, serviços, diferenciais..."
                   rows={4}
                   className="glass-input resize-none"
                   disabled={step > 1}
@@ -381,7 +465,7 @@ export default function GoogleAdsAIPage() {
               {step === 1 && (
                 <Button
                   onClick={handleAnalyze}
-                  disabled={analyzing || (!site && !descricao)}
+                  disabled={analyzing || (!site && !descricao) || !cidadeCampanha.trim()}
                   className="w-full btn-accent gap-2"
                 >
                   {analyzing ? (
@@ -405,7 +489,7 @@ export default function GoogleAdsAIPage() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between"><span className="text-muted-foreground">Empresa</span><span className="text-foreground font-medium">{analyzeResult.empresa}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Segmento</span><span className="text-foreground font-medium">{analyzeResult.segmento}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Cidade</span><span className="text-foreground font-medium">{analyzeResult.cidade}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Cidade</span><span className="text-foreground font-medium">{cidadeCampanha || analyzeResult.cidade}</span></div>
                 <div>
                   <span className="text-muted-foreground text-xs">Diferenciais:</span>
                   <div className="flex flex-wrap gap-1 mt-1">
@@ -490,7 +574,6 @@ export default function GoogleAdsAIPage() {
             </GlassCard>
           ) : (
             <div className="space-y-4">
-              {/* Frente selector */}
               {frenteIds.length > 1 && (
                 <Select value={activeFrente || ''} onValueChange={setViewingFrente}>
                   <SelectTrigger className="glass-input">
@@ -517,7 +600,11 @@ export default function GoogleAdsAIPage() {
               )}
 
               {activeFrente && frentesResults[activeFrente] && (
-                <FrenteResultView result={frentesResults[activeFrente]} />
+                <FrenteResultView
+                  result={frentesResults[activeFrente]}
+                  frenteId={activeFrente}
+                  onRegenerateTexto={regenerateTextoUnico}
+                />
               )}
             </div>
           )}
