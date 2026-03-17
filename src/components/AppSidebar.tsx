@@ -9,6 +9,7 @@ import {
   Menu,
   X,
   Lightbulb,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import wavyLogo from '@/assets/wavy-logo.png';
