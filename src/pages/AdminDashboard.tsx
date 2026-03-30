@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, CheckCircle, XCircle, Loader2, Users, Calendar, Pencil, RefreshCw, Trash2 } from 'lucide-react';
+import { Plus, CheckCircle, XCircle, Loader2, Users, Calendar, Pencil, RefreshCw, Trash2, UserPlus, X } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { useClients, useCreateClient, useUpdateClient, useDeleteClient } from '@/hooks/useClients';
+import { useAddClientUser, useClientUsers } from '@/hooks/useClientUsers';
 import { useGetMetaAuthUrl, useSelectMetaAccount } from '@/hooks/useMetaOAuth';
 import { useGetGoogleAdsAuthUrl, useSelectGoogleAdsAccount } from '@/hooks/useGoogleAdsOAuth';
 import { toast } from '@/hooks/use-toast';
@@ -21,6 +22,7 @@ export default function AdminDashboard() {
   const createClient = useCreateClient();
   const updateClient = useUpdateClient();
   const deleteClient = useDeleteClient();
+  const addClientUser = useAddClientUser();
   const getAuthUrl = useGetMetaAuthUrl();
   const selectAccount = useSelectMetaAccount();
   const getGoogleAuthUrl = useGetGoogleAdsAuthUrl();
@@ -40,6 +42,13 @@ export default function AdminDashboard() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState('');
   const [deleteName, setDeleteName] = useState('');
+
+  // Add access state
+  const [accessDialogOpen, setAccessDialogOpen] = useState(false);
+  const [accessClientId, setAccessClientId] = useState('');
+  const [accessClientName, setAccessClientName] = useState('');
+  const [accessName, setAccessName] = useState('');
+  const [accessEmail, setAccessEmail] = useState('');
 
   // Meta sync state
   const [syncingClientId, setSyncingClientId] = useState<string | null>(null);
@@ -481,6 +490,20 @@ export default function AdminDashboard() {
                   )}
                   {(client as any).google_ads_synced ? 'Resincronizar Google' : 'Sincronizar Google'}
                 </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAccessClientId(client.id);
+                    setAccessClientName(client.name);
+                    setAccessName('');
+                    setAccessEmail('');
+                    setAccessDialogOpen(true);
+                  }}
+                  className="btn-glass w-full rounded-xl py-2.5 text-xs font-medium flex items-center justify-center gap-2"
+                >
+                  <UserPlus className="h-3.5 w-3.5" />
+                  Adicionar Acesso
+                </button>
               </div>
             </GlassCard>
           ))}
@@ -541,6 +564,64 @@ export default function AdminDashboard() {
               </button>
             ))}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Access Dialog */}
+      <Dialog open={accessDialogOpen} onOpenChange={setAccessDialogOpen}>
+        <DialogContent className="glass border-white/10 bg-card">
+          <DialogHeader>
+            <DialogTitle>Adicionar Acesso — {accessClientName}</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!accessName.trim() || !accessEmail.trim()) return;
+              addClientUser.mutate(
+                { clientId: accessClientId, name: accessName.trim(), email: accessEmail.trim() },
+                {
+                  onSuccess: (data: any) => {
+                    toast({ title: 'Acesso concedido!', description: data?.message || 'O usuário receberá um email.' });
+                    setAccessDialogOpen(false);
+                  },
+                  onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
+                }
+              );
+            }}
+            className="space-y-4 mt-4"
+          >
+            <div className="space-y-1.5">
+              <label className="text-sm text-muted-foreground">Nome *</label>
+              <input
+                value={accessName}
+                onChange={(e) => setAccessName(e.target.value)}
+                placeholder="Nome da pessoa"
+                required
+                className="glass-input w-full rounded-xl py-3 px-4 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm text-muted-foreground">Email *</label>
+              <input
+                value={accessEmail}
+                onChange={(e) => setAccessEmail(e.target.value)}
+                placeholder="email@exemplo.com"
+                type="email"
+                required
+                className="glass-input w-full rounded-xl py-3 px-4 text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                Se o usuário ainda não tiver conta, receberá um convite para criar senha
+              </p>
+            </div>
+            <button
+              type="submit"
+              disabled={addClientUser.isPending}
+              className="btn-accent w-full rounded-xl py-3 text-sm font-semibold disabled:opacity-50"
+            >
+              {addClientUser.isPending ? 'Adicionando...' : 'Conceder Acesso'}
+            </button>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
