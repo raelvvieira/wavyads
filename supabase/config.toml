@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.google-ads-ai-gen]
 verify_jwt = false
+
+[functions.add-client-user]
+verify_jwt = false
