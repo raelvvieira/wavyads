@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, CheckCircle, XCircle, Loader2, Users, Calendar, Pencil, RefreshCw, Trash2 } from 'lucide-react';
+import { Plus, CheckCircle, XCircle, Loader2, Users, Calendar, Pencil, RefreshCw, Trash2, UserPlus, X } from 'lucide-react';
+import { GlassCard } from '@/components/GlassCard';
+import { useClients, useCreateClient, useUpdateClient, useDeleteClient } from '@/hooks/useClients';
+import { useAddClientUser, useClientUsers } from '@/hooks/useClientUsers';
 import { GlassCard } from '@/components/GlassCard';
 import { useClients, useCreateClient, useUpdateClient, useDeleteClient } from '@/hooks/useClients';
 import { useGetMetaAuthUrl, useSelectMetaAccount } from '@/hooks/useMetaOAuth';
