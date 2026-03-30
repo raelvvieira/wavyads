@@ -125,6 +125,12 @@ Deno.serve(async (req) => {
       );
     }
 
+    // 3b. Insert into client_users junction table
+    await adminClient.from("client_users").insert({
+      client_id: clientData.id,
+      user_id: userId,
+    });
+
     // 4. Generate recovery link (acts as "Create your password")
     const redirectTo = `${req.headers.get("origin") || "https://wavyads.lovable.app"}/reset-password`;
     const { data: linkData, error: linkError } =
