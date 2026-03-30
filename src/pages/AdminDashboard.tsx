@@ -22,6 +22,7 @@ export default function AdminDashboard() {
   const createClient = useCreateClient();
   const updateClient = useUpdateClient();
   const deleteClient = useDeleteClient();
+  const addClientUser = useAddClientUser();
   const getAuthUrl = useGetMetaAuthUrl();
   const selectAccount = useSelectMetaAccount();
   const getGoogleAuthUrl = useGetGoogleAdsAuthUrl();
