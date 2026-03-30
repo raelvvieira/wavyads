@@ -490,6 +490,20 @@ export default function AdminDashboard() {
                   )}
                   {(client as any).google_ads_synced ? 'Resincronizar Google' : 'Sincronizar Google'}
                 </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAccessClientId(client.id);
+                    setAccessClientName(client.name);
+                    setAccessName('');
+                    setAccessEmail('');
+                    setAccessDialogOpen(true);
+                  }}
+                  className="btn-glass w-full rounded-xl py-2.5 text-xs font-medium flex items-center justify-center gap-2"
+                >
+                  <UserPlus className="h-3.5 w-3.5" />
+                  Adicionar Acesso
+                </button>
               </div>
             </GlassCard>
           ))}
