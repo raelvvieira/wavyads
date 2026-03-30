@@ -566,6 +566,64 @@ export default function AdminDashboard() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Add Access Dialog */}
+      <Dialog open={accessDialogOpen} onOpenChange={setAccessDialogOpen}>
+        <DialogContent className="glass border-white/10 bg-card">
+          <DialogHeader>
+            <DialogTitle>Adicionar Acesso — {accessClientName}</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!accessName.trim() || !accessEmail.trim()) return;
+              addClientUser.mutate(
+                { clientId: accessClientId, name: accessName.trim(), email: accessEmail.trim() },
+                {
+                  onSuccess: (data: any) => {
+                    toast({ title: 'Acesso concedido!', description: data?.message || 'O usuário receberá um email.' });
+                    setAccessDialogOpen(false);
+                  },
+                  onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
+                }
+              );
+            }}
+            className="space-y-4 mt-4"
+          >
+            <div className="space-y-1.5">
+              <label className="text-sm text-muted-foreground">Nome *</label>
+              <input
+                value={accessName}
+                onChange={(e) => setAccessName(e.target.value)}
+                placeholder="Nome da pessoa"
+                required
+                className="glass-input w-full rounded-xl py-3 px-4 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm text-muted-foreground">Email *</label>
+              <input
+                value={accessEmail}
+                onChange={(e) => setAccessEmail(e.target.value)}
+                placeholder="email@exemplo.com"
+                type="email"
+                required
+                className="glass-input w-full rounded-xl py-3 px-4 text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                Se o usuário ainda não tiver conta, receberá um convite para criar senha
+              </p>
+            </div>
+            <button
+              type="submit"
+              disabled={addClientUser.isPending}
+              className="btn-accent w-full rounded-xl py-3 text-sm font-semibold disabled:opacity-50"
+            >
+              {addClientUser.isPending ? 'Adicionando...' : 'Conceder Acesso'}
+            </button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
