@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { KpiCard, getDefaultCards, saveCards, type MetricKey } from '@/components/KpiCard';
 import { DailyChart } from '@/components/DailyChart';
 import { CampaignsTable } from '@/components/CampaignsTable';
+import { CreativesGallery } from '@/components/CreativesGallery';
 import { RankingCharts } from '@/components/RankingCharts';
 import { ConversionFunnel } from '@/components/ConversionFunnel';
 import { InsightsCards } from '@/components/InsightsCards';
@@ -21,6 +22,7 @@ import { useRole } from '@/hooks/useRole';
 import { useGetMetaAuthUrl, useSelectMetaAccount } from '@/hooks/useMetaOAuth';
 import { useGetGoogleAdsAuthUrl, useSelectGoogleAdsAccount } from '@/hooks/useGoogleAdsOAuth';
 import { useMetaCampaigns, useMetaInsights, useMetaInsightsPrevious, type DailyMetric, type TimeRange } from '@/hooks/useMetaInsights';
+import { useMetaAds } from '@/hooks/useMetaAds';
 import { useGoogleAdsCampaigns, useGoogleAdsInsights, useGoogleAdsInsightsPrevious } from '@/hooks/useGoogleAdsInsights';
 import { generateDailySpend, formatCurrency, formatNumber, mockCampaigns } from '@/data/mock';
 import { toast } from '@/hooks/use-toast';
@@ -115,7 +117,7 @@ export default function ClientDashboard() {
   const { data: metaCampaigns, isLoading: metaCampaignsLoading } = useMetaCampaigns(clientId, platform === 'meta' && isMetaSynced, timeRange);
   const { data: metaInsights, isLoading: metaInsightsLoading } = useMetaInsights(clientId, platform === 'meta' && isMetaSynced, timeRange);
   const { data: metaPreviousInsights } = useMetaInsightsPrevious(clientId, platform === 'meta' && isMetaSynced, timeRange);
-
+  const { data: metaAds, isLoading: metaAdsLoading } = useMetaAds(clientId, platform === 'meta' && isMetaSynced, timeRange);
   // Google Ads hooks
   const { data: googleCampaigns, isLoading: googleCampaignsLoading } = useGoogleAdsCampaigns(clientId, platform === 'google' && isGoogleSynced, timeRange);
   const { data: googleInsights, isLoading: googleInsightsLoading } = useGoogleAdsInsights(clientId, platform === 'google' && isGoogleSynced, timeRange);
@@ -536,6 +538,11 @@ export default function ClientDashboard() {
           {/* Campaigns Table */}
           {!isLoading && campaignList.length > 0 && (
             <CampaignsTable campaigns={campaignList} />
+          )}
+
+          {/* Creatives Gallery */}
+          {!isLoading && platform === 'meta' && !metaAdsLoading && metaAds && metaAds.length > 0 && (
+            <CreativesGallery ads={metaAds} />
           )}
 
           {/* Ranking Charts */}

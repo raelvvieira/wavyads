@@ -244,7 +244,7 @@ Deno.serve(async (req) => {
         ? `time_range({"since":"${timeRange.since}","until":"${timeRange.until}"})`
         : `date_preset(${datePreset})`;
 
-      const fields = `name,status,campaign_id,campaign{name},insights.${insightsDateParam}{spend,impressions,reach,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency}`;
+      const fields = `name,status,campaign_id,campaign{name},creative{thumbnail_url,image_url},insights.${insightsDateParam}{spend,impressions,reach,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency}`;
       const res = await fetch(
         `${GRAPH_API}/${adAccountId}/ads?fields=${fields}&limit=200&access_token=${accessToken}`
       );
@@ -273,6 +273,8 @@ Deno.serve(async (req) => {
           status: ad.status === "ACTIVE" ? "active" : "paused",
           campaign_id: ad.campaign_id,
           campaign_name: ad.campaign?.name || "",
+          thumbnail_url: ad.creative?.thumbnail_url || null,
+          image_url: ad.creative?.image_url || null,
           spend,
           impressions,
           reach: parseInt(ins.reach || "0"),
