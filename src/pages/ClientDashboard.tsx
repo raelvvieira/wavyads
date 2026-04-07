@@ -540,6 +540,11 @@ export default function ClientDashboard() {
             <CampaignsTable campaigns={campaignList} />
           )}
 
+          {/* Creatives Gallery */}
+          {!isLoading && platform === 'meta' && !metaAdsLoading && metaAds && metaAds.length > 0 && (
+            <CreativesGallery ads={metaAds} />
+          )}
+
           {/* Ranking Charts */}
           {!isLoading && campaignList.length > 0 && (
             <RankingCharts campaigns={campaignList} />
