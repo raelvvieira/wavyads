@@ -209,7 +209,7 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
                   <tr key={c.id} className="border-b border-white/5 transition-colors duration-200 hover:bg-white/[0.03]">
                     <td className="py-3 px-3 font-medium">
                       <div className="flex flex-col gap-1">
-                        <span className="truncate max-w-[200px]">{c.name}</span>
+                        <span className="whitespace-normal break-words min-w-[200px]">{c.name}</span>
                         {tags.length > 0 && (
                           <div className="flex gap-1 flex-wrap">
                             {tags.map(t => (
