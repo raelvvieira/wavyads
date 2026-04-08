@@ -107,14 +107,18 @@ async function getClient(supabase: any, userId: string, clientId: string) {
     .eq("role", "admin")
     .maybeSingle();
 
-  let clientQuery = supabase.from("clients").select("*").eq("id", clientId);
-  if (!isAdmin) {
-    clientQuery = clientQuery.eq("user_id", userId);
+  const { data: client, error: clientError } = await supabase
+    .from("clients").select("*").eq("id", clientId).maybeSingle();
+  if (clientError || !client) {
+    return { error: "Cliente não encontrado", status: 404 };
   }
 
-  const { data: client, error: clientError } = await clientQuery.maybeSingle();
-  if (clientError || !client) {
-    return { error: "Cliente não encontrado ou sem acesso", status: 404 };
+  if (!isAdmin) {
+    const { data: access } = await supabase
+      .from("client_users").select("id").eq("client_id", clientId).eq("user_id", userId).maybeSingle();
+    if (!access) {
+      return { error: "Sem acesso a este cliente", status: 403 };
+    }
   }
 
   if (!client.meta_access_token || !client.meta_ad_account_id) {
