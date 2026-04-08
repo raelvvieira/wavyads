@@ -130,13 +130,20 @@ Deno.serve(async (req) => {
     const { data: isAdmin } = await supabase
       .from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle();
 
-    let clientQuery = supabase.from("clients").select("*").eq("id", dbClientId);
-    if (!isAdmin) clientQuery = clientQuery.eq("user_id", userId);
-
-    const { data: clientRecord, error: clientError } = await clientQuery.maybeSingle();
+  const { data: clientRecord, error: clientError } = await supabase
+      .from("clients").select("*").eq("id", dbClientId).maybeSingle();
     if (clientError || !clientRecord) {
-      return new Response(JSON.stringify({ error: "Cliente não encontrado ou sem acesso" }),
+      return new Response(JSON.stringify({ error: "Cliente não encontrado" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (!isAdmin) {
+      const { data: access } = await supabase
+        .from("client_users").select("id").eq("client_id", dbClientId).eq("user_id", userId).maybeSingle();
+      if (!access) {
+        return new Response(JSON.stringify({ error: "Sem acesso a este cliente" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
     }
 
     if (!clientRecord.google_ads_access_token || !clientRecord.google_ads_customer_id) {
