@@ -540,8 +540,8 @@ export default function ClientDashboard() {
             <CampaignsTable campaigns={campaignList} />
           )}
 
-          {/* Creatives Gallery */}
-          {!isLoading && platform === 'meta' && !metaAdsLoading && metaAds && metaAds.length > 0 && (
+          {/* Creatives Gallery — visible for all clients with Meta ads data */}
+          {!isLoading && !metaAdsLoading && metaAds && metaAds.length > 0 && (
             <CreativesGallery ads={metaAds} />
           )}
 
