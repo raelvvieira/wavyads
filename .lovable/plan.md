@@ -1,32 +1,37 @@
 
 
-## Plan: Galeria de Criativos — Compacta com Limite de 5
+## Plan: Expandir Criativos + Preview em Pop-up + Disponibilizar para Todos os Clientes
 
-### Mudanças no `src/components/CreativesGallery.tsx`
+### 1. Expandir galeria — botão "Ver mais" (max 15 total)
 
-**Layout compacto**: Trocar o grid de cards grandes (aspect-square) por uma lista horizontal de 5 cards menores, com thumbnail menor (80x80 ou aspect-video reduzido) lado a lado com as métricas.
+**Arquivo:** `src/components/CreativesGallery.tsx`
 
-**Limitar a 5 visíveis**: Após filtrar e ordenar, exibir apenas os 5 primeiros (`filtered.slice(0, 5)`).
+- Adicionar state `expanded` (boolean, default false)
+- Quando collapsed: mostrar 5 criativos (atual). Quando expanded: mostrar até 15 (5 + 10)
+- No final da lista, botão "Ver mais" / "Ver menos" que alterna o estado
+- Ajustar o `.slice()` para usar `expanded ? 15 : 5`
 
-**Ordenação por desempenho**: Adicionar um select/toggle de ordenação com opções:
-- Maior Gasto (padrão atual)
-- Melhor CTR
-- Menor Custo/Resultado
-- Mais Resultados
+### 2. Pop-up de preview do criativo
 
-**Filtro de status**: Manter os botões Todos / Ativos / Pausados já existentes.
+**Arquivo:** `src/components/CreativesGallery.tsx`
 
-**Design mais compacto**: Cada card será uma row horizontal (flex) em vez de card vertical:
-- Thumbnail pequeno (64x64 rounded) à esquerda
-- Nome do anúncio + campanha (truncado) no meio
-- 4 métricas inline à direita (Gasto, Resultados, Custo/Res, CTR)
-- Badge de status pequeno
+- Adicionar state `selectedAd` para armazenar o ad clicado
+- Usar `Dialog` do shadcn/ui para exibir a imagem/vídeo em tamanho maior
+- Ao clicar na thumbnail, abrir o dialog com a imagem em resolução maior (ou vídeo se disponível via `video_url`)
+- Dialog com fundo escuro, imagem centralizada, nome do anúncio como título
 
-Grid: 1 coluna, 5 rows — visual tipo lista/tabela compacta com thumbnails.
+### 3. Disponibilizar para todos os dashboards (não só platform === 'meta')
 
-### Arquivo único
+**Arquivo:** `src/pages/ClientDashboard.tsx`
+
+- Atualmente o `CreativesGallery` só aparece quando `platform === 'meta'`. Remover essa restrição para que apareça para qualquer cliente com dados de ads disponíveis
+- Manter a condição de `metaAds && metaAds.length > 0` para não mostrar vazio
+- Garantir que o hook `useMetaAds` seja chamado para todos os clientes sincronizados com Meta (independente do toggle de plataforma)
+
+### Arquivos
 
 | Arquivo | Ação |
 |---------|------|
-| `src/components/CreativesGallery.tsx` | Reescrever — layout horizontal compacto, limite 5, select de ordenação |
+| `src/components/CreativesGallery.tsx` | Editar — expandir/colapsar, dialog de preview |
+| `src/pages/ClientDashboard.tsx` | Editar — mostrar criativos para todos os clientes |
 
