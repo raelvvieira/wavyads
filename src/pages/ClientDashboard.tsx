@@ -9,7 +9,7 @@ import { KpiCard, getDefaultCards, saveCards, type MetricKey } from '@/component
 import { DailyChart } from '@/components/DailyChart';
 import { CampaignsTable } from '@/components/CampaignsTable';
 import { CreativesGallery } from '@/components/CreativesGallery';
-import { RankingCharts } from '@/components/RankingCharts';
+
 import { ConversionFunnel } from '@/components/ConversionFunnel';
 import { InsightsCards } from '@/components/InsightsCards';
 import { StrategicSummary } from '@/components/StrategicSummary';
@@ -545,10 +545,6 @@ export default function ClientDashboard() {
             <CreativesGallery ads={metaAds} />
           )}
 
-          {/* Ranking Charts */}
-          {!isLoading && campaignList.length > 0 && (
-            <RankingCharts campaigns={campaignList} />
-          )}
 
           {/* Conversion Funnel */}
           {!isLoading && (
