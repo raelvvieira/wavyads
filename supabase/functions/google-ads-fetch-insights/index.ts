@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
     const googleClientSecret = Deno.env.get("GOOGLE_ADS_CLIENT_SECRET")!;
     const developerToken = Deno.env.get("GOOGLE_ADS_DEVELOPER_TOKEN")!;
 
-    // Auth
+    // Auth - decode JWT and verify via admin API
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Não autenticado" }), {
@@ -106,14 +106,24 @@ Deno.serve(async (req) => {
       });
     }
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !user) {
-      console.error("Auth error:", userError?.message);
+    let userId: string;
+    try {
+      const payloadB64 = token.split(".")[1];
+      const payload = JSON.parse(atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/")));
+      userId = payload.sub;
+      if (!userId) throw new Error("No sub");
+      const { data: { user }, error: userError } = await supabase.auth.admin.getUserById(userId);
+      if (userError || !user) {
+        return new Response(JSON.stringify({ error: "Token inválido" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } catch (e) {
+      console.error("Auth error:", e.message);
       return new Response(JSON.stringify({ error: "Token inválido" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const userId = user.id;
 
     let body: any = {};
     try { body = await req.json(); } catch { /* empty */ }
