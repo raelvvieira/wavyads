@@ -151,13 +151,13 @@ export default function ClientDashboard() {
   const [pendingAccounts, setPendingAccounts] = useState<any[] | null>(null);
 
   // KPI card customization
-  const [kpiCards, setKpiCards] = useState<MetricKey[]>(getDefaultCards);
+  const [kpiCards, setKpiCards] = useState<MetricKey[]>(() => getDefaultCards(clientId));
 
   const handleChangeMetric = (index: number, newKey: MetricKey) => {
     setKpiCards(prev => {
       const next = [...prev];
       next[index] = newKey;
-      saveCards(next);
+      saveCards(next, clientId);
       return next;
     });
   };
