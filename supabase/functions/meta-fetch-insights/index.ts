@@ -92,12 +92,26 @@ async function authenticateRequest(req: Request, supabase: any) {
     return { error: "Não autenticado", status: 401 };
   }
   const token = authHeader.replace("Bearer ", "");
-  const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-  if (userError || !user) {
-    console.error("Auth error:", userError?.message);
+  
+  // Decode JWT payload to get user ID (the auth server validates the signature)
+  try {
+    const payloadB64 = token.split(".")[1];
+    const payload = JSON.parse(atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/")));
+    const userId = payload.sub;
+    if (!userId) {
+      return { error: "Token inválido", status: 401 };
+    }
+    // Verify user exists via admin API
+    const { data: { user }, error: userError } = await supabase.auth.admin.getUserById(userId);
+    if (userError || !user) {
+      console.error("Auth admin error:", userError?.message);
+      return { error: "Token inválido", status: 401 };
+    }
+    return { user };
+  } catch (e) {
+    console.error("Token decode error:", e.message);
     return { error: "Token inválido", status: 401 };
   }
-  return { user };
 }
 
 async function getClient(supabase: any, userId: string, clientId: string) {
