@@ -40,18 +40,20 @@ export const METRIC_DEFS: Record<MetricKey, MetricDef> = {
 
 const ALL_KEYS = Object.keys(METRIC_DEFS) as MetricKey[];
 
-const STORAGE_KEY = 'wavy-kpi-cards';
-
-export function getDefaultCards(): MetricKey[] {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
-  } catch {}
-  return ['spend', 'impressions', 'clicks', 'cpl', 'leads', 'purchases'];
+function storageKey(clientId?: string) {
+  return clientId ? `wavy-kpi-cards-${clientId}` : 'wavy-kpi-cards';
 }
 
-export function saveCards(cards: MetricKey[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
+export function getDefaultCards(clientId?: string): MetricKey[] {
+  try {
+    const saved = localStorage.getItem(storageKey(clientId));
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  return ['spend', 'impressions', 'clicks', 'results', 'cost_per_result', 'purchases'];
+}
+
+export function saveCards(cards: MetricKey[], clientId?: string) {
+  localStorage.setItem(storageKey(clientId), JSON.stringify(cards));
 }
 
 interface KpiCardProps {
