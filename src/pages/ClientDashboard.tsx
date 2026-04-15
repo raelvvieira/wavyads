@@ -83,7 +83,14 @@ export default function ClientDashboard() {
   const clientId = paramClientId || clientUserRecord?.id;
 
   const { data: client, isLoading: clientLoading } = useClient(clientId);
-  const [selectedPreset, setSelectedPreset] = useState<PresetKey>('last_30d');
+  // Preferences persistence
+  const prefsKey = clientId ? `wavy-dash-prefs-${clientId}` : null;
+  const savedPrefs = useMemo(() => {
+    if (!prefsKey) return {};
+    try { return JSON.parse(localStorage.getItem(prefsKey) || '{}'); } catch { return {}; }
+  }, [prefsKey]);
+
+  const [selectedPreset, setSelectedPreset] = useState<PresetKey>(savedPrefs.preset || 'this_month');
   const [customDateRange, setCustomDateRange] = useState<{ from?: Date; to?: Date }>({});
   const [datePickerOpen, setDatePickerOpen] = useState(false);
 
@@ -91,11 +98,20 @@ export default function ClientDashboard() {
   const isGoogleSynced = (client as any)?.google_ads_synced ?? false;
 
   // Platform toggle — default to whichever is synced
-  const [platform, setPlatform] = useState<Platform>('meta');
+  const [platform, setPlatform] = useState<Platform>(savedPrefs.platform || 'meta');
   useEffect(() => {
-    if (isMetaSynced && !isGoogleSynced) setPlatform('meta');
-    else if (!isMetaSynced && isGoogleSynced) setPlatform('google');
-  }, [isMetaSynced, isGoogleSynced]);
+    if (!savedPrefs.platform) {
+      if (isMetaSynced && !isGoogleSynced) setPlatform('meta');
+      else if (!isMetaSynced && isGoogleSynced) setPlatform('google');
+    }
+  }, [isMetaSynced, isGoogleSynced, savedPrefs.platform]);
+
+  // Save prefs on change
+  useEffect(() => {
+    if (!prefsKey) return;
+    const data = JSON.stringify({ preset: selectedPreset, platform });
+    localStorage.setItem(prefsKey, data);
+  }, [prefsKey, selectedPreset, platform]);
 
   const isSynced = platform === 'meta' ? isMetaSynced : isGoogleSynced;
 
