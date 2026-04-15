@@ -10,17 +10,38 @@ export default function ResetPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Listen for the SIGNED_IN or PASSWORD_RECOVERY event from the recovery link
+    // Check if we already have a session (user may have arrived via recovery link that was already processed)
+    const checkExistingSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setSessionReady(true);
+      }
+    };
+
+    // Listen for PASSWORD_RECOVERY or SIGNED_IN events from the recovery link
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
         setSessionReady(true);
       }
     });
 
-    return () => subscription.unsubscribe();
+    checkExistingSession();
+
+    // Set a timeout - if after 10s no session, show error
+    const timeout = setTimeout(() => {
+      if (!sessionReady) {
+        setError('Link inválido ou expirado. Solicite um novo link de recuperação.');
+      }
+    }, 10000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,7 +83,17 @@ export default function ResetPasswordPage() {
             </p>
           </div>
 
-          {!sessionReady ? (
+          {error ? (
+            <div className="flex flex-col items-center gap-4 py-8">
+              <p className="text-sm text-destructive text-center">{error}</p>
+              <button
+                onClick={() => navigate('/login')}
+                className="btn-accent rounded-xl py-3 px-6 text-sm font-semibold transition-all duration-300"
+              >
+                Voltar ao login
+              </button>
+            </div>
+          ) : !sessionReady ? (
             <div className="flex flex-col items-center gap-4 py-8">
               <div className="h-8 w-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
               <p className="text-sm text-muted-foreground">Verificando link...</p>
