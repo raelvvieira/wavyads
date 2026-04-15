@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import wavyLogo from '@/assets/wavy-logo.png';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,17 +10,59 @@ export default function ResetPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    // Listen for the SIGNED_IN or PASSWORD_RECOVERY event from the recovery link
+    let resolved = false;
+
+    const resolve = () => {
+      if (!resolved) {
+        resolved = true;
+        setSessionReady(true);
+      }
+    };
+
+    // Method 1: token_hash in query params (direct link bypassing Supabase redirect)
+    const tokenHash = searchParams.get('token_hash');
+    const type = searchParams.get('type');
+
+    if (tokenHash && type === 'recovery') {
+      supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' })
+        .then(({ error }) => {
+          if (error) {
+            console.error('verifyOtp error:', error);
+            setError('Link inválido ou expirado. Solicite um novo link de recuperação.');
+          } else {
+            resolve();
+          }
+        });
+    }
+
+    // Method 2: Listen for auth state change (from Supabase redirect flow or hash fragment)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
-        setSessionReady(true);
+        resolve();
       }
     });
 
-    return () => subscription.unsubscribe();
+    // Method 3: Check existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) resolve();
+    });
+
+    // Timeout fallback
+    const timeout = setTimeout(() => {
+      if (!resolved && !sessionReady) {
+        setError('Link inválido ou expirado. Solicite um novo link de recuperação.');
+      }
+    }, 15000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,7 +104,17 @@ export default function ResetPasswordPage() {
             </p>
           </div>
 
-          {!sessionReady ? (
+          {error ? (
+            <div className="flex flex-col items-center gap-4 py-8">
+              <p className="text-sm text-destructive text-center">{error}</p>
+              <button
+                onClick={() => navigate('/login')}
+                className="btn-accent rounded-xl py-3 px-6 text-sm font-semibold transition-all duration-300"
+              >
+                Voltar ao login
+              </button>
+            </div>
+          ) : !sessionReady ? (
             <div className="flex flex-col items-center gap-4 py-8">
               <div className="h-8 w-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
               <p className="text-sm text-muted-foreground">Verificando link...</p>

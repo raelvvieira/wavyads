@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
     });
 
     // 3. Generate recovery link
-    const redirectTo = `${req.headers.get("origin") || "https://wavyads.lovable.app"}/reset-password`;
+    const redirectTo = "https://dashboard.wavydigital.com.br/reset-password";
     const { data: linkData, error: linkError } =
       await adminClient.auth.admin.generateLink({
         type: "recovery",
@@ -109,7 +109,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    const recoveryLink = linkData.properties?.action_link;
+    const tokenHash = linkData.properties?.hashed_token;
+    const recoveryLink = tokenHash
+      ? `https://dashboard.wavydigital.com.br/reset-password?token_hash=${tokenHash}&type=recovery`
+      : linkData.properties?.action_link;
 
     // 4. Send email via Resend
     const emailHtml = `
