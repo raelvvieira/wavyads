@@ -490,6 +490,18 @@ export default function AdminDashboard() {
                 )}
               </div>
 
+              {/* Access emails */}
+              {accessEmails?.[client.id]?.length ? (
+                <div className="mt-2 flex items-start gap-1.5">
+                  <Mail className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="space-y-0.5">
+                    {accessEmails[client.id].map((email) => (
+                      <p key={email} className="text-xs text-muted-foreground">{email}</p>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               {/* Sync buttons */}
               <div className="mt-4 pt-3 border-t border-white/10 space-y-2">
                 <button
