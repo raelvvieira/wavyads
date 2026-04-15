@@ -183,7 +183,7 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const auth = await authenticateRequest(req, supabase);
+    const auth = await authenticateRequest(req);
     if ("error" in auth) {
       return new Response(JSON.stringify({ error: auth.error }), {
         status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
