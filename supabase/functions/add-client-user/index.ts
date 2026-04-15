@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
       userId = newUser.user.id;
 
       // Generate recovery link for new user
-      const redirectTo = `${req.headers.get("origin") || "https://dashboard.wavydigital.com.br"}/reset-password`;
+      const redirectTo = "https://dashboard.wavydigital.com.br/reset-password";
       const { data: linkData } = await adminClient.auth.admin.generateLink({
         type: "recovery",
         email,
