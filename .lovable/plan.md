@@ -1,30 +1,58 @@
 
+Diagnóstico
 
-## Plan: Mostrar emails com acesso em cada card de cliente
+O problema não é “dar acesso de admin” ao cliente. Pelo código atual, o usuário convidado já recebe role `client` e vínculo em `client_users` antes mesmo do email ser enviado, então o acesso de visualizador ao dashboard já deveria existir nesse momento.
 
-### O que muda
+O ponto que ainda está quebrando é o fluxo de autenticação do link do email:
+- `invite-client` e `add-client-user` já usam `https://dashboard.wavydigital.com.br/reset-password`
+- mesmo assim o usuário ainda cai numa tela do Lovable
+- isso indica forte chance de configuração de autenticação/redirect no backend ainda estar apontando para domínio Lovable ou ignorando o `redirectTo` por allowlist/site URL incorreta
+- além disso, o frontend ainda tem outros pontos de recuperação de senha com redirect inconsistente
 
-No card de cada cliente no painel admin, será exibida uma lista dos emails que têm acesso ao dashboard daquele cliente, logo abaixo das informações de sync e acima dos botões.
+O que vou corrigir
 
-### Implementação
+1. Ajustar a configuração de autenticação do projeto
+- definir o domínio canônico do app como `https://dashboard.wavydigital.com.br`
+- garantir que `https://dashboard.wavydigital.com.br/reset-password` esteja liberado nos redirects de autenticação
+- revisar se existe fallback para domínio `*.lovable.app` nesse fluxo
 
-**Arquivo:** `src/pages/AdminDashboard.tsx`
+2. Padronizar todos os links de recuperação/senha
+- manter `invite-client` com redirect fixo para `https://dashboard.wavydigital.com.br/reset-password`
+- manter `add-client-user` com o mesmo redirect fixo
+- corrigir também `invite-admin` para não usar fallback Lovable
+- corrigir `src/pages/LoginPage.tsx`, porque hoje o “Esqueci minha senha” usa `window.location.origin`, o que pode gerar links errados em preview/editor
 
-1. **Criar um hook/query para buscar todos os acessos de uma vez** — Em vez de chamar `useClientUsers` para cada cliente individualmente, criar uma única query que busca todos os `client_users` com o email do perfil vinculado, agrupando por `client_id`.
+3. Fortalecer a página `ResetPasswordPage`
+- validar corretamente o fluxo de recuperação vindo do link
+- tratar casos em que o token não foi trocado por sessão ainda
+- exibir erro claro se o link estiver inválido/expirado
+- após salvar a senha, levar o usuário para o fluxo normal do dashboard sem telas estranhas do Lovable
 
-2. **Adicionar a query no componente** — Usar `useQuery` para buscar `client_users` join com `profiles` (via select com inner join ou duas queries), retornando `{ client_id, email }[]`.
+4. Garantir a experiência que você quer para cliente
+- o usuário continua sendo apenas `client`, nunca admin
+- o acesso ao dashboard continua sendo concedido no momento em que o email é inserido
+- a senha vira apenas a etapa de segurança para ativar o login
+- depois de criar a senha, o usuário entra normalmente no `dashboard.wavydigital.com.br` e vê apenas os dashboards aos quais foi vinculado
 
-3. **Renderizar no card** — Entre as informações de sync e os botões, adicionar uma seção com ícone de `Users` mostrando os emails com acesso, em texto pequeno (`text-xs text-muted-foreground`), um por linha.
+Arquivos/configuração envolvidos
 
-### Detalhes técnicos
+- `supabase/functions/invite-client/index.ts`
+- `supabase/functions/add-client-user/index.ts`
+- `supabase/functions/invite-admin/index.ts`
+- `src/pages/LoginPage.tsx`
+- `src/pages/ResetPasswordPage.tsx`
+- configuração de autenticação do backend (URL principal + redirects permitidos)
 
-- Query: `supabase.from('client_users').select('client_id, profiles!inner(email)')` — o Supabase suporta join via foreign key implícito se existir, senão faremos duas queries separadas (client_users + profiles)
-- Como `client_users` não tem FK declarada para `profiles`, faremos duas queries: uma para `client_users` e outra para `profiles`, e faremos o join no frontend
-- Visual: lista compacta com ícone `Users` e emails em cinza claro
+Validação após a correção
 
-### Arquivos
+1. Convidar um usuário novo para um cliente
+2. Abrir o email e clicar em “CRIAR MINHA SENHA”
+3. Confirmar que abre `dashboard.wavydigital.com.br/reset-password`
+4. Definir a senha
+5. Confirmar que o usuário entra no dashboard normal, sem tela do Lovable
+6. Confirmar que ele vê apenas os dashboards vinculados a ele
+7. Repetir o teste com “Esqueci minha senha” para garantir consistência
 
-| Arquivo | Ação |
-|---------|------|
-| `src/pages/AdminDashboard.tsx` | Adicionar query de acessos e renderizar emails nos cards |
+Observação importante
 
+Pelo que li do código, o acesso do cliente já está sendo salvo na base antes do envio do email. Então a correção principal é estabilizar o fluxo de autenticação/redirect, não a permissão em si.
