@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
     });
 
     // 4. Generate recovery link (acts as "Create your password")
-    const redirectTo = `${req.headers.get("origin") || "https://wavyads.lovable.app"}/reset-password`;
+    const redirectTo = "https://dashboard.wavydigital.com.br/reset-password";
     const { data: linkData, error: linkError } =
       await adminClient.auth.admin.generateLink({
         type: "recovery",
