@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, CheckCircle, XCircle, Loader2, Users, Calendar, Pencil, RefreshCw, Trash2, UserPlus, X } from 'lucide-react';
+import { Plus, CheckCircle, XCircle, Loader2, Users, Calendar, Pencil, RefreshCw, Trash2, UserPlus, X, Mail } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { useClients, useCreateClient, useUpdateClient, useDeleteClient } from '@/hooks/useClients';
 import { useAddClientUser, useClientUsers } from '@/hooks/useClientUsers';
@@ -8,6 +8,8 @@ import { useGetMetaAuthUrl, useSelectMetaAccount } from '@/hooks/useMetaOAuth';
 import { useGetGoogleAdsAuthUrl, useSelectGoogleAdsAccount } from '@/hooks/useGoogleAdsOAuth';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
@@ -26,6 +28,36 @@ export default function AdminDashboard() {
   const getAuthUrl = useGetMetaAuthUrl();
   const selectAccount = useSelectMetaAccount();
   const getGoogleAuthUrl = useGetGoogleAdsAuthUrl();
+
+  // Fetch all client access emails
+  const { data: accessEmails } = useQuery({
+    queryKey: ['all-client-access-emails'],
+    queryFn: async () => {
+      const { data: clientUsers, error: cuError } = await supabase
+        .from('client_users')
+        .select('client_id, user_id');
+      if (cuError) throw cuError;
+      if (!clientUsers?.length) return {};
+
+      const userIds = [...new Set(clientUsers.map(cu => cu.user_id))];
+      const { data: profiles, error: pError } = await supabase
+        .from('profiles')
+        .select('id, email')
+        .in('id', userIds);
+      if (pError) throw pError;
+
+      const profileMap = new Map(profiles?.map(p => [p.id, p.email]) || []);
+      const result: Record<string, string[]> = {};
+      for (const cu of clientUsers) {
+        const email = profileMap.get(cu.user_id);
+        if (email) {
+          if (!result[cu.client_id]) result[cu.client_id] = [];
+          result[cu.client_id].push(email);
+        }
+      }
+      return result;
+    },
+  });
   const selectGoogleAccount = useSelectGoogleAdsAccount();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -457,6 +489,18 @@ export default function AdminDashboard() {
                   </div>
                 )}
               </div>
+
+              {/* Access emails */}
+              {accessEmails?.[client.id]?.length ? (
+                <div className="mt-2 flex items-start gap-1.5">
+                  <Mail className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="space-y-0.5">
+                    {accessEmails[client.id].map((email) => (
+                      <p key={email} className="text-xs text-muted-foreground">{email}</p>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
 
               {/* Sync buttons */}
               <div className="mt-4 pt-3 border-t border-white/10 space-y-2">
