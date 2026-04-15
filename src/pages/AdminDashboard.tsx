@@ -28,6 +28,36 @@ export default function AdminDashboard() {
   const getAuthUrl = useGetMetaAuthUrl();
   const selectAccount = useSelectMetaAccount();
   const getGoogleAuthUrl = useGetGoogleAdsAuthUrl();
+
+  // Fetch all client access emails
+  const { data: accessEmails } = useQuery({
+    queryKey: ['all-client-access-emails'],
+    queryFn: async () => {
+      const { data: clientUsers, error: cuError } = await supabase
+        .from('client_users')
+        .select('client_id, user_id');
+      if (cuError) throw cuError;
+      if (!clientUsers?.length) return {};
+
+      const userIds = [...new Set(clientUsers.map(cu => cu.user_id))];
+      const { data: profiles, error: pError } = await supabase
+        .from('profiles')
+        .select('id, email')
+        .in('id', userIds);
+      if (pError) throw pError;
+
+      const profileMap = new Map(profiles?.map(p => [p.id, p.email]) || []);
+      const result: Record<string, string[]> = {};
+      for (const cu of clientUsers) {
+        const email = profileMap.get(cu.user_id);
+        if (email) {
+          if (!result[cu.client_id]) result[cu.client_id] = [];
+          result[cu.client_id].push(email);
+        }
+      }
+      return result;
+    },
+  });
   const selectGoogleAccount = useSelectGoogleAdsAccount();
 
   const [dialogOpen, setDialogOpen] = useState(false);
