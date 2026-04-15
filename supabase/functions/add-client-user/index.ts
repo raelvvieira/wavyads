@@ -129,14 +129,16 @@ Deno.serve(async (req) => {
 
       userId = newUser.user.id;
 
-      // Generate recovery link for new user
-      const redirectTo = "https://dashboard.wavydigital.com.br/reset-password";
+      // Generate recovery link for new user - build direct link to bypass redirect allowlist
       const { data: linkData } = await adminClient.auth.admin.generateLink({
         type: "recovery",
         email,
-        options: { redirectTo },
+        options: { redirectTo: "https://dashboard.wavydigital.com.br/reset-password" },
       });
-      recoveryLink = linkData?.properties?.action_link;
+      const tokenHash = linkData?.properties?.hashed_token;
+      recoveryLink = tokenHash
+        ? `https://dashboard.wavydigital.com.br/reset-password?token_hash=${tokenHash}&type=recovery`
+        : linkData?.properties?.action_link;
     }
 
     // Ensure client role exists

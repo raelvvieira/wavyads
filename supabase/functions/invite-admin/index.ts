@@ -109,7 +109,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    const recoveryLink = linkData.properties?.action_link;
+    const tokenHash = linkData.properties?.hashed_token;
+    const recoveryLink = tokenHash
+      ? `https://dashboard.wavydigital.com.br/reset-password?token_hash=${tokenHash}&type=recovery`
+      : linkData.properties?.action_link;
 
     // 4. Send email via Resend
     const emailHtml = `
