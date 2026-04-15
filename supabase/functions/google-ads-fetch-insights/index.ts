@@ -98,24 +98,32 @@ Deno.serve(async (req) => {
     const googleClientSecret = Deno.env.get("GOOGLE_ADS_CLIENT_SECRET")!;
     const developerToken = Deno.env.get("GOOGLE_ADS_DEVELOPER_TOKEN")!;
 
-    // Auth - use anon key client with user's token for validation
+    // Auth - decode JWT and verify via admin API
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Não autenticado" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: { user }, error: userError } = await userClient.auth.getUser();
-    if (userError || !user) {
+    const token = authHeader.replace("Bearer ", "");
+    let userId: string;
+    try {
+      const payloadB64 = token.split(".")[1];
+      const payload = JSON.parse(atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/")));
+      userId = payload.sub;
+      if (!userId) throw new Error("No sub");
+      const { data: { user }, error: userError } = await supabase.auth.admin.getUserById(userId);
+      if (userError || !user) {
+        return new Response(JSON.stringify({ error: "Token inválido" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } catch (e) {
+      console.error("Auth error:", e.message);
       return new Response(JSON.stringify({ error: "Token inválido" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const userId = user.id;
 
     let body: any = {};
     try { body = await req.json(); } catch { /* empty */ }

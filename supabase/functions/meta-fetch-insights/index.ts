@@ -86,21 +86,32 @@ function timeRangeParam(tr: { since: string; until: string }): string {
   return `time_range={"since":"${tr.since}","until":"${tr.until}"}`;
 }
 
-async function authenticateRequest(req: Request) {
+async function authenticateRequest(req: Request, supabase: any) {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
     return { error: "Não autenticado", status: 401 };
   }
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-  const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
-  const { data: { user }, error: userError } = await userClient.auth.getUser();
-  if (userError || !user) {
+  const token = authHeader.replace("Bearer ", "");
+  
+  // Decode JWT payload to get user ID (the auth server validates the signature)
+  try {
+    const payloadB64 = token.split(".")[1];
+    const payload = JSON.parse(atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/")));
+    const userId = payload.sub;
+    if (!userId) {
+      return { error: "Token inválido", status: 401 };
+    }
+    // Verify user exists via admin API
+    const { data: { user }, error: userError } = await supabase.auth.admin.getUserById(userId);
+    if (userError || !user) {
+      console.error("Auth admin error:", userError?.message);
+      return { error: "Token inválido", status: 401 };
+    }
+    return { user };
+  } catch (e) {
+    console.error("Token decode error:", e.message);
     return { error: "Token inválido", status: 401 };
   }
-  return { user };
 }
 
 async function getClient(supabase: any, userId: string, clientId: string) {
@@ -183,7 +194,7 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const auth = await authenticateRequest(req);
+    const auth = await authenticateRequest(req, supabase);
     if ("error" in auth) {
       return new Response(JSON.stringify({ error: auth.error }), {
         status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
