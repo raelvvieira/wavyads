@@ -1,43 +1,30 @@
 
 
-## Plan: Corrigir link de recuperação redirecionando para Lovable
+## Plan: Mostrar emails com acesso em cada card de cliente
 
-### Problema
+### O que muda
 
-Quando você adiciona um usuário ao dashboard, o `generateLink` nas Edge Functions usa `req.headers.get("origin")` para montar o `redirectTo`. Como a chamada vem do editor/preview do Lovable, o origin é o domínio do Lovable (ex: `id-preview--xxx.lovable.app`). O usuário clica no link do email, o Supabase processa o token e redireciona para o Lovable em vez de `dashboard.wavydigital.com.br` — por isso aparece a tela de onboarding do Lovable e "Acesso negado".
+No card de cada cliente no painel admin, será exibida uma lista dos emails que têm acesso ao dashboard daquele cliente, logo abaixo das informações de sync e acima dos botões.
 
-### Correção
+### Implementação
 
-Hardcodar a URL de produção `https://dashboard.wavydigital.com.br/reset-password` em ambas as Edge Functions, removendo a dependência do header `origin`.
+**Arquivo:** `src/pages/AdminDashboard.tsx`
 
-**Arquivo:** `supabase/functions/add-client-user/index.ts` (linha 133)
+1. **Criar um hook/query para buscar todos os acessos de uma vez** — Em vez de chamar `useClientUsers` para cada cliente individualmente, criar uma única query que busca todos os `client_users` com o email do perfil vinculado, agrupando por `client_id`.
 
-Trocar:
-```typescript
-const redirectTo = `${req.headers.get("origin") || "https://dashboard.wavydigital.com.br"}/reset-password`;
-```
-Por:
-```typescript
-const redirectTo = "https://dashboard.wavydigital.com.br/reset-password";
-```
+2. **Adicionar a query no componente** — Usar `useQuery` para buscar `client_users` join com `profiles` (via select com inner join ou duas queries), retornando `{ client_id, email }[]`.
 
-**Arquivo:** `supabase/functions/invite-client/index.ts` (linha 135)
+3. **Renderizar no card** — Entre as informações de sync e os botões, adicionar uma seção com ícone de `Users` mostrando os emails com acesso, em texto pequeno (`text-xs text-muted-foreground`), um por linha.
 
-Trocar:
-```typescript
-const redirectTo = `${req.headers.get("origin") || "https://wavyads.lovable.app"}/reset-password`;
-```
-Por:
-```typescript
-const redirectTo = "https://dashboard.wavydigital.com.br/reset-password";
-```
+### Detalhes técnicos
 
-Depois, fazer deploy de ambas as funções.
+- Query: `supabase.from('client_users').select('client_id, profiles!inner(email)')` — o Supabase suporta join via foreign key implícito se existir, senão faremos duas queries separadas (client_users + profiles)
+- Como `client_users` não tem FK declarada para `profiles`, faremos duas queries: uma para `client_users` e outra para `profiles`, e faremos o join no frontend
+- Visual: lista compacta com ícone `Users` e emails em cinza claro
 
 ### Arquivos
 
 | Arquivo | Ação |
 |---------|------|
-| `supabase/functions/add-client-user/index.ts` | Hardcodar redirectTo |
-| `supabase/functions/invite-client/index.ts` | Hardcodar redirectTo |
+| `src/pages/AdminDashboard.tsx` | Adicionar query de acessos e renderizar emails nos cards |
 
