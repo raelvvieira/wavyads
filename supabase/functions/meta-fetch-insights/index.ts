@@ -86,18 +86,15 @@ function timeRangeParam(tr: { since: string; until: string }): string {
   return `time_range={"since":"${tr.since}","until":"${tr.until}"}`;
 }
 
-async function authenticateRequest(req: Request) {
+async function authenticateRequest(req: Request, supabase: any) {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
     return { error: "Não autenticado", status: 401 };
   }
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-  const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
-  const { data: { user }, error: userError } = await userClient.auth.getUser();
+  const token = authHeader.replace("Bearer ", "");
+  const { data: { user }, error: userError } = await supabase.auth.getUser(token);
   if (userError || !user) {
+    console.error("Auth error:", userError?.message);
     return { error: "Token inválido", status: 401 };
   }
   return { user };
