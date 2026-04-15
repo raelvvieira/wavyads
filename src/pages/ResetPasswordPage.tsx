@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import wavyLogo from '@/assets/wavy-logo.png';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,31 +12,52 @@ export default function ResetPasswordPage() {
   const [sessionReady, setSessionReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    // Check if we already have a session (user may have arrived via recovery link that was already processed)
-    const checkExistingSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
+    let resolved = false;
+
+    const resolve = () => {
+      if (!resolved) {
+        resolved = true;
         setSessionReady(true);
       }
     };
 
-    // Listen for PASSWORD_RECOVERY or SIGNED_IN events from the recovery link
+    // Method 1: token_hash in query params (direct link bypassing Supabase redirect)
+    const tokenHash = searchParams.get('token_hash');
+    const type = searchParams.get('type');
+
+    if (tokenHash && type === 'recovery') {
+      supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' })
+        .then(({ error }) => {
+          if (error) {
+            console.error('verifyOtp error:', error);
+            setError('Link inválido ou expirado. Solicite um novo link de recuperação.');
+          } else {
+            resolve();
+          }
+        });
+    }
+
+    // Method 2: Listen for auth state change (from Supabase redirect flow or hash fragment)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
-        setSessionReady(true);
+        resolve();
       }
     });
 
-    checkExistingSession();
+    // Method 3: Check existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) resolve();
+    });
 
-    // Set a timeout - if after 10s no session, show error
+    // Timeout fallback
     const timeout = setTimeout(() => {
-      if (!sessionReady) {
+      if (!resolved && !sessionReady) {
         setError('Link inválido ou expirado. Solicite um novo link de recuperação.');
       }
-    }, 10000);
+    }, 15000);
 
     return () => {
       subscription.unsubscribe();
