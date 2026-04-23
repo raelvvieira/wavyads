@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
     // Build a direct link to production domain with token_hash to bypass Supabase redirect allowlist
     const tokenHash = linkData.properties?.hashed_token;
     const recoveryLink = tokenHash
-      ? `https://dashboard.wavydigital.com.br/reset-password?token_hash=${tokenHash}&type=recovery`
+      ? `https://dashboard.wavydigital.com.br/reset-password?token_hash=${tokenHash}&type=invite&email=${encodeURIComponent(email)}`
       : linkData.properties?.action_link;
 
     // 5. Send custom email via Resend
