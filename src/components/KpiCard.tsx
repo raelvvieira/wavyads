@@ -98,13 +98,13 @@ export function KpiCard({ metricKey, value, previousValue, onChangeMetric }: Kpi
   };
 
   return (
-    <div ref={ref} className="relative">
-      <GlassCard hover className="animate-fade-in overflow-hidden">
+    <div ref={ref} className="relative group">
+      <GlassCard hover className="animate-fade-in overflow-hidden p-4 xl:p-6">
         <div className={cn('transition-opacity duration-200', fade && 'opacity-0')}>
-          <div className="flex items-start justify-between">
-            <div className="space-y-1.5 min-w-0">
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">{def.label}</p>
-              <p className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight metric-number">{def.format(value)}</p>
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-1.5 min-w-0 flex-1">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium truncate">{def.label}</p>
+              <p className="text-lg md:text-xl lg:text-2xl 2xl:text-3xl font-bold tracking-tight metric-number truncate">{def.format(value)}</p>
               {changePercent != null && (
                 <div
                   className={cn(
@@ -120,12 +120,12 @@ export function KpiCard({ metricKey, value, previousValue, onChangeMetric }: Kpi
               )}
             </div>
             <div className="flex items-center gap-1 shrink-0">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl btn-accent">
-                <Icon className="h-5 w-5" />
+              <div className="flex h-8 w-8 xl:h-10 xl:w-10 items-center justify-center rounded-xl btn-accent">
+                <Icon className="h-4 w-4 xl:h-5 xl:w-5" />
               </div>
               <button
                 onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
-                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors opacity-0 group-hover:opacity-100 xl:opacity-100"
               >
                 <Settings className="h-3.5 w-3.5" />
               </button>
