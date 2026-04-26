@@ -1,70 +1,34 @@
+## Problema
 
-
-## Diagnóstico
-
-O e-mail de convite para administrador chega normalmente, mas ao clicar em "CRIAR MINHA SENHA" a página `/reset-password` fica eternamente em "Verificando link...".
-
-A causa mais provável é que o **token de recuperação está sendo consumido antes do clique humano**, por scanners de segurança / link preview de provedores de e-mail (Outlook Safe Links, Gmail/Google, antivírus corporativo). Quando o usuário clica de fato, o `token_hash` já não é mais válido, e a chamada `supabase.auth.verifyOtp({ token_hash, type: 'recovery' })` nem retorna sucesso nem erro consistente — o `useEffect` da página fica travado em "Verificando link..." até o timeout de 15s, e em alguns casos nem o erro aparece direito.
-
-Hoje o fluxo é:
-
-```text
-Email → link direto com ?token_hash=...&type=recovery → /reset-password
-       (qualquer pré-fetch do link queima o token de uso único)
-```
-
-O fluxo de cliente tem o mesmo problema potencialmente, mas pode estar funcionando por sorte (cliente de e-mail diferente, sem scanner). A correção precisa valer para os dois fluxos.
+Em larguras intermediárias de desktop (≈900–1200px) com 6 cards lado a lado, o valor numérico (ex: `R$ 4.885,05`) fica atrás do ícone verde e do botão de configurações no canto superior direito do `KpiCard`. O ícone tem tamanho fixo (`h-10 w-10`) enquanto o valor cresce com a viewport.
 
 ## Solução
 
-Trocar o link do e-mail para um **link "tolerante a pré-fetch"**: o token só é consumido quando o usuário realmente envia o formulário, não no momento em que a página abre.
+Ajustar o `KpiCard` para garantir que valor e ícone nunca se sobreponham, usando três técnicas combinadas:
 
-### Mudanças
+### 1. Ícone responsivo
+- Ícone container: `h-8 w-8` (mobile/médio) → `h-10 w-10` (xl+)
+- Ícone interno (lucide): `h-4 w-4` → `h-5 w-5` em xl
+- Botão de settings: visível apenas no hover do card em telas menores que xl, sempre visível em xl+ (reduz poluição e libera espaço)
 
-**1. `supabase/functions/invite-admin/index.ts` e `supabase/functions/invite-client/index.ts`**
+### 2. Layout que não sobrepõe
+- Hoje o `<p>` do valor pode ficar atrás do bloco de ícone porque o flex usa `min-w-0` mas o valor tem `text-3xl` em md. Vou:
+  - Garantir `flex-1 min-w-0` no bloco da esquerda
+  - Reduzir o valor para `text-lg` (base) → `text-xl` (md) → `text-2xl` (lg) → `text-3xl` (2xl)
+  - Aplicar `truncate` ou `tabular-nums` + `whitespace-nowrap` controlado, com `overflow-hidden` no container
+- Adicionar `gap-2` entre os dois blocos (esquerda/ícone) para respiro garantido
 
-- Continuar gerando o `hashed_token` via `auth.admin.generateLink({ type: 'recovery' })`.
-- No e-mail, mandar o link para `/reset-password?token_hash=...&type=invite&email=...` (parâmetro `type=invite` para o front saber que é primeiro acesso).
-- Manter `redirectTo` apontando para `dashboard.wavydigital.com.br/reset-password`.
+### 3. Padding do card
+- Reduzir o padding do `GlassCard` no `KpiCard` em telas menores: `p-4` (base) → `p-6` (xl+) via classe customizada, ganhando mais área útil sem mudar o `GlassCard` global
 
-**2. `src/pages/ResetPasswordPage.tsx`**
-
-- Remover a chamada automática a `verifyOtp` no `useEffect`.
-- Em vez disso: ao abrir a página, **não** consumir o token. Apenas ler `token_hash`, `type` e `email` da URL e mostrar o formulário de "Definir senha" imediatamente.
-- Quando o usuário clicar em "Definir senha":
-  1. Chamar `supabase.auth.verifyOtp({ token_hash, type: 'recovery' })` — isso autentica a sessão.
-  2. Se sucesso: chamar `supabase.auth.updateUser({ password })`.
-  3. Em caso de erro do `verifyOtp` ("token expired/invalid"), mostrar mensagem clara com botão "Reenviar link" que leva para `/login` → "Esqueci minha senha".
-  4. Em caso de sucesso: redirecionar para `/dashboard`.
-- Manter compatibilidade com o fluxo antigo de "esqueci minha senha" (quando o Supabase já entregou a sessão via hash fragment): se já existe sessão ao abrir a página, pular o `verifyOtp` e ir direto para `updateUser`.
-- Mostrar o e-mail do convite como hint (somente leitura) no topo do formulário, para o admin saber qual conta está criando senha.
-
-**3. Mensagens e UX**
-
-- Remover o spinner "Verificando link..." (não há mais verificação no carregamento).
-- Texto do botão: "Definir senha e entrar".
-- Após sucesso, toast "Senha definida! Redirecionando..." e `navigate('/dashboard')`.
-
-### Arquivos
+## Arquivo
 
 | Arquivo | Ação |
 |---|---|
-| `supabase/functions/invite-admin/index.ts` | Adicionar `type=invite` e `email` na URL do link |
-| `supabase/functions/invite-client/index.ts` | Mesmo ajuste para consistência |
-| `src/pages/ResetPasswordPage.tsx` | Não consumir token no load; consumir só no submit; mostrar formulário imediatamente |
+| `src/components/KpiCard.tsx` | Ajustes responsivos no tamanho do ícone, valor e padding; garantir que ícone nunca sobreponha o valor |
 
-### Resultado esperado
+## Resultado esperado
 
-- Pré-fetch de scanners de e-mail não invalida mais o token (a página não chama `verifyOtp` ao carregar).
-- Admin clica no e-mail → vê o formulário de senha na hora → define senha → cai logado em `/dashboard` com permissão de admin já gravada na base.
-- Mesmo benefício para o fluxo de cliente.
-
-### Como testar
-
-1. Convide um novo admin pelo painel.
-2. Abra o e-mail e clique em "CRIAR MINHA SENHA".
-3. O formulário deve aparecer imediatamente (sem spinner de verificação).
-4. Defina a senha e confirme — deve cair direto no dashboard.
-5. Faça logout e logue novamente com email + senha para validar persistência.
-6. Repetir o teste para um cliente novo.
-
+- Em 986px (viewport atual do usuário) os 6 cards mostram valor completo sem sobreposição.
+- Em telas grandes (≥1280px) o visual atual é mantido.
+- Em mobile o card continua confortável.
