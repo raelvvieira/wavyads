@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { UserPlus, Shield, Loader2 } from 'lucide-react';
+import { UserPlus, Shield, Loader2, Mail } from 'lucide-react';
 
 const tabs = [
   { id: 'perfil', label: 'Perfil' },
@@ -37,6 +37,7 @@ export default function SettingsPage() {
   const [inviteLoading, setInviteLoading] = useState(false);
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [adminsLoading, setAdminsLoading] = useState(false);
+  const [resendingId, setResendingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -123,6 +124,33 @@ export default function SettingsPage() {
     setInviteName('');
     setInviteEmail('');
     fetchAdmins();
+  };
+
+  const handleResendInvite = async (admin: AdminUser) => {
+    if (!admin.email) {
+      toast({ title: 'Erro', description: 'Este admin não possui email cadastrado.', variant: 'destructive' });
+      return;
+    }
+    const confirmed = window.confirm(
+      `Deseja reenviar o email de criação de senha para ${admin.email}?\n\nO link anterior será invalidado.`
+    );
+    if (!confirmed) return;
+
+    setResendingId(admin.user_id);
+    const { data, error } = await supabase.functions.invoke('resend-admin-invite', {
+      body: { email: admin.email, name: admin.name },
+    });
+    setResendingId(null);
+
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      return;
+    }
+    if (data?.error) {
+      toast({ title: 'Erro', description: data.error, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Email reenviado!', description: `Um novo link foi enviado para ${admin.email}.` });
   };
 
   // Filter tabs: only show "Acessos" for admins
@@ -259,15 +287,30 @@ export default function SettingsPage() {
                 {admins.map((admin) => (
                   <div
                     key={admin.user_id}
-                    className="flex items-center justify-between py-3 px-4 rounded-xl glass"
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-3 px-4 rounded-xl glass"
                   >
-                    <div>
-                      <p className="text-sm font-medium">{admin.name || 'Sem nome'}</p>
-                      <p className="text-xs text-white/40">{admin.email}</p>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{admin.name || 'Sem nome'}</p>
+                      <p className="text-xs text-white/40 truncate">{admin.email}</p>
                     </div>
-                    <span className="text-xs text-white/30">
-                      {new Date(admin.created_at).toLocaleDateString('pt-BR')}
-                    </span>
+                    <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+                      <button
+                        onClick={() => handleResendInvite(admin)}
+                        disabled={resendingId === admin.user_id || !admin.email}
+                        title="Reenviar email de criação de senha"
+                        className="flex items-center gap-1.5 text-xs font-medium text-accent hover:text-accent/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {resendingId === admin.user_id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Mail className="w-3.5 h-3.5" />
+                        )}
+                        <span>Reenviar email</span>
+                      </button>
+                      <span className="text-xs text-white/30 whitespace-nowrap">
+                        {new Date(admin.created_at).toLocaleDateString('pt-BR')}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
