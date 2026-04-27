@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { TrendingUp, RefreshCw, ArrowLeft, CalendarIcon } from 'lucide-react';
+import { TrendingUp, RefreshCw, ArrowLeft, CalendarIcon, Send } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths, subDays, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { GlassCard } from '@/components/GlassCard';
@@ -29,6 +29,11 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useClients } from '@/hooks/useClients';
+import { OfflineConversionDialog } from '@/components/OfflineConversionDialog';
+
+const CONVERSION_ENABLED_CLIENTS = ['deni haut cursos'];
+const showConversionButton = (name?: string | null) =>
+  !!name && CONVERSION_ENABLED_CLIENTS.includes(name.trim().toLowerCase());
 
 type PresetKey = 'today' | 'yesterday' | 'last_7d' | 'last_14d' | 'last_30d' | 'this_month' | 'last_month' | 'custom';
 type Platform = 'meta' | 'google';
@@ -93,6 +98,7 @@ export default function ClientDashboard() {
   const [selectedPreset, setSelectedPreset] = useState<PresetKey>(savedPrefs.preset || 'this_month');
   const [customDateRange, setCustomDateRange] = useState<{ from?: Date; to?: Date }>({});
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [conversionDialogOpen, setConversionDialogOpen] = useState(false);
 
   const isMetaSynced = client?.is_synced ?? false;
   const isGoogleSynced = (client as any)?.google_ads_synced ?? false;
@@ -479,6 +485,25 @@ export default function ClientDashboard() {
           ))}
         </div>
       </header>
+
+      {showConversionButton(client?.name) && clientId && (
+        <>
+          <div className="px-4 sm:px-6 pt-4 flex justify-end">
+            <button
+              onClick={() => setConversionDialogOpen(true)}
+              className="btn-accent rounded-xl px-4 py-2.5 text-xs sm:text-sm font-semibold flex items-center gap-2"
+            >
+              <Send className="h-4 w-4" />
+              Registrar Conversão
+            </button>
+          </div>
+          <OfflineConversionDialog
+            open={conversionDialogOpen}
+            onOpenChange={setConversionDialogOpen}
+            clientId={clientId}
+          />
+        </>
+      )}
 
       {/* Not synced state */}
       {!isSynced && isAdmin ? (
