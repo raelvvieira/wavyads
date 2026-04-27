@@ -1,36 +1,46 @@
-## Objetivo
+# Desabilitar tradução automática do navegador
 
-Tornar a sincronização do Pixel Meta e o registro de Conversões Offline disponíveis para **todos os clientes**, exatamente como já funciona para a Deni Haut Cursos. Cada cliente continuará vendo apenas os dados da sua própria conta Meta Ads (a separação por `clientId` já existe).
+## Problema
 
-## Situação atual
+Navegadores (principalmente Chrome) estão traduzindo automaticamente o conteúdo do dashboard, alterando termos importantes:
+- "Leads" vira "Pistas"
+- "WAVY Dash" vira "Dash Ondulado"
+- "Compras", "Custo/Compra", "ROAS" e outros termos podem sofrer alterações
 
-Hoje a funcionalidade está restrita por uma whitelist com o nome `'deni haut cursos'` em dois lugares:
+A causa raiz é que o `index.html` declara `lang="en"`, mas o conteúdo real é em português. O Chrome detecta o mismatch e oferece (ou aplica automaticamente) a tradução, inclusive sobre nomes próprios da marca.
 
-- `src/pages/AdminDashboard.tsx` (linhas 11-13): constante `PIXEL_ENABLED_CLIENTS` controla a exibição do botão **"Sincronizar Pixel Meta"** em cada card de cliente.
-- `src/pages/ClientDashboard.tsx` (linhas 35-37): constante `CONVERSION_ENABLED_CLIENTS` controla a exibição do botão **"Registrar Conversão"** dentro do dashboard do cliente.
+## Solução
 
-Toda a infraestrutura por trás (tabela `client_pixels`, hook `useClientPixels`, dialog `OfflineConversionDialog` que recebe `clientId` por prop, edge function `send-offline-conversion`) já é multi-cliente — só está bloqueada por essas duas listas.
+Aplicar três correções padrão da web que, juntas, eliminam a tradução automática em todos os navegadores:
 
-## Mudanças
+### 1. Corrigir o atributo `lang` no `<html>`
+Mudar de `lang="en"` para `lang="pt-BR"` em `index.html`. Isso já elimina a sugestão de tradução do Chrome na maioria dos casos, pois o idioma declarado passa a bater com o conteúdo.
 
-### 1. `src/pages/AdminDashboard.tsx`
-- Remover as constantes `PIXEL_ENABLED_CLIENTS` e a função `showPixelButton`.
-- Remover a condição `{showPixelButton(client.name) && (...)}` ao redor do botão "Sincronizar Pixel Meta" para que ele apareça em **todos os cards** de cliente.
-- O indicador de status "Pixel ✓ / Pixel ✗" (que usa `pixelMap?.has(client.id)`) já é universal e continuará exibido para todos.
+### 2. Adicionar meta tag global anti-tradução
+No `<head>` do `index.html`, adicionar:
+```html
+<meta name="google" content="notranslate" />
+```
+Isso instrui o Google Translate (e o Chrome) a NUNCA oferecer tradução para esta página.
 
-### 2. `src/pages/ClientDashboard.tsx`
-- Remover as constantes `CONVERSION_ENABLED_CLIENTS` e `showConversionButton`.
-- Substituir `{showConversionButton(client?.name) && clientId && (...)}` por uma condição baseada na **existência de pixel configurado** para o cliente atual, usando o hook `useAllClientPixels` que já existe:
-  - Importar `useAllClientPixels` de `@/hooks/useClientPixels`.
-  - `const hasPixel = pixelMap?.has(clientId)`.
-  - O botão "Registrar Conversão" e o `OfflineConversionDialog` aparecem se `hasPixel && clientId`. Isso evita mostrar o botão para clientes cujo admin ainda não cadastrou Pixel ID + token (caso contrário o envio falharia na edge function).
+### 3. Adicionar atributo `translate="no"` e classe `notranslate` no `<body>`
+Garante que mesmo que o usuário acione manualmente a tradução (via menu do navegador ou extensão), o conteúdo seja preservado:
+```html
+<body translate="no" class="notranslate">
+```
 
-### 3. Garantia de isolamento de dados (já existente, sem mudança)
-- O `OfflineConversionDialog` recebe `clientId={clientId}` e a edge function `send-offline-conversion` carrega `pixel_id` e `access_token` da linha de `client_pixels` correspondente àquele `clientId`. Cada cliente registra conversões usando exclusivamente o seu próprio Pixel.
-- O dashboard do cliente (`ClientDashboard`) já filtra todos os hooks Meta (`useMetaCampaigns`, `useMetaInsights`, `useMetaAds`) por `clientId`, então a leitura de dados continua individualizada.
+## Arquivo afetado
+
+- `index.html` — única alteração necessária. Todo o app React passa a herdar o comportamento "não traduzir".
 
 ## Resultado esperado
 
-- Admin: vê o botão "Sincronizar Pixel Meta" em **todos** os cards de cliente e pode cadastrar Pixel ID + token para qualquer um.
-- Cliente: assim que o admin configura o Pixel, o botão "Registrar Conversão" aparece no topo do dashboard daquele cliente, abrindo o mesmo fluxo single/bulk (Purchase / Lead) já validado com a Deni Haut.
-- Nenhuma alteração de schema, edge function ou RLS é necessária — apenas remoção das duas whitelists e troca do gate do botão por `hasPixel`.
+- O Chrome deixa de exibir o popup "Traduzir esta página"
+- Mesmo se o usuário tiver tradução automática ativada globalmente no navegador, esta página será ignorada
+- "WAVY Dash", "Leads", "Compras", "ROAS" e todos os demais termos aparecerão sempre exatamente como escritos no código, para todos os clientes
+
+## Observações
+
+- Não requer mudanças em componentes React, hooks ou edge functions
+- Não afeta acessibilidade — `lang="pt-BR"` é, na verdade, mais correto para leitores de tela
+- Extensões de tradução agressivas (ex: tradutores de terceiros) ainda podem forçar tradução, mas o Google Translate nativo do Chrome — que é o caso dos usuários afetados — respeita essas diretivas
