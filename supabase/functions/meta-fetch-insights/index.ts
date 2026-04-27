@@ -76,6 +76,15 @@ function extractCostPerResult(costPerAction: any[]): number {
   return 0;
 }
 
+function extractActionValue(actionValues: any[], types: string[]): number {
+  if (!actionValues) return 0;
+  for (const t of types) {
+    const found = actionValues.find((a: any) => a.action_type === t);
+    if (found) return parseFloat(found.value || "0");
+  }
+  return 0;
+}
+
 function extractVideoMetric(videoActions: any[], metricType: string): number {
   if (!videoActions) return 0;
   const found = videoActions.find((a: any) => a.action_type === metricType);
