@@ -86,6 +86,8 @@ export default function ClientDashboard() {
   const clientId = paramClientId || clientUserRecord?.id;
 
   const { data: client, isLoading: clientLoading } = useClient(clientId);
+  const { data: pixelMap } = useAllClientPixels();
+  const hasPixel = !!(clientId && pixelMap?.has(clientId));
   // Preferences persistence
   const prefsKey = clientId ? `wavy-dash-prefs-${clientId}` : null;
   const savedPrefs = useMemo(() => {
