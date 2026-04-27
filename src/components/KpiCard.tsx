@@ -111,12 +111,12 @@ export function KpiCard({ metricKey, value, previousValue, onChangeMetric }: Kpi
 
   return (
     <div ref={ref} className="relative group">
-      <GlassCard hover className="animate-fade-in overflow-hidden p-4 xl:p-6">
+      <GlassCard hover className="animate-fade-in overflow-hidden p-3 sm:p-4 xl:p-5">
         <div className={cn('transition-opacity duration-200', fade && 'opacity-0')}>
-          <div className="flex items-start justify-between gap-2">
-            <div className="space-y-1.5 min-w-0 flex-1">
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium truncate">{def.label}</p>
-              <p className="text-lg md:text-xl lg:text-2xl 2xl:text-3xl font-bold tracking-tight metric-number truncate">{def.format(value)}</p>
+          <div className="flex items-center sm:items-start justify-between gap-2">
+            <div className="space-y-1 sm:space-y-1.5 min-w-0 flex-1">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium leading-tight line-clamp-2 sm:min-h-[24px]">{def.label}</p>
+              <p className="text-base sm:text-lg md:text-xl lg:text-xl xl:text-xl 2xl:text-2xl font-bold tracking-tight metric-number tabular-nums leading-tight break-words">{def.format(value)}</p>
               {changePercent != null && (
                 <div
                   className={cn(
@@ -132,12 +132,13 @@ export function KpiCard({ metricKey, value, previousValue, onChangeMetric }: Kpi
               )}
             </div>
             <div className="flex items-center gap-1 shrink-0">
-              <div className="flex h-8 w-8 xl:h-10 xl:w-10 items-center justify-center rounded-xl btn-accent">
-                <Icon className="h-4 w-4 xl:h-5 xl:w-5" />
+              <div className="flex h-8 w-8 xl:h-9 xl:w-9 items-center justify-center rounded-xl btn-accent">
+                <Icon className="h-4 w-4 xl:h-[18px] xl:w-[18px]" />
               </div>
               <button
                 onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
-                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors opacity-0 group-hover:opacity-100 xl:opacity-100"
+                className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors opacity-60 sm:opacity-0 group-hover:opacity-100 xl:opacity-100"
+                aria-label="Mudar métrica"
               >
                 <Settings className="h-3.5 w-3.5" />
               </button>
