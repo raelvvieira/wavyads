@@ -80,9 +80,11 @@ function validateDraft(d: ConversionDraft): string | null {
   if (!d.email.trim() && !d.phone.trim()) {
     return 'Informe ao menos e-mail ou telefone.';
   }
-  const valueNum = d.valueStr ? Number(d.valueStr.replace(',', '.')) : null;
-  if (valueNum == null || isNaN(valueNum) || valueNum <= 0) {
-    return 'Informe um valor de conversão válido.';
+  if (d.eventName === 'Purchase') {
+    const valueNum = d.valueStr ? Number(d.valueStr.replace(',', '.')) : null;
+    if (valueNum == null || isNaN(valueNum) || valueNum <= 0) {
+      return 'Informe um valor de conversão válido.';
+    }
   }
   if (!d.conversionDate) return 'Selecione a data da conversão.';
   return null;
