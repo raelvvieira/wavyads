@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
         });
       }
     } catch (e) {
-      console.error("Auth error:", e.message);
+      console.error("Auth error:", e instanceof Error ? e.message : String(e));
       return new Response(JSON.stringify({ error: "Token inválido" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
