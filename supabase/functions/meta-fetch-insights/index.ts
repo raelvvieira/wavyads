@@ -109,7 +109,7 @@ async function authenticateRequest(req: Request, supabase: any) {
     }
     return { user };
   } catch (e) {
-    console.error("Token decode error:", e.message);
+    console.error("Token decode error:", e instanceof Error ? e.message : String(e));
     return { error: "Token inválido", status: 401 };
   }
 }
@@ -453,7 +453,7 @@ Deno.serve(async (req) => {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
