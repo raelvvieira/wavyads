@@ -6,86 +6,62 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// SHA-256 helper for Meta CAPI user data hashing
-async function sha256(value: string): Promise<string> {
-  const data = new TextEncoder().encode(value);
+async function hashSHA256(value: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(value);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-const norm = (s: string | null | undefined) =>
-  (s ?? "").toString().trim().toLowerCase();
-
-// Phone: only digits (with country code)
-const normPhone = (s: string | null | undefined) =>
-  (s ?? "").toString().replace(/\D/g, "");
-
-// ZIP: digits only, no dash
-const normZip = (s: string | null | undefined) =>
-  (s ?? "").toString().replace(/\D/g, "");
-
-// Country: 2-letter lowercase
-const normCountry = (s: string | null | undefined) =>
-  (s ?? "BR").toString().trim().toLowerCase().slice(0, 2);
-
-// Gender: m or f
-const normGen = (s: string | null | undefined) => {
-  const v = (s ?? "").toString().trim().toLowerCase();
-  if (v === "m" || v === "male" || v === "masculino") return "m";
-  if (v === "f" || v === "female" || v === "feminino") return "f";
-  return "";
+const isPresent = (v: unknown): v is string | number => {
+  if (v === null || v === undefined) return false;
+  if (typeof v === "string") return v.trim().length > 0;
+  if (typeof v === "number") return !Number.isNaN(v);
+  return false;
 };
 
-// DOB MM/DD/YY -> YYYYMMDD (Meta expects YYYYMMDD)
-function normDob(s: string | null | undefined): string {
-  if (!s) return "";
-  const v = s.toString().trim();
-  // Accept MM/DD/YY or MM/DD/YYYY or YYYY-MM-DD
-  let m = v.match(/^(\d{2})\/(\d{2})\/(\d{2}|\d{4})$/);
-  if (m) {
-    const mm = m[1];
-    const dd = m[2];
-    let yyyy = m[3];
-    if (yyyy.length === 2) {
-      const n = parseInt(yyyy, 10);
-      yyyy = (n <= 30 ? 2000 + n : 1900 + n).toString();
-    }
-    return `${yyyy}${mm}${dd}`;
-  }
-  m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (m) return `${m[1]}${m[2]}${m[3]}`;
-  return "";
-}
+// Per-field normalizers per spec
+const normEmail = (s: string) => s.trim().toLowerCase();
+const normPhone = (s: string) => {
+  const trimmed = s.trim();
+  const lead = trimmed.startsWith("+") ? "+" : "";
+  return lead + trimmed.replace(/\D/g, "");
+};
+const normName = (s: string) => s.trim().toLowerCase();
+const normZip = (s: string) => s.replace(/[\s-]/g, "");
+const normCt = (s: string) => s.trim().toLowerCase();
+const normCountry = (s: string) => s.toLowerCase();
+const normDob = (s: string) => s.replace(/\D/g, "");
+const normDoby = (s: string) => s.trim();
+const normGen = (s: string) => s.toLowerCase();
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
+  try {
+    // Auth (validate caller via JWT claims)
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Não autorizado" }), {
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    // Validate caller
-    const anonClient = createClient(supabaseUrl, anonKey, {
+    const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-    const {
-      data: { user: caller },
-    } = await anonClient.auth.getUser();
-    if (!caller) {
-      return new Response(JSON.stringify({ error: "Não autorizado" }), {
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
+    if (claimsErr || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -93,16 +69,14 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const conversionId = body?.conversion_id as string | undefined;
-    if (!conversionId) {
-      return new Response(JSON.stringify({ error: "conversion_id é obrigatório" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (!conversionId || typeof conversionId !== "string") {
+      return new Response(
+        JSON.stringify({ error: "conversion_id é obrigatório" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
-
-    // Fetch the conversion row
+    // 1) Fetch the conversion
     const { data: conv, error: convErr } = await adminClient
       .from("offline_conversions")
       .select("*")
@@ -115,13 +89,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Fetch the pixel for this client
+    // 2) Fetch the pixel
     const { data: pixelRow, error: pixelErr } = await adminClient
       .from("client_pixels")
       .select("pixel_id, access_token")
       .eq("client_id", conv.client_id)
       .maybeSingle();
-
     if (pixelErr || !pixelRow) {
       const msg = "Pixel Meta não configurado para este cliente";
       await adminClient
@@ -134,116 +107,109 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Build hashed user_data
+    // 3) Build hashed user_data — only include fields that are present.
+    //    Per spec: em/ph as arrays; others as scalar strings.
     const user_data: Record<string, string | string[]> = {};
 
-    const email = norm(conv.email);
-    if (email) user_data.em = [await sha256(email)];
-
-    const phone = normPhone(conv.phone);
-    if (phone) user_data.ph = [await sha256(phone)];
-
-    const fn = norm(conv.fn);
-    if (fn) user_data.fn = [await sha256(fn)];
-
-    const ln = norm(conv.ln);
-    if (ln) user_data.ln = [await sha256(ln)];
-
-    const zip = normZip(conv.zip);
-    if (zip) user_data.zp = [await sha256(zip)];
-
-    const ct = norm(conv.ct);
-    if (ct) user_data.ct = [await sha256(ct.replace(/\s+/g, ""))];
-
-    const country = normCountry(conv.country);
-    if (country) user_data.country = [await sha256(country)];
-
-    const dob = normDob(conv.dob);
-    if (dob) user_data.db = [await sha256(dob)];
-
-    const doby = norm(conv.doby);
-    if (doby) user_data.doby = [await sha256(doby)];
-
-    const gen = normGen(conv.gen);
-    if (gen) user_data.ge = [await sha256(gen)];
-
-    if (conv.age != null) user_data.age = [await sha256(String(conv.age))];
-
-    if (Object.keys(user_data).length === 0) {
-      const msg = "É necessário pelo menos um dado de contato (e-mail ou telefone)";
-      await adminClient
-        .from("offline_conversions")
-        .update({ send_status: "error", error_message: msg })
-        .eq("id", conversionId);
-      return new Response(JSON.stringify({ error: msg }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (isPresent(conv.email)) {
+      user_data.em = [await hashSHA256(normEmail(String(conv.email)))];
+    }
+    if (isPresent(conv.phone)) {
+      user_data.ph = [await hashSHA256(normPhone(String(conv.phone)))];
+    }
+    if (isPresent(conv.fn)) {
+      user_data.fn = await hashSHA256(normName(String(conv.fn)));
+    }
+    if (isPresent(conv.ln)) {
+      user_data.ln = await hashSHA256(normName(String(conv.ln)));
+    }
+    if (isPresent(conv.zip)) {
+      user_data.zp = await hashSHA256(normZip(String(conv.zip)));
+    }
+    if (isPresent(conv.ct)) {
+      user_data.ct = await hashSHA256(normCt(String(conv.ct)));
+    }
+    if (isPresent(conv.country)) {
+      user_data.country = await hashSHA256(normCountry(String(conv.country)));
+    }
+    if (isPresent(conv.dob)) {
+      user_data.db = await hashSHA256(normDob(String(conv.dob)));
+    }
+    if (isPresent(conv.doby)) {
+      user_data.doby = await hashSHA256(normDoby(String(conv.doby)));
+    }
+    if (isPresent(conv.gen)) {
+      user_data.ge = await hashSHA256(normGen(String(conv.gen)));
+    }
+    if (isPresent(conv.age)) {
+      user_data.age = await hashSHA256(String(conv.age));
     }
 
+    // 4) Build payload
     const eventTime = Math.floor(new Date(conv.conversion_date).getTime() / 1000);
-    const eventId = conv.meta_event_id || `oc-${conv.id}`;
+    const eventId = conv.id as string;
 
-    const eventPayload: Record<string, unknown> = {
+    const event: Record<string, unknown> = {
       event_name: conv.event_name || "Purchase",
       event_time: eventTime,
-      action_source: "physical_store",
+      action_source: "other",
       event_id: eventId,
       user_data,
     };
 
-    if (conv.value != null) {
-      eventPayload.custom_data = {
+    if (isPresent(conv.value)) {
+      event.custom_data = {
+        value: parseFloat(String(conv.value)),
         currency: conv.currency || "BRL",
-        value: Number(conv.value),
       };
     }
 
-    const url = `https://graph.facebook.com/v21.0/${pixelRow.pixel_id}/events?access_token=${encodeURIComponent(
+    const payload = { data: [event] };
+
+    // 5) POST to Meta CAPI
+    const url = `https://graph.facebook.com/v24.0/${pixelRow.pixel_id}/events?access_token=${encodeURIComponent(
       pixelRow.access_token,
     )}`;
 
     const fbResp = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data: [eventPayload] }),
+      body: JSON.stringify(payload),
     });
     const fbJson = await fbResp.json().catch(() => ({}));
 
-    if (!fbResp.ok || (fbJson as any)?.error) {
-      const errMsg =
-        (fbJson as any)?.error?.message ||
-        `Meta CAPI retornou status ${fbResp.status}`;
+    // 6/7) Update status
+    if (fbResp.status === 200 && !(fbJson as any)?.error) {
       await adminClient
         .from("offline_conversions")
         .update({
-          send_status: "error",
-          error_message: errMsg,
+          send_status: "sent",
+          error_message: null,
           meta_event_id: eventId,
         })
         .eq("id", conversionId);
-      return new Response(JSON.stringify({ error: errMsg, meta: fbJson }), {
-        status: 502,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+
+      return new Response(
+        JSON.stringify({ ok: true, event_id: eventId, meta: fbJson }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
+    const errMsg =
+      (fbJson as any)?.error?.message ||
+      `Meta CAPI retornou status ${fbResp.status}`;
     await adminClient
       .from("offline_conversions")
       .update({
-        send_status: "sent",
-        error_message: null,
-        meta_event_id: eventId,
+        send_status: "error",
+        error_message: errMsg,
       })
       .eq("id", conversionId);
 
-    return new Response(
-      JSON.stringify({ ok: true, meta: fbJson, event_id: eventId }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
+    return new Response(JSON.stringify({ error: errMsg, meta: fbJson }), {
+      status: 502,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("send-offline-conversion error:", msg);
