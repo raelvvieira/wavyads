@@ -599,7 +599,7 @@ export default function ClientDashboard() {
         </div>
       </header>
 
-      {showConversionButton(client?.name) && clientId && (
+      {hasPixel && clientId && (
         <>
           <div className="px-4 sm:px-6 pt-4 flex justify-end">
             <button
