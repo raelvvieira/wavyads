@@ -16,6 +16,7 @@ import { StrategicSummary } from '@/components/StrategicSummary';
 import { GapAlert } from '@/components/GapAlert';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { useClient } from '@/hooks/useClients';
 import { useRole } from '@/hooks/useRole';
