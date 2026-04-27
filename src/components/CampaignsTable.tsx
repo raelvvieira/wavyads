@@ -62,6 +62,7 @@ const MOBILE_SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'purchase_roas', label: 'ROAS' },
   { key: 'purchase_value', label: 'Valor Compras' },
   { key: 'purchases', label: 'Compras' },
+  { key: 'cost_per_purchase', label: 'Custo/Compra' },
   { key: 'clicks', label: 'Cliques' },
   { key: 'impressions', label: 'Impressões' },
 ];
