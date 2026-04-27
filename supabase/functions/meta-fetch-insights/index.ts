@@ -250,7 +250,7 @@ Deno.serve(async (req) => {
         ? `time_range({"since":"${timeRange.since}","until":"${timeRange.until}"})`
         : `date_preset(${datePreset})`;
 
-      const fields = `name,status,daily_budget,created_time,insights.${insightsDateParam}{spend,impressions,reach,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency}`;
+      const fields = `name,status,daily_budget,created_time,insights.${insightsDateParam}{spend,impressions,reach,clicks,actions,action_values,cost_per_action_type,ctr,cpc,cpm,frequency}`;
       const res = await fetch(
         `${GRAPH_API}/${adAccountId}/campaigns?fields=${fields}&limit=100&access_token=${accessToken}`
       );
@@ -276,7 +276,7 @@ Deno.serve(async (req) => {
         ? `time_range({"since":"${timeRange.since}","until":"${timeRange.until}"})`
         : `date_preset(${datePreset})`;
 
-      const fields = `name,status,campaign_id,campaign{name},creative{thumbnail_url,image_url},insights.${insightsDateParam}{spend,impressions,reach,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency}`;
+      const fields = `name,status,campaign_id,campaign{name},creative{thumbnail_url,image_url},insights.${insightsDateParam}{spend,impressions,reach,clicks,actions,action_values,cost_per_action_type,ctr,cpc,cpm,frequency}`;
       const res = await fetch(
         `${GRAPH_API}/${adAccountId}/ads?fields=${fields}&limit=200&access_token=${accessToken}`
       );
@@ -332,7 +332,7 @@ Deno.serve(async (req) => {
     // ==================== INSIGHTS ====================
     if (action === "insights") {
       const res = await fetch(
-        `${GRAPH_API}/${adAccountId}/insights?fields=spend,impressions,reach,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency&${dateFilter}&access_token=${accessToken}`
+        `${GRAPH_API}/${adAccountId}/insights?fields=spend,impressions,reach,clicks,actions,action_values,cost_per_action_type,ctr,cpc,cpm,frequency&${dateFilter}&access_token=${accessToken}`
       );
       const data = await res.json();
 
@@ -423,7 +423,7 @@ Deno.serve(async (req) => {
       }
 
       const res = await fetch(
-        `${GRAPH_API}/${adAccountId}/insights?fields=spend,impressions,reach,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency&${timeRangeParam({ since: prevSince, until: prevUntil })}&access_token=${accessToken}`
+        `${GRAPH_API}/${adAccountId}/insights?fields=spend,impressions,reach,clicks,actions,action_values,cost_per_action_type,ctr,cpc,cpm,frequency&${timeRangeParam({ since: prevSince, until: prevUntil })}&access_token=${accessToken}`
       );
       const data = await res.json();
 
