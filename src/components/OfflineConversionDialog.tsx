@@ -241,7 +241,20 @@ function DraftForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="space-y-1.5">
+        <label className={labelCls}>Tipo de Evento *</label>
+        <select
+          value={d.eventName}
+          onChange={(e) => onChange({ eventName: e.target.value as 'Purchase' | 'Lead' })}
+          className={inputCls}
+          disabled={d.status === 'sending' || d.status === 'sent'}
+        >
+          <option value="Purchase">Purchase (Compra)</option>
+          <option value="Lead">Lead</option>
+        </select>
+      </div>
+
+      <div className={cn('grid gap-3', d.eventName === 'Purchase' ? 'grid-cols-2' : 'grid-cols-1')}>
         <div className="space-y-1.5">
           <label className={labelCls}>Data da Conversão *</label>
           <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
@@ -276,30 +289,32 @@ function DraftForm({
           </Popover>
         </div>
 
-        <div className="space-y-1.5">
-          <label className={labelCls}>Valor *</label>
-          <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-              R$
-            </span>
-            <input
-              type="number"
-              inputMode="decimal"
-              step="0.01"
-              min="0"
-              value={d.valueStr}
-              onChange={(e) => onChange({ valueStr: e.target.value })}
-              placeholder="0,00"
-              required
-              disabled={d.status === 'sending' || d.status === 'sent'}
-              className={cn(inputCls, 'pl-10')}
-            />
+        {d.eventName === 'Purchase' && (
+          <div className="space-y-1.5">
+            <label className={labelCls}>Valor *</label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                R$
+              </span>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0"
+                value={d.valueStr}
+                onChange={(e) => onChange({ valueStr: e.target.value })}
+                placeholder="0,00"
+                required
+                disabled={d.status === 'sending' || d.status === 'sent'}
+                className={cn(inputCls, 'pl-10')}
+              />
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <p className="text-[11px] text-muted-foreground pt-1">
-        Moeda: BRL · Evento: Purchase · País: BR
+        {d.eventName === 'Purchase' ? 'Moeda: BRL · ' : ''}Evento: {d.eventName} · País: BR
       </p>
 
       {/* Additional */}
