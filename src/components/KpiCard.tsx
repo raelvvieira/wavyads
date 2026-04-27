@@ -46,12 +46,22 @@ function storageKey(clientId?: string) {
   return clientId ? `wavy-kpi-cards-${clientId}` : 'wavy-kpi-cards';
 }
 
+const DEFAULT_CARDS: MetricKey[] = ['spend', 'impressions', 'clicks', 'results', 'cost_per_result', 'purchases', 'purchase_value'];
+
 export function getDefaultCards(clientId?: string): MetricKey[] {
   try {
     const saved = localStorage.getItem(storageKey(clientId));
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const arr = JSON.parse(saved) as MetricKey[];
+      // Backfill to 7 cards for users with older saved layouts
+      if (Array.isArray(arr) && arr.length < 7) {
+        const missing = DEFAULT_CARDS.filter(k => !arr.includes(k));
+        return [...arr, ...missing].slice(0, 7);
+      }
+      return arr.slice(0, 7);
+    }
   } catch {}
-  return ['spend', 'impressions', 'clicks', 'results', 'cost_per_result', 'purchases'];
+  return DEFAULT_CARDS;
 }
 
 export function saveCards(cards: MetricKey[], clientId?: string) {
