@@ -1,34 +1,87 @@
-## Problema
+## Objetivo
 
-Em larguras intermediárias de desktop (≈900–1200px) com 6 cards lado a lado, o valor numérico (ex: `R$ 4.885,05`) fica atrás do ícone verde e do botão de configurações no canto superior direito do `KpiCard`. O ícone tem tamanho fixo (`h-10 w-10`) enquanto o valor cresce com a viewport.
+Adicionar configuração de **Pixel Meta** por cliente no `AdminDashboard`, persistindo `pixel_id` e `access_token` na tabela `client_pixels` (já existente, com RLS configurado).
 
-## Solução
+Inicialmente o botão será exibido **apenas para o cliente "Deni Haut Cursos"** como teste.
 
-Ajustar o `KpiCard` para garantir que valor e ícone nunca se sobreponham, usando três técnicas combinadas:
+---
 
-### 1. Ícone responsivo
-- Ícone container: `h-8 w-8` (mobile/médio) → `h-10 w-10` (xl+)
-- Ícone interno (lucide): `h-4 w-4` → `h-5 w-5` em xl
-- Botão de settings: visível apenas no hover do card em telas menores que xl, sempre visível em xl+ (reduz poluição e libera espaço)
+## Mudanças
 
-### 2. Layout que não sobrepõe
-- Hoje o `<p>` do valor pode ficar atrás do bloco de ícone porque o flex usa `min-w-0` mas o valor tem `text-3xl` em md. Vou:
-  - Garantir `flex-1 min-w-0` no bloco da esquerda
-  - Reduzir o valor para `text-lg` (base) → `text-xl` (md) → `text-2xl` (lg) → `text-3xl` (2xl)
-  - Aplicar `truncate` ou `tabular-nums` + `whitespace-nowrap` controlado, com `overflow-hidden` no container
-- Adicionar `gap-2` entre os dois blocos (esquerda/ícone) para respiro garantido
+### 1. `src/hooks/useClientPixels.ts` (novo)
 
-### 3. Padding do card
-- Reduzir o padding do `GlassCard` no `KpiCard` em telas menores: `p-4` (base) → `p-6` (xl+) via classe customizada, ganhando mais área útil sem mudar o `GlassCard` global
+Hook com React Query:
+- `useClientPixel(clientId)` → busca a row do `client_pixels` daquele cliente (retorna `pixel_id` e `access_token`, ou `null`).
+- `useAllClientPixels()` → busca todos os `client_pixels` em uma única query, retornando um `Map<client_id, { pixel_id, access_token }>`. Usado no AdminDashboard para renderizar o badge "Pixel ✓/✗" em cada card sem N+1.
+- `useUpsertClientPixel()` → executa upsert (`onConflict: 'client_id'`) na tabela `client_pixels`. Invalida queries `['client-pixels']` no sucesso.
 
-## Arquivo
+### 2. `src/pages/AdminDashboard.tsx`
 
-| Arquivo | Ação |
-|---|---|
-| `src/components/KpiCard.tsx` | Ajustes responsivos no tamanho do ícone, valor e padding; garantir que ícone nunca sobreponha o valor |
+**Imports:** adicionar `Scan` do lucide-react; importar `useAllClientPixels` e `useUpsertClientPixel`.
 
-## Resultado esperado
+**Filtro de exibição (fase de teste):**
+```ts
+const PIXEL_ENABLED_CLIENTS = ['deni haut cursos']; // match case-insensitive pelo nome
+const showPixelButton = (name: string) =>
+  PIXEL_ENABLED_CLIENTS.includes(name.trim().toLowerCase());
+```
 
-- Em 986px (viewport atual do usuário) os 6 cards mostram valor completo sem sobreposição.
-- Em telas grandes (≥1280px) o visual atual é mantido.
-- Em mobile o card continua confortável.
+**Estado do modal:**
+- `pixelDialogOpen`, `pixelClientId`, `pixelClientName`
+- `pixelIdInput` (string)
+- `pixelTokenInput` (string, vazio por padrão)
+- `pixelTokenVisible` (bool — toggle olho)
+- `hasExistingToken` (bool — controla a nota "deixe em branco para manter o atual")
+
+**Badge no header do card** (linha ~441, ao lado de Meta ✓ / Google ✓):
+- Se `pixelMap.get(client.id)` existe → badge verde `Pixel ✓` (ícone `CheckCircle`).
+- Caso contrário → badge cinza `Pixel ✗` (ícone `XCircle`).
+- Renderizado para **todos** os clientes (não só os habilitados), para dar visibilidade do estado.
+
+**Botão "Sincronizar Pixel Meta"** (apenas se `showPixelButton(client.name)` for true):
+- Inserido como **primeiro botão** dentro do bloco `Sync buttons` (linha 506), antes de "Resincronizar Meta".
+- Ícone: `Scan` (lucide-react).
+- Estilo: mesma classe `btn-glass w-full rounded-xl py-2.5 text-xs font-medium ...`.
+- onClick:
+  1. `setPixelClientId(client.id); setPixelClientName(client.name);`
+  2. Lê do `pixelMap` o registro existente; pré-preenche `pixelIdInput` e marca `hasExistingToken = !!existing?.access_token`.
+  3. `setPixelTokenInput('')` (token sempre começa vazio na UI; valor real fica preservado no banco se não alterado).
+  4. `setPixelDialogOpen(true)`.
+
+**Modal "Configurar Pixel Meta":**
+- Title: `Configurar Pixel Meta`
+- Subtitle (DialogDescription): `Insira os dados do Pixel para habilitar o envio de conversões offline`
+- Input **Pixel ID**: text, required, placeholder `ex: 123456789012345`.
+- Input **Access Token**: type alterna entre `password`/`text` via botão `Eye`/`EyeOff` à direita; placeholder `EAABs...`.
+  - Se `hasExistingToken`: placeholder vira `••••••••` e abaixo aparece a nota: `Token já configurado — deixe em branco para manter o atual`. Required apenas quando **não** há token salvo.
+- Botões: `Salvar` (primary, `btn-accent`) e `Cancelar` (ghost, fecha modal).
+
+**Lógica de Salvar:**
+- Se `hasExistingToken` e `pixelTokenInput` vazio → mantém o token atual (não envia campo `access_token` no upsert; faz update parcial via duas chamadas: se token vazio, faz `update` apenas em `pixel_id`; senão, `upsert` completo).
+- Caso contrário → `upsert({ client_id, pixel_id, access_token })`.
+- Sucesso: `toast.success('Pixel configurado com sucesso!')`, fecha modal, invalida `['client-pixels']`.
+- Erro: toast destrutivo com `error.message`.
+
+---
+
+## Detalhes técnicos
+
+- A tabela `client_pixels` já existe com índice único em `client_id` e RLS de admin full access — não precisa migração.
+- O upsert usa `.upsert(payload, { onConflict: 'client_id' })`.
+- Para o caso "manter token atual", usaremos `.update({ pixel_id }).eq('client_id', id)` quando já existe row e o input de token está vazio, evitando enviar token vazio para o banco.
+- O botão fica escondido para outros clientes via simples filtro por nome (lista `PIXEL_ENABLED_CLIENTS`). Após validação, basta remover o filtro.
+- Nenhuma mudança em edge functions nesta fase — o envio de conversões offline será tratado em uma feature separada.
+
+---
+
+## Como testar
+
+1. Entrar em `/dashboard` como admin.
+2. No card de **Deni Haut Cursos** deve aparecer o novo botão **Sincronizar Pixel Meta** (com ícone Scan) acima de "Resincronizar Meta".
+3. Outros cards **não** mostram o botão, mas mostram o badge `Pixel ✗`.
+4. Clicar no botão → modal abre vazio. Preencher Pixel ID + Access Token → Salvar.
+5. Toast de sucesso, modal fecha, badge no header do card vira `Pixel ✓`.
+6. Reabrir o modal → Pixel ID pré-preenchido; campo de token vazio com nota "Token já configurado…".
+7. Salvar sem mexer no token → mantém o token; badge segue verde.
+8. Trocar apenas o Pixel ID → atualiza somente o ID.
+9. Trocar token → faz upsert completo com novo token.
