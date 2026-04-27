@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import type { MetaAd } from '@/hooks/useMetaAds';
 
 type StatusFilter = 'all' | 'active' | 'paused';
-type SortKey = 'spend' | 'ctr' | 'cost_per_result' | 'results';
+type SortKey = 'spend' | 'ctr' | 'cost_per_result' | 'results' | 'purchases' | 'purchase_roas';
 
 const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
   { value: 'all', label: 'Todos' },
@@ -23,6 +23,8 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'ctr', label: 'Melhor CTR' },
   { value: 'cost_per_result', label: 'Menor Custo/Res' },
   { value: 'results', label: 'Mais Resultados' },
+  { value: 'purchases', label: 'Mais Compras' },
+  { value: 'purchase_roas', label: 'Maior ROAS' },
 ];
 
 const ACTION_TYPE_LABELS: Record<string, string> = {
