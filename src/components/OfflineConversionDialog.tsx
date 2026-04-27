@@ -37,6 +37,7 @@ type Mode = 'single' | 'bulk';
 
 interface ConversionDraft {
   id: string;
+  eventName: 'Purchase' | 'Lead';
   email: string;
   phone: string;
   fn: string;
