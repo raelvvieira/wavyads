@@ -740,6 +740,76 @@ export default function AdminDashboard() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Pixel Meta Dialog */}
+      <Dialog open={pixelDialogOpen} onOpenChange={setPixelDialogOpen}>
+        <DialogContent className="glass border-white/10 bg-card">
+          <DialogHeader>
+            <DialogTitle>Configurar Pixel Meta</DialogTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Insira os dados do Pixel para habilitar o envio de conversões offline
+            </p>
+          </DialogHeader>
+          <form onSubmit={handleSavePixel} className="space-y-4 mt-4">
+            <div className="space-y-1.5">
+              <label className="text-sm text-muted-foreground">
+                Pixel ID * <span className="text-xs">— {pixelClientName}</span>
+              </label>
+              <input
+                value={pixelIdInput}
+                onChange={(e) => setPixelIdInput(e.target.value)}
+                placeholder="ex: 123456789012345"
+                required
+                className="glass-input w-full rounded-xl py-3 px-4 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm text-muted-foreground">
+                Access Token {hasExistingToken ? '' : '*'}
+              </label>
+              <div className="relative">
+                <input
+                  value={pixelTokenInput}
+                  onChange={(e) => setPixelTokenInput(e.target.value)}
+                  placeholder={hasExistingToken ? '••••••••' : 'EAABs...'}
+                  type={pixelTokenVisible ? 'text' : 'password'}
+                  required={!hasExistingToken}
+                  className="glass-input w-full rounded-xl py-3 px-4 pr-12 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setPixelTokenVisible((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
+                  title={pixelTokenVisible ? 'Ocultar' : 'Mostrar'}
+                >
+                  {pixelTokenVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {hasExistingToken && (
+                <p className="text-xs text-muted-foreground">
+                  Token já configurado — deixe em branco para manter o atual
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setPixelDialogOpen(false)}
+                className="btn-glass flex-1 rounded-xl py-3 text-sm font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={upsertPixel.isPending}
+                className="btn-accent flex-1 rounded-xl py-3 text-sm font-semibold disabled:opacity-50"
+              >
+                {upsertPixel.isPending ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
