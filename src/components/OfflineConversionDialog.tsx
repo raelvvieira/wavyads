@@ -103,7 +103,7 @@ async function submitDraft(clientId: string, d: ConversionDraft) {
       ln: d.ln.trim() || null,
       conversion_date: d.conversionDate.toISOString(),
       value: isPurchase ? valueNum : null,
-      currency: isPurchase ? 'BRL' : null,
+      currency: 'BRL',
       country: 'BR',
       event_name: d.eventName,
       send_status: 'pending',
