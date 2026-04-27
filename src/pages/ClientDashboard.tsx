@@ -283,6 +283,8 @@ export default function ClientDashboard() {
       cpl: i?.cpl ?? (leads > 0 ? spend / leads : 0),
       purchases,
       cost_per_purchase: i?.cost_per_purchase ?? (purchases > 0 ? spend / purchases : 0),
+      purchase_value: (i as any)?.purchase_value ?? campaignList.reduce((s, c) => s + ((c as any).purchase_value || 0), 0),
+      purchase_roas: (i as any)?.purchase_roas ?? (spend > 0 ? (campaignList.reduce((s, c) => s + ((c as any).purchase_value || 0), 0)) / spend : 0),
       roas: i?.roas ?? 0,
       frequency: i?.frequency ?? 0,
       results,
