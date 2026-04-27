@@ -1,92 +1,93 @@
-## Objetivos
+## Objetivo
 
-1. Aumentar a quantidade de KPI cards no topo do Dashboard de 6 para **7** (cada um continua personalizável).
-2. Adicionar duas novas métricas selecionáveis nos cards e exibidas na tabela de campanhas:
-   - **Valor de Conversão de Compra** (`purchase_value`) — soma do `action_values` da Meta para `purchase`.
-   - **ROAS de Compras** (`purchase_roas`) — `purchase_value / spend`.
-3. Otimizar a **tabela "Desempenho por Campanha" no mobile**, deixando-a mais compacta e legível, sem perder informação relevante.
+Cinco ajustes finos no Dashboard do Cliente para corrigir cortes nos cards de KPI (desktop e mobile), enxugar o cabeçalho no mobile, e enriquecer a tabela de campanhas e a galeria de criativos com métricas de compra.
 
 ---
 
-## 1) Backend — Edge Function `meta-fetch-insights`
+## 1. KPI Cards — corrigir corte de valores e títulos (desktop e mobile)
 
-Atualmente o backend não retorna o valor monetário das compras nem o ROAS real. Precisamos buscar `action_values` da API da Meta.
+**Problema atual:** Com 7 cards em `xl:grid-cols-7`, cada card fica estreito demais — títulos ("VALOR DE CO...", "CUSTO/RESUL...") e valores ("R$ 5...", "R$ 6...") ficam truncados. No mobile, `grid-cols-2` deixa cards muito apertados.
 
-- Em todas as queries (`campaigns`, `insights`, `insights_previous`, `ads`) acrescentar `action_values` ao parâmetro `fields` do endpoint `/insights`.
-- Criar helper `extractActionValue(action_values, PURCHASE_TYPES)` análogo ao `extractAction`.
-- Calcular:
-  - `purchase_value = extractActionValue(ins.action_values, PURCHASE_TYPES)`
-  - `purchase_roas = spend > 0 ? purchase_value / spend : 0`
-- Substituir o cálculo atual de `roas` (que hoje usa `purchases * costPerPurchase / spend`, matematicamente igual a `purchase_value/spend`, mas vamos passar a usar o valor real retornado pela Meta).
-- Adicionar `purchase_value` e `purchase_roas` aos objetos retornados em:
-  - `parseCampaign` (campanhas).
-  - `insights` e `insights_previous` (totais do dashboard).
-  - Daily breakdown (para uso futuro no chart, opcional).
+**Mudanças em `src/components/KpiCard.tsx`:**
+- Remover `truncate` do título e do valor; permitir que o título quebre em até 2 linhas (`line-clamp-2`) com `min-h` para alinhar.
+- Reduzir o tamanho do valor em telas médias (`text-base md:text-lg xl:text-xl 2xl:text-2xl`) e usar `tabular-nums` + `break-all` apenas no valor para evitar overflow horizontal.
+- Mover o ícone de engrenagem (settings) para baixo do botão de ícone OU encolher o conjunto direito (`h-7 w-7` no ícone principal) liberando largura para o conteúdo.
+- Diminuir padding interno em telas pequenas (`p-3 xl:p-5`).
 
-## 2) Frontend — Tipos e hooks
+**Mudanças em `src/pages/ClientDashboard.tsx` (grid):**
+- Mobile: `grid-cols-1` (1 card por linha, como era antes) com card mais "afinado" (padding vertical reduzido, layout horizontal: título+valor à esquerda, ícone à direita).
+- Tablet: `md:grid-cols-2 lg:grid-cols-3`.
+- Desktop largo: `xl:grid-cols-4 2xl:grid-cols-7`. Em telas `xl` típicas (1280–1535px) 7 cards não cabem sem cortar — usar 4 colunas até `2xl` (1536px+), onde os 7 cards ganham espaço suficiente.
 
-- `src/hooks/useMetaInsights.ts`: adicionar `purchase_value: number` e `purchase_roas: number` em `MetaCampaign` e `MetaInsights`.
+Isso garante leitura completa dos rótulos em qualquer breakpoint.
 
-## 3) Frontend — KPI Cards
+---
 
-Arquivo `src/components/KpiCard.tsx`:
+## 2. Mobile: 1 KPI por linha + cards "afinados"
 
-- Adicionar duas novas chaves em `MetricKey`:
-  - `purchase_value` — label "Valor de Compras", ícone `DollarSign`, formato `formatCurrency`, cor `bg-green-600`.
-  - `purchase_roas` — label "ROAS Compras", ícone `TrendingUp`, formato `(v) => v.toFixed(2) + 'x'`, cor `bg-lime-600`.
-- Atualizar `getDefaultCards`: passar a retornar **7** chaves padrão, ex.: `['spend', 'impressions', 'clicks', 'results', 'cost_per_result', 'purchases', 'purchase_value']`.
+Já coberto acima na grid. O `KpiCard` ganha uma variante visual mais compacta no mobile:
+- Layout flex horizontal (título e valor lado a lado em linhas próprias, ícone à direita pequeno).
+- Altura reduzida (~70px) em vez dos cards quadrados atuais.
 
-Arquivo `src/pages/ClientDashboard.tsx`:
+---
 
-- Em `metricValues` e `previousValues`, mapear `purchase_value` e `purchase_roas` a partir do `MetaInsights`.
-- Atualizar grid:
-  - De `grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6` para
-  - `grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7` (7 colunas em desktop largo, 2 colunas no mobile para reduzir overflow visto no print).
-- Skeleton: `Array.from({ length: 7 })`.
+## 3. Cabeçalho mobile mais enxuto
 
-## 4) Tabela de Campanhas — `src/components/CampaignsTable.tsx`
+**Problema atual:** O header empilha logo + nome + toggle Meta/Google + 8 botões de preset de data, ocupando boa parte da tela.
 
-### 4.1 Adicionar colunas
-- Nova coluna **"Valor Compras"** (`purchase_value`, `formatCurrency`, oculta em `lg`).
-- Nova coluna **"ROAS"** (`purchase_roas`, formato `Nx`, sempre visível).
-- Atualizar `totals` com `purchase_value` (soma) e `purchase_roas` (média ponderada: `totals.purchase_value / totals.spend`).
-- Atualizar `tfoot` com as novas colunas.
+**Mudanças em `src/pages/ClientDashboard.tsx` (header — apenas `< md`):**
+- **Linha 1:** Botão Voltar + Avatar + Nome do cliente (mantém atual, mais compacto).
+- **Linha 2:** Toggle Meta/Google (mantém glass pill, menor) + Botão "Filtros" único (ícone calendário + label do preset selecionado, ex: "Este mês").
+- O botão "Filtros" abre um **`Sheet`** (drawer lateral mobile) ou `Popover` contendo:
+  - Toggle Meta/Google (espelhado para conveniência).
+  - Lista vertical de presets.
+  - Calendário "Personalizado".
 
-### 4.2 Versão mobile otimizada
-A tabela atual no mobile fica truncada. Substituir o layout no mobile por **cards verticais** (mantendo a tabela tradicional em `md:` e acima):
+No `≥ md`, mantém o header horizontal atual com todos os presets visíveis.
 
-```text
-[ md:hidden ]                      [ hidden md:block ]
-┌────────────────────────┐         ┌─ tabela atual ─────┐
-│ Nome da campanha       │         │  ...               │
-│ [Status] [Tags]        │         └────────────────────┘
-│ ───────────────────    │
-│ Gasto      R$ 1.234   │
-│ Resultados   42        │
-│ Custo/Res. R$ 29,40   │
-│ ROAS        2.4x       │
-│ Valor      R$ 3.000   │
-└────────────────────────┘
-```
+Componente novo/reutilizado: usar `Sheet` de `@/components/ui/sheet` (já existe).
 
-- Renderizar duas variações condicionais:
-  - `<div className="md:hidden space-y-3">` com cards (`GlassCard` interno mais compacto), mostrando: nome, status, tags, e uma grade `grid-cols-2 gap-2` com as principais métricas (Gasto, Resultados, Custo/Resultado, ROAS, Valor de Compras, Compras).
-  - `<div className="hidden md:block overflow-x-auto">` mantendo a tabela atual com colunas e footer.
-- Filtros de status (Todas/Ativas/Pausadas/Encerradas) e ordenação ficam acima de ambas as variações; no mobile a ordenação aparece como um pequeno `<select>` (chave + direção) em vez dos headers clicáveis.
-- Manter regra de não truncar nome (`whitespace-normal break-words`).
-- Fontes ligeiramente menores no card mobile (`text-xs` para labels, `text-sm font-semibold` para valores) para caber confortavelmente.
+---
 
-## Detalhes técnicos
+## 4. Tabela de campanhas — Custo por compra no card mobile
 
-- Fonte do valor de compras: campo `action_values` do Meta Insights API (mesmo formato do `actions`, com `action_type` + `value` em moeda da conta).
-- ROAS exibido em `Nx` com 2 casas decimais; quando `spend = 0` mostra `—`.
-- A ordenação por `purchase_roas` no mobile usa o mesmo comparador genérico já existente.
-- Persistência dos cards (localStorage por cliente) continua igual; usuários antigos com 6 cards salvos continuam funcionando — adicionamos lógica em `getDefaultCards` para completar até 7 caso o array salvo tenha menos.
+**Mudança em `src/components/CampaignsTable.tsx` (mobile card):**
+- Adicionar `Custo/Compra` (`cost_per_purchase`) na grid de stats do card mobile (atualmente: Gasto, Resultados, Custo/Result, ROAS, Valor Compras, Compras → vira grid de 8 stats em 2 colunas, ou reorganizar para 3 colunas no mobile).
+- Adicionar também ao bloco de "Total / Média" no rodapé mobile.
+- Adicionar à lista `MOBILE_SORT_OPTIONS` para permitir ordenação por Custo/Compra.
 
-## Arquivos alterados
+Na tabela desktop a coluna `cost_per_purchase` já existe (linha 53/350) — sem alteração.
 
-- `supabase/functions/meta-fetch-insights/index.ts`
-- `src/hooks/useMetaInsights.ts`
-- `src/components/KpiCard.tsx`
-- `src/pages/ClientDashboard.tsx`
-- `src/components/CampaignsTable.tsx`
+---
+
+## 5. Top Criativos — adicionar Compras e ROAS
+
+**Mudanças em `src/hooks/useMetaAds.ts`:**
+- Adicionar campos à interface `MetaAd`: `purchases: number`, `purchase_value: number`, `purchase_roas: number`.
+
+**Mudanças em `supabase/functions/meta-fetch-insights/index.ts` (bloco `action === "ads"`, linha ~290):**
+- Calcular dentro do `.map(ad)`:
+  ```ts
+  const purchases = extractAction(ins.actions, PURCHASE_TYPES);
+  const purchase_value = extractActionValue(ins.action_values, PURCHASE_TYPES);
+  const purchase_roas = spend > 0 ? purchase_value / spend : 0;
+  ```
+- Incluir os três campos no objeto retornado.
+
+**Mudanças em `src/components/CreativesGallery.tsx`:**
+- Adicionar duas novas células de métrica na seção "Metrics" (sm:flex): `Compras` e `ROAS` (com cor condicional verde/amarelo/vermelho como na tabela).
+- No mobile, exibir essas duas métricas em uma linha extra abaixo do nome (já que `sm:flex` esconde o bloco de métricas no mobile, criar um bloco `sm:hidden` simples com Gasto / Compras / ROAS).
+- Adicionar `purchase_roas` e `purchases` às `SORT_OPTIONS` ("Maior ROAS", "Mais Compras").
+
+---
+
+## Arquivos a editar
+
+- `src/components/KpiCard.tsx` — layout responsivo, sem truncamento.
+- `src/pages/ClientDashboard.tsx` — grid de KPI, header mobile com Sheet de filtros.
+- `src/components/CampaignsTable.tsx` — Custo/Compra no card mobile + sort + total.
+- `src/components/CreativesGallery.tsx` — colunas Compras + ROAS, sort, layout mobile.
+- `src/hooks/useMetaAds.ts` — novos campos na interface `MetaAd`.
+- `supabase/functions/meta-fetch-insights/index.ts` — retornar `purchases`, `purchase_value`, `purchase_roas` no endpoint `ads`.
+
+Sem mudanças de schema/banco. Deploy automático da edge function.

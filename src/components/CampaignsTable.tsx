@@ -62,6 +62,7 @@ const MOBILE_SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'purchase_roas', label: 'ROAS' },
   { key: 'purchase_value', label: 'Valor Compras' },
   { key: 'purchases', label: 'Compras' },
+  { key: 'cost_per_purchase', label: 'Custo/Compra' },
   { key: 'clicks', label: 'Cliques' },
   { key: 'impressions', label: 'Impressões' },
 ];
@@ -249,8 +250,9 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
                     value={c.purchase_roas ? c.purchase_roas.toFixed(2) + 'x' : '—'}
                     valueClass={getRoasClass(c.purchase_roas || 0)}
                   />
-                  <Stat label="Valor Compras" value={formatCurrency(c.purchase_value || 0)} />
                   <Stat label="Compras" value={(c.purchases || 0).toString()} />
+                  <Stat label="Custo/Compra" value={c.cost_per_purchase ? formatCurrency(c.cost_per_purchase) : '—'} />
+                  <Stat label="Valor Compras" value={formatCurrency(c.purchase_value || 0)} />
                 </div>
               </div>
             );
@@ -264,8 +266,9 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
             <Stat label="Resultados" value={totals.results.toString()} valueClass="text-accent" />
             <Stat label="Custo/Result." value={formatCurrency(totals.cost_per_result)} valueClass="text-accent" />
             <Stat label="ROAS" value={totals.purchase_roas.toFixed(2) + 'x'} valueClass="text-accent" />
-            <Stat label="Valor Compras" value={formatCurrency(totals.purchase_value)} valueClass="text-accent" />
             <Stat label="Compras" value={totals.purchases.toString()} valueClass="text-accent" />
+            <Stat label="Custo/Compra" value={formatCurrency(totals.cost_per_purchase)} valueClass="text-accent" />
+            <Stat label="Valor Compras" value={formatCurrency(totals.purchase_value)} valueClass="text-accent" />
           </div>
         </div>
       </div>

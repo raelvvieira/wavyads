@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { TrendingUp, RefreshCw, ArrowLeft, CalendarIcon, Send } from 'lucide-react';
+import { TrendingUp, RefreshCw, ArrowLeft, CalendarIcon, Send, SlidersHorizontal } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths, subDays, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { GlassCard } from '@/components/GlassCard';
@@ -16,6 +16,7 @@ import { StrategicSummary } from '@/components/StrategicSummary';
 import { GapAlert } from '@/components/GapAlert';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { useClient } from '@/hooks/useClients';
 import { useRole } from '@/hooks/useRole';
@@ -377,122 +378,225 @@ export default function ClientDashboard() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <header className="sticky top-0 z-30 flex flex-wrap items-center gap-2 sm:gap-4 border-b border-white/10 bg-black/60 backdrop-blur-xl px-4 sm:px-6 py-3 sm:py-4 pt-14 lg:pt-4">
-        {isAdmin && (
-          <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="h-4 w-4" />
-            Voltar
-          </button>
-        )}
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-accent to-accent/70 text-sm font-bold">
-            {client.name.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <h1 className="font-semibold text-base">{client.name}</h1>
-            {client.meta_ad_account_name && (
-              <p className="text-xs text-muted-foreground">{client.meta_ad_account_name}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Platform Toggle */}
-        {(isMetaSynced || isGoogleSynced) && (
-          <div className="flex items-center gap-1 glass rounded-xl p-1">
-            <button
-              onClick={() => setPlatform('meta')}
-              className={cn(
-                'rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-300',
-                platform === 'meta' ? 'btn-accent' : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              Meta Ads
+      <header className="sticky top-0 z-30 border-b border-white/10 bg-black/60 backdrop-blur-xl px-3 sm:px-6 py-2 sm:py-4 pt-14 lg:pt-4">
+        {/* Top row: back + client identity (always visible) */}
+        <div className="flex items-center gap-2 sm:gap-4">
+          {isAdmin && (
+            <button onClick={() => navigate('/dashboard')} className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0">
+              <ArrowLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">Voltar</span>
             </button>
-            <button
-              onClick={() => setPlatform('google')}
-              className={cn(
-                'rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-300',
-                platform === 'google' ? 'btn-accent' : 'text-muted-foreground hover:text-foreground'
+          )}
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-accent to-accent/70 text-sm font-bold shrink-0">
+              {client.name.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <h1 className="font-semibold text-sm sm:text-base truncate">{client.name}</h1>
+              {client.meta_ad_account_name && (
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{client.meta_ad_account_name}</p>
               )}
-            >
-              Google Ads
-            </button>
+            </div>
           </div>
-        )}
 
-        <div className="flex items-center gap-1.5 ml-auto flex-wrap">
-          {PRESETS.map((p) => (
-            p.value !== 'custom' ? (
+          {/* Mobile compact controls (right of identity row) */}
+          <div className="flex md:hidden items-center gap-1.5 shrink-0">
+            {(isMetaSynced || isGoogleSynced) && (
               <button
-                key={p.value}
-                onClick={() => handlePresetSelect(p.value)}
-                className={cn(
-                  'rounded-lg px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium transition-all duration-300',
-                  selectedPreset === p.value
-                    ? 'btn-accent'
-                    : 'glass text-muted-foreground hover:text-foreground hover:bg-white/[0.08]'
-                )}
+                onClick={() => setPlatform(platform === 'meta' ? 'google' : 'meta')}
+                className="glass rounded-lg px-2 py-1.5 text-[10px] font-medium text-foreground"
+                aria-label="Trocar plataforma"
               >
-                {p.label}
+                {platform === 'meta' ? 'Meta' : 'Google'}
               </button>
-            ) : (
-              <Popover key={p.value} open={datePickerOpen} onOpenChange={setDatePickerOpen}>
-                <PopoverTrigger asChild>
-                  <button
-                    className={cn(
-                      'rounded-lg px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium transition-all duration-300 flex items-center gap-1.5',
-                      selectedPreset === 'custom'
-                        ? 'btn-accent'
-                        : 'glass text-muted-foreground hover:text-foreground hover:bg-white/[0.08]'
-                    )}
-                  >
-                    <CalendarIcon className="h-3.5 w-3.5" />
-                    {selectedPreset === 'custom' && customDateRange.from && customDateRange.to
-                      ? `${format(customDateRange.from, 'dd/MM')} - ${format(customDateRange.to, 'dd/MM')}`
-                      : 'Personalizado'}
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 glass border-white/10" align="end">
-                  <div className="flex flex-col">
+            )}
+            <Sheet>
+              <SheetTrigger asChild>
+                <button className="glass rounded-lg px-2 py-1.5 text-[10px] font-medium text-foreground flex items-center gap-1">
+                  <SlidersHorizontal className="h-3 w-3" />
+                  {selectedPreset === 'custom' && customDateRange.from && customDateRange.to
+                    ? `${format(customDateRange.from, 'dd/MM')}-${format(customDateRange.to, 'dd/MM')}`
+                    : (PRESETS.find(p => p.value === selectedPreset)?.label || 'Filtros')}
+                </button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[85vw] sm:w-96 bg-black/95 border-white/10 backdrop-blur-xl">
+                <SheetHeader>
+                  <SheetTitle className="text-left">Filtros</SheetTitle>
+                </SheetHeader>
+                <div className="mt-6 space-y-6">
+                  {(isMetaSynced || isGoogleSynced) && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mb-2">Plataforma</p>
+                      <div className="flex items-center gap-1 glass rounded-xl p-1">
+                        <button
+                          onClick={() => setPlatform('meta')}
+                          className={cn(
+                            'flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-all',
+                            platform === 'meta' ? 'btn-accent' : 'text-muted-foreground'
+                          )}
+                        >
+                          Meta Ads
+                        </button>
+                        <button
+                          onClick={() => setPlatform('google')}
+                          className={cn(
+                            'flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-all',
+                            platform === 'google' ? 'btn-accent' : 'text-muted-foreground'
+                          )}
+                        >
+                          Google Ads
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mb-2">Período</p>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {PRESETS.filter(p => p.value !== 'custom').map((p) => (
+                        <button
+                          key={p.value}
+                          onClick={() => handlePresetSelect(p.value)}
+                          className={cn(
+                            'rounded-lg px-3 py-2 text-xs font-medium transition-all',
+                            selectedPreset === p.value
+                              ? 'btn-accent'
+                              : 'glass text-muted-foreground hover:text-foreground'
+                          )}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mb-2">Personalizado</p>
                     <Calendar
                       mode="range"
                       selected={customDateRange.from ? { from: customDateRange.from, to: customDateRange.to } : undefined}
                       onSelect={(range) => {
-                        if (range?.from) {
-                          setCustomDateRange({ from: range.from, to: range.to });
-                        } else {
-                          setCustomDateRange({});
-                        }
+                        if (range?.from) setCustomDateRange({ from: range.from, to: range.to });
+                        else setCustomDateRange({});
                       }}
                       disabled={(date) => date > new Date()}
-                      numberOfMonths={2}
-                      className={cn("p-3 pointer-events-auto")}
+                      numberOfMonths={1}
+                      className="p-0 pointer-events-auto"
                     />
-                    <div className="flex items-center justify-between px-4 pb-3">
-                      <span className="text-xs text-muted-foreground">
-                        {customDateRange.from && customDateRange.to
-                          ? `${format(customDateRange.from, 'dd/MM/yyyy')} — ${format(customDateRange.to, 'dd/MM/yyyy')}`
-                          : customDateRange.from
-                            ? `${format(customDateRange.from, 'dd/MM/yyyy')} — …`
-                            : 'Selecione as datas'}
-                      </span>
-                      <Button
-                        size="sm"
-                        disabled={!customDateRange.from || !customDateRange.to}
-                        onClick={() => {
-                          setSelectedPreset('custom');
-                          setDatePickerOpen(false);
-                        }}
-                        className="btn-accent text-xs px-4"
-                      >
-                        Aplicar
-                      </Button>
-                    </div>
+                    <Button
+                      size="sm"
+                      disabled={!customDateRange.from || !customDateRange.to}
+                      onClick={() => setSelectedPreset('custom')}
+                      className="btn-accent text-xs w-full mt-3"
+                    >
+                      Aplicar período personalizado
+                    </Button>
                   </div>
-                </PopoverContent>
-              </Popover>
-            )
-          ))}
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
+        </div>
+
+        {/* Desktop platform toggle + presets */}
+        <div className="hidden md:flex flex-wrap items-center gap-2 sm:gap-4 mt-3">
+          {(isMetaSynced || isGoogleSynced) && (
+            <div className="flex items-center gap-1 glass rounded-xl p-1">
+              <button
+                onClick={() => setPlatform('meta')}
+                className={cn(
+                  'rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-300',
+                  platform === 'meta' ? 'btn-accent' : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                Meta Ads
+              </button>
+              <button
+                onClick={() => setPlatform('google')}
+                className={cn(
+                  'rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-300',
+                  platform === 'google' ? 'btn-accent' : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                Google Ads
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-center gap-1.5 ml-auto flex-wrap">
+            {PRESETS.map((p) => (
+              p.value !== 'custom' ? (
+                <button
+                  key={p.value}
+                  onClick={() => handlePresetSelect(p.value)}
+                  className={cn(
+                    'rounded-lg px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium transition-all duration-300',
+                    selectedPreset === p.value
+                      ? 'btn-accent'
+                      : 'glass text-muted-foreground hover:text-foreground hover:bg-white/[0.08]'
+                  )}
+                >
+                  {p.label}
+                </button>
+              ) : (
+                <Popover key={p.value} open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      className={cn(
+                        'rounded-lg px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium transition-all duration-300 flex items-center gap-1.5',
+                        selectedPreset === 'custom'
+                          ? 'btn-accent'
+                          : 'glass text-muted-foreground hover:text-foreground hover:bg-white/[0.08]'
+                      )}
+                    >
+                      <CalendarIcon className="h-3.5 w-3.5" />
+                      {selectedPreset === 'custom' && customDateRange.from && customDateRange.to
+                        ? `${format(customDateRange.from, 'dd/MM')} - ${format(customDateRange.to, 'dd/MM')}`
+                        : 'Personalizado'}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 glass border-white/10" align="end">
+                    <div className="flex flex-col">
+                      <Calendar
+                        mode="range"
+                        selected={customDateRange.from ? { from: customDateRange.from, to: customDateRange.to } : undefined}
+                        onSelect={(range) => {
+                          if (range?.from) {
+                            setCustomDateRange({ from: range.from, to: range.to });
+                          } else {
+                            setCustomDateRange({});
+                          }
+                        }}
+                        disabled={(date) => date > new Date()}
+                        numberOfMonths={2}
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                      <div className="flex items-center justify-between px-4 pb-3">
+                        <span className="text-xs text-muted-foreground">
+                          {customDateRange.from && customDateRange.to
+                            ? `${format(customDateRange.from, 'dd/MM/yyyy')} — ${format(customDateRange.to, 'dd/MM/yyyy')}`
+                            : customDateRange.from
+                              ? `${format(customDateRange.from, 'dd/MM/yyyy')} — …`
+                              : 'Selecione as datas'}
+                        </span>
+                        <Button
+                          size="sm"
+                          disabled={!customDateRange.from || !customDateRange.to}
+                          onClick={() => {
+                            setSelectedPreset('custom');
+                            setDatePickerOpen(false);
+                          }}
+                          className="btn-accent text-xs px-4"
+                        >
+                          Aplicar
+                        </Button>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )
+            ))}
+          </div>
         </div>
       </header>
 
@@ -563,7 +667,7 @@ export default function ClientDashboard() {
           <GapAlert leads={metricValues.leads} purchases={metricValues.purchases} />
 
           {/* KPI Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-7 gap-3 sm:gap-4">
             {isLoading ? (
               Array.from({ length: 7 }).map((_, i) => (
                 <GlassCard key={i}><Skeleton className="h-20 bg-white/5" /></GlassCard>

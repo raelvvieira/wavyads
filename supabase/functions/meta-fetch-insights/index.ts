@@ -298,6 +298,10 @@ Deno.serve(async (req) => {
         // Extract video metrics from actions array (video_view = 3s views)
         const video3s = extractAction(ins.actions, ["video_view"]);
         const thruplay = extractAction(ins.actions, ["video_thruplay"]);
+        // Purchases & value
+        const purchases = extractAction(ins.actions, PURCHASE_TYPES);
+        const purchase_value = extractActionValue(ins.action_values, PURCHASE_TYPES);
+        const purchase_roas = spend > 0 ? purchase_value / spend : 0;
 
         return {
           id: ad.id,
@@ -322,6 +326,9 @@ Deno.serve(async (req) => {
           video_thruplay: thruplay,
           hook_rate: impressions > 0 ? (video3s / impressions) * 100 : 0,
           hold_rate: video3s > 0 ? (thruplay / video3s) * 100 : 0,
+          purchases,
+          purchase_value,
+          purchase_roas,
         };
       });
 

@@ -25,6 +25,9 @@ export interface MetaAd {
   video_thruplay: number;
   hook_rate: number;
   hold_rate: number;
+  purchases: number;
+  purchase_value: number;
+  purchase_roas: number;
 }
 
 export function useMetaAds(clientId: string | undefined, enabled: boolean, timeRange: TimeRange | undefined) {

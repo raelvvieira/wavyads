@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import type { MetaAd } from '@/hooks/useMetaAds';
 
 type StatusFilter = 'all' | 'active' | 'paused';
-type SortKey = 'spend' | 'ctr' | 'cost_per_result' | 'results';
+type SortKey = 'spend' | 'ctr' | 'cost_per_result' | 'results' | 'purchases' | 'purchase_roas';
 
 const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
   { value: 'all', label: 'Todos' },
@@ -23,6 +23,8 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'ctr', label: 'Melhor CTR' },
   { value: 'cost_per_result', label: 'Menor Custo/Res' },
   { value: 'results', label: 'Mais Resultados' },
+  { value: 'purchases', label: 'Mais Compras' },
+  { value: 'purchase_roas', label: 'Maior ROAS' },
 ];
 
 const ACTION_TYPE_LABELS: Record<string, string> = {
@@ -60,6 +62,8 @@ export function CreativesGallery({ ads }: CreativesGalleryProps) {
         case 'cost_per_result':
           return (a.cost_per_result || Infinity) - (b.cost_per_result || Infinity);
         case 'results': return b.results - a.results;
+        case 'purchases': return (b.purchases || 0) - (a.purchases || 0);
+        case 'purchase_roas': return (b.purchase_roas || 0) - (a.purchase_roas || 0);
         default: return 0;
       }
     });
@@ -140,6 +144,12 @@ export function CreativesGallery({ ads }: CreativesGalleryProps) {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium leading-tight truncate">{ad.name}</p>
                   <p className="text-[10px] text-muted-foreground truncate mt-0.5">{ad.campaign_name}</p>
+                  {/* Mobile-only condensed metrics */}
+                  <div className="flex sm:hidden items-center gap-3 mt-1.5 text-[10px]">
+                    <span className="text-muted-foreground">Gasto: <span className="font-semibold text-foreground metric-number">{formatCurrency(ad.spend)}</span></span>
+                    <span className="text-muted-foreground">Compras: <span className="font-semibold text-foreground metric-number">{ad.purchases || 0}</span></span>
+                    <span className="text-muted-foreground">ROAS: <span className={cn('font-semibold metric-number', !ad.purchase_roas ? 'text-muted-foreground' : ad.purchase_roas >= 2 ? 'text-emerald-400' : ad.purchase_roas >= 1 ? 'text-amber-400' : 'text-red-400')}>{ad.purchase_roas ? ad.purchase_roas.toFixed(2) + 'x' : '—'}</span></span>
+                  </div>
                 </div>
 
                 {/* Metrics */}
@@ -161,6 +171,16 @@ export function CreativesGallery({ ads }: CreativesGalleryProps) {
                   <div className="text-center">
                     <span className="text-[10px] text-muted-foreground block">CTR</span>
                     <span className="font-semibold metric-number">{ad.ctr.toFixed(2)}%</span>
+                  </div>
+                  <div className="text-center">
+                    <span className="text-[10px] text-muted-foreground block">Compras</span>
+                    <span className="font-semibold metric-number">{ad.purchases || 0}</span>
+                  </div>
+                  <div className="text-center">
+                    <span className="text-[10px] text-muted-foreground block">ROAS</span>
+                    <span className={cn('font-semibold metric-number', !ad.purchase_roas ? 'text-muted-foreground' : ad.purchase_roas >= 2 ? 'text-emerald-400' : ad.purchase_roas >= 1 ? 'text-amber-400' : 'text-red-400')}>
+                      {ad.purchase_roas ? ad.purchase_roas.toFixed(2) + 'x' : '—'}
+                    </span>
                   </div>
                 </div>
 
