@@ -59,6 +59,7 @@ interface ConversionDraft {
 
 const newDraft = (): ConversionDraft => ({
   id: crypto.randomUUID(),
+  eventName: 'Purchase',
   email: '',
   phone: '',
   fn: '',
