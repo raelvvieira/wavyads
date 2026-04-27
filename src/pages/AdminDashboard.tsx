@@ -99,6 +99,47 @@ export default function AdminDashboard() {
   const [pendingGoogleAccounts, setPendingGoogleAccounts] = useState<any[] | null>(null);
   const [pendingGoogleSyncClientId, setPendingGoogleSyncClientId] = useState<string | null>(null);
 
+  // Pixel Meta modal state
+  const [pixelDialogOpen, setPixelDialogOpen] = useState(false);
+  const [pixelClientId, setPixelClientId] = useState('');
+  const [pixelClientName, setPixelClientName] = useState('');
+  const [pixelIdInput, setPixelIdInput] = useState('');
+  const [pixelTokenInput, setPixelTokenInput] = useState('');
+  const [pixelTokenVisible, setPixelTokenVisible] = useState(false);
+  const [hasExistingToken, setHasExistingToken] = useState(false);
+
+  const openPixelModal = (clientId: string, clientName: string) => {
+    const existing = pixelMap?.get(clientId);
+    setPixelClientId(clientId);
+    setPixelClientName(clientName);
+    setPixelIdInput(existing?.pixel_id || '');
+    setPixelTokenInput('');
+    setPixelTokenVisible(false);
+    setHasExistingToken(!!existing?.access_token);
+    setPixelDialogOpen(true);
+  };
+
+  const handleSavePixel = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pixelIdInput.trim()) return;
+    const tokenTrimmed = pixelTokenInput.trim();
+    const accessToken =
+      hasExistingToken && tokenTrimmed === '' ? undefined : tokenTrimmed;
+    if (accessToken !== undefined && accessToken === '') return;
+
+    upsertPixel.mutate(
+      { clientId: pixelClientId, pixelId: pixelIdInput.trim(), accessToken },
+      {
+        onSuccess: () => {
+          toast({ title: 'Pixel configurado com sucesso!' });
+          setPixelDialogOpen(false);
+        },
+        onError: (err: any) =>
+          toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
+      },
+    );
+  };
+
   // Listen for popup message
   useEffect(() => {
     const handler = (event: MessageEvent) => {
