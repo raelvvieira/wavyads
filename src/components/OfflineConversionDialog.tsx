@@ -91,7 +91,8 @@ function validateDraft(d: ConversionDraft): string | null {
 }
 
 async function submitDraft(clientId: string, d: ConversionDraft) {
-  const valueNum = Number(d.valueStr.replace(',', '.'));
+  const isPurchase = d.eventName === 'Purchase';
+  const valueNum = isPurchase ? Number(d.valueStr.replace(',', '.')) : null;
   const { data: inserted, error: insertErr } = await supabase
     .from('offline_conversions')
     .insert({
@@ -101,10 +102,10 @@ async function submitDraft(clientId: string, d: ConversionDraft) {
       fn: d.fn.trim() || null,
       ln: d.ln.trim() || null,
       conversion_date: d.conversionDate.toISOString(),
-      value: valueNum,
-      currency: 'BRL',
+      value: isPurchase ? valueNum : null,
+      currency: isPurchase ? 'BRL' : null,
       country: 'BR',
-      event_name: 'Purchase',
+      event_name: d.eventName,
       send_status: 'pending',
       zip: d.zip.trim() || null,
       ct: d.ct.trim() || null,
