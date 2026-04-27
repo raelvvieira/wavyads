@@ -510,6 +510,18 @@ export default function AdminDashboard() {
                         <span className="text-xs text-muted-foreground">Google ✗</span>
                       </>
                     )}
+                    <span className="text-muted-foreground/30">|</span>
+                    {pixelMap?.has(client.id) ? (
+                      <>
+                        <CheckCircle className="h-4 w-4 text-accent" />
+                        <span className="text-xs text-accent font-medium">Pixel ✓</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">Pixel ✗</span>
+                      </>
+                    )}
                   </div>
                 </div>
 
