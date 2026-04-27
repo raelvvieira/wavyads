@@ -98,6 +98,7 @@ export default function ClientDashboard() {
   const [selectedPreset, setSelectedPreset] = useState<PresetKey>(savedPrefs.preset || 'this_month');
   const [customDateRange, setCustomDateRange] = useState<{ from?: Date; to?: Date }>({});
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [conversionDialogOpen, setConversionDialogOpen] = useState(false);
 
   const isMetaSynced = client?.is_synced ?? false;
   const isGoogleSynced = (client as any)?.google_ads_synced ?? false;
