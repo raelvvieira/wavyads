@@ -144,6 +144,12 @@ export function CreativesGallery({ ads }: CreativesGalleryProps) {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium leading-tight truncate">{ad.name}</p>
                   <p className="text-[10px] text-muted-foreground truncate mt-0.5">{ad.campaign_name}</p>
+                  {/* Mobile-only condensed metrics */}
+                  <div className="flex sm:hidden items-center gap-3 mt-1.5 text-[10px]">
+                    <span className="text-muted-foreground">Gasto: <span className="font-semibold text-foreground metric-number">{formatCurrency(ad.spend)}</span></span>
+                    <span className="text-muted-foreground">Compras: <span className="font-semibold text-foreground metric-number">{ad.purchases || 0}</span></span>
+                    <span className="text-muted-foreground">ROAS: <span className={cn('font-semibold metric-number', !ad.purchase_roas ? 'text-muted-foreground' : ad.purchase_roas >= 2 ? 'text-emerald-400' : ad.purchase_roas >= 1 ? 'text-amber-400' : 'text-red-400')}>{ad.purchase_roas ? ad.purchase_roas.toFixed(2) + 'x' : '—'}</span></span>
+                  </div>
                 </div>
 
                 {/* Metrics */}
@@ -165,6 +171,16 @@ export function CreativesGallery({ ads }: CreativesGalleryProps) {
                   <div className="text-center">
                     <span className="text-[10px] text-muted-foreground block">CTR</span>
                     <span className="font-semibold metric-number">{ad.ctr.toFixed(2)}%</span>
+                  </div>
+                  <div className="text-center">
+                    <span className="text-[10px] text-muted-foreground block">Compras</span>
+                    <span className="font-semibold metric-number">{ad.purchases || 0}</span>
+                  </div>
+                  <div className="text-center">
+                    <span className="text-[10px] text-muted-foreground block">ROAS</span>
+                    <span className={cn('font-semibold metric-number', !ad.purchase_roas ? 'text-muted-foreground' : ad.purchase_roas >= 2 ? 'text-emerald-400' : ad.purchase_roas >= 1 ? 'text-amber-400' : 'text-red-400')}>
+                      {ad.purchase_roas ? ad.purchase_roas.toFixed(2) + 'x' : '—'}
+                    </span>
                   </div>
                 </div>
 
