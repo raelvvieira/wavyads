@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { TrendingUp, RefreshCw, ArrowLeft, CalendarIcon, Send } from 'lucide-react';
+import { TrendingUp, RefreshCw, ArrowLeft, CalendarIcon, Send, SlidersHorizontal } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths, subDays, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { GlassCard } from '@/components/GlassCard';
