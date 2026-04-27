@@ -222,15 +222,21 @@ export default function ClientDashboard() {
   // Aggregate data
   const campaignList = useMemo(() => {
     if (isSynced && campaigns) return campaigns;
-    return isSynced ? [] : mockCampaigns.slice(0, 5).map(c => ({
-      ...c, reach: c.impressions * 0.8, leads: Math.floor(c.conversions * 0.7),
-      cpl: c.spend / Math.max(1, Math.floor(c.conversions * 0.7)),
-      purchases: Math.floor(c.conversions * 0.3),
-      cost_per_purchase: c.spend / Math.max(1, Math.floor(c.conversions * 0.3)),
-      results: c.conversions,
-      cost_per_result: c.spend / Math.max(1, c.conversions),
-      cpm: (c.spend / c.impressions) * 1000, frequency: 1.5,
-    }));
+    return isSynced ? [] : mockCampaigns.slice(0, 5).map(c => {
+      const purchases = Math.floor(c.conversions * 0.3);
+      const purchase_value = purchases * 150;
+      return {
+        ...c, reach: c.impressions * 0.8, leads: Math.floor(c.conversions * 0.7),
+        cpl: c.spend / Math.max(1, Math.floor(c.conversions * 0.7)),
+        purchases,
+        cost_per_purchase: c.spend / Math.max(1, purchases),
+        purchase_value,
+        purchase_roas: c.spend > 0 ? purchase_value / c.spend : 0,
+        results: c.conversions,
+        cost_per_result: c.spend / Math.max(1, c.conversions),
+        cpm: (c.spend / c.impressions) * 1000, frequency: 1.5,
+      };
+    });
   }, [isSynced, campaigns]);
 
   const dailyData: DailyMetric[] = useMemo(() => {
