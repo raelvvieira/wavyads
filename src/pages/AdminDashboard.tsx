@@ -560,7 +560,7 @@ export default function AdminDashboard() {
 
               {/* Sync buttons */}
               <div className="mt-4 pt-3 border-t border-white/10 space-y-2">
-                {showPixelButton(client.name) && (
+                {(
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
