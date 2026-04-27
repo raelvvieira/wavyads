@@ -33,6 +33,8 @@ export default function AdminDashboard() {
   const getAuthUrl = useGetMetaAuthUrl();
   const selectAccount = useSelectMetaAccount();
   const getGoogleAuthUrl = useGetGoogleAdsAuthUrl();
+  const { data: pixelMap } = useAllClientPixels();
+  const upsertPixel = useUpsertClientPixel();
 
   // Fetch all client access emails
   const { data: accessEmails } = useQuery({
