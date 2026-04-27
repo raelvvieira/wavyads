@@ -62,6 +62,8 @@ export function CreativesGallery({ ads }: CreativesGalleryProps) {
         case 'cost_per_result':
           return (a.cost_per_result || Infinity) - (b.cost_per_result || Infinity);
         case 'results': return b.results - a.results;
+        case 'purchases': return (b.purchases || 0) - (a.purchases || 0);
+        case 'purchase_roas': return (b.purchase_roas || 0) - (a.purchase_roas || 0);
         default: return 0;
       }
     });
