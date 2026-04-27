@@ -486,6 +486,25 @@ export default function ClientDashboard() {
         </div>
       </header>
 
+      {showConversionButton(client?.name) && clientId && (
+        <>
+          <div className="px-4 sm:px-6 pt-4 flex justify-end">
+            <button
+              onClick={() => setConversionDialogOpen(true)}
+              className="btn-accent rounded-xl px-4 py-2.5 text-xs sm:text-sm font-semibold flex items-center gap-2"
+            >
+              <Send className="h-4 w-4" />
+              Registrar Conversão
+            </button>
+          </div>
+          <OfflineConversionDialog
+            open={conversionDialogOpen}
+            onOpenChange={setConversionDialogOpen}
+            clientId={clientId}
+          />
+        </>
+      )}
+
       {/* Not synced state */}
       {!isSynced && isAdmin ? (
         <div className="p-6 flex items-center justify-center min-h-[60vh]">
