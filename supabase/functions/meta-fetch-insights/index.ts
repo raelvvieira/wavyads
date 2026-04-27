@@ -444,6 +444,8 @@ Deno.serve(async (req) => {
       const spend = parseFloat(ins.spend || "0");
       const results = extractResults(ins.actions);
       const cost_per_result = extractCostPerResult(ins.cost_per_action_type);
+      const purchaseValue = extractActionValue(ins.action_values, PURCHASE_TYPES);
+      const purchaseRoas = spend > 0 ? purchaseValue / spend : 0;
 
       return new Response(JSON.stringify({
         spend,
@@ -461,7 +463,9 @@ Deno.serve(async (req) => {
         cpc: parseFloat(ins.cpc || "0"),
         cpm: parseFloat(ins.cpm || "0"),
         frequency: parseFloat(ins.frequency || "0"),
-        roas: spend > 0 ? (purchases * costPerPurchase) / spend : 0,
+        roas: purchaseRoas,
+        purchase_value: purchaseValue,
+        purchase_roas: purchaseRoas,
         daily: [],
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
