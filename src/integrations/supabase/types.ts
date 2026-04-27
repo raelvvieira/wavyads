@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      client_pixels: {
+        Row: {
+          access_token: string
+          client_id: string
+          created_at: string
+          id: string
+          pixel_id: string
+        }
+        Insert: {
+          access_token: string
+          client_id: string
+          created_at?: string
+          id?: string
+          pixel_id: string
+        }
+        Update: {
+          access_token?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          pixel_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_pixels_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_users: {
         Row: {
           client_id: string
@@ -105,6 +137,86 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      offline_conversions: {
+        Row: {
+          age: number | null
+          client_id: string
+          conversion_date: string
+          country: string | null
+          created_at: string
+          ct: string | null
+          currency: string
+          dob: string | null
+          doby: string | null
+          email: string | null
+          error_message: string | null
+          event_name: string
+          fn: string | null
+          gen: string | null
+          id: string
+          ln: string | null
+          meta_event_id: string | null
+          phone: string | null
+          send_status: string
+          value: number | null
+          zip: string | null
+        }
+        Insert: {
+          age?: number | null
+          client_id: string
+          conversion_date: string
+          country?: string | null
+          created_at?: string
+          ct?: string | null
+          currency?: string
+          dob?: string | null
+          doby?: string | null
+          email?: string | null
+          error_message?: string | null
+          event_name?: string
+          fn?: string | null
+          gen?: string | null
+          id?: string
+          ln?: string | null
+          meta_event_id?: string | null
+          phone?: string | null
+          send_status?: string
+          value?: number | null
+          zip?: string | null
+        }
+        Update: {
+          age?: number | null
+          client_id?: string
+          conversion_date?: string
+          country?: string | null
+          created_at?: string
+          ct?: string | null
+          currency?: string
+          dob?: string | null
+          doby?: string | null
+          email?: string | null
+          error_message?: string | null
+          event_name?: string
+          fn?: string | null
+          gen?: string | null
+          id?: string
+          ln?: string | null
+          meta_event_id?: string | null
+          phone?: string | null
+          send_status?: string
+          value?: number | null
+          zip?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offline_conversions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
