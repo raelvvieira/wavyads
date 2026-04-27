@@ -352,6 +352,8 @@ Deno.serve(async (req) => {
       const landingPageViews = extractAction(ins.actions, LANDING_PAGE_TYPES);
       const addToCart = extractAction(ins.actions, ADD_TO_CART_TYPES);
       const initiateCheckout = extractAction(ins.actions, INITIATE_CHECKOUT_TYPES);
+      const purchaseValue = extractActionValue(ins.action_values, PURCHASE_TYPES);
+      const purchaseRoas = spend > 0 ? purchaseValue / spend : 0;
 
       // Daily breakdown
       const dailyRes = await fetch(
