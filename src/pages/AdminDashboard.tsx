@@ -564,6 +564,18 @@ export default function AdminDashboard() {
 
               {/* Sync buttons */}
               <div className="mt-4 pt-3 border-t border-white/10 space-y-2">
+                {showPixelButton(client.name) && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openPixelModal(client.id, client.name);
+                    }}
+                    className="btn-glass w-full rounded-xl py-2.5 text-xs font-medium flex items-center justify-center gap-2"
+                  >
+                    <Scan className="h-3.5 w-3.5" />
+                    Sincronizar Pixel Meta
+                  </button>
+                )}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
