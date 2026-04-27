@@ -14,6 +14,8 @@ export interface MetaCampaign {
   cpl: number;
   purchases: number;
   cost_per_purchase: number;
+  purchase_value: number;
+  purchase_roas: number;
   results: number;
   cost_per_result: number;
   result_type?: string;

@@ -76,6 +76,15 @@ function extractCostPerResult(costPerAction: any[]): number {
   return 0;
 }
 
+function extractActionValue(actionValues: any[], types: string[]): number {
+  if (!actionValues) return 0;
+  for (const t of types) {
+    const found = actionValues.find((a: any) => a.action_type === t);
+    if (found) return parseFloat(found.value || "0");
+  }
+  return 0;
+}
+
 function extractVideoMetric(videoActions: any[], metricType: string): number {
   if (!videoActions) return 0;
   const found = videoActions.find((a: any) => a.action_type === metricType);
@@ -155,6 +164,8 @@ function parseCampaign(c: any, ins: any) {
   const landingPageViews = extractAction(ins.actions, LANDING_PAGE_TYPES);
   const addToCart = extractAction(ins.actions, ADD_TO_CART_TYPES);
   const initiateCheckout = extractAction(ins.actions, INITIATE_CHECKOUT_TYPES);
+  const purchaseValue = extractActionValue(ins.action_values, PURCHASE_TYPES);
+  const purchaseRoas = spend > 0 ? purchaseValue / spend : 0;
 
   return {
     id: c.id,
@@ -169,6 +180,8 @@ function parseCampaign(c: any, ins: any) {
     cpl,
     purchases,
     cost_per_purchase: costPerPurchase,
+    purchase_value: purchaseValue,
+    purchase_roas: purchaseRoas,
     results,
     cost_per_result,
     result_type,
@@ -237,7 +250,7 @@ Deno.serve(async (req) => {
         ? `time_range({"since":"${timeRange.since}","until":"${timeRange.until}"})`
         : `date_preset(${datePreset})`;
 
-      const fields = `name,status,daily_budget,created_time,insights.${insightsDateParam}{spend,impressions,reach,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency}`;
+      const fields = `name,status,daily_budget,created_time,insights.${insightsDateParam}{spend,impressions,reach,clicks,actions,action_values,cost_per_action_type,ctr,cpc,cpm,frequency}`;
       const res = await fetch(
         `${GRAPH_API}/${adAccountId}/campaigns?fields=${fields}&limit=100&access_token=${accessToken}`
       );
@@ -263,7 +276,7 @@ Deno.serve(async (req) => {
         ? `time_range({"since":"${timeRange.since}","until":"${timeRange.until}"})`
         : `date_preset(${datePreset})`;
 
-      const fields = `name,status,campaign_id,campaign{name},creative{thumbnail_url,image_url},insights.${insightsDateParam}{spend,impressions,reach,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency}`;
+      const fields = `name,status,campaign_id,campaign{name},creative{thumbnail_url,image_url},insights.${insightsDateParam}{spend,impressions,reach,clicks,actions,action_values,cost_per_action_type,ctr,cpc,cpm,frequency}`;
       const res = await fetch(
         `${GRAPH_API}/${adAccountId}/ads?fields=${fields}&limit=200&access_token=${accessToken}`
       );
@@ -319,7 +332,7 @@ Deno.serve(async (req) => {
     // ==================== INSIGHTS ====================
     if (action === "insights") {
       const res = await fetch(
-        `${GRAPH_API}/${adAccountId}/insights?fields=spend,impressions,reach,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency&${dateFilter}&access_token=${accessToken}`
+        `${GRAPH_API}/${adAccountId}/insights?fields=spend,impressions,reach,clicks,actions,action_values,cost_per_action_type,ctr,cpc,cpm,frequency&${dateFilter}&access_token=${accessToken}`
       );
       const data = await res.json();
 
@@ -339,6 +352,8 @@ Deno.serve(async (req) => {
       const landingPageViews = extractAction(ins.actions, LANDING_PAGE_TYPES);
       const addToCart = extractAction(ins.actions, ADD_TO_CART_TYPES);
       const initiateCheckout = extractAction(ins.actions, INITIATE_CHECKOUT_TYPES);
+      const purchaseValue = extractActionValue(ins.action_values, PURCHASE_TYPES);
+      const purchaseRoas = spend > 0 ? purchaseValue / spend : 0;
 
       // Daily breakdown
       const dailyRes = await fetch(
@@ -373,7 +388,9 @@ Deno.serve(async (req) => {
         cpc: parseFloat(ins.cpc || "0"),
         cpm: parseFloat(ins.cpm || "0"),
         frequency: parseFloat(ins.frequency || "0"),
-        roas: spend > 0 ? (purchases * costPerPurchase) / spend : 0,
+        roas: purchaseRoas,
+        purchase_value: purchaseValue,
+        purchase_roas: purchaseRoas,
         landing_page_views: landingPageViews,
         add_to_cart: addToCart,
         initiate_checkout: initiateCheckout,
@@ -410,7 +427,7 @@ Deno.serve(async (req) => {
       }
 
       const res = await fetch(
-        `${GRAPH_API}/${adAccountId}/insights?fields=spend,impressions,reach,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency&${timeRangeParam({ since: prevSince, until: prevUntil })}&access_token=${accessToken}`
+        `${GRAPH_API}/${adAccountId}/insights?fields=spend,impressions,reach,clicks,actions,action_values,cost_per_action_type,ctr,cpc,cpm,frequency&${timeRangeParam({ since: prevSince, until: prevUntil })}&access_token=${accessToken}`
       );
       const data = await res.json();
 
@@ -427,6 +444,8 @@ Deno.serve(async (req) => {
       const spend = parseFloat(ins.spend || "0");
       const results = extractResults(ins.actions);
       const cost_per_result = extractCostPerResult(ins.cost_per_action_type);
+      const purchaseValue = extractActionValue(ins.action_values, PURCHASE_TYPES);
+      const purchaseRoas = spend > 0 ? purchaseValue / spend : 0;
 
       return new Response(JSON.stringify({
         spend,
@@ -444,7 +463,9 @@ Deno.serve(async (req) => {
         cpc: parseFloat(ins.cpc || "0"),
         cpm: parseFloat(ins.cpm || "0"),
         frequency: parseFloat(ins.frequency || "0"),
-        roas: spend > 0 ? (purchases * costPerPurchase) / spend : 0,
+        roas: purchaseRoas,
+        purchase_value: purchaseValue,
+        purchase_roas: purchaseRoas,
         daily: [],
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }

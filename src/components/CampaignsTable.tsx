@@ -50,7 +50,20 @@ const COLUMNS: Column[] = [
   { key: 'results',           label: 'Resultados',        format: (v) => v.toString(),              align: 'right', custom: true },
   { key: 'cost_per_result',   label: 'Custo por resultado', format: formatCurrency,                 align: 'right', custom: true },
   { key: 'purchases',         label: 'Compras',           format: (v) => v.toString(),              align: 'right', hideOn: 'lg' },
-  { key: 'cost_per_purchase',  label: 'Custo/Compra',     format: formatCurrency,                   align: 'right', hideOn: 'lg' },
+  { key: 'cost_per_purchase', label: 'Custo/Compra',      format: formatCurrency,                   align: 'right', hideOn: 'lg' },
+  { key: 'purchase_value',    label: 'Valor Compras',     format: formatCurrency,                   align: 'right', hideOn: 'lg' },
+  { key: 'purchase_roas',     label: 'ROAS',              format: (v) => v.toFixed(2) + 'x',        align: 'right' },
+];
+
+const MOBILE_SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: 'spend', label: 'Gasto' },
+  { key: 'results', label: 'Resultados' },
+  { key: 'cost_per_result', label: 'Custo/Resultado' },
+  { key: 'purchase_roas', label: 'ROAS' },
+  { key: 'purchase_value', label: 'Valor Compras' },
+  { key: 'purchases', label: 'Compras' },
+  { key: 'clicks', label: 'Cliques' },
+  { key: 'impressions', label: 'Impressões' },
 ];
 
 function getHideClass(hideOn?: string) {
@@ -88,8 +101,8 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
-      const av = a[sortKey] ?? 0;
-      const bv = b[sortKey] ?? 0;
+      const av = (a[sortKey] as any) ?? 0;
+      const bv = (b[sortKey] as any) ?? 0;
       const cmp = av < bv ? -1 : av > bv ? 1 : 0;
       return sortDir === 'asc' ? cmp : -cmp;
     });
@@ -114,29 +127,31 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
     return withLeads.reduce((best, c) => c.leads > best.leads ? c : best).id;
   }, [filtered]);
 
-  const avgCpl = useMemo(() => {
-    const withCpl = filtered.filter(c => c.cpl > 0);
-    if (!withCpl.length) return 0;
-    return withCpl.reduce((s, c) => s + c.cpl, 0) / withCpl.length;
-  }, [filtered]);
-
   // Totals
-  const totals = useMemo(() => ({
-    reach: filtered.reduce((s, c) => s + (c.reach || 0), 0),
-    impressions: filtered.reduce((s, c) => s + c.impressions, 0),
-    clicks: filtered.reduce((s, c) => s + c.clicks, 0),
-    results: filtered.reduce((s, c) => s + (c.results || 0), 0),
-    purchases: filtered.reduce((s, c) => s + (c.purchases || 0), 0),
-    spend: filtered.reduce((s, c) => s + c.spend, 0),
-    ctr: filtered.length ? filtered.reduce((s, c) => s + c.ctr, 0) / filtered.length : 0,
-    cpm: filtered.length ? filtered.reduce((s, c) => s + (c.cpm || 0), 0) / filtered.length : 0,
-    cost_per_result: (() => {
-      const totalResults = filtered.reduce((s, c) => s + (c.results || 0), 0);
-      const totalSpend = filtered.reduce((s, c) => s + c.spend, 0);
-      return totalResults > 0 ? totalSpend / totalResults : 0;
-    })(),
-    cost_per_purchase: (() => { const wp = filtered.filter(c => (c.cost_per_purchase || 0) > 0); return wp.length ? wp.reduce((s, c) => s + c.cost_per_purchase, 0) / wp.length : 0; })(),
-  }), [filtered]);
+  const totals = useMemo(() => {
+    const spendTotal = filtered.reduce((s, c) => s + c.spend, 0);
+    const purchaseValueTotal = filtered.reduce((s, c) => s + (c.purchase_value || 0), 0);
+    return {
+      reach: filtered.reduce((s, c) => s + (c.reach || 0), 0),
+      impressions: filtered.reduce((s, c) => s + c.impressions, 0),
+      clicks: filtered.reduce((s, c) => s + c.clicks, 0),
+      results: filtered.reduce((s, c) => s + (c.results || 0), 0),
+      purchases: filtered.reduce((s, c) => s + (c.purchases || 0), 0),
+      spend: spendTotal,
+      ctr: filtered.length ? filtered.reduce((s, c) => s + c.ctr, 0) / filtered.length : 0,
+      cpm: filtered.length ? filtered.reduce((s, c) => s + (c.cpm || 0), 0) / filtered.length : 0,
+      cost_per_result: (() => {
+        const totalResults = filtered.reduce((s, c) => s + (c.results || 0), 0);
+        return totalResults > 0 ? spendTotal / totalResults : 0;
+      })(),
+      cost_per_purchase: (() => {
+        const wp = filtered.filter(c => (c.cost_per_purchase || 0) > 0);
+        return wp.length ? wp.reduce((s, c) => s + c.cost_per_purchase, 0) / wp.length : 0;
+      })(),
+      purchase_value: purchaseValueTotal,
+      purchase_roas: spendTotal > 0 ? purchaseValueTotal / spendTotal : 0,
+    };
+  }, [filtered]);
 
   const getTags = (c: MetaCampaign) => {
     const tags: { label: string; className: string }[] = [];
@@ -155,16 +170,23 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
     return '';
   };
 
+  const getRoasClass = (roas: number) => {
+    if (!roas) return 'text-muted-foreground';
+    if (roas >= 2) return 'text-emerald-400';
+    if (roas >= 1) return 'text-amber-400';
+    return 'text-red-400';
+  };
+
   return (
     <GlassCard className="animate-fade-in">
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        <h3 className="text-lg font-semibold mr-auto">Desempenho por Campanha</h3>
+        <h3 className="text-base sm:text-lg font-semibold mr-auto">Desempenho por Campanha</h3>
         {STATUS_FILTERS.map((f) => (
           <button
             key={f.value}
             onClick={() => setStatusFilter(f.value)}
             className={cn(
-              'px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 border',
+              'px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-all duration-200 border',
               statusFilter === f.value
                 ? 'border-white/20 bg-white/10 text-foreground shadow-sm'
                 : 'border-transparent bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06]'
@@ -174,7 +196,82 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
           </button>
         ))}
       </div>
-      <div className="overflow-x-auto">
+
+      {/* Mobile: card list with sort selector */}
+      <div className="md:hidden">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">Ordenar:</span>
+          <select
+            value={sortKey as string}
+            onChange={(e) => setSortKey(e.target.value as SortKey)}
+            className="flex-1 bg-white/[0.04] border border-white/10 rounded-md text-xs py-1.5 px-2 text-foreground"
+          >
+            {MOBILE_SORT_OPTIONS.map(opt => (
+              <option key={opt.key as string} value={opt.key as string}>{opt.label}</option>
+            ))}
+          </select>
+          <button
+            onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}
+            className="px-2 py-1.5 rounded-md bg-white/[0.04] border border-white/10 text-xs text-foreground"
+            aria-label="Inverter direção"
+          >
+            {sortDir === 'asc' ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />}
+          </button>
+        </div>
+        <div className="space-y-2.5 max-h-[520px] overflow-y-auto pr-1">
+          {sorted.map((c) => {
+            const tags = getTags(c);
+            const actionLabel = getActionLabel(c.result_type || '');
+            return (
+              <div
+                key={c.id}
+                className="rounded-lg border border-white/5 bg-white/[0.02] p-3 transition-colors hover:bg-white/[0.04]"
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <span className="text-sm font-medium whitespace-normal break-words flex-1">{c.name}</span>
+                  <StatusBadge status={c.status} />
+                </div>
+                {tags.length > 0 && (
+                  <div className="flex gap-1 flex-wrap mb-2">
+                    {tags.map(t => (
+                      <span key={t.label} className={cn('text-[9px] px-1.5 py-0.5 rounded-full border font-medium', t.className)}>
+                        {t.label}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 pt-2 border-t border-white/5">
+                  <Stat label="Gasto" value={formatCurrency(c.spend)} />
+                  <Stat label="Resultados" value={(c.results || 0).toString()} sub={actionLabel} />
+                  <Stat label="Custo/Result." value={formatCurrency(c.cost_per_result || 0)} />
+                  <Stat
+                    label="ROAS"
+                    value={c.purchase_roas ? c.purchase_roas.toFixed(2) + 'x' : '—'}
+                    valueClass={getRoasClass(c.purchase_roas || 0)}
+                  />
+                  <Stat label="Valor Compras" value={formatCurrency(c.purchase_value || 0)} />
+                  <Stat label="Compras" value={(c.purchases || 0).toString()} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {/* Mobile totals */}
+        <div className="mt-3 rounded-lg border border-accent/30 bg-accent/5 p-3">
+          <div className="text-[10px] uppercase tracking-widest text-accent font-semibold mb-2">Total / Média</div>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+            <Stat label="Gasto" value={formatCurrency(totals.spend)} valueClass="text-accent" />
+            <Stat label="Resultados" value={totals.results.toString()} valueClass="text-accent" />
+            <Stat label="Custo/Result." value={formatCurrency(totals.cost_per_result)} valueClass="text-accent" />
+            <Stat label="ROAS" value={totals.purchase_roas.toFixed(2) + 'x'} valueClass="text-accent" />
+            <Stat label="Valor Compras" value={formatCurrency(totals.purchase_value)} valueClass="text-accent" />
+            <Stat label="Compras" value={totals.purchases.toString()} valueClass="text-accent" />
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop: full table */}
+      <div className="hidden md:block overflow-x-auto">
         <div className="max-h-[480px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
           <table className="w-full text-sm">
             <thead className="sticky top-0 z-10 bg-[hsl(var(--card))] backdrop-blur-sm">
@@ -227,7 +324,7 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
                     <td className={cn('py-3 px-3 text-right text-muted-foreground', getHideClass('md'))}>{formatNumber(c.clicks)}</td>
                     <td className={cn('py-3 px-3 text-right text-muted-foreground', getHideClass('lg'))}>{c.ctr.toFixed(2)}%</td>
                     <td className={cn('py-3 px-3 text-right text-muted-foreground', getHideClass('lg'))}>{formatCurrency(c.cpm || 0)}</td>
-                    {/* Resultados - Meta style */}
+                    {/* Resultados */}
                     <td className="py-3 px-3 text-right">
                       {c.results ? (
                         <div className="flex flex-col">
@@ -238,7 +335,7 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </td>
-                    {/* Custo por resultado - Meta style */}
+                    {/* Custo por resultado */}
                     <td className={cn('py-3 px-3 text-right', getCplClass(c.cost_per_result || 0))}>
                       {c.cost_per_result ? (
                         <div className="flex flex-col">
@@ -251,6 +348,10 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
                     </td>
                     <td className={cn('py-3 px-3 text-right metric-number', getHideClass('lg'))}>{c.purchases || 0}</td>
                     <td className={cn('py-3 px-3 text-right text-muted-foreground', getHideClass('lg'))}>{formatCurrency(c.cost_per_purchase || 0)}</td>
+                    <td className={cn('py-3 px-3 text-right text-muted-foreground', getHideClass('lg'))}>{formatCurrency(c.purchase_value || 0)}</td>
+                    <td className={cn('py-3 px-3 text-right font-semibold metric-number', getRoasClass(c.purchase_roas || 0))}>
+                      {c.purchase_roas ? c.purchase_roas.toFixed(2) + 'x' : '—'}
+                    </td>
                   </tr>
                 );
               })}
@@ -268,11 +369,23 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
                 <td className="py-3 px-3 text-right font-semibold text-accent metric-number">{formatCurrency(totals.cost_per_result)}</td>
                 <td className={cn('py-3 px-3 text-right font-semibold text-accent metric-number', getHideClass('lg'))}>{totals.purchases}</td>
                 <td className={cn('py-3 px-3 text-right font-semibold text-accent metric-number', getHideClass('lg'))}>{formatCurrency(totals.cost_per_purchase)}</td>
+                <td className={cn('py-3 px-3 text-right font-semibold text-accent metric-number', getHideClass('lg'))}>{formatCurrency(totals.purchase_value)}</td>
+                <td className="py-3 px-3 text-right font-semibold text-accent metric-number">{totals.purchase_roas.toFixed(2)}x</td>
               </tr>
             </tfoot>
           </table>
         </div>
       </div>
     </GlassCard>
+  );
+}
+
+function Stat({ label, value, sub, valueClass }: { label: string; value: string; sub?: string; valueClass?: string }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium truncate">{label}</div>
+      <div className={cn('text-sm font-semibold metric-number truncate', valueClass)}>{value}</div>
+      {sub && <div className="text-[9px] text-muted-foreground leading-tight truncate">{sub}</div>}
+    </div>
   );
 }

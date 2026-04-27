@@ -222,15 +222,21 @@ export default function ClientDashboard() {
   // Aggregate data
   const campaignList = useMemo(() => {
     if (isSynced && campaigns) return campaigns;
-    return isSynced ? [] : mockCampaigns.slice(0, 5).map(c => ({
-      ...c, reach: c.impressions * 0.8, leads: Math.floor(c.conversions * 0.7),
-      cpl: c.spend / Math.max(1, Math.floor(c.conversions * 0.7)),
-      purchases: Math.floor(c.conversions * 0.3),
-      cost_per_purchase: c.spend / Math.max(1, Math.floor(c.conversions * 0.3)),
-      results: c.conversions,
-      cost_per_result: c.spend / Math.max(1, c.conversions),
-      cpm: (c.spend / c.impressions) * 1000, frequency: 1.5,
-    }));
+    return isSynced ? [] : mockCampaigns.slice(0, 5).map(c => {
+      const purchases = Math.floor(c.conversions * 0.3);
+      const purchase_value = purchases * 150;
+      return {
+        ...c, reach: c.impressions * 0.8, leads: Math.floor(c.conversions * 0.7),
+        cpl: c.spend / Math.max(1, Math.floor(c.conversions * 0.7)),
+        purchases,
+        cost_per_purchase: c.spend / Math.max(1, purchases),
+        purchase_value,
+        purchase_roas: c.spend > 0 ? purchase_value / c.spend : 0,
+        results: c.conversions,
+        cost_per_result: c.spend / Math.max(1, c.conversions),
+        cpm: (c.spend / c.impressions) * 1000, frequency: 1.5,
+      };
+    });
   }, [isSynced, campaigns]);
 
   const dailyData: DailyMetric[] = useMemo(() => {
@@ -277,6 +283,8 @@ export default function ClientDashboard() {
       cpl: i?.cpl ?? (leads > 0 ? spend / leads : 0),
       purchases,
       cost_per_purchase: i?.cost_per_purchase ?? (purchases > 0 ? spend / purchases : 0),
+      purchase_value: (i as any)?.purchase_value ?? campaignList.reduce((s, c) => s + ((c as any).purchase_value || 0), 0),
+      purchase_roas: (i as any)?.purchase_roas ?? (spend > 0 ? (campaignList.reduce((s, c) => s + ((c as any).purchase_value || 0), 0)) / spend : 0),
       roas: i?.roas ?? 0,
       frequency: i?.frequency ?? 0,
       results,
@@ -300,6 +308,8 @@ export default function ClientDashboard() {
       cpl: p.cpl ?? 0,
       purchases: p.purchases ?? 0,
       cost_per_purchase: p.cost_per_purchase ?? 0,
+      purchase_value: (p as any).purchase_value ?? 0,
+      purchase_roas: (p as any).purchase_roas ?? 0,
       roas: p.roas ?? 0,
       frequency: p.frequency ?? 0,
       results: p.results ?? 0,
@@ -553,9 +563,9 @@ export default function ClientDashboard() {
           <GapAlert leads={metricValues.leads} purchases={metricValues.purchases} />
 
           {/* KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 sm:gap-4">
             {isLoading ? (
-              Array.from({ length: 6 }).map((_, i) => (
+              Array.from({ length: 7 }).map((_, i) => (
                 <GlassCard key={i}><Skeleton className="h-20 bg-white/5" /></GlassCard>
               ))
             ) : (

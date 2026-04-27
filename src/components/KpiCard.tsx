@@ -10,7 +10,7 @@ import { formatCurrency, formatNumber } from '@/data/mock';
 export type MetricKey =
   | 'spend' | 'impressions' | 'reach' | 'clicks' | 'ctr' | 'cpm'
   | 'cpc' | 'leads' | 'cpl' | 'purchases' | 'cost_per_purchase' | 'roas' | 'frequency'
-  | 'results' | 'cost_per_result';
+  | 'results' | 'cost_per_result' | 'purchase_value' | 'purchase_roas';
 
 interface MetricDef {
   label: string;
@@ -36,6 +36,8 @@ export const METRIC_DEFS: Record<MetricKey, MetricDef> = {
   frequency:         { label: 'Frequência',      icon: Repeat,       format: (v) => v.toFixed(2),       color: 'bg-purple-500' },
   results:           { label: 'Resultados',      icon: Target,       format: (v) => v.toString(),       color: 'bg-teal-500' },
   cost_per_result:   { label: 'Custo/Resultado', icon: DollarSign,   format: formatCurrency,            color: 'bg-red-500', invertChange: true },
+  purchase_value:    { label: 'Valor de Compras', icon: DollarSign,  format: formatCurrency,            color: 'bg-green-600' },
+  purchase_roas:     { label: 'ROAS Compras',    icon: TrendingUp,   format: (v) => v.toFixed(2) + 'x', color: 'bg-lime-600' },
 };
 
 const ALL_KEYS = Object.keys(METRIC_DEFS) as MetricKey[];
@@ -44,12 +46,22 @@ function storageKey(clientId?: string) {
   return clientId ? `wavy-kpi-cards-${clientId}` : 'wavy-kpi-cards';
 }
 
+const DEFAULT_CARDS: MetricKey[] = ['spend', 'impressions', 'clicks', 'results', 'cost_per_result', 'purchases', 'purchase_value'];
+
 export function getDefaultCards(clientId?: string): MetricKey[] {
   try {
     const saved = localStorage.getItem(storageKey(clientId));
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const arr = JSON.parse(saved) as MetricKey[];
+      // Backfill to 7 cards for users with older saved layouts
+      if (Array.isArray(arr) && arr.length < 7) {
+        const missing = DEFAULT_CARDS.filter(k => !arr.includes(k));
+        return [...arr, ...missing].slice(0, 7);
+      }
+      return arr.slice(0, 7);
+    }
   } catch {}
-  return ['spend', 'impressions', 'clicks', 'results', 'cost_per_result', 'purchases'];
+  return DEFAULT_CARDS;
 }
 
 export function saveCards(cards: MetricKey[], clientId?: string) {
