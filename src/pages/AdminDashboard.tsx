@@ -1,11 +1,16 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, CheckCircle, XCircle, Loader2, Users, Calendar, Pencil, RefreshCw, Trash2, UserPlus, X, Mail } from 'lucide-react';
+import { Plus, CheckCircle, XCircle, Loader2, Users, Calendar, Pencil, RefreshCw, Trash2, UserPlus, X, Mail, Scan, Eye, EyeOff } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { useClients, useCreateClient, useUpdateClient, useDeleteClient } from '@/hooks/useClients';
 import { useAddClientUser, useClientUsers } from '@/hooks/useClientUsers';
 import { useGetMetaAuthUrl, useSelectMetaAccount } from '@/hooks/useMetaOAuth';
 import { useGetGoogleAdsAuthUrl, useSelectGoogleAdsAccount } from '@/hooks/useGoogleAdsOAuth';
+import { useAllClientPixels, useUpsertClientPixel } from '@/hooks/useClientPixels';
+
+const PIXEL_ENABLED_CLIENTS = ['deni haut cursos'];
+const showPixelButton = (name: string) =>
+  PIXEL_ENABLED_CLIENTS.includes(name.trim().toLowerCase());
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery } from '@tanstack/react-query';
@@ -28,6 +33,8 @@ export default function AdminDashboard() {
   const getAuthUrl = useGetMetaAuthUrl();
   const selectAccount = useSelectMetaAccount();
   const getGoogleAuthUrl = useGetGoogleAdsAuthUrl();
+  const { data: pixelMap } = useAllClientPixels();
+  const upsertPixel = useUpsertClientPixel();
 
   // Fetch all client access emails
   const { data: accessEmails } = useQuery({
@@ -91,6 +98,47 @@ export default function AdminDashboard() {
   const [syncingGoogleClientId, setSyncingGoogleClientId] = useState<string | null>(null);
   const [pendingGoogleAccounts, setPendingGoogleAccounts] = useState<any[] | null>(null);
   const [pendingGoogleSyncClientId, setPendingGoogleSyncClientId] = useState<string | null>(null);
+
+  // Pixel Meta modal state
+  const [pixelDialogOpen, setPixelDialogOpen] = useState(false);
+  const [pixelClientId, setPixelClientId] = useState('');
+  const [pixelClientName, setPixelClientName] = useState('');
+  const [pixelIdInput, setPixelIdInput] = useState('');
+  const [pixelTokenInput, setPixelTokenInput] = useState('');
+  const [pixelTokenVisible, setPixelTokenVisible] = useState(false);
+  const [hasExistingToken, setHasExistingToken] = useState(false);
+
+  const openPixelModal = (clientId: string, clientName: string) => {
+    const existing = pixelMap?.get(clientId);
+    setPixelClientId(clientId);
+    setPixelClientName(clientName);
+    setPixelIdInput(existing?.pixel_id || '');
+    setPixelTokenInput('');
+    setPixelTokenVisible(false);
+    setHasExistingToken(!!existing?.access_token);
+    setPixelDialogOpen(true);
+  };
+
+  const handleSavePixel = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pixelIdInput.trim()) return;
+    const tokenTrimmed = pixelTokenInput.trim();
+    const accessToken =
+      hasExistingToken && tokenTrimmed === '' ? undefined : tokenTrimmed;
+    if (accessToken !== undefined && accessToken === '') return;
+
+    upsertPixel.mutate(
+      { clientId: pixelClientId, pixelId: pixelIdInput.trim(), accessToken },
+      {
+        onSuccess: () => {
+          toast({ title: 'Pixel configurado com sucesso!' });
+          setPixelDialogOpen(false);
+        },
+        onError: (err: any) =>
+          toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
+      },
+    );
+  };
 
   // Listen for popup message
   useEffect(() => {
@@ -462,6 +510,18 @@ export default function AdminDashboard() {
                         <span className="text-xs text-muted-foreground">Google ✗</span>
                       </>
                     )}
+                    <span className="text-muted-foreground/30">|</span>
+                    {pixelMap?.has(client.id) ? (
+                      <>
+                        <CheckCircle className="h-4 w-4 text-accent" />
+                        <span className="text-xs text-accent font-medium">Pixel ✓</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">Pixel ✗</span>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -504,6 +564,18 @@ export default function AdminDashboard() {
 
               {/* Sync buttons */}
               <div className="mt-4 pt-3 border-t border-white/10 space-y-2">
+                {showPixelButton(client.name) && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openPixelModal(client.id, client.name);
+                    }}
+                    className="btn-glass w-full rounded-xl py-2.5 text-xs font-medium flex items-center justify-center gap-2"
+                  >
+                    <Scan className="h-3.5 w-3.5" />
+                    Sincronizar Pixel Meta
+                  </button>
+                )}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -665,6 +737,76 @@ export default function AdminDashboard() {
             >
               {addClientUser.isPending ? 'Adicionando...' : 'Conceder Acesso'}
             </button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pixel Meta Dialog */}
+      <Dialog open={pixelDialogOpen} onOpenChange={setPixelDialogOpen}>
+        <DialogContent className="glass border-white/10 bg-card">
+          <DialogHeader>
+            <DialogTitle>Configurar Pixel Meta</DialogTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Insira os dados do Pixel para habilitar o envio de conversões offline
+            </p>
+          </DialogHeader>
+          <form onSubmit={handleSavePixel} className="space-y-4 mt-4">
+            <div className="space-y-1.5">
+              <label className="text-sm text-muted-foreground">
+                Pixel ID * <span className="text-xs">— {pixelClientName}</span>
+              </label>
+              <input
+                value={pixelIdInput}
+                onChange={(e) => setPixelIdInput(e.target.value)}
+                placeholder="ex: 123456789012345"
+                required
+                className="glass-input w-full rounded-xl py-3 px-4 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm text-muted-foreground">
+                Access Token {hasExistingToken ? '' : '*'}
+              </label>
+              <div className="relative">
+                <input
+                  value={pixelTokenInput}
+                  onChange={(e) => setPixelTokenInput(e.target.value)}
+                  placeholder={hasExistingToken ? '••••••••' : 'EAABs...'}
+                  type={pixelTokenVisible ? 'text' : 'password'}
+                  required={!hasExistingToken}
+                  className="glass-input w-full rounded-xl py-3 px-4 pr-12 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setPixelTokenVisible((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
+                  title={pixelTokenVisible ? 'Ocultar' : 'Mostrar'}
+                >
+                  {pixelTokenVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {hasExistingToken && (
+                <p className="text-xs text-muted-foreground">
+                  Token já configurado — deixe em branco para manter o atual
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setPixelDialogOpen(false)}
+                className="btn-glass flex-1 rounded-xl py-3 text-sm font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={upsertPixel.isPending}
+                className="btn-accent flex-1 rounded-xl py-3 text-sm font-semibold disabled:opacity-50"
+              >
+                {upsertPixel.isPending ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>
