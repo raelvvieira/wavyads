@@ -31,10 +31,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useClients } from '@/hooks/useClients';
 import { OfflineConversionDialog } from '@/components/OfflineConversionDialog';
-
-const CONVERSION_ENABLED_CLIENTS = ['deni haut cursos'];
-const showConversionButton = (name?: string | null) =>
-  !!name && CONVERSION_ENABLED_CLIENTS.includes(name.trim().toLowerCase());
+import { useAllClientPixels } from '@/hooks/useClientPixels';
 
 type PresetKey = 'today' | 'yesterday' | 'last_7d' | 'last_14d' | 'last_30d' | 'this_month' | 'last_month' | 'custom';
 type Platform = 'meta' | 'google';
@@ -89,6 +86,8 @@ export default function ClientDashboard() {
   const clientId = paramClientId || clientUserRecord?.id;
 
   const { data: client, isLoading: clientLoading } = useClient(clientId);
+  const { data: pixelMap } = useAllClientPixels();
+  const hasPixel = !!(clientId && pixelMap?.has(clientId));
   // Preferences persistence
   const prefsKey = clientId ? `wavy-dash-prefs-${clientId}` : null;
   const savedPrefs = useMemo(() => {
@@ -600,7 +599,7 @@ export default function ClientDashboard() {
         </div>
       </header>
 
-      {showConversionButton(client?.name) && clientId && (
+      {hasPixel && clientId && (
         <>
           <div className="px-4 sm:px-6 pt-4 flex justify-end">
             <button

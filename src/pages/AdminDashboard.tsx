@@ -7,10 +7,6 @@ import { useAddClientUser, useClientUsers } from '@/hooks/useClientUsers';
 import { useGetMetaAuthUrl, useSelectMetaAccount } from '@/hooks/useMetaOAuth';
 import { useGetGoogleAdsAuthUrl, useSelectGoogleAdsAccount } from '@/hooks/useGoogleAdsOAuth';
 import { useAllClientPixels, useUpsertClientPixel } from '@/hooks/useClientPixels';
-
-const PIXEL_ENABLED_CLIENTS = ['deni haut cursos'];
-const showPixelButton = (name: string) =>
-  PIXEL_ENABLED_CLIENTS.includes(name.trim().toLowerCase());
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery } from '@tanstack/react-query';
@@ -564,7 +560,7 @@ export default function AdminDashboard() {
 
               {/* Sync buttons */}
               <div className="mt-4 pt-3 border-t border-white/10 space-y-2">
-                {showPixelButton(client.name) && (
+                {(
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
