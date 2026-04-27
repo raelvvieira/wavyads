@@ -164,6 +164,8 @@ function parseCampaign(c: any, ins: any) {
   const landingPageViews = extractAction(ins.actions, LANDING_PAGE_TYPES);
   const addToCart = extractAction(ins.actions, ADD_TO_CART_TYPES);
   const initiateCheckout = extractAction(ins.actions, INITIATE_CHECKOUT_TYPES);
+  const purchaseValue = extractActionValue(ins.action_values, PURCHASE_TYPES);
+  const purchaseRoas = spend > 0 ? purchaseValue / spend : 0;
 
   return {
     id: c.id,
@@ -178,6 +180,8 @@ function parseCampaign(c: any, ins: any) {
     cpl,
     purchases,
     cost_per_purchase: costPerPurchase,
+    purchase_value: purchaseValue,
+    purchase_roas: purchaseRoas,
     results,
     cost_per_result,
     result_type,
