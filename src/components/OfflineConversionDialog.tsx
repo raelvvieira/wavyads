@@ -1,6 +1,15 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { CalendarIcon, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import {
+  CalendarIcon,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  Plus,
+  Trash2,
+  CheckCircle2,
+  XCircle,
+} from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -24,115 +33,400 @@ interface OfflineConversionDialogProps {
 const inputCls = 'glass-input w-full rounded-xl py-3 px-4 text-sm';
 const labelCls = 'text-xs text-muted-foreground';
 
+type Mode = 'single' | 'bulk';
+
+interface ConversionDraft {
+  id: string;
+  email: string;
+  phone: string;
+  fn: string;
+  ln: string;
+  conversionDate: Date;
+  valueStr: string;
+  // additional
+  expanded: boolean;
+  zip: string;
+  ct: string;
+  dob: string;
+  doby: string;
+  gen: '' | 'M' | 'F';
+  age: string;
+  // submission state (bulk only)
+  status: 'idle' | 'sending' | 'sent' | 'error';
+  errorMessage?: string;
+}
+
+const newDraft = (): ConversionDraft => ({
+  id: crypto.randomUUID(),
+  email: '',
+  phone: '',
+  fn: '',
+  ln: '',
+  conversionDate: new Date(),
+  valueStr: '',
+  expanded: false,
+  zip: '',
+  ct: '',
+  dob: '',
+  doby: '',
+  gen: '',
+  age: '',
+  status: 'idle',
+});
+
+function validateDraft(d: ConversionDraft): string | null {
+  if (!d.email.trim() && !d.phone.trim()) {
+    return 'Informe ao menos e-mail ou telefone.';
+  }
+  const valueNum = d.valueStr ? Number(d.valueStr.replace(',', '.')) : null;
+  if (valueNum == null || isNaN(valueNum) || valueNum <= 0) {
+    return 'Informe um valor de conversão válido.';
+  }
+  if (!d.conversionDate) return 'Selecione a data da conversão.';
+  return null;
+}
+
+async function submitDraft(clientId: string, d: ConversionDraft) {
+  const valueNum = Number(d.valueStr.replace(',', '.'));
+  const { data: inserted, error: insertErr } = await supabase
+    .from('offline_conversions')
+    .insert({
+      client_id: clientId,
+      email: d.email.trim() || null,
+      phone: d.phone.trim() || null,
+      fn: d.fn.trim() || null,
+      ln: d.ln.trim() || null,
+      conversion_date: d.conversionDate.toISOString(),
+      value: valueNum,
+      currency: 'BRL',
+      country: 'BR',
+      event_name: 'Purchase',
+      send_status: 'pending',
+      zip: d.zip.trim() || null,
+      ct: d.ct.trim() || null,
+      dob: d.dob.trim() || null,
+      doby: d.doby.trim() || null,
+      gen: d.gen || null,
+      age: d.age ? Number(d.age) : null,
+    })
+    .select('id')
+    .single();
+
+  if (insertErr || !inserted) {
+    throw insertErr || new Error('Falha ao salvar conversão');
+  }
+
+  const { error: fnError } = await supabase.functions.invoke(
+    'send-offline-conversion',
+    { body: { conversion_id: inserted.id } },
+  );
+  if (fnError) throw fnError;
+}
+
+// ---------- Single conversion form (shared between single + bulk modes) ----------
+
+interface DraftFormProps {
+  draft: ConversionDraft;
+  onChange: (patch: Partial<ConversionDraft>) => void;
+  showHeader?: boolean;
+  index?: number;
+  onRemove?: () => void;
+  removable?: boolean;
+}
+
+function DraftForm({
+  draft: d,
+  onChange,
+  showHeader = false,
+  index,
+  onRemove,
+  removable,
+}: DraftFormProps) {
+  const [datePopoverOpen, setDatePopoverOpen] = useState(false);
+
+  const statusBadge =
+    d.status === 'sent' ? (
+      <span className="inline-flex items-center gap-1 text-[11px] text-accent">
+        <CheckCircle2 className="h-3 w-3" /> Enviada
+      </span>
+    ) : d.status === 'error' ? (
+      <span
+        className="inline-flex items-center gap-1 text-[11px] text-destructive"
+        title={d.errorMessage}
+      >
+        <XCircle className="h-3 w-3" /> Erro
+      </span>
+    ) : d.status === 'sending' ? (
+      <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+        <Loader2 className="h-3 w-3 animate-spin" /> Enviando…
+      </span>
+    ) : null;
+
+  return (
+    <div className={showHeader ? 'glass rounded-xl p-4 space-y-3' : 'space-y-3'}>
+      {showHeader && (
+        <div className="flex items-center justify-between -mt-1">
+          <div className="flex items-center gap-2">
+            <h4 className="text-sm font-semibold">Conversão #{(index ?? 0) + 1}</h4>
+            {statusBadge}
+          </div>
+          {removable && (
+            <button
+              type="button"
+              onClick={onRemove}
+              disabled={d.status === 'sending'}
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-white/10 transition-colors disabled:opacity-50"
+              title="Remover conversão"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      )}
+
+      <p className="text-[11px] text-muted-foreground">
+        Informe <strong>e-mail</strong> <em>ou</em> <strong>telefone</strong> (ao menos um).
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <label className={labelCls}>E-mail</label>
+          <input
+            type="email"
+            value={d.email}
+            onChange={(e) => onChange({ email: e.target.value })}
+            placeholder="cliente@email.com"
+            className={inputCls}
+            disabled={d.status === 'sending' || d.status === 'sent'}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className={labelCls}>Telefone</label>
+          <input
+            type="text"
+            value={d.phone}
+            onChange={(e) => onChange({ phone: e.target.value })}
+            placeholder="+55 11 99999-9999"
+            className={inputCls}
+            disabled={d.status === 'sending' || d.status === 'sent'}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <label className={labelCls}>Nome</label>
+          <input
+            type="text"
+            value={d.fn}
+            onChange={(e) => onChange({ fn: e.target.value })}
+            className={inputCls}
+            disabled={d.status === 'sending' || d.status === 'sent'}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className={labelCls}>Sobrenome</label>
+          <input
+            type="text"
+            value={d.ln}
+            onChange={(e) => onChange({ ln: e.target.value })}
+            className={inputCls}
+            disabled={d.status === 'sending' || d.status === 'sent'}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <label className={labelCls}>Data da Conversão *</label>
+          <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={d.status === 'sending' || d.status === 'sent'}
+                className={cn(
+                  'glass-input w-full rounded-xl py-3 px-4 text-sm justify-start font-normal h-auto',
+                )}
+              >
+                <CalendarIcon className="h-4 w-4 mr-2 opacity-70" />
+                {d.conversionDate ? format(d.conversionDate, 'dd/MM/yyyy') : 'Selecione'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 glass border-white/10" align="start">
+              <Calendar
+                mode="single"
+                selected={d.conversionDate}
+                onSelect={(date) => {
+                  if (date) {
+                    onChange({ conversionDate: date });
+                    setDatePopoverOpen(false);
+                  }
+                }}
+                disabled={(date) => date > new Date()}
+                initialFocus
+                className={cn('p-3 pointer-events-auto')}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className={labelCls}>Valor *</label>
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+              R$
+            </span>
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min="0"
+              value={d.valueStr}
+              onChange={(e) => onChange({ valueStr: e.target.value })}
+              placeholder="0,00"
+              required
+              disabled={d.status === 'sending' || d.status === 'sent'}
+              className={cn(inputCls, 'pl-10')}
+            />
+          </div>
+        </div>
+      </div>
+
+      <p className="text-[11px] text-muted-foreground pt-1">
+        Moeda: BRL · Evento: Purchase · País: BR
+      </p>
+
+      {/* Additional */}
+      <div className="border-t border-white/10 pt-3">
+        <button
+          type="button"
+          onClick={() => onChange({ expanded: !d.expanded })}
+          className="flex items-center justify-between w-full text-left text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <span>Dados adicionais — aumentam a qualidade do match</span>
+          {d.expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </button>
+
+        {d.expanded && (
+          <div className="space-y-3 mt-3 animate-fade-in">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className={labelCls}>CEP</label>
+                <input
+                  type="text"
+                  value={d.zip}
+                  onChange={(e) => onChange({ zip: e.target.value })}
+                  placeholder="00000-000"
+                  className={inputCls}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className={labelCls}>Cidade</label>
+                <input
+                  type="text"
+                  value={d.ct}
+                  onChange={(e) => onChange({ ct: e.target.value })}
+                  className={inputCls}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className={labelCls}>Data de Nascimento</label>
+                <input
+                  type="text"
+                  value={d.dob}
+                  onChange={(e) => onChange({ dob: e.target.value })}
+                  placeholder="MM/DD/AA"
+                  className={inputCls}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className={labelCls}>Ano de Nascimento</label>
+                <input
+                  type="text"
+                  value={d.doby}
+                  onChange={(e) => onChange({ doby: e.target.value })}
+                  placeholder="ex: 1990"
+                  className={inputCls}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className={labelCls}>Gênero</label>
+                <select
+                  value={d.gen}
+                  onChange={(e) => onChange({ gen: e.target.value as 'M' | 'F' | '' })}
+                  className={inputCls}
+                >
+                  <option value="">Selecione</option>
+                  <option value="M">Masculino</option>
+                  <option value="F">Feminino</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className={labelCls}>Idade</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={d.age}
+                  onChange={(e) => onChange({ age: e.target.value })}
+                  className={inputCls}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {showHeader && d.status === 'error' && d.errorMessage && (
+        <p className="text-[11px] text-destructive">{d.errorMessage}</p>
+      )}
+    </div>
+  );
+}
+
+// ---------- Main dialog ----------
+
 export function OfflineConversionDialog({
   open,
   onOpenChange,
   clientId,
 }: OfflineConversionDialogProps) {
-  // Required
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [fn, setFn] = useState('');
-  const [ln, setLn] = useState('');
-  const [conversionDate, setConversionDate] = useState<Date>(new Date());
-  const [datePopoverOpen, setDatePopoverOpen] = useState(false);
-  const [valueStr, setValueStr] = useState('');
+  const [mode, setMode] = useState<Mode>('single');
 
-  // Additional (collapsed)
-  const [expanded, setExpanded] = useState(false);
-  const [zip, setZip] = useState('');
-  const [ct, setCt] = useState('');
-  const [dob, setDob] = useState('');
-  const [doby, setDoby] = useState('');
-  const [gen, setGen] = useState<'' | 'M' | 'F'>('');
-  const [age, setAge] = useState('');
-
+  // Single
+  const [single, setSingle] = useState<ConversionDraft>(newDraft());
   const [submitting, setSubmitting] = useState(false);
 
-  const reset = () => {
-    setEmail('');
-    setPhone('');
-    setFn('');
-    setLn('');
-    setConversionDate(new Date());
-    setValueStr('');
-    setExpanded(false);
-    setZip('');
-    setCt('');
-    setDob('');
-    setDoby('');
-    setGen('');
-    setAge('');
+  // Bulk
+  const [drafts, setDrafts] = useState<ConversionDraft[]>([newDraft(), newDraft()]);
+  const [bulkRunning, setBulkRunning] = useState(false);
+
+  const closeAndReset = (open: boolean) => {
+    if (!open) {
+      setSingle(newDraft());
+      setDrafts([newDraft(), newDraft()]);
+      setMode('single');
+    }
+    onOpenChange(open);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Single submit
+  const handleSingleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Validation
-    if (!email.trim() && !phone.trim()) {
-      toast({
-        title: 'Dados insuficientes',
-        description: 'Informe ao menos e-mail ou telefone.',
-        variant: 'destructive',
-      });
+    const err = validateDraft(single);
+    if (err) {
+      toast({ title: 'Dados inválidos', description: err, variant: 'destructive' });
       return;
     }
-    const valueNum = valueStr ? Number(valueStr.replace(',', '.')) : null;
-    if (valueNum == null || isNaN(valueNum) || valueNum <= 0) {
-      toast({
-        title: 'Valor inválido',
-        description: 'Informe um valor de conversão válido.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    if (!conversionDate) {
-      toast({
-        title: 'Data obrigatória',
-        description: 'Selecione a data da conversão.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     setSubmitting(true);
     try {
-      // Insert
-      const { data: inserted, error: insertErr } = await supabase
-        .from('offline_conversions')
-        .insert({
-          client_id: clientId,
-          email: email.trim() || null,
-          phone: phone.trim() || null,
-          fn: fn.trim() || null,
-          ln: ln.trim() || null,
-          conversion_date: conversionDate.toISOString(),
-          value: valueNum,
-          currency: 'BRL',
-          country: 'BR',
-          event_name: 'Purchase',
-          send_status: 'pending',
-          zip: zip.trim() || null,
-          ct: ct.trim() || null,
-          dob: dob.trim() || null,
-          doby: doby.trim() || null,
-          gen: gen || null,
-          age: age ? Number(age) : null,
-        })
-        .select('id')
-        .single();
-
-      if (insertErr || !inserted) throw insertErr || new Error('Falha ao salvar conversão');
-
-      // Call edge function
-      const { error: fnError } = await supabase.functions.invoke(
-        'send-offline-conversion',
-        { body: { conversion_id: inserted.id } },
-      );
-      if (fnError) throw fnError;
-
+      await submitDraft(clientId, single);
       toast({ title: 'Conversão enviada com sucesso!' });
-      reset();
+      setSingle(newDraft());
       onOpenChange(false);
     } catch (err: any) {
       console.error('Offline conversion error:', err);
@@ -146,9 +440,84 @@ export function OfflineConversionDialog({
     }
   };
 
+  // Bulk submit
+  const handleBulkSubmit = async () => {
+    // Validate all unsent drafts first
+    const errors: string[] = [];
+    drafts.forEach((d, i) => {
+      if (d.status === 'sent') return;
+      const err = validateDraft(d);
+      if (err) errors.push(`Conversão #${i + 1}: ${err}`);
+    });
+    if (errors.length) {
+      toast({
+        title: 'Corrija os erros antes de enviar',
+        description: errors.join(' · '),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setBulkRunning(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (let i = 0; i < drafts.length; i++) {
+      const current = drafts[i];
+      if (current.status === 'sent') continue;
+
+      setDrafts((prev) =>
+        prev.map((d, idx) =>
+          idx === i ? { ...d, status: 'sending', errorMessage: undefined } : d,
+        ),
+      );
+
+      try {
+        await submitDraft(clientId, current);
+        successCount++;
+        setDrafts((prev) =>
+          prev.map((d, idx) => (idx === i ? { ...d, status: 'sent' } : d)),
+        );
+      } catch (err: any) {
+        errorCount++;
+        setDrafts((prev) =>
+          prev.map((d, idx) =>
+            idx === i
+              ? { ...d, status: 'error', errorMessage: err?.message || 'Erro desconhecido' }
+              : d,
+          ),
+        );
+      }
+    }
+
+    setBulkRunning(false);
+    if (errorCount === 0) {
+      toast({
+        title: 'Conversões enviadas com sucesso!',
+        description: `${successCount} conversão(ões) registrada(s).`,
+      });
+    } else {
+      toast({
+        title: `${successCount} enviada(s), ${errorCount} com erro`,
+        description: 'Revise os itens marcados em vermelho e tente novamente.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const updateDraft = (id: string, patch: Partial<ConversionDraft>) => {
+    setDrafts((prev) => prev.map((d) => (d.id === id ? { ...d, ...patch } : d)));
+  };
+
+  const addDraft = () => setDrafts((prev) => [...prev, newDraft()]);
+  const removeDraft = (id: string) =>
+    setDrafts((prev) => (prev.length === 1 ? prev : prev.filter((d) => d.id !== id)));
+
+  const pendingCount = drafts.filter((d) => d.status !== 'sent').length;
+
   return (
-    <Dialog open={open} onOpenChange={(o) => !submitting && onOpenChange(o)}>
-      <DialogContent className="glass border-white/10 bg-card max-w-lg max-h-[90vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={(o) => !submitting && !bulkRunning && closeAndReset(o)}>
+      <DialogContent className="glass border-white/10 bg-card max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Registrar Conversão</DialogTitle>
           <DialogDescription>
@@ -156,230 +525,112 @@ export function OfflineConversionDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-5 mt-2">
-          {/* Section 1 */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold">Dados Obrigatórios</h3>
-
-            <div className="space-y-1.5">
-              <label className={labelCls}>E-mail</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="cliente@email.com"
-                className={inputCls}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className={labelCls}>Telefone</label>
-              <input
-                type="text"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+55 11 99999-9999"
-                className={inputCls}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className={labelCls}>Nome</label>
-                <input
-                  type="text"
-                  value={fn}
-                  onChange={(e) => setFn(e.target.value)}
-                  className={inputCls}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className={labelCls}>Sobrenome</label>
-                <input
-                  type="text"
-                  value={ln}
-                  onChange={(e) => setLn(e.target.value)}
-                  className={inputCls}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className={labelCls}>Data da Conversão *</label>
-                <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className={cn(
-                        'glass-input w-full rounded-xl py-3 px-4 text-sm justify-start font-normal h-auto',
-                        !conversionDate && 'text-muted-foreground',
-                      )}
-                    >
-                      <CalendarIcon className="h-4 w-4 mr-2 opacity-70" />
-                      {conversionDate
-                        ? format(conversionDate, 'dd/MM/yyyy')
-                        : 'Selecione'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-auto p-0 glass border-white/10"
-                    align="start"
-                  >
-                    <Calendar
-                      mode="single"
-                      selected={conversionDate}
-                      onSelect={(d) => {
-                        if (d) {
-                          setConversionDate(d);
-                          setDatePopoverOpen(false);
-                        }
-                      }}
-                      disabled={(d) => d > new Date()}
-                      initialFocus
-                      className={cn('p-3 pointer-events-auto')}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className={labelCls}>Valor *</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                    R$
-                  </span>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    step="0.01"
-                    min="0"
-                    value={valueStr}
-                    onChange={(e) => setValueStr(e.target.value)}
-                    placeholder="0,00"
-                    required
-                    className={cn(inputCls, 'pl-10')}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <p className="text-[11px] text-muted-foreground pt-1">
-              Moeda: BRL · Evento: Purchase · País: BR
-            </p>
-          </div>
-
-          {/* Section 2 — collapsible */}
-          <div className="border-t border-white/10 pt-4">
-            <button
-              type="button"
-              onClick={() => setExpanded((v) => !v)}
-              className="flex items-center justify-between w-full text-left text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <span>Dados adicionais — aumentam a qualidade do match</span>
-              {expanded ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-            </button>
-
-            {expanded && (
-              <div className="space-y-3 mt-4 animate-fade-in">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className={labelCls}>CEP</label>
-                    <input
-                      type="text"
-                      value={zip}
-                      onChange={(e) => setZip(e.target.value)}
-                      placeholder="00000-000"
-                      className={inputCls}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className={labelCls}>Cidade</label>
-                    <input
-                      type="text"
-                      value={ct}
-                      onChange={(e) => setCt(e.target.value)}
-                      className={inputCls}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className={labelCls}>Data de Nascimento</label>
-                    <input
-                      type="text"
-                      value={dob}
-                      onChange={(e) => setDob(e.target.value)}
-                      placeholder="MM/DD/AA"
-                      className={inputCls}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className={labelCls}>Ano de Nascimento</label>
-                    <input
-                      type="text"
-                      value={doby}
-                      onChange={(e) => setDoby(e.target.value)}
-                      placeholder="ex: 1990"
-                      className={inputCls}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className={labelCls}>Gênero</label>
-                    <select
-                      value={gen}
-                      onChange={(e) => setGen(e.target.value as 'M' | 'F' | '')}
-                      className={inputCls}
-                    >
-                      <option value="">Selecione</option>
-                      <option value="M">Masculino</option>
-                      <option value="F">Feminino</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className={labelCls}>Idade</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={age}
-                      onChange={(e) => setAge(e.target.value)}
-                      className={inputCls}
-                    />
-                  </div>
-                </div>
-              </div>
+        {/* Mode tabs */}
+        <div className="flex items-center gap-1 glass rounded-xl p-1 w-fit">
+          <button
+            type="button"
+            onClick={() => setMode('single')}
+            disabled={bulkRunning}
+            className={cn(
+              'rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
+              mode === 'single'
+                ? 'btn-accent'
+                : 'text-muted-foreground hover:text-foreground',
             )}
-          </div>
+          >
+            Registro único
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('bulk')}
+            disabled={submitting}
+            className={cn(
+              'rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
+              mode === 'bulk'
+                ? 'btn-accent'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            Registro em quantidade
+          </button>
+        </div>
 
-          {/* Footer */}
-          <div className="flex items-center gap-2 pt-2">
+        {mode === 'single' ? (
+          <form onSubmit={handleSingleSubmit} className="space-y-5 mt-2">
+            <DraftForm draft={single} onChange={(p) => setSingle((s) => ({ ...s, ...p }))} />
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={() => onOpenChange(false)}
+                className="btn-glass flex-1 rounded-xl py-3 text-sm font-medium disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="btn-accent flex-1 rounded-xl py-3 text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                {submitting ? 'Enviando...' : 'Registrar Conversão'}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="space-y-4 mt-2">
+            <p className="text-xs text-muted-foreground">
+              Adicione múltiplas conversões abaixo e envie todas de uma vez. Cada item será processado individualmente.
+            </p>
+
+            <div className="space-y-3">
+              {drafts.map((d, i) => (
+                <DraftForm
+                  key={d.id}
+                  draft={d}
+                  index={i}
+                  showHeader
+                  removable={drafts.length > 1}
+                  onRemove={() => removeDraft(d.id)}
+                  onChange={(p) => updateDraft(d.id, p)}
+                />
+              ))}
+            </div>
+
             <button
               type="button"
-              disabled={submitting}
-              onClick={() => onOpenChange(false)}
-              className="btn-glass flex-1 rounded-xl py-3 text-sm font-medium disabled:opacity-50"
+              onClick={addDraft}
+              disabled={bulkRunning}
+              className="btn-glass w-full rounded-xl py-2.5 text-xs font-medium flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              Cancelar
+              <Plus className="h-3.5 w-3.5" />
+              Adicionar outra conversão
             </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="btn-accent flex-1 rounded-xl py-3 text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-              {submitting ? 'Enviando...' : 'Registrar Conversão'}
-            </button>
+
+            <div className="flex items-center gap-2 pt-2 border-t border-white/10">
+              <button
+                type="button"
+                disabled={bulkRunning}
+                onClick={() => onOpenChange(false)}
+                className="btn-glass flex-1 rounded-xl py-3 text-sm font-medium disabled:opacity-50"
+              >
+                Fechar
+              </button>
+              <button
+                type="button"
+                disabled={bulkRunning || pendingCount === 0}
+                onClick={handleBulkSubmit}
+                className="btn-accent flex-1 rounded-xl py-3 text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {bulkRunning && <Loader2 className="h-4 w-4 animate-spin" />}
+                {bulkRunning
+                  ? 'Enviando...'
+                  : `Enviar ${pendingCount} conversão${pendingCount === 1 ? '' : 'ões'}`}
+              </button>
+            </div>
           </div>
-        </form>
+        )}
       </DialogContent>
     </Dialog>
   );
