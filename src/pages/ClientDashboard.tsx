@@ -308,6 +308,8 @@ export default function ClientDashboard() {
       cpl: p.cpl ?? 0,
       purchases: p.purchases ?? 0,
       cost_per_purchase: p.cost_per_purchase ?? 0,
+      purchase_value: (p as any).purchase_value ?? 0,
+      purchase_roas: (p as any).purchase_roas ?? 0,
       roas: p.roas ?? 0,
       frequency: p.frequency ?? 0,
       results: p.results ?? 0,
