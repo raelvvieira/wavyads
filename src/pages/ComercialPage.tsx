@@ -12,10 +12,7 @@ import {
   RotateCw,
   Loader2,
   CalendarIcon,
-  HelpCircle,
   AlertTriangle,
-  Target,
-  Info,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRole } from '@/hooks/useRole';
@@ -307,26 +304,8 @@ export default function ComercialPage() {
     const leads = filtered.filter(r => r.event_name === 'Lead').length;
     const purchases = filtered.filter(r => r.event_name === 'Purchase').length;
     const value = filtered.reduce((s, r) => s + (r.value || 0), 0);
-
-    // Real day-by-day match: for each (day, event_name), matched = min(sent, recognized)
-    const types: ('Lead' | 'Purchase')[] =
-      typeFilter === 'all' ? ['Lead', 'Purchase'] : [typeFilter];
-    let sentTotal = 0;
-    let matchedTotal = 0;
-    const allDays = new Set<string>();
-    sentByDayType.forEach((_v, k) => allDays.add(k.split('|')[0]));
-    if (recognizedByDay) recognizedByDay.forEach((_v, k) => allDays.add(k));
-    allDays.forEach(day => {
-      types.forEach(t => {
-        const sent = sentByDayType.get(`${day}|${t}`) || 0;
-        const rec = recognizedByDay?.get(day)?.[t] || 0;
-        sentTotal += sent;
-        matchedTotal += Math.min(sent, rec);
-      });
-    });
-    const matchPct = sentTotal > 0 ? Math.round((matchedTotal / sentTotal) * 100) : null;
-    return { leads, purchases, value, sentTotal, matchedTotal, matchPct };
-  }, [filtered, sentByDayType, recognizedByDay, typeFilter]);
+    return { leads, purchases, value };
+  }, [filtered]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
@@ -370,7 +349,7 @@ export default function ComercialPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <GlassCard>
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center">
@@ -404,47 +383,8 @@ export default function ComercialPage() {
             </div>
           </div>
         </GlassCard>
-        <GlassCard>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-purple-500/15 text-purple-400 flex items-center justify-center">
-              <Target className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                Match aproximado
-                <span
-                  title="Comparação agregada entre contatos enviados e conversões reconhecidas pela Meta no mesmo período. A Meta não confirma atribuição por contato individual."
-                  className="inline-flex"
-                >
-                  <HelpCircle className="h-3 w-3 opacity-60" />
-                </span>
-              </p>
-              <p className="text-2xl font-bold metric-number">
-                {totals.matchPct == null ? '—' : `${totals.matchPct}%`}
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                {totals.matchedTotal} de {totals.sentTotal} envios prováveis
-              </p>
-            </div>
-          </div>
-        </GlassCard>
       </div>
 
-      {/* Info: Como funciona o Match aproximado */}
-      <GlassCard className="!p-3">
-        <div className="flex items-start gap-3">
-          <div className="h-7 w-7 rounded-lg bg-purple-500/15 text-purple-400 flex items-center justify-center shrink-0">
-            <Info className="h-3.5 w-3.5" />
-          </div>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            <span className="text-foreground font-semibold">Match aproximado:</span>{' '}
-            calculamos dia-a-dia — para cada dia e tipo (Lead/Purchase), comparamos seus envios com
-            as conversões que a Meta atribuiu naquele dia, contando no máximo um match por envio
-            (<span className="font-mono text-accent">min(enviados, reconhecidos)</span> por dia).
-            A Meta não confirma atribuição por contato individual e a janela padrão é de 7 dias.
-          </p>
-        </div>
-      </GlassCard>
 
       {/* Filters */}
       <GlassCard>

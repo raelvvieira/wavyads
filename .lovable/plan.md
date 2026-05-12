@@ -1,24 +1,17 @@
-# Reorganizar sidebar em grupos
+## Remover bloco "Match aproximado" da página Comercial
 
-Atualmente os itens do menu lateral aparecem em uma única lista. Vamos separar em dois grupos visuais com um divisor sutil:
+### O que remover em `src/pages/ComercialPage.tsx`
 
-## Estrutura nova
+1. **Card de KPI "Match aproximado"** (linhas 407–430) — o quarto `GlassCard` da grid de stats.
+2. **Bloco informativo "Match aproximado: calculamos dia-a-dia…"** (linhas 433–447) — o `GlassCard` com o ícone `Info`.
 
-**Grupo 1 — Cliente** (no topo)
-- Dashboard
-- Comercial
+### Ajustes pequenos
 
-**(divisor: linha fina + label discreto "Gestão WAVY")**
+- Trocar a grid de stats de `lg:grid-cols-4` para `lg:grid-cols-3` (linha 373) para os 3 cards restantes (Leads, Compradores, Valor total) ocuparem o espaço corretamente.
+- Remover do `useMemo` de `totals` (linhas 311–328) o cálculo de `sentTotal`, `matchedTotal`, `matchPct` (não será mais usado).
+- Remover imports que ficarem sem uso: `Target`, `HelpCircle`, `Info` (verificar antes de remover — se ainda forem usados em outro lugar, manter).
 
-**Grupo 2 — Gestão interna WAVY** (visível apenas para admins)
-- Insights
-- Google Ads I.A
-- Configurações
+### O que NÃO mudar
 
-Observação: "Configurações" hoje aparece para todos (`show: true`). Como o usuário pediu para deixá-la na área de gestão da WAVY, vou movê-la para o grupo interno e restringi-la a admins (`show: isAdmin`). Se o cliente final ainda precisar de algum acesso a configurações próprias (ex.: trocar senha), me avise — posso manter um item separado "Minha conta" no grupo do cliente.
-
-## Arquivo a editar
-
-- `src/components/AppSidebar.tsx` — substituir o array único `navItems` por dois arrays (`clientItems`, `adminItems`) e renderizar com um divisor entre eles (`<div className="my-3 border-t border-white/10" />` + pequeno label `text-xs uppercase text-white/40 px-4` "Gestão WAVY"). O divisor e o label só aparecem se houver itens admin visíveis (i.e., `isAdmin`).
-
-Nenhuma mudança de rota, lógica ou backend.
+- O filtro "Atribuição" (Reconhecidos / Possivelmente não reconhecidos) e a lógica `isPossiblyUnattributed` permanecem — é uma feature útil separada do card de Match.
+- `sentByDayType` e `recognizedByDay` continuam sendo calculados (usados pelo filtro de atribuição).
