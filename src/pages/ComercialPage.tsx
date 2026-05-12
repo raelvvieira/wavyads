@@ -423,7 +423,7 @@ export default function ComercialPage() {
                 {totals.matchPct == null ? '—' : `${totals.matchPct}%`}
               </p>
               <p className="text-[11px] text-muted-foreground">
-                {totals.recognizedTotal} reconh. / {totals.sentTotal} enviados
+                {totals.matchedTotal} de {totals.sentTotal} envios prováveis
               </p>
             </div>
           </div>
