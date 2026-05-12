@@ -27,13 +27,38 @@ export function AppSidebar() {
     navigate('/login');
   };
 
-  const navItems = [
+  const clientItems = [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', show: true },
-    { to: '/insights', icon: Lightbulb, label: 'Insights', show: isAdmin },
     { to: '/comercial', icon: Users, label: 'Comercial', show: true },
-    { to: '/google-ads-ai', icon: Sparkles, label: 'Google Ads I.A', show: isAdmin },
-    { to: '/configuracoes', icon: Settings, label: 'Configurações', show: true },
   ];
+
+  const adminItems = [
+    { to: '/insights', icon: Lightbulb, label: 'Insights', show: isAdmin },
+    { to: '/google-ads-ai', icon: Sparkles, label: 'Google Ads I.A', show: isAdmin },
+    { to: '/configuracoes', icon: Settings, label: 'Configurações', show: isAdmin },
+  ];
+
+  const renderItem = (item: { to: string; icon: typeof LayoutDashboard; label: string }) => {
+    const isActive = location.pathname === item.to || (item.to === '/dashboard' && location.pathname.startsWith('/dashboard'));
+    return (
+      <NavLink
+        key={item.to}
+        to={item.to}
+        onClick={() => setCollapsed(false)}
+        className={cn(
+          'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-300',
+          isActive
+            ? 'bg-accent/20 border-l-2 border-l-accent text-white'
+            : 'text-white/70 hover:bg-white/5 hover:text-white'
+        )}
+      >
+        <item.icon className="h-5 w-5" />
+        {item.label}
+      </NavLink>
+    );
+  };
+
+  const visibleAdminItems = adminItems.filter((i) => i.show);
 
   return (
     <>
@@ -68,25 +93,19 @@ export function AppSidebar() {
         </div>
 
         <nav className="flex-1 space-y-1 p-4">
-          {navItems.filter(item => item.show).map((item) => {
-            const isActive = location.pathname === item.to || (item.to === '/dashboard' && location.pathname.startsWith('/dashboard'));
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                onClick={() => setCollapsed(false)}
-                className={cn(
-                  'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-300',
-                  isActive
-                    ? 'bg-accent/20 border-l-2 border-l-accent text-white'
-                    : 'text-white/70 hover:bg-white/5 hover:text-white'
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-                {item.label}
-              </NavLink>
-            );
-          })}
+          {clientItems.filter((i) => i.show).map(renderItem)}
+
+          {visibleAdminItems.length > 0 && (
+            <>
+              <div className="pt-4 pb-2 px-4">
+                <div className="border-t border-white/10 mb-3" />
+                <span className="text-[10px] uppercase tracking-wider text-white/40 font-medium">
+                  Gestão WAVY
+                </span>
+              </div>
+              {visibleAdminItems.map(renderItem)}
+            </>
+          )}
         </nav>
 
         <div className="p-4 border-t border-white/10">
