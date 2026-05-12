@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { format } from 'date-fns';
+import { format, startOfDay, endOfDay, subDays, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import {
   Search,
   Users,
@@ -11,6 +11,7 @@ import {
   Clock,
   RotateCw,
   Loader2,
+  CalendarIcon,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRole } from '@/hooks/useRole';
@@ -30,9 +31,41 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+
+type DatePreset = 'today' | 'last_7d' | 'last_30d' | 'this_month' | 'last_month' | 'custom';
+
+const PRESET_LABELS: Record<DatePreset, string> = {
+  today: 'Hoje',
+  last_7d: 'Últimos 7 dias',
+  last_30d: 'Últimos 30 dias',
+  this_month: 'Este mês',
+  last_month: 'Mês passado',
+  custom: 'Personalizado',
+};
+
+function computeRange(preset: DatePreset, custom?: { from?: Date; to?: Date }): { since: Date; until: Date } | null {
+  const now = new Date();
+  switch (preset) {
+    case 'today': return { since: startOfDay(now), until: endOfDay(now) };
+    case 'last_7d': return { since: startOfDay(subDays(now, 6)), until: endOfDay(now) };
+    case 'last_30d': return { since: startOfDay(subDays(now, 29)), until: endOfDay(now) };
+    case 'this_month': return { since: startOfMonth(now), until: endOfDay(now) };
+    case 'last_month': {
+      const lm = subMonths(now, 1);
+      return { since: startOfMonth(lm), until: endOfMonth(lm) };
+    }
+    case 'custom': {
+      if (custom?.from && custom?.to) return { since: startOfDay(custom.from), until: endOfDay(custom.to) };
+      return null;
+    }
+  }
+}
+
 
 interface OfflineConversionRow {
   id: string;
@@ -118,8 +151,42 @@ export default function ComercialPage() {
   const [selected, setSelected] = useState<OfflineConversionRow | null>(null);
   const [resending, setResending] = useState(false);
 
+  const [datePreset, setDatePreset] = useState<DatePreset>(() => {
+    try { return (localStorage.getItem('comercial_date_preset') as DatePreset) || 'last_30d'; } catch { return 'last_30d'; }
+  });
+  const [customRange, setCustomRange] = useState<{ from?: Date; to?: Date }>(() => {
+    try {
+      const s = localStorage.getItem('comercial_date_custom');
+      if (s) {
+        const p = JSON.parse(s);
+        return { from: p.from ? new Date(p.from) : undefined, to: p.to ? new Date(p.to) : undefined };
+      }
+    } catch {}
+    return {};
+  });
+  const [calendarOpen, setCalendarOpen] = useState(false);
+
+  const dateRange = computeRange(datePreset, customRange);
+
+  const updatePreset = (p: DatePreset) => {
+    setDatePreset(p);
+    try { localStorage.setItem('comercial_date_preset', p); } catch {}
+    setPage(0);
+    if (p === 'custom') setCalendarOpen(true);
+  };
+
+  const updateCustomRange = (r: { from?: Date; to?: Date }) => {
+    setCustomRange(r);
+    try {
+      localStorage.setItem('comercial_date_custom', JSON.stringify({
+        from: r.from?.toISOString(), to: r.to?.toISOString(),
+      }));
+    } catch {}
+    setPage(0);
+  };
+
   const { data: rows = [], isLoading } = useQuery({
-    queryKey: ['offline-conversions', clientFilter, typeFilter],
+    queryKey: ['offline-conversions', clientFilter, typeFilter, dateRange?.since.toISOString(), dateRange?.until.toISOString()],
     queryFn: async () => {
       let q = supabase
         .from('offline_conversions')
@@ -128,6 +195,10 @@ export default function ComercialPage() {
         .limit(1000);
       if (clientFilter !== 'all') q = q.eq('client_id', clientFilter);
       if (typeFilter !== 'all') q = q.eq('event_name', typeFilter);
+      if (dateRange) {
+        q = q.gte('conversion_date', dateRange.since.toISOString())
+             .lte('conversion_date', dateRange.until.toISOString());
+      }
       const { data, error } = await q;
       if (error) throw error;
       return (data || []) as OfflineConversionRow[];
@@ -273,6 +344,45 @@ export default function ComercialPage() {
               <SelectItem value="Purchase">Compras</SelectItem>
             </SelectContent>
           </Select>
+
+          <Select value={datePreset} onValueChange={(v) => updatePreset(v as DatePreset)}>
+            <SelectTrigger className="w-full lg:w-[180px] glass-input rounded-xl">
+              <CalendarIcon className="h-4 w-4 mr-1 opacity-70" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(PRESET_LABELS) as DatePreset[]).map(p => (
+                <SelectItem key={p} value={p}>{PRESET_LABELS[p]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {datePreset === 'custom' && (
+            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="glass-input rounded-xl justify-start font-normal h-auto py-2.5">
+                  <CalendarIcon className="h-4 w-4 mr-2 opacity-70" />
+                  {customRange.from && customRange.to
+                    ? `${format(customRange.from, 'dd/MM/yy')} – ${format(customRange.to, 'dd/MM/yy')}`
+                    : 'Selecionar datas'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 glass border-white/10" align="end">
+                <Calendar
+                  mode="range"
+                  selected={{ from: customRange.from, to: customRange.to }}
+                  onSelect={(r: any) => {
+                    updateCustomRange({ from: r?.from, to: r?.to });
+                    if (r?.from && r?.to) setCalendarOpen(false);
+                  }}
+                  numberOfMonths={2}
+                  disabled={(date) => date > new Date()}
+                  initialFocus
+                  className={cn('p-3 pointer-events-auto')}
+                />
+              </PopoverContent>
+            </Popover>
+          )}
         </div>
       </GlassCard>
 
