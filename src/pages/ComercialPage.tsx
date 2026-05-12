@@ -308,17 +308,25 @@ export default function ComercialPage() {
     const purchases = filtered.filter(r => r.event_name === 'Purchase').length;
     const value = filtered.reduce((s, r) => s + (r.value || 0), 0);
 
-    const sentTotal = rows.filter(r => r.send_status === 'sent').length;
-    let recognizedTotal = 0;
-    if (recognizedByDay) {
-      recognizedByDay.forEach((v) => {
-        if (typeFilter === 'all') recognizedTotal += v.Lead + v.Purchase;
-        else recognizedTotal += v[typeFilter];
+    // Real day-by-day match: for each (day, event_name), matched = min(sent, recognized)
+    const types: ('Lead' | 'Purchase')[] =
+      typeFilter === 'all' ? ['Lead', 'Purchase'] : [typeFilter];
+    let sentTotal = 0;
+    let matchedTotal = 0;
+    const allDays = new Set<string>();
+    sentByDayType.forEach((_v, k) => allDays.add(k.split('|')[0]));
+    if (recognizedByDay) recognizedByDay.forEach((_v, k) => allDays.add(k));
+    allDays.forEach(day => {
+      types.forEach(t => {
+        const sent = sentByDayType.get(`${day}|${t}`) || 0;
+        const rec = recognizedByDay?.get(day)?.[t] || 0;
+        sentTotal += sent;
+        matchedTotal += Math.min(sent, rec);
       });
-    }
-    const matchPct = sentTotal > 0 ? Math.min(100, Math.round((recognizedTotal / sentTotal) * 100)) : null;
-    return { leads, purchases, value, sentTotal, recognizedTotal, matchPct };
-  }, [filtered, rows, recognizedByDay, typeFilter]);
+    });
+    const matchPct = sentTotal > 0 ? Math.round((matchedTotal / sentTotal) * 100) : null;
+    return { leads, purchases, value, sentTotal, matchedTotal, matchPct };
+  }, [filtered, sentByDayType, recognizedByDay, typeFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
