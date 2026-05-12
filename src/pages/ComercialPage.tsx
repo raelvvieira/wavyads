@@ -457,6 +457,17 @@ export default function ComercialPage() {
             </SelectContent>
           </Select>
 
+          <Select value={attributionFilter} onValueChange={(v) => { setAttributionFilter(v as any); setPage(0); }}>
+            <SelectTrigger className="w-full lg:w-[220px] glass-input rounded-xl">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toda atribuição</SelectItem>
+              <SelectItem value="recognized">Reconhecidos (estim.)</SelectItem>
+              <SelectItem value="unrecognized">Não reconhecidos (estim.)</SelectItem>
+            </SelectContent>
+          </Select>
+
           <Select value={datePreset} onValueChange={(v) => updatePreset(v as DatePreset)}>
             <SelectTrigger className="w-full lg:w-[180px] glass-input rounded-xl">
               <CalendarIcon className="h-4 w-4 mr-1 opacity-70" />
