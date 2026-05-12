@@ -709,11 +709,17 @@ export default function ClientDashboard() {
               leads={metricValues.leads}
               purchases={metricValues.purchases}
               results={metricValues.results}
+              addToCart={(insights as any)?.add_to_cart ?? 0}
+              initiateCheckout={(insights as any)?.initiate_checkout ?? 0}
+              viewContent={(insights as any)?.view_content ?? 0}
               cpm={metricValues.cpm}
               cpc={metricValues.cpc}
               cpl={metricValues.cpl}
               costPerPurchase={metricValues.cost_per_purchase}
               costPerResult={metricValues.cost_per_result}
+              costPerAddToCart={(insights as any)?.cost_per_add_to_cart ?? 0}
+              costPerInitiateCheckout={(insights as any)?.cost_per_initiate_checkout ?? 0}
+              costPerViewContent={(insights as any)?.cost_per_view_content ?? 0}
             />
           )}
 
