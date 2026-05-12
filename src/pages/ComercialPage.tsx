@@ -151,8 +151,42 @@ export default function ComercialPage() {
   const [selected, setSelected] = useState<OfflineConversionRow | null>(null);
   const [resending, setResending] = useState(false);
 
+  const [datePreset, setDatePreset] = useState<DatePreset>(() => {
+    try { return (localStorage.getItem('comercial_date_preset') as DatePreset) || 'last_30d'; } catch { return 'last_30d'; }
+  });
+  const [customRange, setCustomRange] = useState<{ from?: Date; to?: Date }>(() => {
+    try {
+      const s = localStorage.getItem('comercial_date_custom');
+      if (s) {
+        const p = JSON.parse(s);
+        return { from: p.from ? new Date(p.from) : undefined, to: p.to ? new Date(p.to) : undefined };
+      }
+    } catch {}
+    return {};
+  });
+  const [calendarOpen, setCalendarOpen] = useState(false);
+
+  const dateRange = computeRange(datePreset, customRange);
+
+  const updatePreset = (p: DatePreset) => {
+    setDatePreset(p);
+    try { localStorage.setItem('comercial_date_preset', p); } catch {}
+    setPage(0);
+    if (p === 'custom') setCalendarOpen(true);
+  };
+
+  const updateCustomRange = (r: { from?: Date; to?: Date }) => {
+    setCustomRange(r);
+    try {
+      localStorage.setItem('comercial_date_custom', JSON.stringify({
+        from: r.from?.toISOString(), to: r.to?.toISOString(),
+      }));
+    } catch {}
+    setPage(0);
+  };
+
   const { data: rows = [], isLoading } = useQuery({
-    queryKey: ['offline-conversions', clientFilter, typeFilter],
+    queryKey: ['offline-conversions', clientFilter, typeFilter, dateRange?.since.toISOString(), dateRange?.until.toISOString()],
     queryFn: async () => {
       let q = supabase
         .from('offline_conversions')
@@ -161,6 +195,10 @@ export default function ComercialPage() {
         .limit(1000);
       if (clientFilter !== 'all') q = q.eq('client_id', clientFilter);
       if (typeFilter !== 'all') q = q.eq('event_name', typeFilter);
+      if (dateRange) {
+        q = q.gte('conversion_date', dateRange.since.toISOString())
+             .lte('conversion_date', dateRange.until.toISOString());
+      }
       const { data, error } = await q;
       if (error) throw error;
       return (data || []) as OfflineConversionRow[];
