@@ -157,6 +157,17 @@ export default function ComercialPage() {
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<OfflineConversionRow | null>(null);
   const [resending, setResending] = useState(false);
+  const [matchInfoCollapsed, setMatchInfoCollapsed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('comercial.matchInfo.collapsed') === '1';
+  });
+  const toggleMatchInfo = () => {
+    setMatchInfoCollapsed(prev => {
+      const next = !prev;
+      try { localStorage.setItem('comercial.matchInfo.collapsed', next ? '1' : '0'); } catch {}
+      return next;
+    });
+  };
 
   const [datePreset, setDatePreset] = useState<DatePreset>(() => {
     try { return (localStorage.getItem('comercial_date_preset') as DatePreset) || 'last_30d'; } catch { return 'last_30d'; }
