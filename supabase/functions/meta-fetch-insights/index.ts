@@ -30,6 +30,7 @@ const PURCHASE_TYPES = ["purchase", "offsite_conversion.fb_pixel_purchase", "omn
 const LANDING_PAGE_TYPES = ["landing_page_view"];
 const ADD_TO_CART_TYPES = ["add_to_cart", "offsite_conversion.fb_pixel_add_to_cart", "omni_add_to_cart"];
 const INITIATE_CHECKOUT_TYPES = ["initiate_checkout", "offsite_conversion.fb_pixel_initiate_checkout", "omni_initiate_checkout"];
+const VIEW_CONTENT_TYPES = ["view_content", "offsite_conversion.fb_pixel_view_content", "omni_view_content"];
 
 function extractAction(actions: any[], types: string[]): number {
   if (!actions) return 0;
