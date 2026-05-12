@@ -16,8 +16,6 @@ import {
   AlertTriangle,
   Target,
   Info,
-  ChevronDown,
-  ChevronUp,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRole } from '@/hooks/useRole';
