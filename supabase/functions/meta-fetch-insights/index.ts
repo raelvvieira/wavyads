@@ -360,6 +360,10 @@ Deno.serve(async (req) => {
       const landingPageViews = extractAction(ins.actions, LANDING_PAGE_TYPES);
       const addToCart = extractAction(ins.actions, ADD_TO_CART_TYPES);
       const initiateCheckout = extractAction(ins.actions, INITIATE_CHECKOUT_TYPES);
+      const viewContent = extractAction(ins.actions, VIEW_CONTENT_TYPES);
+      const costPerAddToCart = extractCostPerAction(ins.cost_per_action_type, ADD_TO_CART_TYPES);
+      const costPerInitiateCheckout = extractCostPerAction(ins.cost_per_action_type, INITIATE_CHECKOUT_TYPES);
+      const costPerViewContent = extractCostPerAction(ins.cost_per_action_type, VIEW_CONTENT_TYPES);
       const purchaseValue = extractActionValue(ins.action_values, PURCHASE_TYPES);
       const purchaseRoas = spend > 0 ? purchaseValue / spend : 0;
 
@@ -402,6 +406,10 @@ Deno.serve(async (req) => {
         landing_page_views: landingPageViews,
         add_to_cart: addToCart,
         initiate_checkout: initiateCheckout,
+        view_content: viewContent,
+        cost_per_add_to_cart: costPerAddToCart,
+        cost_per_initiate_checkout: costPerInitiateCheckout,
+        cost_per_view_content: costPerViewContent,
         daily,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
