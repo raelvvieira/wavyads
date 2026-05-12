@@ -344,6 +344,45 @@ export default function ComercialPage() {
               <SelectItem value="Purchase">Compras</SelectItem>
             </SelectContent>
           </Select>
+
+          <Select value={datePreset} onValueChange={(v) => updatePreset(v as DatePreset)}>
+            <SelectTrigger className="w-full lg:w-[180px] glass-input rounded-xl">
+              <CalendarIcon className="h-4 w-4 mr-1 opacity-70" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(PRESET_LABELS) as DatePreset[]).map(p => (
+                <SelectItem key={p} value={p}>{PRESET_LABELS[p]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {datePreset === 'custom' && (
+            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="glass-input rounded-xl justify-start font-normal h-auto py-2.5">
+                  <CalendarIcon className="h-4 w-4 mr-2 opacity-70" />
+                  {customRange.from && customRange.to
+                    ? `${format(customRange.from, 'dd/MM/yy')} – ${format(customRange.to, 'dd/MM/yy')}`
+                    : 'Selecionar datas'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 glass border-white/10" align="end">
+                <Calendar
+                  mode="range"
+                  selected={{ from: customRange.from, to: customRange.to }}
+                  onSelect={(r: any) => {
+                    updateCustomRange({ from: r?.from, to: r?.to });
+                    if (r?.from && r?.to) setCalendarOpen(false);
+                  }}
+                  numberOfMonths={2}
+                  disabled={(date) => date > new Date()}
+                  initialFocus
+                  className={cn('p-3 pointer-events-auto')}
+                />
+              </PopoverContent>
+            </Popover>
+          )}
         </div>
       </GlassCard>
 
