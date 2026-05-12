@@ -17,12 +17,21 @@ interface FunnelStage {
   costValue?: number;
 }
 
-type BottomStageOption = 'leads' | 'results' | 'purchases';
+type BottomStageOption =
+  | 'leads'
+  | 'results'
+  | 'purchases'
+  | 'add_to_cart'
+  | 'initiate_checkout'
+  | 'view_content';
 
 const STAGE_OPTIONS: { value: BottomStageOption; label: string }[] = [
   { value: 'leads', label: 'Leads' },
   { value: 'results', label: 'Resultados' },
   { value: 'purchases', label: 'Compras' },
+  { value: 'view_content', label: 'Visualizar Conteúdo' },
+  { value: 'add_to_cart', label: 'Adicionar ao Carrinho' },
+  { value: 'initiate_checkout', label: 'Iniciar Checkout' },
 ];
 
 interface ConversionFunnelProps {
@@ -32,42 +41,72 @@ interface ConversionFunnelProps {
   leads: number;
   purchases: number;
   results?: number;
+  addToCart?: number;
+  initiateCheckout?: number;
+  viewContent?: number;
   cpm: number;
   cpc: number;
   cpl: number;
   costPerPurchase: number;
   costPerResult?: number;
+  costPerAddToCart?: number;
+  costPerInitiateCheckout?: number;
+  costPerViewContent?: number;
 }
 
-// Green gradient from dark (top) to light (bottom)
+// Green gradient from dark (top) to light (bottom) — 6 stages
 const STAGE_GREENS = [
-  { bg: 'rgba(26,205,138,0.08)', border: 'rgba(26,205,138,0.35)' },
-  { bg: 'rgba(26,205,138,0.12)', border: 'rgba(26,205,138,0.40)' },
-  { bg: 'rgba(26,205,138,0.16)', border: 'rgba(26,205,138,0.50)' },
-  { bg: 'rgba(26,205,138,0.20)', border: 'rgba(26,205,138,0.60)' },
-  { bg: 'rgba(26,205,138,0.25)', border: 'rgba(26,205,138,0.70)' },
+  { bg: 'rgba(26,205,138,0.06)', border: 'rgba(26,205,138,0.30)' },
+  { bg: 'rgba(26,205,138,0.10)', border: 'rgba(26,205,138,0.38)' },
+  { bg: 'rgba(26,205,138,0.14)', border: 'rgba(26,205,138,0.46)' },
+  { bg: 'rgba(26,205,138,0.18)', border: 'rgba(26,205,138,0.55)' },
+  { bg: 'rgba(26,205,138,0.22)', border: 'rgba(26,205,138,0.65)' },
+  { bg: 'rgba(26,205,138,0.27)', border: 'rgba(26,205,138,0.75)' },
 ];
 
 function getStoredStage(key: string, fallback: BottomStageOption): BottomStageOption {
   try {
     const v = localStorage.getItem(key);
-    if (v && ['leads', 'results', 'purchases'].includes(v)) return v as BottomStageOption;
+    if (v && STAGE_OPTIONS.some(o => o.value === v)) return v as BottomStageOption;
   } catch {}
   return fallback;
 }
 
-export function ConversionFunnel({ reach, impressions, clicks, leads, purchases, results = 0, cpm, cpc, cpl, costPerPurchase, costPerResult = 0 }: ConversionFunnelProps) {
-  const [stage4, setStage4] = useState<BottomStageOption>(() => getStoredStage('funnel_stage4', 'leads'));
-  const [stage5, setStage5] = useState<BottomStageOption>(() => getStoredStage('funnel_stage5', 'purchases'));
+export function ConversionFunnel({
+  reach,
+  impressions,
+  clicks,
+  leads,
+  purchases,
+  results = 0,
+  addToCart = 0,
+  initiateCheckout = 0,
+  viewContent = 0,
+  cpm,
+  cpc,
+  cpl,
+  costPerPurchase,
+  costPerResult = 0,
+  costPerAddToCart = 0,
+  costPerInitiateCheckout = 0,
+  costPerViewContent = 0,
+}: ConversionFunnelProps) {
+  const [stage4, setStage4] = useState<BottomStageOption>(() => getStoredStage('funnel_stage4', 'view_content'));
+  const [stage5, setStage5] = useState<BottomStageOption>(() => getStoredStage('funnel_stage5', 'leads'));
+  const [stage6, setStage6] = useState<BottomStageOption>(() => getStoredStage('funnel_stage6', 'purchases'));
 
   const stageData: Record<BottomStageOption, { label: string; value: number; costLabel: string; costValue: number }> = {
     leads: { label: 'Leads', value: leads, costLabel: 'CPL', costValue: cpl },
     results: { label: 'Resultados', value: results, costLabel: 'Custo/Resultado', costValue: costPerResult },
     purchases: { label: 'Compras', value: purchases, costLabel: 'Custo/Compra', costValue: costPerPurchase },
+    add_to_cart: { label: 'Adicionar ao Carrinho', value: addToCart, costLabel: 'Custo/ATC', costValue: costPerAddToCart },
+    initiate_checkout: { label: 'Iniciar Checkout', value: initiateCheckout, costLabel: 'Custo/IC', costValue: costPerInitiateCheckout },
+    view_content: { label: 'Visualizar Conteúdo', value: viewContent, costLabel: 'Custo/View', costValue: costPerViewContent },
   };
 
   const s4 = stageData[stage4];
   const s5 = stageData[stage5];
+  const s6 = stageData[stage6];
 
   const stages: FunnelStage[] = [
     { label: 'Impressões', value: impressions, costLabel: 'CPM', costValue: cpm },
@@ -75,11 +114,12 @@ export function ConversionFunnel({ reach, impressions, clicks, leads, purchases,
     { label: 'Cliques', value: clicks, costLabel: 'CPC', costValue: cpc },
     { label: s4.label, value: s4.value, costLabel: s4.costLabel, costValue: s4.costValue },
     { label: s5.label, value: s5.value, costLabel: s5.costLabel, costValue: s5.costValue },
+    { label: s6.label, value: s6.value, costLabel: s6.costLabel, costValue: s6.costValue },
   ];
 
   const maxValue = Math.max(...stages.map(s => s.value), 1);
 
-  const prevValues = [impressions, reach, clicks, s4.value, s5.value];
+  const prevValues = [impressions, reach, clicks, s4.value, s5.value, s6.value];
   const rates = prevValues.map((_, i) => {
     if (i === 0) return null;
     const prev = prevValues[i - 1];
@@ -87,17 +127,20 @@ export function ConversionFunnel({ reach, impressions, clicks, leads, purchases,
     return prev > 0 && curr > 0 ? (curr / prev) * 100 : null;
   });
 
-  const handleSetStage = (pos: 4 | 5, val: BottomStageOption) => {
+  const handleSetStage = (pos: 4 | 5 | 6, val: BottomStageOption) => {
     if (pos === 4) {
       setStage4(val);
       localStorage.setItem('funnel_stage4', val);
-    } else {
+    } else if (pos === 5) {
       setStage5(val);
       localStorage.setItem('funnel_stage5', val);
+    } else {
+      setStage6(val);
+      localStorage.setItem('funnel_stage6', val);
     }
   };
 
-  const renderStageSelector = (pos: 4 | 5, current: BottomStageOption) => (
+  const renderStageSelector = (pos: 4 | 5 | 6, current: BottomStageOption) => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button className="inline-flex items-center gap-0.5 text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
@@ -105,7 +148,7 @@ export function ConversionFunnel({ reach, impressions, clicks, leads, purchases,
           <ChevronDown className="h-3 w-3" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="center" className="min-w-[120px]">
+      <DropdownMenuContent align="center" className="min-w-[180px]">
         {STAGE_OPTIONS.map(opt => (
           <DropdownMenuItem
             key={opt.value}
@@ -128,7 +171,9 @@ export function ConversionFunnel({ reach, impressions, clicks, leads, purchases,
           const widthPercent = Math.max(20, (stage.value / maxValue) * 100);
           const rate = rates[i];
           const green = STAGE_GREENS[i];
-          const isCustomizable = i === 3 || i === 4;
+          const isCustomizable = i === 3 || i === 4 || i === 5;
+          const pos: 4 | 5 | 6 = i === 3 ? 4 : i === 4 ? 5 : 6;
+          const currentStage = i === 3 ? stage4 : i === 4 ? stage5 : stage6;
 
           return (
             <div key={`${stage.label}-${i}`} className="w-full flex flex-col items-center">
@@ -151,7 +196,7 @@ export function ConversionFunnel({ reach, impressions, clicks, leads, purchases,
                 }}
               >
                 {isCustomizable
-                  ? renderStageSelector(i === 3 ? 4 : 5, i === 3 ? stage4 : stage5)
+                  ? renderStageSelector(pos, currentStage)
                   : <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{stage.label}</p>
                 }
                 <p className="text-xl font-bold metric-number">{formatNumber(stage.value)}</p>
@@ -172,7 +217,8 @@ export function ConversionFunnel({ reach, impressions, clicks, leads, purchases,
           Para cada <span className="text-foreground font-semibold">{formatNumber(reach)}</span> alcançadas →{' '}
           <span className="text-foreground font-semibold">{formatNumber(clicks)}</span> clicaram →{' '}
           <span className="text-foreground font-semibold">{formatNumber(s4.value)}</span> {s4.label.toLowerCase()} →{' '}
-          <span className="text-foreground font-semibold">{formatNumber(s5.value)}</span> {s5.label.toLowerCase()}
+          <span className="text-foreground font-semibold">{formatNumber(s5.value)}</span> {s5.label.toLowerCase()} →{' '}
+          <span className="text-foreground font-semibold">{formatNumber(s6.value)}</span> {s6.label.toLowerCase()}
         </div>
       )}
     </GlassCard>

@@ -10,6 +10,7 @@ import {
   X,
   Lightbulb,
   Sparkles,
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import wavyLogo from '@/assets/wavy-logo.png';
@@ -29,6 +30,7 @@ export function AppSidebar() {
   const navItems = [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', show: true },
     { to: '/insights', icon: Lightbulb, label: 'Insights', show: isAdmin },
+    { to: '/comercial', icon: Users, label: 'Comercial', show: true },
     { to: '/google-ads-ai', icon: Sparkles, label: 'Google Ads I.A', show: isAdmin },
     { to: '/configuracoes', icon: Settings, label: 'Configurações', show: true },
   ];

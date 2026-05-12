@@ -58,6 +58,12 @@ export interface MetaInsights {
   frequency: number;
   roas: number;
   cost_per_conversion: number;
+  add_to_cart?: number;
+  initiate_checkout?: number;
+  view_content?: number;
+  cost_per_add_to_cart?: number;
+  cost_per_initiate_checkout?: number;
+  cost_per_view_content?: number;
   daily: DailyMetric[];
   daily_spend?: { date: string; value: number }[];
 }

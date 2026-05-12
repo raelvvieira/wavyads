@@ -11,6 +11,7 @@ import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import DashboardPage from "@/pages/DashboardPage";
 import SettingsPage from "@/pages/SettingsPage";
 import InsightsPage from "@/pages/InsightsPage";
+import ComercialPage from "@/pages/ComercialPage";
 import GoogleAdsAIPage from "@/pages/GoogleAdsAIPage";
 import MetaCallbackPage from "@/pages/MetaCallbackPage";
 import GoogleAdsCallbackPage from "@/pages/GoogleAdsCallbackPage";
@@ -35,6 +36,7 @@ const App = () => (
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/dashboard/:clientId" element={<DashboardPage />} />
               <Route path="/insights" element={<InsightsPage />} />
+              <Route path="/comercial" element={<ComercialPage />} />
               <Route path="/google-ads-ai" element={<GoogleAdsAIPage />} />
               <Route path="/configuracoes" element={<SettingsPage />} />
             </Route>
