@@ -367,13 +367,21 @@ Deno.serve(async (req) => {
       const purchaseValue = extractActionValue(ins.action_values, PURCHASE_TYPES);
       const purchaseRoas = spend > 0 ? purchaseValue / spend : 0;
 
-      // Daily breakdown
-      const dailyRes = await fetch(
-        `${GRAPH_API}/${adAccountId}/insights?fields=spend,impressions,reach,clicks,actions&${dateFilter}&time_increment=1&access_token=${accessToken}`
-      );
-      const dailyData = await dailyRes.json();
+      // Daily breakdown — paginate to cover full custom ranges (Meta default page size = 25)
+      const dailyAll: any[] = [];
+      let nextUrl: string | null =
+        `${GRAPH_API}/${adAccountId}/insights?fields=spend,impressions,reach,clicks,actions&${dateFilter}&time_increment=1&limit=500&access_token=${accessToken}`;
+      let pageGuard = 0;
+      while (nextUrl && pageGuard < 20) {
+        const r = await fetch(nextUrl);
+        const j = await r.json();
+        if (j.error) break;
+        dailyAll.push(...(j.data || []));
+        nextUrl = j.paging?.next || null;
+        pageGuard++;
+      }
       const dailyByDate = new Map<string, any>();
-      for (const d of (dailyData.data || [])) {
+      for (const d of dailyAll) {
         dailyByDate.set(d.date_start, {
           date: new Date(d.date_start + "T00:00:00Z").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "UTC" }),
           date_raw: d.date_start,
