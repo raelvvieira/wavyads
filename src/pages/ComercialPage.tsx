@@ -149,6 +149,7 @@ export default function ComercialPage() {
 
   const [clientFilter, setClientFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'Lead' | 'Purchase'>('all');
+  const [attributionFilter, setAttributionFilter] = useState<'all' | 'recognized' | 'unrecognized'>('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<OfflineConversionRow | null>(null);
@@ -214,25 +215,109 @@ export default function ComercialPage() {
     return m;
   }, [clients]);
 
+  // Determine which clients to query Meta insights for
+  const syncedClientIds = useMemo(() => {
+    const all = (clients || []).filter(c => c.is_synced && c.meta_ad_account_id).map(c => c.id);
+    if (clientFilter !== 'all') return all.includes(clientFilter) ? [clientFilter] : [];
+    return all;
+  }, [clients, clientFilter]);
+
+  // Fetch recognized conversions from Meta (aggregated daily by event_name)
+  const { data: recognizedByDay } = useQuery({
+    queryKey: ['comercial-recognized', syncedClientIds.join(','), dateRange?.since.toISOString(), dateRange?.until.toISOString()],
+    enabled: !!dateRange && syncedClientIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const since = format(dateRange!.since, 'yyyy-MM-dd');
+      const until = format(dateRange!.until, 'yyyy-MM-dd');
+      const results = await Promise.all(
+        syncedClientIds.map(async (cid) => {
+          try {
+            const { data, error } = await supabase.functions.invoke('meta-fetch-insights', {
+              body: { action: 'insights', client_id: cid, time_range: { since, until } },
+            });
+            if (error) return [];
+            return (data?.daily || []) as any[];
+          } catch { return []; }
+        }),
+      );
+      const map = new Map<string, { Lead: number; Purchase: number }>();
+      results.flat().forEach((d: any) => {
+        const key: string | undefined = d.date_raw;
+        if (!key) return;
+        const cur = map.get(key) || { Lead: 0, Purchase: 0 };
+        cur.Lead += Number(d.leads || 0);
+        cur.Purchase += Number(d.purchases || 0);
+        map.set(key, cur);
+      });
+      return map;
+    },
+  });
+
+  // Compute "sent" rows per day+type (from current rows already filtered server-side)
+  const sentByDayType = useMemo(() => {
+    const m = new Map<string, number>();
+    rows.forEach(r => {
+      if (r.send_status !== 'sent') return;
+      const day = format(new Date(r.conversion_date), 'yyyy-MM-dd');
+      const k = `${day}|${r.event_name}`;
+      m.set(k, (m.get(k) || 0) + 1);
+    });
+    return m;
+  }, [rows]);
+
+  // Heuristic: a row is "possibly not attributed" when sent, > 7 days old,
+  // and on that day+type, sent count exceeds recognized count.
+  const isPossiblyUnattributed = (r: OfflineConversionRow): boolean => {
+    if (r.send_status !== 'sent') return false;
+    const conv = new Date(r.conversion_date).getTime();
+    const ageDays = (Date.now() - conv) / (1000 * 60 * 60 * 24);
+    if (ageDays < 7) return false;
+    const day = format(new Date(r.conversion_date), 'yyyy-MM-dd');
+    const sent = sentByDayType.get(`${day}|${r.event_name}`) || 0;
+    const rec = recognizedByDay?.get(day)?.[r.event_name as 'Lead' | 'Purchase'] || 0;
+    return sent > rec;
+  };
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return rows;
-    return rows.filter(r => {
-      const name = `${r.fn ?? ''} ${r.ln ?? ''}`.toLowerCase();
-      return (
-        name.includes(term) ||
-        (r.email ?? '').toLowerCase().includes(term) ||
-        (r.phone ?? '').toLowerCase().includes(term)
-      );
-    });
-  }, [rows, search]);
+    let out = rows;
+    if (term) {
+      out = out.filter(r => {
+        const name = `${r.fn ?? ''} ${r.ln ?? ''}`.toLowerCase();
+        return (
+          name.includes(term) ||
+          (r.email ?? '').toLowerCase().includes(term) ||
+          (r.phone ?? '').toLowerCase().includes(term)
+        );
+      });
+    }
+    if (attributionFilter !== 'all') {
+      out = out.filter(r => {
+        const unattr = isPossiblyUnattributed(r);
+        return attributionFilter === 'unrecognized' ? unattr : !unattr;
+      });
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, search, attributionFilter, sentByDayType, recognizedByDay]);
 
   const totals = useMemo(() => {
     const leads = filtered.filter(r => r.event_name === 'Lead').length;
     const purchases = filtered.filter(r => r.event_name === 'Purchase').length;
     const value = filtered.reduce((s, r) => s + (r.value || 0), 0);
-    return { leads, purchases, value };
-  }, [filtered]);
+
+    const sentTotal = rows.filter(r => r.send_status === 'sent').length;
+    let recognizedTotal = 0;
+    if (recognizedByDay) {
+      recognizedByDay.forEach((v) => {
+        if (typeFilter === 'all') recognizedTotal += v.Lead + v.Purchase;
+        else recognizedTotal += v[typeFilter];
+      });
+    }
+    const matchPct = sentTotal > 0 ? Math.min(100, Math.round((recognizedTotal / sentTotal) * 100)) : null;
+    return { leads, purchases, value, sentTotal, recognizedTotal, matchPct };
+  }, [filtered, rows, recognizedByDay, typeFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
