@@ -553,7 +553,20 @@ export default function ComercialPage() {
                     <td className="px-4 py-3"><TypeBadge event={r.event_name} /></td>
                     <td className="px-4 py-3 text-right metric-number">{formatBRL(r.value)}</td>
                     <td className="px-4 py-3 whitespace-nowrap">{format(new Date(r.conversion_date), 'dd/MM/yyyy')}</td>
-                    <td className="px-4 py-3"><StatusBadge status={r.send_status} error={r.error_message} /></td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-1 items-start">
+                        <StatusBadge status={r.send_status} error={r.error_message} />
+                        {isPossiblyUnattributed(r) && (
+                          <span
+                            title="Estimativa: a Meta não confirma atribuição por contato individual. Marcado quando, no mesmo dia, o número de envios deste tipo é maior que o de conversões reconhecidas pela Meta."
+                            className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30"
+                          >
+                            <AlertTriangle className="h-2.5 w-2.5" />
+                            Possivelmente não atribuído
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     {isAdmin && (
                       <td className="px-4 py-3 text-muted-foreground whitespace-normal break-words">
                         {clientNameById.get(r.client_id) || '—'}
