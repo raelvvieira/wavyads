@@ -361,7 +361,7 @@ export default function ComercialPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <GlassCard>
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center">
@@ -392,6 +392,30 @@ export default function ComercialPage() {
             <div>
               <p className="text-xs text-muted-foreground">Valor total</p>
               <p className="text-2xl font-bold metric-number">{formatBRL(totals.value)}</p>
+            </div>
+          </div>
+        </GlassCard>
+        <GlassCard>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-purple-500/15 text-purple-400 flex items-center justify-center">
+              <Target className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                Match aproximado
+                <span
+                  title="Comparação agregada entre contatos enviados e conversões reconhecidas pela Meta no mesmo período. A Meta não confirma atribuição por contato individual."
+                  className="inline-flex"
+                >
+                  <HelpCircle className="h-3 w-3 opacity-60" />
+                </span>
+              </p>
+              <p className="text-2xl font-bold metric-number">
+                {totals.matchPct == null ? '—' : `${totals.matchPct}%`}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {totals.recognizedTotal} reconh. / {totals.sentTotal} enviados
+              </p>
             </div>
           </div>
         </GlassCard>
