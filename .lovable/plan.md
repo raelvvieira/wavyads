@@ -1,66 +1,47 @@
-# Visão de contatos "não reconhecidos" pela Meta — Página Comercial
+## Card informativo "Como funciona o Match aproximado"
 
-## Contexto importante (limitação da Meta)
+Adicionar um card explicativo na página `/comercial`, logo abaixo do grid de KPIs (e acima da barra de filtros), para que o cliente entenda o que significa o "Match aproximado" e em que ele se baseia.
 
-A Meta **não expõe**, por contato individual, se aquele evento offline foi atribuído a um anúncio. A API só retorna:
-- Confirmação de recebimento por evento (`events_received`)
-- Métricas de atribuição **agregadas** por campanha/anúncio (já usadas no Dashboard)
+### O que o card vai mostrar
 
-Portanto qualquer indicação "este contato não virou conversão" é, por definição, uma **estimativa heurística** — e isso precisa ficar visível na UI para não confundir o cliente.
+- **Título**: "Como funciona o Match aproximado"
+- **Ícone**: `Info` (ou `HelpCircle`) no canto, em estilo glass discreto
+- **Botão de recolher** (chevron) — começa expandido na primeira visita, mas pode ser fechado. Estado salvo em `localStorage` (`comercial.matchInfo.collapsed`) para não poluir a tela em visitas seguintes.
 
-## O que vamos entregar
+### Conteúdo (copy)
 
-Três adições na página `/comercial`, todas respeitando o filtro de cliente, tipo e data já existentes:
+Estrutura em 4 blocos curtos:
 
-### 1. Card "Match aproximado" no topo
+1. **O que é**  
+   "É a comparação entre os contatos que você enviou para a Meta e as conversões que a Meta atribuiu aos seus anúncios no mesmo período."
 
-Um novo card no grid de KPIs mostrando, para o intervalo selecionado:
+2. **Como é calculado**  
+   Fórmula visível em destaque:  
+   `Match aproximado = Reconhecidos pela Meta ÷ Enviados × 100`  
+   - **Enviados**: linhas com status "Enviado" no período selecionado.  
+   - **Reconhecidos**: total de Leads + Compras atribuídos pela Meta no mesmo período (vindo do Meta Insights, mesmos `event_name`).
 
-- **Enviados**: total de `offline_conversions` com `send_status = 'sent'`
-- **Reconhecidos pela Meta**: total de conversões atribuídas no Meta Insights no mesmo período, do mesmo `event_name` (Purchase / Lead)
-- **Match aproximado**: `Reconhecidos / Enviados` em %
-- Tooltip explicando que é uma comparação agregada e que a Meta não divulga match por pessoa
+3. **Em que se baseia**  
+   - Janela padrão de atribuição da Meta: **7 dias após o clique**.  
+   - Considera apenas clientes com integração Meta ativa.  
+   - Os dados de "Reconhecidos" vêm da API oficial da Meta (Insights), agregados por dia.
 
-A fonte de "Reconhecidos" virá de uma chamada já existente: `meta-fetch-insights` agregando `actions` por `event_name` no intervalo.
+4. **Limitações importantes** (em tom de aviso, ícone `AlertTriangle` sutil)  
+   - A Meta **não informa** se um contato específico virou conversão — apenas o total agregado.  
+   - Por isso o badge "Possivelmente não atribuído" é uma **estimativa** baseada na diferença diária entre enviados e reconhecidos, depois da janela de 7 dias.  
+   - Match acima de 100% pode acontecer quando a Meta atribui conversões de campanhas que não correspondem 1:1 aos envios manuais (ex.: compras orgânicas + atribuídas).
 
-### 2. Badge "Possivelmente não atribuído" por linha
+### Onde mexer (técnico)
 
-Na coluna **Status** (ou em uma nova coluna "Atribuição"), além do já existente Enviado/Erro/Pendente, mostrar um segundo badge sutil quando:
+- **`src/pages/ComercialPage.tsx`**:
+  - Novo componente local `MatchInfoCard` (ou inline) renderizado entre o grid de KPIs e a barra de filtros.
+  - Usar `Card` + `Collapsible` (já disponível em `src/components/ui/`) para o expand/collapse.
+  - Estado de colapso em `useState` inicializado a partir de `localStorage`.
+  - Estilo: glass morphism consistente com os outros cards (`bg-card/50 backdrop-blur border-border/50`), sem cores novas — usar tokens semânticos existentes.
+  - Sem mudanças em queries, schema ou lógica de cálculo.
 
-- `send_status = 'sent'` **E**
-- Já passaram mais de **7 dias** desde `conversion_date` (janela padrão de atribuição click) **E**
-- O total agregado de `Reconhecidos` daquele dia é menor que o total `Enviados` daquele dia
+### O que NÃO muda
 
-Texto: "Possivelmente não atribuído" + ícone de info com tooltip:  
-> "Estimativa. A Meta não confirma atribuição por contato individual."
-
-Linhas que satisfazem o critério recebem o badge; as demais não recebem nada (não afirmamos "atribuído").
-
-### 3. Filtro "Não reconhecidos (estimado)"
-
-Adicionar um novo `Select` ao lado do filtro de Tipo:
-
-- Todos
-- Reconhecidos (estimado)
-- Não reconhecidos (estimado)
-
-Aplica a heurística do item 2 sobre o conjunto já filtrado por cliente/tipo/data.
-
-## Onde mexer (resumo técnico)
-
-- **`src/pages/ComercialPage.tsx`**
-  - Adicionar query auxiliar para buscar conversões reconhecidas pela Meta no período (chama `meta-fetch-insights` com `{ since, until }` por cliente; quando "Todos os clientes", soma por cliente)
-  - Calcular agregados por dia (`Map<dateISO, { sent, recognized }>`)
-  - Renderizar novo card no grid de KPIs
-  - Renderizar badge condicional na linha
-  - Adicionar `Select` de filtro de atribuição e aplicar no `useMemo` de filtro
-
-- **Sem mudanças** em: schema, RLS, edge function `send-offline-conversion`, `meta-fetch-insights`, ou em qualquer outra página.
-
-## Como o usuário deverá ler
-
-A UI vai deixar claro, por copy e tooltips, que:
-- "Reconhecido" = conversão atribuída pela Meta no mesmo intervalo, **não** o mesmo contato individual
-- "Não atribuído" é uma **estimativa** baseada em janela de 7 dias e diferença agregada por dia
-
-Isso evita prometer um dado que a API da Meta não fornece, e ainda assim entrega uma leitura útil do "gap" entre envios e conversões reconhecidas.
+- Cálculo do Match aproximado (já implementado).
+- Heurística do badge "Possivelmente não atribuído".
+- Filtros, tabela, edge functions ou schema.
