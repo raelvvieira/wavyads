@@ -372,17 +372,80 @@ Deno.serve(async (req) => {
         `${GRAPH_API}/${adAccountId}/insights?fields=spend,impressions,reach,clicks,actions&${dateFilter}&time_increment=1&access_token=${accessToken}`
       );
       const dailyData = await dailyRes.json();
-      const daily = (dailyData.data || []).map((d: any) => ({
-        date: new Date(d.date_start).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
-        date_raw: d.date_start,
-        spend: parseFloat(d.spend || "0"),
-        impressions: parseInt(d.impressions || "0"),
-        reach: parseInt(d.reach || "0"),
-        clicks: parseInt(d.clicks || "0"),
-        leads: extractAction(d.actions, LEAD_TYPES),
-        purchases: extractAction(d.actions, PURCHASE_TYPES),
-        results: extractResults(d.actions),
-      }));
+      const dailyByDate = new Map<string, any>();
+      for (const d of (dailyData.data || [])) {
+        dailyByDate.set(d.date_start, {
+          date: new Date(d.date_start + "T00:00:00Z").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "UTC" }),
+          date_raw: d.date_start,
+          spend: parseFloat(d.spend || "0"),
+          impressions: parseInt(d.impressions || "0"),
+          reach: parseInt(d.reach || "0"),
+          clicks: parseInt(d.clicks || "0"),
+          leads: extractAction(d.actions, LEAD_TYPES),
+          purchases: extractAction(d.actions, PURCHASE_TYPES),
+          results: extractResults(d.actions),
+        });
+      }
+
+      // Resolve range (since/until) — fill missing days with zeros so chart shows full selected range
+      const resolveRange = (): { since: Date; until: Date } | null => {
+        if (timeRange?.since && timeRange?.until) {
+          const [sy, sm, sd] = timeRange.since.split("-").map(Number);
+          const [uy, um, ud] = timeRange.until.split("-").map(Number);
+          return {
+            since: new Date(Date.UTC(sy, sm - 1, sd)),
+            until: new Date(Date.UTC(uy, um - 1, ud)),
+          };
+        }
+        const today = new Date();
+        const utcToday = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+        const daysAgo = (n: number) => {
+          const d = new Date(utcToday);
+          d.setUTCDate(d.getUTCDate() - n);
+          return d;
+        };
+        switch (datePreset) {
+          case "today": return { since: utcToday, until: utcToday };
+          case "yesterday": return { since: daysAgo(1), until: daysAgo(1) };
+          case "last_7d": return { since: daysAgo(6), until: utcToday };
+          case "last_14d": return { since: daysAgo(13), until: utcToday };
+          case "last_30d": return { since: daysAgo(29), until: utcToday };
+          case "this_month": {
+            const s = new Date(Date.UTC(utcToday.getUTCFullYear(), utcToday.getUTCMonth(), 1));
+            return { since: s, until: utcToday };
+          }
+          case "last_month": {
+            const s = new Date(Date.UTC(utcToday.getUTCFullYear(), utcToday.getUTCMonth() - 1, 1));
+            const e = new Date(Date.UTC(utcToday.getUTCFullYear(), utcToday.getUTCMonth(), 0));
+            return { since: s, until: e };
+          }
+          default: return { since: daysAgo(29), until: utcToday };
+        }
+      };
+
+      const range = resolveRange();
+      const daily: any[] = [];
+      if (range) {
+        const cursor = new Date(range.since);
+        while (cursor.getTime() <= range.until.getTime()) {
+          const iso = cursor.toISOString().slice(0, 10);
+          const existing = dailyByDate.get(iso);
+          daily.push(existing ?? {
+            date: cursor.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "UTC" }),
+            date_raw: iso,
+            spend: 0,
+            impressions: 0,
+            reach: 0,
+            clicks: 0,
+            leads: 0,
+            purchases: 0,
+            results: 0,
+          });
+          cursor.setUTCDate(cursor.getUTCDate() + 1);
+        }
+      } else {
+        daily.push(...Array.from(dailyByDate.values()));
+      }
 
       return new Response(JSON.stringify({
         spend,
