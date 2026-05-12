@@ -1,28 +1,66 @@
-## Diagnóstico
+# Visão de contatos "não reconhecidos" pela Meta — Página Comercial
 
-O cliente selecionou `14/04 – 12/05`, mas o gráfico "Métricas por Dia" para em `08/05`. A causa é a forma como a Meta Graph API responde no `meta-fetch-insights` (action `insights`, com `time_increment=1`):
+## Contexto importante (limitação da Meta)
 
-- A Meta retorna **apenas os dias que tiveram entrega/spend > 0**. Dias 09/05–12/05 sem entrega simplesmente **não aparecem** na resposta.
-- O frontend hoje (`DailyChart.tsx`) renderiza exatamente o array recebido — então o eixo X termina no último dia retornado pela Meta, dando a falsa impressão de que "faltam dias".
-- Os KPIs continuam consistentes porque agregam o intervalo inteiro mesmo sem rows individuais.
+A Meta **não expõe**, por contato individual, se aquele evento offline foi atribuído a um anúncio. A API só retorna:
+- Confirmação de recebimento por evento (`events_received`)
+- Métricas de atribuição **agregadas** por campanha/anúncio (já usadas no Dashboard)
 
-## Correção
+Portanto qualquer indicação "este contato não virou conversão" é, por definição, uma **estimativa heurística** — e isso precisa ficar visível na UI para não confundir o cliente.
 
-Preencher a série diária com **todos os dias do intervalo selecionado**, completando dias ausentes com zeros, mantendo a ordem cronológica. Assim o gráfico vai sempre de `since` até `until`, mostrando vales em zero quando não houve entrega.
+## O que vamos entregar
 
-### Onde aplicar
+Três adições na página `/comercial`, todas respeitando o filtro de cliente, tipo e data já existentes:
 
-Backend (mais robusto — beneficia qualquer consumidor da resposta):
-- `supabase/functions/meta-fetch-insights/index.ts`, action `insights` (linhas ~370-385). Após montar `daily` a partir de `dailyData.data`, gerar um array contínuo de datas entre `timeRange.since` e `timeRange.until` (ou derivar de `datePreset` quando não houver `time_range`) e fazer merge por `date_raw` (YYYY-MM-DD), preenchendo zeros para `spend, impressions, reach, clicks, leads, purchases, results`.
+### 1. Card "Match aproximado" no topo
 
-### Detalhes técnicos
+Um novo card no grid de KPIs mostrando, para o intervalo selecionado:
 
-- Iterar `since → until` em UTC para evitar shift de timezone (usar `Date.UTC` como já recomenda o padrão do projeto).
-- `date` (label) continua no formato `dd/MM` em pt-BR.
-- Quando `timeRange` não vier (fallback `date_preset`), derivar `since/until` localmente a partir do preset (`today`, `yesterday`, `last_7d`, `last_14d`, `last_30d`, `this_month`, `last_month`) — replicando a mesma lógica do frontend (`computeTimeRange`) em UTC.
-- Não alterar KPIs nem `insights_previous`; o ajuste é restrito ao array `daily`.
-- Sem mudanças em frontend, schema, RLS ou outras edge functions.
+- **Enviados**: total de `offline_conversions` com `send_status = 'sent'`
+- **Reconhecidos pela Meta**: total de conversões atribuídas no Meta Insights no mesmo período, do mesmo `event_name` (Purchase / Lead)
+- **Match aproximado**: `Reconhecidos / Enviados` em %
+- Tooltip explicando que é uma comparação agregada e que a Meta não divulga match por pessoa
 
-### Verificação
+A fonte de "Reconhecidos" virá de uma chamada já existente: `meta-fetch-insights` agregando `actions` por `event_name` no intervalo.
 
-Após o deploy, recarregar `/dashboard/<id>` com range `14/04 – 12/05`: o eixo X deve ir até `12/05`, com `09/05–12/05` em zero (ou nos valores reais, caso a Meta agora retorne — o caso de `Deni Haut Cursos` mostrou que não havia entrega).
+### 2. Badge "Possivelmente não atribuído" por linha
+
+Na coluna **Status** (ou em uma nova coluna "Atribuição"), além do já existente Enviado/Erro/Pendente, mostrar um segundo badge sutil quando:
+
+- `send_status = 'sent'` **E**
+- Já passaram mais de **7 dias** desde `conversion_date` (janela padrão de atribuição click) **E**
+- O total agregado de `Reconhecidos` daquele dia é menor que o total `Enviados` daquele dia
+
+Texto: "Possivelmente não atribuído" + ícone de info com tooltip:  
+> "Estimativa. A Meta não confirma atribuição por contato individual."
+
+Linhas que satisfazem o critério recebem o badge; as demais não recebem nada (não afirmamos "atribuído").
+
+### 3. Filtro "Não reconhecidos (estimado)"
+
+Adicionar um novo `Select` ao lado do filtro de Tipo:
+
+- Todos
+- Reconhecidos (estimado)
+- Não reconhecidos (estimado)
+
+Aplica a heurística do item 2 sobre o conjunto já filtrado por cliente/tipo/data.
+
+## Onde mexer (resumo técnico)
+
+- **`src/pages/ComercialPage.tsx`**
+  - Adicionar query auxiliar para buscar conversões reconhecidas pela Meta no período (chama `meta-fetch-insights` com `{ since, until }` por cliente; quando "Todos os clientes", soma por cliente)
+  - Calcular agregados por dia (`Map<dateISO, { sent, recognized }>`)
+  - Renderizar novo card no grid de KPIs
+  - Renderizar badge condicional na linha
+  - Adicionar `Select` de filtro de atribuição e aplicar no `useMemo` de filtro
+
+- **Sem mudanças** em: schema, RLS, edge function `send-offline-conversion`, `meta-fetch-insights`, ou em qualquer outra página.
+
+## Como o usuário deverá ler
+
+A UI vai deixar claro, por copy e tooltips, que:
+- "Reconhecido" = conversão atribuída pela Meta no mesmo intervalo, **não** o mesmo contato individual
+- "Não atribuído" é uma **estimativa** baseada em janela de 7 dias e diferença agregada por dia
+
+Isso evita prometer um dado que a API da Meta não fornece, e ainda assim entrega uma leitura útil do "gap" entre envios e conversões reconhecidas.
