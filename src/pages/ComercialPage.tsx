@@ -438,10 +438,10 @@ export default function ComercialPage() {
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
             <span className="text-foreground font-semibold">Match aproximado:</span>{' '}
-            razão entre contatos enviados e conversões reconhecidas pela Meta no mesmo período
-            (<span className="font-mono text-accent">Reconhecidos ÷ Enviados</span>).
-            É uma comparação agregada — a Meta não confirma atribuição por contato individual,
-            e a janela padrão é de 7 dias após o clique.
+            calculamos dia-a-dia — para cada dia e tipo (Lead/Purchase), comparamos seus envios com
+            as conversões que a Meta atribuiu naquele dia, contando no máximo um match por envio
+            (<span className="font-mono text-accent">min(enviados, reconhecidos)</span> por dia).
+            A Meta não confirma atribuição por contato individual e a janela padrão é de 7 dias.
           </p>
         </div>
       </GlassCard>
