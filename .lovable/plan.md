@@ -1,40 +1,53 @@
-## Objetivo
+# Corrigir gráfico diário em períodos personalizados
 
-Substituir o cálculo atual do "Match aproximado" (razão de totais Meta vs envios) por um **match real dia-a-dia + por tipo de evento**, eliminando os "341" confusos e refletindo apenas o que de fato pode ter sido reconhecido.
+## Causa raiz
 
-## Lógica nova
+No edge function `supabase/functions/meta-fetch-insights/index.ts` (linhas 371–388), a chamada ao endpoint de breakdown diário da Meta Graph API é feita **sem `limit` e sem paginação**:
 
-Para cada `(dia, event_name)`:
-- `enviados[d,t]` = nº de linhas com `send_status='sent'` naquele dia/tipo
-- `reconhecidos_meta[d,t]` = Leads ou Purchases que a Meta reportou naquele dia (já temos via `recognizedByDay`)
-- **`matched[d,t] = min(enviados[d,t], reconhecidos_meta[d,t])`** ← teto pelo nº de envios, não pelo total Meta
+```ts
+const dailyRes = await fetch(
+  `${GRAPH_API}/${adAccountId}/insights?fields=...&${dateFilter}&time_increment=1&access_token=...`
+);
+const dailyData = await dailyRes.json();
+for (const d of (dailyData.data || [])) { ... }
+```
 
-Totais agregados no período:
-- `sentTotal = Σ enviados[d,t]`
-- `matchedTotal = Σ matched[d,t]` (capado dia-a-dia)
-- `matchPct = matchedTotal / sentTotal × 100` (sempre entre 0–100, sem precisar de `Math.min(100, …)`)
+A Meta Graph API retorna por padrão apenas **25 registros por página** com um cursor `paging.next` para os demais. Como o código só lê `data` da primeira página:
 
-Respeita o `typeFilter` (all / Lead / Purchase) somando apenas os tipos relevantes.
+- "Este mês" (até 31 dias, mas presets curtos costumam couber em 1 página devido a dias zerados não retornados) — geralmente funciona.
+- Período personalizado longo (ex.: 14/04 – 12/05 = 29 dias) — só os primeiros ~25 dias com atividade voltam; os demais aparecem **zerados** (porque o loop de "fill missing days" preenche com zeros).
 
-## Card "Match aproximado"
+Isso explica exatamente o relato: "Este mês" mostra tudo certo, mas "Personalizado" mostra o gráfico incompleto/zerado em parte do intervalo.
 
-Trocar a label confusa `341 reconh. / 54 enviados` por:
-- Linha 1 (grande): `XX%`
-- Linha 2 (pequena): `{matchedTotal} de {sentTotal} envios prováveis`
+## Correção
 
-Assim o numerador nunca será maior que o denominador.
+Adicionar `limit=500` na chamada e seguir o cursor `paging.next` até esgotar todas as páginas, agregando todos os `data[]` antes de montar `dailyByDate`.
 
-## Card informativo
+### Arquivo a editar
+- `supabase/functions/meta-fetch-insights/index.ts` (apenas o bloco do daily breakdown, ~linhas 370–388)
 
-Atualizar o parágrafo curto para refletir a nova lógica:
-> "Calculamos dia-a-dia: para cada dia e tipo (Lead/Purchase), comparamos seus envios com as conversões que a Meta atribuiu naquele dia, contando no máximo um match por envio. A Meta não fornece atribuição por pessoa, então é uma estimativa de cobertura."
+### Pseudocódigo da mudança
+```ts
+const dailyAll: any[] = [];
+let url = `${GRAPH_API}/${adAccountId}/insights?fields=spend,impressions,reach,clicks,actions&${dateFilter}&time_increment=1&limit=500&access_token=${accessToken}`;
+while (url) {
+  const r = await fetch(url);
+  const j = await r.json();
+  if (j.error) break; // (mantém comportamento atual de não quebrar o resto)
+  dailyAll.push(...(j.data || []));
+  url = j.paging?.next || "";
+  // safety: limita a, p.ex., 10 páginas para evitar loop infinito
+}
+for (const d of dailyAll) { dailyByDate.set(d.date_start, { ... }); }
+```
 
-## Heurística "Possivelmente não atribuído"
+Mantém todo o restante (resolveRange, fill com zeros, formatação `pt-BR`, etc.) sem alteração.
 
-Mantém a regra atual (já é dia-a-dia + tipo + idade ≥ 7 dias + `enviados > reconhecidos`), que continua coerente com a nova lógica. Sem mudanças.
+## Fora do escopo
 
-## Arquivo afetado
+- Não mexer em frontend, presets, ou no `time_range` enviado (já está correto).
+- Não alterar a chamada de `insights` agregado nem `campaigns/ads` — eles retornam 1 linha agregada e não sofrem com paginação no caso do agregado; campanhas/ads já têm `limit=100/200`.
 
-- `src/pages/ComercialPage.tsx` — bloco `totals` (linhas ~306–321), JSX do card de match (linhas ~400–420) e texto do card informativo (linhas ~425–440).
+## Validação
 
-Nenhuma mudança de backend, schema ou edge function.
+Após o deploy, abrir um cliente, selecionar Personalizado com intervalo > 25 dias e conferir que o gráfico "Métricas por Dia" mostra os valores reais em todos os dias do range (não só nos primeiros).
