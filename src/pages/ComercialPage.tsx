@@ -16,8 +16,6 @@ import {
   AlertTriangle,
   Target,
   Info,
-  ChevronDown,
-  ChevronUp,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRole } from '@/hooks/useRole';
@@ -157,17 +155,6 @@ export default function ComercialPage() {
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<OfflineConversionRow | null>(null);
   const [resending, setResending] = useState(false);
-  const [matchInfoCollapsed, setMatchInfoCollapsed] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem('comercial.matchInfo.collapsed') === '1';
-  });
-  const toggleMatchInfo = () => {
-    setMatchInfoCollapsed(prev => {
-      const next = !prev;
-      try { localStorage.setItem('comercial.matchInfo.collapsed', next ? '1' : '0'); } catch {}
-      return next;
-    });
-  };
 
   const [datePreset, setDatePreset] = useState<DatePreset>(() => {
     try { return (localStorage.getItem('comercial_date_preset') as DatePreset) || 'last_30d'; } catch { return 'last_30d'; }
@@ -436,79 +423,19 @@ export default function ComercialPage() {
       </div>
 
       {/* Info: Como funciona o Match aproximado */}
-      <GlassCard>
-        <button
-          type="button"
-          onClick={toggleMatchInfo}
-          className="w-full flex items-center justify-between gap-3 text-left"
-          aria-expanded={!matchInfoCollapsed}
-        >
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-purple-500/15 text-purple-400 flex items-center justify-center shrink-0">
-              <Info className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold">Como funciona o Match aproximado</p>
-              <p className="text-xs text-muted-foreground">
-                Entenda o que esse indicador representa e como é calculado.
-              </p>
-            </div>
+      <GlassCard className="!p-3">
+        <div className="flex items-start gap-3">
+          <div className="h-7 w-7 rounded-lg bg-purple-500/15 text-purple-400 flex items-center justify-center shrink-0">
+            <Info className="h-3.5 w-3.5" />
           </div>
-          {matchInfoCollapsed ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-          ) : (
-            <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
-          )}
-        </button>
-
-        {!matchInfoCollapsed && (
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <div className="rounded-lg border border-border/40 bg-card/40 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-                O que é
-              </p>
-              <p className="text-sm text-foreground/90">
-                Comparação entre os contatos que você enviou para a Meta e as conversões que a Meta atribuiu aos seus anúncios no mesmo período.
-              </p>
-            </div>
-
-            <div className="rounded-lg border border-border/40 bg-card/40 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-                Como é calculado
-              </p>
-              <div className="rounded-md bg-background/60 border border-border/40 px-3 py-2 mb-2 font-mono text-xs text-accent">
-                Match = Reconhecidos ÷ Enviados × 100
-              </div>
-              <ul className="text-xs text-muted-foreground space-y-1">
-                <li><span className="text-foreground/90 font-medium">Enviados:</span> linhas com status “Enviado” no período.</li>
-                <li><span className="text-foreground/90 font-medium">Reconhecidos:</span> Leads + Compras atribuídos pela Meta no mesmo período (Meta Insights, mesmo event_name).</li>
-              </ul>
-            </div>
-
-            <div className="rounded-lg border border-border/40 bg-card/40 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-                Em que se baseia
-              </p>
-              <ul className="text-sm text-foreground/90 space-y-1.5 list-disc list-inside">
-                <li>Janela padrão de atribuição da Meta: <span className="font-medium">7 dias após o clique</span>.</li>
-                <li>Considera apenas clientes com integração Meta ativa.</li>
-                <li>Dados de “Reconhecidos” vindos da API oficial da Meta (Insights), agregados por dia.</li>
-              </ul>
-            </div>
-
-            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-amber-400/90 mb-2 flex items-center gap-1.5">
-                <AlertTriangle className="h-3.5 w-3.5" />
-                Limitações importantes
-              </p>
-              <ul className="text-sm text-foreground/90 space-y-1.5 list-disc list-inside">
-                <li>A Meta <span className="font-medium">não informa</span> se um contato específico virou conversão — apenas o total agregado.</li>
-                <li>O badge “Possivelmente não atribuído” é uma <span className="font-medium">estimativa</span> baseada na diferença diária entre enviados e reconhecidos, após a janela de 7 dias.</li>
-                <li>Match acima de 100% pode ocorrer quando a Meta atribui conversões que não correspondem 1:1 aos envios manuais (ex.: conversões adicionais de campanhas).</li>
-              </ul>
-            </div>
-          </div>
-        )}
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            <span className="text-foreground font-semibold">Match aproximado:</span>{' '}
+            razão entre contatos enviados e conversões reconhecidas pela Meta no mesmo período
+            (<span className="font-mono text-accent">Reconhecidos ÷ Enviados</span>).
+            É uma comparação agregada — a Meta não confirma atribuição por contato individual,
+            e a janela padrão é de 7 dias após o clique.
+          </p>
+        </div>
       </GlassCard>
 
       {/* Filters */}
