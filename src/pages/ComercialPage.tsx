@@ -308,17 +308,25 @@ export default function ComercialPage() {
     const purchases = filtered.filter(r => r.event_name === 'Purchase').length;
     const value = filtered.reduce((s, r) => s + (r.value || 0), 0);
 
-    const sentTotal = rows.filter(r => r.send_status === 'sent').length;
-    let recognizedTotal = 0;
-    if (recognizedByDay) {
-      recognizedByDay.forEach((v) => {
-        if (typeFilter === 'all') recognizedTotal += v.Lead + v.Purchase;
-        else recognizedTotal += v[typeFilter];
+    // Real day-by-day match: for each (day, event_name), matched = min(sent, recognized)
+    const types: ('Lead' | 'Purchase')[] =
+      typeFilter === 'all' ? ['Lead', 'Purchase'] : [typeFilter];
+    let sentTotal = 0;
+    let matchedTotal = 0;
+    const allDays = new Set<string>();
+    sentByDayType.forEach((_v, k) => allDays.add(k.split('|')[0]));
+    if (recognizedByDay) recognizedByDay.forEach((_v, k) => allDays.add(k));
+    allDays.forEach(day => {
+      types.forEach(t => {
+        const sent = sentByDayType.get(`${day}|${t}`) || 0;
+        const rec = recognizedByDay?.get(day)?.[t] || 0;
+        sentTotal += sent;
+        matchedTotal += Math.min(sent, rec);
       });
-    }
-    const matchPct = sentTotal > 0 ? Math.min(100, Math.round((recognizedTotal / sentTotal) * 100)) : null;
-    return { leads, purchases, value, sentTotal, recognizedTotal, matchPct };
-  }, [filtered, rows, recognizedByDay, typeFilter]);
+    });
+    const matchPct = sentTotal > 0 ? Math.round((matchedTotal / sentTotal) * 100) : null;
+    return { leads, purchases, value, sentTotal, matchedTotal, matchPct };
+  }, [filtered, sentByDayType, recognizedByDay, typeFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
@@ -415,7 +423,7 @@ export default function ComercialPage() {
                 {totals.matchPct == null ? '—' : `${totals.matchPct}%`}
               </p>
               <p className="text-[11px] text-muted-foreground">
-                {totals.recognizedTotal} reconh. / {totals.sentTotal} enviados
+                {totals.matchedTotal} de {totals.sentTotal} envios prováveis
               </p>
             </div>
           </div>
@@ -430,10 +438,10 @@ export default function ComercialPage() {
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
             <span className="text-foreground font-semibold">Match aproximado:</span>{' '}
-            razão entre contatos enviados e conversões reconhecidas pela Meta no mesmo período
-            (<span className="font-mono text-accent">Reconhecidos ÷ Enviados</span>).
-            É uma comparação agregada — a Meta não confirma atribuição por contato individual,
-            e a janela padrão é de 7 dias após o clique.
+            calculamos dia-a-dia — para cada dia e tipo (Lead/Purchase), comparamos seus envios com
+            as conversões que a Meta atribuiu naquele dia, contando no máximo um match por envio
+            (<span className="font-mono text-accent">min(enviados, reconhecidos)</span> por dia).
+            A Meta não confirma atribuição por contato individual e a janela padrão é de 7 dias.
           </p>
         </div>
       </GlassCard>
