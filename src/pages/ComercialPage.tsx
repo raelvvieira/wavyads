@@ -12,6 +12,9 @@ import {
   RotateCw,
   Loader2,
   CalendarIcon,
+  HelpCircle,
+  AlertTriangle,
+  Target,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRole } from '@/hooks/useRole';
