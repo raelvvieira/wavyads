@@ -607,24 +607,39 @@ A reference Story version of this same creative is attached as the FIRST image. 
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="biz" className="text-[10px] uppercase tracking-wider text-white/40">
-              Contexto do negócio (importante!)
-            </Label>
-            <Input
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="biz" className="text-[10px] uppercase tracking-wider text-white/40">
+                Contexto do negócio (gerado pela IA)
+              </Label>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-[10px]"
+                onClick={generateBusinessContext}
+                disabled={contextLoading}
+              >
+                {contextLoading
+                  ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  : <RefreshCw className="h-3 w-3 mr-1" />}
+                Regenerar
+              </Button>
+            </div>
+            <Textarea
               id="biz"
-              placeholder="Ex: Mentoria premium de harmonização facial em São Paulo / Bar de coquetelaria autoral em Pinheiros"
+              placeholder={contextLoading ? 'Gerando contexto a partir da análise e copy…' : 'Será preenchido automaticamente. Você pode editar.'}
               value={businessContext}
               onChange={(e) => setBusinessContext(e.target.value)}
-              className="text-sm"
+              rows={2}
+              className="text-[13px] sm:text-sm"
             />
-            <p className="text-[10px] text-white/40">Quanto mais específico, melhor o tom visual. "Mentoria premium" ≠ "curso".</p>
+            <p className="text-[10px] text-white/40">A IA cria com base no mood, referências e copy aprovada. Edite se quiser ajustar tom ou nicho.</p>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <Label className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5 block">Modelo</Label>
               <Select value={model} onValueChange={(v) => setModel(v as any)}>
-                <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="text-[13px] sm:text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {IMAGE_MODELS.map((m) => (
                     <SelectItem key={m.id} value={m.id}>
@@ -640,7 +655,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
             <div>
               <Label className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5 block">Idioma do texto na arte</Label>
               <Select value={language} onValueChange={setLanguage}>
-                <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="text-[13px] sm:text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {LANGUAGES.map((l) => (
                     <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>
@@ -671,13 +686,13 @@ A reference Story version of this same creative is attached as the FIRST image. 
             </CollapsibleContent>
           </Collapsible>
 
-          <div className="flex gap-3 flex-wrap">
-            <Button size="sm" onClick={() => generate('story')} disabled={generating}>
+          <div className="flex gap-2 sm:gap-3 flex-wrap">
+            <Button size="sm" onClick={() => generate('story')} disabled={generating} className="flex-1 sm:flex-none">
               {generating ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> : <Wand2 className="h-3.5 w-3.5 mr-2" />}
               {storyImage ? 'Gerar Story novamente' : 'Gerar Story (1080x1920)'}
             </Button>
             {storyImage && (
-              <Button size="sm" variant="outline" onClick={() => generate('square')} disabled={generating}>
+              <Button size="sm" variant="outline" onClick={() => generate('square')} disabled={generating} className="flex-1 sm:flex-none">
                 {generating ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-2" />}
                 {squareImage ? 'Gerar Quadrado novamente' : 'Recriar em 1080x1080'}
               </Button>
@@ -688,26 +703,40 @@ A reference Story version of this same creative is attached as the FIRST image. 
           </div>
 
           {(storyImage || squareImage) && (
-            <div className="flex flex-wrap gap-6 items-start justify-center pt-2">
+            <div className="flex flex-row flex-wrap gap-3 sm:gap-6 items-start justify-center pt-2">
               {storyImage && (
-                <div className="space-y-2 w-[220px]">
+                <div className="space-y-2 w-[44vw] max-w-[200px] sm:w-[220px]">
                   <p className="text-[10px] uppercase tracking-wider text-white/40 text-center">Story 1080x1920</p>
-                  <div className="rounded-xl overflow-hidden glass aspect-[9/16]">
+                  <button
+                    type="button"
+                    onClick={() => setLightboxUrl(storyImage)}
+                    className="group relative block w-full rounded-xl overflow-hidden glass aspect-[9/16] cursor-zoom-in"
+                  >
                     <img src={storyImage} alt="story" className="w-full h-full object-cover" />
-                  </div>
-                  <Button size="sm" variant="outline" onClick={() => download(storyImage, `criativo-story-${Date.now()}.png`)} className="w-full">
-                    <Download className="h-3.5 w-3.5 mr-2" /> Baixar Story
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <ZoomIn className="h-6 w-6 text-white drop-shadow" />
+                    </div>
+                  </button>
+                  <Button size="sm" variant="outline" onClick={() => download(storyImage, `criativo-story-${Date.now()}.png`)} className="w-full text-[11px] sm:text-xs">
+                    <Download className="h-3.5 w-3.5 mr-1.5" /> Baixar Story
                   </Button>
                 </div>
               )}
               {squareImage && (
-                <div className="space-y-2 w-[280px]">
+                <div className="space-y-2 w-[44vw] max-w-[260px] sm:w-[280px]">
                   <p className="text-[10px] uppercase tracking-wider text-white/40 text-center">Quadrado 1080x1080</p>
-                  <div className="rounded-xl overflow-hidden glass aspect-square">
+                  <button
+                    type="button"
+                    onClick={() => setLightboxUrl(squareImage)}
+                    className="group relative block w-full rounded-xl overflow-hidden glass aspect-square cursor-zoom-in"
+                  >
                     <img src={squareImage} alt="square" className="w-full h-full object-cover" />
-                  </div>
-                  <Button size="sm" variant="outline" onClick={() => download(squareImage, `criativo-square-${Date.now()}.png`)} className="w-full">
-                    <Download className="h-3.5 w-3.5 mr-2" /> Baixar Quadrado
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <ZoomIn className="h-6 w-6 text-white drop-shadow" />
+                    </div>
+                  </button>
+                  <Button size="sm" variant="outline" onClick={() => download(squareImage, `criativo-square-${Date.now()}.png`)} className="w-full text-[11px] sm:text-xs">
+                    <Download className="h-3.5 w-3.5 mr-1.5" /> Baixar Quadrado
                   </Button>
                 </div>
               )}
@@ -715,6 +744,35 @@ A reference Story version of this same creative is attached as the FIRST image. 
           )}
         </GlassCard>
       )}
+
+      <Dialog open={!!lightboxUrl} onOpenChange={(o) => !o && setLightboxUrl(null)}>
+        <DialogContent className="max-w-[95vw] sm:max-w-[90vw] max-h-[95vh] p-0 bg-black/95 border-white/10 overflow-hidden">
+          {lightboxUrl && (
+            <div className="relative flex items-center justify-center w-full h-full">
+              <img
+                src={lightboxUrl}
+                alt="preview"
+                className="max-w-full max-h-[88vh] object-contain"
+              />
+              <button
+                onClick={() => setLightboxUrl(null)}
+                className="absolute top-3 right-3 bg-black/60 hover:bg-black/80 rounded-full p-2 backdrop-blur"
+                aria-label="Fechar"
+              >
+                <X className="h-4 w-4 text-white" />
+              </button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => download(lightboxUrl, `criativo-${Date.now()}.png`)}
+                className="absolute bottom-3 right-3 bg-black/60 hover:bg-black/80 backdrop-blur"
+              >
+                <Download className="h-3.5 w-3.5 mr-2" /> Baixar
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
