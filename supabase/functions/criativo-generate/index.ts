@@ -108,7 +108,7 @@ serve(async (req) => {
     const url = endpointFor(model);
     const payload = buildPayload(model, prompt, aspectRatio);
 
-    console.log("Freepik request →", model, url);
+    console.log("Freepik request →", model, aspectRatio, url, JSON.stringify(payload).slice(0, 500));
 
     const resp = await fetch(url, {
       method: "POST",

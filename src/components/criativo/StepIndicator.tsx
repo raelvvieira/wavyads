@@ -21,7 +21,7 @@ export function StepIndicator({ steps, current, completed, onJump }: StepIndicat
               disabled={!clickable}
               onClick={() => clickable && onJump?.(i)}
               className={cn(
-                'flex items-center gap-2 px-3 py-2 rounded-lg transition-all',
+                'flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-all',
                 isCurrent && 'bg-accent/20 border border-accent/40',
                 !isCurrent && isDone && 'text-white/70 hover:bg-white/5',
                 !isCurrent && !isDone && 'text-white/30',
@@ -30,13 +30,13 @@ export function StepIndicator({ steps, current, completed, onJump }: StepIndicat
             >
               <div
                 className={cn(
-                  'flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold',
+                  'flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-semibold',
                   isDone ? 'bg-accent text-black' : isCurrent ? 'bg-accent/30 text-accent' : 'bg-white/10',
                 )}
               >
-                {isDone ? <Check className="h-3.5 w-3.5" /> : i + 1}
+                {isDone ? <Check className="h-3 w-3" /> : i + 1}
               </div>
-              <span className="text-sm font-medium whitespace-nowrap">{label}</span>
+              <span className="text-xs font-medium whitespace-nowrap">{label}</span>
             </button>
             {i < steps.length - 1 && <div className="h-px w-4 sm:w-8 bg-white/10" />}
           </div>
