@@ -259,7 +259,12 @@ ${[...evitaList, ...userNegatives].join('\n')}
 
     const closing = `All text in the artwork MUST be written in ${language === 'pt-BR' ? 'Portuguese (Brazil)' : language === 'es' ? 'Spanish' : 'English'}. Final result: high quality, polished, professional advertising design, sharp typography, brand-grade composition.`;
 
-    return [intro, photoBlock, '[DESIGN SYSTEM]\n' + designSystem, safe, logoBlock, textBlocks, moodBlock, doNot, closing]
+    const consistency = aspect === 'square' && storyImage
+      ? `[VISUAL CONSISTENCY — CRITICAL]
+A reference Story version of this same creative is attached as the FIRST image. The square version MUST replicate its EXACT color palette, lighting, color grading, photographic treatment, typography choices and overall mood. Only the framing/composition changes to fit a 1:1 square. Treat that Story as the visual ground truth — do NOT shift hues, saturation, contrast or styling.`
+      : '';
+
+    return [intro, photoBlock, '[DESIGN SYSTEM]\n' + designSystem, safe, consistency, logoBlock, textBlocks, moodBlock, doNot, closing]
       .filter(Boolean)
       .join('\n\n');
   };
@@ -276,6 +281,7 @@ ${[...evitaList, ...userNegatives].join('\n')}
           aspectRatio: aspect,
           referenceImages: productImages,
           logoImage: logoImage[0] || null,
+          storyReference: aspect === 'square' ? storyImage : null,
         },
       });
       if (error) throw error;
