@@ -1,84 +1,60 @@
+# Plano — Refino do Criativo Studio
 
-# Criativo Studio
+Mudanças apenas no frontend (`CriativoStudioPage.tsx` + leve ajuste em `criativo-generate` para reforçar o aspect ratio quadrado). Sem mexer em lógica de negócio nem em outras páginas.
 
-Nova página admin com fluxo guiado de 4 passos para gerar criativos publicitários usando IA (análise visual com Gemini + geração de imagem com Freepik).
+## 1. Tipografia geral menor
+- Header: `text-2xl sm:text-3xl` → `text-xl sm:text-2xl`; subtítulo `text-sm` → `text-xs`.
+- Títulos de step (`h2`): `text-lg` → `text-base`.
+- Descrições de step: `text-sm` → `text-xs`.
+- Labels e campos com escala reduzida (textarea e selects mantêm `text-sm` para legibilidade de input).
+- StepIndicator: ajustar para fonte menor (`text-xs`).
+- Resultado da copy: headline `text-lg` → `text-base`.
 
-## Fluxo do usuário
+## 2. Step 2 — manter copy original
+- Após gerar `copyResult`, mostrar **dois cards lado a lado**:
+  - "Sua copy original" (o `rawCopy` que o usuário escreveu)
+  - "Sugestão da IA" (atual `copyResult`)
+- Cada card com botão **"Usar essa"**.
+- Estado novo: `selectedCopySource: 'original' | 'ai'`.
+- `buildFinalPrompt` passa a usar a copy selecionada:
+  - Se `original`: injeta o `rawCopy` cru como bloco de texto/instrução para overlay.
+  - Se `ai`: comportamento atual (headline/subheadline/CTA).
+- "OK, usar essa" continua avançando para step 3.
 
-```
-[1] Referências visuais  →  [2] Copy + sugestão IA  →  [3] Imagens de produto/rosto  →  [4] Escolher modelo + Gerar
-        ↓                          ↓                              ↓                              ↓
-  upload/colar imgs          escrever copy bruta            upload imgs reais          1º: Story 1080x1920
-  Gemini analisa             Gemini sugere melhor           (ficam no contexto)        depois: Quadrado 1080x1080
-  (paleta, layout,           OK / Refazer                                              Botão "Baixar"
-   tipografia, etc.)
-```
+## 3. Step 3 — logo separado
+- Adicionar uma seção dedicada **"Logo da marca (opcional)"** acima do dropzone de produto/pessoa.
+- Novo estado `logoImage: string | null` (apenas 1 imagem).
+- Componente: dropzone reutilizado com `maxImages={1}` ou um mini-uploader específico.
+- `buildFinalPrompt` ganha instrução explícita quando há logo:
+  - "Include the brand logo (provided as a separate reference) discreetly in a corner of the composition. Do not distort, recolor or recreate the logo — treat it as a fixed brand asset."
+- Texto curto explicando: "A IA vai posicionar o logo discretamente no canto, sem distorcer."
 
-## Passo a passo
+## 4. Step 4 — preview menor + lado a lado + corrigir 1080x1080
 
-### Passo 1 — Referências visuais
-- Dropzone com upload por clique, drag-and-drop **e colar (Ctrl+V)** capturando o evento `paste` global.
-- Grid de miniaturas das referências carregadas (com remover).
-- Botão "Analisar referências" → chama edge function que envia as imagens para `google/gemini-2.5-pro` (visão) com instrução para extrair: paleta de cores (HEX), tipografia, estilo de layout, elementos gráficos, mood, recortes, efeitos.
-- Resultado da análise mostrado em card editável (textarea) — usuário pode ajustar antes de seguir.
+### Preview menor
+- Container do grid: `grid sm:grid-cols-2 gap-4` mantém, mas cada imagem dentro de um wrapper com `max-w-[260px] mx-auto` (Story) e `max-w-[320px] mx-auto` (Square) para não ocupar tela inteira.
+- Adicionar `aspect-[9/16]` no Story e `aspect-square` no Square para manter proporção visual mesmo antes de carregar.
 
-### Passo 2 — Copywriting
-- Textarea: "O que você quer vender?" (copy bruta do usuário).
-- Botão "Melhorar copy com IA" → chama edge function com `google/gemini-2.5-flash` retornando headline + subheadline + CTA otimizados em PT-BR.
-- Resultado mostrado em card. Botões: **OK, usar essa** / **Refazer**.
+### Sempre lado a lado quando há os dois
+- Já está em `sm:grid-cols-2`. Garantir que quando só Story existir ele fique centralizado (`justify-items-center`), e quando ambos existirem fiquem alinhados em colunas iguais.
+- Adicionar `items-start` para alinhar tops.
 
-### Passo 3 — Imagens de produto/pessoa (opcional)
-- Mesmo dropzone do passo 1 (upload + paste).
-- Sem análise — essas imagens são apenas anexadas ao prompt final como referência visual para o modelo de geração.
+### Corrigir "Recriar em 1080x1080"
+Diagnóstico: o botão chama `generate('square')`, mas o problema provável é que o payload do Freepik para alguns modelos não respeita `square_1_1` quando o modelo já gerou em 9:16, ou o backend precisa de chave diferente. Ajustes:
+- No frontend: garantir que o botão fica **sempre habilitado** quando há `storyImage` (hoje só desabilita por `generating`, ok) e que o estado `squareImage` é resetado antes de nova chamada.
+- No backend (`criativo-generate`): revisar `buildPayload` para garantir aspect ratio quadrado:
+  - `classic-fast`: trocar `image.size` para `"square_1_1"` (já está, ok).
+  - `flux-dev`: `aspect_ratio: "1:1"` (ok).
+  - `mystic`: usar `aspect_ratio: "square_1_1"` (ok) — confirmar se o valor aceito é `"square"` ou `"square_1_1"`; ajustar se Freepik exigir `"square"`.
+  - `imagen3`: idem.
+- Adicionar log do payload final e da resposta para facilitar debug se ainda falhar.
+- Reforçar no prompt enviado a string "1:1 square format, centered composition" para o modelo seguir o aspect.
 
-### Passo 4 — Geração
-- Seletor de modelo Freepik (ex.: Flux Dev, Mystic, Imagen3, Classic Fast — listamos os principais que a API oferece).
-- Botão **Gerar criativo (Story 1080x1920)**.
-- Edge function monta o prompt final consolidando: análise das referências (passo 1) + copy aprovada (passo 2) + descrição das imagens de produto (passo 3) + dimensões.
-- Chama Freepik API → retorna URL da imagem gerada.
-- Imagem mostrada em preview grande. Botões abaixo:
-  - **Baixar Story**
-  - **Recriar em quadrado (1080x1080)** → reusa o mesmo prompt mudando aspect ratio
-  - **Baixar Quadrado** (após gerar)
-  - **Começar do zero** (reseta o fluxo)
+## Arquivos afetados
+- `src/pages/CriativoStudioPage.tsx` (principal)
+- `src/components/criativo/StepIndicator.tsx` (fonte menor)
+- `supabase/functions/criativo-generate/index.ts` (ajustes de payload + log para o caso quadrado)
 
-## UI / Layout
-
-- Página `/criativo-studio`, item na sidebar **Gestão WAVY** (entre "Google Ads I.A" e "Configurações"), ícone `Wand2` ou `Palette`, visível apenas para admin.
-- Stepper horizontal no topo (4 passos, com checkmark verde nos completos).
-- Cada passo é um `GlassCard` grande, mantendo o design Apple Glass Morphism + accent verde `#1ACD8A`.
-- Avança automaticamente para o próximo passo quando o usuário completa o atual, mas permite voltar.
-
-## Segurança & Acesso
-
-- Rota protegida: redireciona não-admin para `/dashboard`.
-- Edge functions verificam `has_role(user, 'admin')` antes de processar.
-
-## Sem persistência no banco
-Conforme combinado: nenhuma tabela nova. Imagens de referência, copy e geradas vivem só na sessão do navegador. Usuário baixa o que quiser manter.
-
----
-
-## Detalhes técnicos
-
-**Arquivos novos:**
-- `src/pages/CriativoStudioPage.tsx` — página principal com state machine dos 4 passos.
-- `src/components/criativo/ImageDropzone.tsx` — componente reutilizável (upload + drag + paste).
-- `src/components/criativo/StepIndicator.tsx` — stepper visual.
-- `supabase/functions/criativo-analyze-refs/index.ts` — Gemini 2.5 Pro vision, recebe array de imagens base64, retorna análise estruturada (tool calling).
-- `supabase/functions/criativo-improve-copy/index.ts` — Gemini 2.5 Flash, recebe copy bruta, retorna headline/sub/CTA.
-- `supabase/functions/criativo-generate/index.ts` — chama Freepik API (`https://api.freepik.com/v1/ai/...`), recebe prompt + modelo + aspect ratio, retorna URL da imagem.
-
-**Arquivos editados:**
-- `src/App.tsx` — nova rota `/criativo-studio`.
-- `src/components/AppSidebar.tsx` — novo item em `adminItems`.
-
-**Secret necessário:** `FREEPIK_API_KEY` (vou solicitar via `add_secret` no início da implementação).
-
-**Modelos Freepik suportados (selecionáveis no passo 4):**
-- `flux-dev` — equilíbrio qualidade/velocidade
-- `mystic` — alta qualidade fotorrealista
-- `imagen3` — Google Imagen 3 via Freepik
-- `classic-fast` — rápido e barato
-
-**Edge functions config:** todas com CORS padrão, sem `verify_jwt` extra (pattern atual do projeto usa LOVABLE_API_KEY para Gemini + verificação de admin via `client_users`/role).
+## Fora do escopo
+- Persistência, novos modelos, nova página.
+- Mudanças nas funções `criativo-analyze-refs` e `criativo-improve-copy`.
