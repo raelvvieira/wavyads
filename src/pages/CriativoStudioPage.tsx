@@ -102,6 +102,21 @@ export default function CriativoStudioPage() {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [contextLoading, setContextLoading] = useState(false);
 
+  // Fator Criativo
+  type FactorVariation = {
+    eixo: string;
+    nome: string;
+    estrategia: { mudanca: string; paraQuem: string };
+    copy: { label: string; titulo: string; subtitulo: string; dados: string; cta: string };
+    descricaoVisual: { hook: string; composicao: string; tom: string; diferenca: string };
+    promptCompleto: string;
+  };
+  const [factorVariations, setFactorVariations] = useState<FactorVariation[] | null>(null);
+  const [factorImages, setFactorImages] = useState<(string | null)[]>([]);
+  const [factorErrors, setFactorErrors] = useState<(string | null)[]>([]);
+  const [factorLoading, setFactorLoading] = useState(false);
+  const [factorProgress, setFactorProgress] = useState(0);
+
   useEffect(() => {
     if (!roleLoading && !isAdmin) navigate('/dashboard');
   }, [isAdmin, roleLoading, navigate]);
