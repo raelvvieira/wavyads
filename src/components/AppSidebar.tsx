@@ -11,6 +11,7 @@ import {
   Lightbulb,
   Sparkles,
   Users,
+  Wand2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import wavyLogo from '@/assets/wavy-logo.png';
@@ -35,6 +36,7 @@ export function AppSidebar() {
   const adminItems = [
     { to: '/insights', icon: Lightbulb, label: 'Insights', show: isAdmin },
     { to: '/google-ads-ai', icon: Sparkles, label: 'Google Ads I.A', show: isAdmin },
+    { to: '/criativo-studio', icon: Wand2, label: 'Criativo Studio', show: isAdmin },
     { to: '/configuracoes', icon: Settings, label: 'Configurações', show: isAdmin },
   ];
 

@@ -13,6 +13,7 @@ import SettingsPage from "@/pages/SettingsPage";
 import InsightsPage from "@/pages/InsightsPage";
 import ComercialPage from "@/pages/ComercialPage";
 import GoogleAdsAIPage from "@/pages/GoogleAdsAIPage";
+import CriativoStudioPage from "@/pages/CriativoStudioPage";
 import MetaCallbackPage from "@/pages/MetaCallbackPage";
 import GoogleAdsCallbackPage from "@/pages/GoogleAdsCallbackPage";
 import NotFound from "./pages/NotFound";
@@ -38,6 +39,7 @@ const App = () => (
               <Route path="/insights" element={<InsightsPage />} />
               <Route path="/comercial" element={<ComercialPage />} />
               <Route path="/google-ads-ai" element={<GoogleAdsAIPage />} />
+              <Route path="/criativo-studio" element={<CriativoStudioPage />} />
               <Route path="/configuracoes" element={<SettingsPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
