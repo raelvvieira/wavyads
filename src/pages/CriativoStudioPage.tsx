@@ -47,7 +47,7 @@ const FREEPIK_MODELS = [
 ] as const;
 
 export default function CriativoStudioPage() {
-  const { isAdmin, loading: roleLoading } = useRole();
+  const { isAdmin, isLoading: roleLoading } = useRole();
   const navigate = useNavigate();
   const { toast } = useToast();
 
