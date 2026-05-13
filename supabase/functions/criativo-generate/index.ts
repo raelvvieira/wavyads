@@ -16,6 +16,7 @@ interface GenerateBody {
   aspectRatio: "story" | "square";
   referenceImages?: string[]; // data:... or https URLs (product/scene refs)
   logoImage?: string | null; // single logo
+  storyReference?: string | null; // already-generated Story image, used as visual ground truth for the square
 }
 
 function modelId(m: ImgModel) {
