@@ -6,114 +6,94 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-
-type ImgModel = "nano-banana-pro" | "nano-banana-2";
+type Quality = "low" | "medium" | "high";
 
 interface GenerateBody {
-  model: ImgModel;
   prompt: string;
   aspectRatio: "story" | "square";
-  referenceImages?: string[]; // data:... or https URLs (product/scene refs)
-  logoImage?: string | null; // single logo
-  storyReference?: string | null; // already-generated Story image, used as visual ground truth for the square
-}
-
-function modelId(m: ImgModel) {
-  return m === "nano-banana-pro"
-    ? "google/gemini-3-pro-image-preview"
-    : "google/gemini-3.1-flash-image-preview";
+  quality?: Quality;
+  isVariation?: boolean;
 }
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY não configurada");
 
     const body = (await req.json()) as GenerateBody;
-    const { model, prompt, aspectRatio } = body;
-    const referenceImages = Array.isArray(body.referenceImages) ? body.referenceImages.filter(Boolean) : [];
-    const logoImage = body.logoImage || null;
-    const storyReference = body.storyReference || null;
+    const { prompt, aspectRatio, isVariation } = body;
 
-    if (!model || !prompt || !aspectRatio) {
-      return new Response(JSON.stringify({ error: "model, prompt e aspectRatio são obrigatórios" }), {
+    if (!prompt || !aspectRatio) {
+      return new Response(JSON.stringify({ error: "prompt e aspectRatio são obrigatórios" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const dimsLine = aspectRatio === "story"
-      ? "OUTPUT IMAGE FORMAT (mandatory): exactly 1080x1920 pixels, vertical 9:16 Instagram Story aspect ratio. The full canvas MUST be vertical 9:16 — do not output square or landscape."
-      : "OUTPUT IMAGE FORMAT (mandatory): exactly 1080x1080 pixels, perfect 1:1 square Instagram post. The full canvas MUST be a square — do not output vertical or landscape.";
+    const isStory = aspectRatio === "story";
+    const size = isStory ? "1024x1536" : "1024x1024";
+    const userQuality: Quality =
+      body.quality === "low" || body.quality === "high" ? body.quality : "medium";
+    const finalQuality: Quality = isVariation ? "medium" : userQuality;
 
-    const roles: string[] = [];
-    if (storyReference) {
-      roles.push("- The FIRST attached image is the already-generated STORY version of this same creative. It is the VISUAL GROUND TRUTH: replicate its exact color palette, lighting, photographic treatment, color grading, typography, mood and overall style. Only the framing/composition changes to fit the new aspect ratio.");
-    }
-    if (referenceImages.length > 0) {
-      roles.push(`- The next ${referenceImages.length} attached image(s) are the SUBJECT/PRODUCT/SCENE photo(s). Use them as the literal subject of the composition. Preserve faces, body, product shape and likeness.`);
-    }
-    if (logoImage) {
-      roles.push("- The LAST attached image is the BRAND LOGO. Place it small in a corner (top-left or bottom-right) without distortion, recoloring, or redrawing. Treat it as a fixed brand asset.");
-    }
-    const refsHint = roles.length > 0 ? `\n\n[ATTACHED REFERENCE IMAGES — ROLES]\n${roles.join("\n")}` : "";
-
-    const fullPrompt = `${dimsLine}\n\n${prompt}${refsHint}`;
-
-    const userContent: any[] = [{ type: "text", text: fullPrompt }];
-    if (storyReference) userContent.push({ type: "image_url", image_url: { url: storyReference } });
-    for (const url of referenceImages) userContent.push({ type: "image_url", image_url: { url } });
-    if (logoImage) userContent.push({ type: "image_url", image_url: { url: logoImage } });
-
-    console.log(
-      "criativo-generate →",
-      model,
+    console.log("criativo-generate (openai) →", {
       aspectRatio,
-      `prompt_chars=${fullPrompt.length}`,
-      `story_ref=${storyReference ? 1 : 0}`,
-      `refs=${referenceImages.length}`,
-      `logo=${logoImage ? 1 : 0}`,
-    );
+      size,
+      quality: finalQuality,
+      isVariation: !!isVariation,
+      prompt_chars: prompt.length,
+    });
 
-    const resp = await fetch(AI_URL, {
+    const resp = await fetch("https://api.openai.com/v1/images/generations", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: modelId(model),
-        messages: [{ role: "user", content: userContent }],
-        modalities: ["image", "text"],
+        model: "gpt-image-2",
+        prompt,
+        n: 1,
+        size,
+        quality: finalQuality,
       }),
     });
 
     if (!resp.ok) {
       const t = await resp.text();
-      console.error("AI gateway error", resp.status, t);
+      console.error("OpenAI image error", resp.status, t);
+      if (resp.status === 401) {
+        return new Response(JSON.stringify({ error: "OPENAI_API_KEY inválida." }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       if (resp.status === 429) {
-        return new Response(JSON.stringify({ error: "Limite de uso atingido. Tente novamente em instantes." }), {
+        return new Response(JSON.stringify({ error: "Limite de uso da OpenAI atingido. Tente novamente em instantes." }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (resp.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos de IA esgotados. Adicione créditos em Settings → Workspace → Usage." }), {
+      if (resp.status === 402 || /insufficient_quota|billing/i.test(t)) {
+        return new Response(JSON.stringify({ error: "Créditos da OpenAI esgotados. Adicione saldo no painel da OpenAI." }), {
           status: 402,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      return new Response(JSON.stringify({ error: `AI gateway erro ${resp.status}: ${t.slice(0, 300)}` }), {
+      return new Response(JSON.stringify({ error: `OpenAI erro ${resp.status}: ${t.slice(0, 400)}` }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const data = await resp.json();
-    const imageUrl: string | undefined = data?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    const item = data?.data?.[0];
+    let imageUrl: string | undefined = item?.url;
+    if (!imageUrl && item?.b64_json) {
+      imageUrl = `data:image/png;base64,${item.b64_json}`;
+    }
 
     if (!imageUrl) {
       console.error("Sem imagem na resposta:", JSON.stringify(data).slice(0, 500));
