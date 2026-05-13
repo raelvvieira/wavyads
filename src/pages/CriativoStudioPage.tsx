@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ImageDropzone } from '@/components/criativo/ImageDropzone';
 import { StepIndicator } from '@/components/criativo/StepIndicator';
 import { cn } from '@/lib/utils';
+import { recordAiUsage } from '@/lib/aiUsageTracker';
 import {
   Sparkles,
   Wand2,
