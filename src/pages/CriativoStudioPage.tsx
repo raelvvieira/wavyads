@@ -574,7 +574,7 @@ ${[...evitaList, ...userNegatives].join('\n')}
               <Select value={model} onValueChange={(v) => setModel(v as any)}>
                 <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {FREEPIK_MODELS.map((m) => (
+                  {IMAGE_MODELS.map((m) => (
                     <SelectItem key={m.id} value={m.id}>
                       <div>
                         <div className="font-medium text-sm">{m.name}</div>
