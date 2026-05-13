@@ -16,6 +16,7 @@ interface GenerateBody {
   aspectRatio: "story" | "square";
   referenceImages?: string[]; // data:... or https URLs (product/scene refs)
   logoImage?: string | null; // single logo
+  storyReference?: string | null; // already-generated Story image, used as visual ground truth for the square
 }
 
 function modelId(m: ImgModel) {
@@ -35,6 +36,7 @@ serve(async (req) => {
     const { model, prompt, aspectRatio } = body;
     const referenceImages = Array.isArray(body.referenceImages) ? body.referenceImages.filter(Boolean) : [];
     const logoImage = body.logoImage || null;
+    const storyReference = body.storyReference || null;
 
     if (!model || !prompt || !aspectRatio) {
       return new Response(JSON.stringify({ error: "model, prompt e aspectRatio são obrigatórios" }), {
@@ -43,34 +45,35 @@ serve(async (req) => {
       });
     }
 
-    // Reinforce aspect ratio at the very top (Nano Banana respects strong textual instructions).
     const dimsLine = aspectRatio === "story"
       ? "OUTPUT IMAGE FORMAT (mandatory): exactly 1080x1920 pixels, vertical 9:16 Instagram Story aspect ratio. The full canvas MUST be vertical 9:16 — do not output square or landscape."
       : "OUTPUT IMAGE FORMAT (mandatory): exactly 1080x1080 pixels, perfect 1:1 square Instagram post. The full canvas MUST be a square — do not output vertical or landscape.";
 
-    const refsHint = referenceImages.length > 0 || logoImage
-      ? `\n\n[ATTACHED REFERENCE IMAGES — ROLES]\n${
-          referenceImages.length > 0
-            ? `- The first ${referenceImages.length} attached image(s) are the SUBJECT/PRODUCT/SCENE photo(s). Use them as the literal subject of the composition. Preserve faces, body, product shape and likeness.`
-            : ""
-        }${logoImage ? `\n- The LAST attached image is the BRAND LOGO. Place it small in a corner (top-left or bottom-right) without distortion, recoloring, or redrawing. Treat it as a fixed brand asset.` : ""}`
-      : "";
+    const roles: string[] = [];
+    if (storyReference) {
+      roles.push("- The FIRST attached image is the already-generated STORY version of this same creative. It is the VISUAL GROUND TRUTH: replicate its exact color palette, lighting, photographic treatment, color grading, typography, mood and overall style. Only the framing/composition changes to fit the new aspect ratio.");
+    }
+    if (referenceImages.length > 0) {
+      roles.push(`- The next ${referenceImages.length} attached image(s) are the SUBJECT/PRODUCT/SCENE photo(s). Use them as the literal subject of the composition. Preserve faces, body, product shape and likeness.`);
+    }
+    if (logoImage) {
+      roles.push("- The LAST attached image is the BRAND LOGO. Place it small in a corner (top-left or bottom-right) without distortion, recoloring, or redrawing. Treat it as a fixed brand asset.");
+    }
+    const refsHint = roles.length > 0 ? `\n\n[ATTACHED REFERENCE IMAGES — ROLES]\n${roles.join("\n")}` : "";
 
     const fullPrompt = `${dimsLine}\n\n${prompt}${refsHint}`;
 
     const userContent: any[] = [{ type: "text", text: fullPrompt }];
-    for (const url of referenceImages) {
-      userContent.push({ type: "image_url", image_url: { url } });
-    }
-    if (logoImage) {
-      userContent.push({ type: "image_url", image_url: { url: logoImage } });
-    }
+    if (storyReference) userContent.push({ type: "image_url", image_url: { url: storyReference } });
+    for (const url of referenceImages) userContent.push({ type: "image_url", image_url: { url } });
+    if (logoImage) userContent.push({ type: "image_url", image_url: { url: logoImage } });
 
     console.log(
       "criativo-generate →",
       model,
       aspectRatio,
       `prompt_chars=${fullPrompt.length}`,
+      `story_ref=${storyReference ? 1 : 0}`,
       `refs=${referenceImages.length}`,
       `logo=${logoImage ? 1 : 0}`,
     );
