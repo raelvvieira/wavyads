@@ -309,9 +309,11 @@ A reference Story version of this same creative is attached as the FIRST image. 
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
+      recordAiUsage('text-flash');
       const variations = (data as any).variations as FactorVariation[];
       setFactorVariations(variations);
 
+      const imgUsageType = model === 'nano-banana-pro' ? 'image-nano-pro' : 'image-nano-2';
       await Promise.all(
         variations.map(async (v, i) => {
           try {
