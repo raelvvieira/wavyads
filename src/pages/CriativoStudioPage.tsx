@@ -716,34 +716,48 @@ A reference Story version of this same creative is attached as the FIRST image. 
             <p className="text-[10px] text-white/40">A IA cria com base no mood, referências e copy aprovada. Edite se quiser ajustar tom ou nicho.</p>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
-            <div>
-              <Label className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5 block">Modelo</Label>
-              <Select value={model} onValueChange={(v) => setModel(v as any)}>
-                <SelectTrigger className="text-[13px] sm:text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {IMAGE_MODELS.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      <div>
-                        <div className="font-medium text-sm">{m.name}</div>
-                        <div className="text-[11px] text-muted-foreground">{m.desc}</div>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div>
+            <Label className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5 block">
+              Qualidade da imagem (gpt-image-2)
+            </Label>
+            <div className="grid grid-cols-3 gap-2">
+              {QUALITY_OPTIONS.map((q) => {
+                const active = quality === q.id;
+                return (
+                  <button
+                    key={q.id}
+                    type="button"
+                    onClick={() => setQuality(q.id)}
+                    className={cn(
+                      'glass rounded-lg px-3 py-2 text-left transition border',
+                      active
+                        ? 'border-accent/60 bg-accent/10 ring-1 ring-accent/40'
+                        : 'border-white/10 hover:border-white/20',
+                    )}
+                  >
+                    <div className={cn('text-sm font-semibold', active ? 'text-accent' : 'text-white')}>
+                      {q.name}
+                    </div>
+                    <div className="text-[10px] text-white/60 leading-tight mt-0.5">{q.desc}</div>
+                  </button>
+                );
+              })}
             </div>
-            <div>
-              <Label className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5 block">Idioma do texto na arte</Label>
-              <Select value={language} onValueChange={setLanguage}>
-                <SelectTrigger className="text-[13px] sm:text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {LANGUAGES.map((l) => (
-                    <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <p className="text-[10px] text-white/40 mt-1.5">
+              Aplica-se à arte principal. As 5 variações do Fator Criativo usam sempre <span className="text-white/70">Medium</span>.
+            </p>
+          </div>
+
+          <div>
+            <Label className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5 block">Idioma do texto na arte</Label>
+            <Select value={language} onValueChange={setLanguage}>
+              <SelectTrigger className="text-[13px] sm:text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {LANGUAGES.map((l) => (
+                  <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
