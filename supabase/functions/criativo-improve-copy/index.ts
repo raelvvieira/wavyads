@@ -8,17 +8,51 @@ const corsHeaders = {
 
 const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
-const SYSTEM = `Você é copywriter sênior de performance no Brasil. Receba a ideia bruta do anunciante e devolva uma copy publicitária pronta para criativo de Instagram/Facebook: 1 headline impactante, 1 subheadline (opcional) e 1 CTA forte. Português brasileiro, sem clichês, sem emojis exagerados, foco em benefício e gatilho. Nunca prometa resultado mágico nem use superlativos absolutos proibidos pela Meta.`;
+const SYSTEM = `Você é copywriter sênior de criativos publicitários. Aplique a metodologia da skill criativo-studio:
+
+AVALIAÇÃO (5 critérios):
+1. Clareza — mensagem em 3 segundos
+2. Hierarquia — label/título/subtítulo/dados/CTA bem definidos
+3. Brevidade — cada palavra ganha seu lugar
+4. Gatilho — usa pelo menos um: urgência, escassez, benefício concreto, prova ou curiosidade
+5. Tom — alinhado com o mood visual (se fornecido)
+
+ESTRUTURA EM 5 BLOCOS VISUAIS (cada bloco corresponde a uma posição na arte):
+- LABEL: topo, pequeno, uppercase (opcional — string vazia se não fizer sentido)
+- TÍTULO: dominante, grande (obrigatório)
+- SUBTÍTULO: complementar, médio (opcional)
+- DADOS: data, local, vagas, preço (opcional — string vazia se não houver)
+- CTA: ação, pill ou botão (obrigatório)
+
+REGRAS:
+- Português brasileiro, sem clichês, sem emojis exagerados
+- Foco em benefício e gatilho
+- Nunca prometa resultado mágico nem use superlativos absolutos proibidos pela Meta
+- Se a copy for evento/lançamento, preencha DADOS. Se for branding/produto contínuo, deixe DADOS vazio.`;
 
 const TOOL_PARAMS = {
   type: "object",
   properties: {
-    headline: { type: "string", description: "Headline principal, até 60 caracteres" },
-    subheadline: { type: "string", description: "Subheadline opcional, até 90 caracteres. Pode ser string vazia." },
-    cta: { type: "string", description: "Call to action curto (ex: Agende agora, Fale no WhatsApp)" },
+    label: { type: "string", description: "Label de topo, uppercase curto. String vazia se não fizer sentido." },
+    titulo: { type: "string", description: "Título principal — dominante, até 60 caracteres" },
+    subtitulo: { type: "string", description: "Subtítulo opcional, até 90 caracteres. String vazia se não usar." },
+    dados: { type: "string", description: "Dados objetivos: data, local, vagas, preço. String vazia se não houver." },
+    cta: { type: "string", description: "Call to action curto e direto" },
+    avaliacao: {
+      type: "object",
+      properties: {
+        clareza: { type: "string" },
+        hierarquia: { type: "string" },
+        brevidade: { type: "string" },
+        gatilho: { type: "string" },
+        tom: { type: "string" },
+      },
+      required: ["clareza", "hierarquia", "brevidade", "gatilho", "tom"],
+      additionalProperties: false,
+    },
     justificativa: { type: "string", description: "1-2 frases explicando o porquê dessa copy funcionar" },
   },
-  required: ["headline", "subheadline", "cta", "justificativa"],
+  required: ["label", "titulo", "subtitulo", "dados", "cta", "avaliacao", "justificativa"],
   additionalProperties: false,
 };
 
@@ -29,7 +63,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
 
-    const { rawCopy, context } = await req.json();
+    const { rawCopy, context, moodAdjetivos } = await req.json();
     if (!rawCopy || typeof rawCopy !== "string") {
       return new Response(JSON.stringify({ error: "Envie a copy bruta" }), {
         status: 400,
@@ -41,9 +75,10 @@ serve(async (req) => {
 """
 ${rawCopy}
 """
-${context ? `\nContexto adicional: ${context}` : ""}
+${context ? `\nContexto do negócio: ${context}` : ""}
+${moodAdjetivos ? `\nMood visual identificado: ${moodAdjetivos}` : ""}
 
-Reescreva como copy de criativo pronta.`;
+Aplique os 5 critérios de avaliação e devolva a copy reescrita nos 5 blocos visuais.`;
 
     const response = await fetch(AI_URL, {
       method: "POST",
@@ -62,7 +97,7 @@ Reescreva como copy de criativo pronta.`;
             type: "function",
             function: {
               name: "improve_copy",
-              description: "Devolve copy estruturada",
+              description: "Devolve copy estruturada em 5 blocos visuais + avaliação",
               parameters: TOOL_PARAMS,
             },
           },
