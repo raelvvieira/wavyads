@@ -51,11 +51,9 @@ interface CopyResult {
   justificativa: string;
 }
 
-const FREEPIK_MODELS = [
-  { id: 'classic-fast', name: 'Classic Fast', desc: 'Rápido e barato — bom para testes' },
-  { id: 'flux-dev', name: 'Flux Dev', desc: 'Equilíbrio entre qualidade e velocidade' },
-  { id: 'mystic', name: 'Mystic 2K', desc: 'Alta qualidade fotorrealista' },
-  { id: 'imagen3', name: 'Imagen 3', desc: 'Google Imagen via Freepik' },
+const IMAGE_MODELS = [
+  { id: 'nano-banana-pro', name: 'Nano Banana Pro', desc: 'Qualidade alta — usa fotos e logo, renderiza textos' },
+  { id: 'nano-banana-2', name: 'Nano Banana 2', desc: 'Mais rápido — boa qualidade, mesmo motor' },
 ] as const;
 
 const LANGUAGES = [
