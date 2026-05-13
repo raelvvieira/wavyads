@@ -371,6 +371,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
+      recordAiUsage(model === 'nano-banana-pro' ? 'image-nano-pro' : 'image-nano-2');
       const url = (data as any).imageUrl;
       if (aspect === 'story') setStoryImage(url);
       else setSquareImage(url);
