@@ -53,7 +53,7 @@ serve(async (req) => {
         Authorization: `Bearer ${OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-image-2",
+        model: "gpt-image-1.5",
         prompt,
         n: 1,
         size,
