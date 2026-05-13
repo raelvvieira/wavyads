@@ -51,11 +51,9 @@ interface CopyResult {
   justificativa: string;
 }
 
-const FREEPIK_MODELS = [
-  { id: 'classic-fast', name: 'Classic Fast', desc: 'Rápido e barato — bom para testes' },
-  { id: 'flux-dev', name: 'Flux Dev', desc: 'Equilíbrio entre qualidade e velocidade' },
-  { id: 'mystic', name: 'Mystic 2K', desc: 'Alta qualidade fotorrealista' },
-  { id: 'imagen3', name: 'Imagen 3', desc: 'Google Imagen via Freepik' },
+const IMAGE_MODELS = [
+  { id: 'nano-banana-pro', name: 'Nano Banana Pro', desc: 'Qualidade alta — usa fotos e logo, renderiza textos' },
+  { id: 'nano-banana-2', name: 'Nano Banana 2', desc: 'Mais rápido — boa qualidade, mesmo motor' },
 ] as const;
 
 const LANGUAGES = [
@@ -90,7 +88,7 @@ export default function CriativoStudioPage() {
   const [preserveFaces, setPreserveFaces] = useState(true);
 
   // Step 4
-  const [model, setModel] = useState<typeof FREEPIK_MODELS[number]['id']>('flux-dev');
+  const [model, setModel] = useState<typeof IMAGE_MODELS[number]['id']>('nano-banana-pro');
   const [language, setLanguage] = useState<string>('pt-BR');
   const [businessContext, setBusinessContext] = useState('');
   const [negativePrompt, setNegativePrompt] = useState('');
@@ -234,7 +232,13 @@ ${[...evitaList, ...userNegatives].join('\n')}
     try {
       const prompt = buildFinalPrompt(aspect);
       const { data, error } = await supabase.functions.invoke('criativo-generate', {
-        body: { model, prompt, aspectRatio: aspect },
+        body: {
+          model,
+          prompt,
+          aspectRatio: aspect,
+          referenceImages: productImages,
+          logoImage: logoImage[0] || null,
+        },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
@@ -552,7 +556,7 @@ ${[...evitaList, ...userNegatives].join('\n')}
           <div>
             <h2 className="text-base font-semibold">4. Gerar criativo</h2>
             <p className="text-xs text-white/60 mt-1">
-              Configure contexto e modelo. Comece pelo Story 1080x1920 e depois recrie em quadrado.
+              Renderiza copy, fotos e logo direto na imagem. Comece pelo Story 1080x1920 e depois recrie em quadrado.
             </p>
           </div>
 
@@ -576,7 +580,7 @@ ${[...evitaList, ...userNegatives].join('\n')}
               <Select value={model} onValueChange={(v) => setModel(v as any)}>
                 <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {FREEPIK_MODELS.map((m) => (
+                  {IMAGE_MODELS.map((m) => (
                     <SelectItem key={m.id} value={m.id}>
                       <div>
                         <div className="font-medium text-sm">{m.name}</div>
