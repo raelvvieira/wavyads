@@ -55,10 +55,12 @@ interface CopyResult {
   justificativa: string;
 }
 
-const IMAGE_MODELS = [
-  { id: 'nano-banana-pro', name: 'Nano Banana Pro', desc: 'Qualidade alta — usa fotos e logo, renderiza textos' },
-  { id: 'nano-banana-2', name: 'Nano Banana 2', desc: 'Mais rápido — boa qualidade, mesmo motor' },
-] as const;
+type Quality = 'low' | 'medium' | 'high';
+const QUALITY_OPTIONS: { id: Quality; name: string; desc: string }[] = [
+  { id: 'low', name: 'Low', desc: 'Rascunho rápido e barato' },
+  { id: 'medium', name: 'Medium', desc: 'Equilíbrio ideal para anúncios' },
+  { id: 'high', name: 'High', desc: 'Máxima qualidade para campanhas premium' },
+];
 
 const LANGUAGES = [
   { id: 'pt-BR', label: 'Português (BR)' },
