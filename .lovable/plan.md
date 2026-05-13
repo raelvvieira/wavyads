@@ -1,115 +1,48 @@
-# Plano — Fator Criativo (5 variações estratégicas)
+# Migração da geração de imagens para OpenAI gpt-image-2
 
-## Visão geral
+## 1. Secret
+Verificar `OPENAI_API_KEY` em Edge Functions → Secrets. Se ausente, solicitar via `add_secret` antes de implementar.
 
-Adicionar, ao final da Step 4 do Criativo Studio, um botão **"Aplicar Fator Criativo"** (branco, com efeito de brilho/shimmer). Ao clicar, geramos **5 novos criativos** estratégicos, exibidos lado a lado com os já criados (Story / Quadrado), seguindo a lógica da skill `FATOR-CRIATIVO.md`:
+## 2. UI — seletor de qualidade (Step 4)
 
-- Cada variação muda **um eixo** diferente (ângulo emocional, frame de oferta, persona, hook visual, estrutura de copy)
-- Cada variação tem **copy nova + prompt visual novo**, mas mantém o **DNA visual da marca** (paleta, tipografia, logo, safe zones)
-- Renderizadas no mesmo formato que a arte original (Story 9:16 ou Quadrado 1:1 — usa o que já existe; se ambos existem, segue o Story)
+`src/pages/CriativoStudioPage.tsx`:
+- Novo estado: `const [quality, setQuality] = useState<'low'|'medium'|'high'>('medium')`.
+- Bloco de 3 botões (toggle group) logo acima dos botões "Gerar Story / Quadrado", dentro do `GlassCard` da Step 4:
+  - **Low** — "Rascunho rápido e barato"
+  - **Medium** — "Equilíbrio ideal para anúncios" (default)
+  - **High** — "Máxima qualidade para campanhas premium"
+- Estilo: botões pill com estado ativo destacado em accent verde (segue Apple Glass do projeto). Aparece **só** para a arte principal — não afeta o Fator Criativo.
+- `generate(aspect)` passa `quality` no body. `applyFatorCriativo` **não** passa (edge function força `medium`).
+- Remover seletor de modelo (`IMAGE_MODELS`, `model`, dropdown Nano Banana Pro/2) — não há mais escolha de modelo.
+- Atualizar `aiUsageTracker`: substituir `image-nano-2` / `image-nano-pro` por `image-openai-low`, `image-openai-medium`, `image-openai-high` com custos correspondentes (~$0.011 / $0.042 / $0.167 por 1024). Trocar as 3 chamadas `recordAiUsage(...)` no `CriativoStudioPage` para usar a qualidade efetiva.
 
-## 1. Nova edge function `criativo-fator`
+## 3. Edge function `criativo-generate`
 
-`supabase/functions/criativo-fator/index.ts`
+Reescrita completa (`supabase/functions/criativo-generate/index.ts`):
+- Body novo: `{ prompt, aspectRatio: 'story'|'square', quality?: 'low'|'medium'|'high', isVariation?: boolean }`.
+- `size`: `story` → `1024x1536`; `square` → `1024x1024`.
+- `quality` final: `isVariation ? 'medium' : (quality ?? 'medium')`.
+- Chamada exata conforme spec do usuário a `https://api.openai.com/v1/images/generations` com `model: "gpt-image-2"`, header `Authorization: Bearer ${OPENAI_API_KEY}`.
+- Resposta: `data.data[0].url` (segue spec do usuário). Se vier `b64_json`, converter para `data:image/png;base64,...`.
+- CORS preservado; tratamento 401/429/insufficient_quota com mensagens em PT.
+- Remover toda referência a `LOVABLE_API_KEY`, `ai.gateway.lovable.dev`, `modelId`, blocos de `[ATTACHED REFERENCE IMAGES — ROLES]` e o array `userContent` com `image_url`.
 
-Responsável por **gerar os 5 pacotes estratégicos** (copy + prompt) via Lovable AI Gateway.
+## 4. Fator Criativo
 
-- Modelo: `google/gemini-3-flash-preview` (texto, rápido e barato)
-- Recebe:
-  - `originalPrompt` (string) — o `buildFinalPrompt(aspect)` exato usado para gerar a arte original
-  - `analysis` — design system + mood (para referência de DNA visual)
-  - `copyApproved` — copy aprovada (label/título/subtítulo/dados/CTA + idioma)
-  - `businessContext` — contexto do negócio
-  - `aspect` — `'story' | 'square'`
-- Usa **tool calling** (estruturado) com schema:
-  ```
-  variations: [{
-    eixo: 'emocional'|'oferta'|'persona'|'hook'|'estrutura',
-    nome: string,
-    estrategia: { mudanca: string, paraQuem: string },
-    copy: { label, titulo, subtitulo, dados, cta },
-    descricaoVisual: { hook, composicao, tom, diferenca },
-    promptCompleto: string  // prompt pronto para o Nano Banana, mantendo design system, safe zones, logo, idioma
-  }]  // length === 5
-  ```
-- System prompt incorpora a skill `FATOR-CRIATIVO.md` (texto integral inline) + instrução de "preservar o DNA visual" e regenerar os blocos `[INTRODUCTION]`, `[TEXT BLOCKS]`, `[MOOD]` adaptados ao novo eixo, mantendo `[DESIGN SYSTEM]`, `[SAFE ZONE]`, `[BRAND LOGO]`, `[DO NOT INCLUDE]` intactos.
-- Retorna `{ variations: [...] }`.
+`supabase/functions/criativo-fator/index.ts` continua usando `LOVABLE_API_KEY` (Gemini) — é geração **de texto** (estratégia + prompts). O usuário pediu remoção do Lovable AI **para imagens**, não para texto. No frontend, `applyFatorCriativo` chama `criativo-generate` com `isVariation: true` e **sem** `quality`.
 
-## 2. Geração das 5 imagens
+## 5. Arquivos afetados
 
-Após receber as 5 variações, no frontend chamamos a edge function existente `criativo-generate` **5 vezes em paralelo** (`Promise.all`), uma por variação:
-- `model` = mesmo modelo selecionado pelo usuário (Nano Banana Pro / 2)
-- `prompt` = `variation.promptCompleto`
-- `aspectRatio` = mesmo da arte original já gerada (`storyImage ? 'story' : 'square'`)
-- `referenceImages` = `productImages`
-- `logoImage` = `logoImage[0] || null`
-- `storyReference` = `storyImage` (a Story já gerada serve de **ground truth visual** para garantir consistência cromática nas 5 — reutiliza o mecanismo existente)
+- `supabase/functions/criativo-generate/index.ts` — reescrita
+- `src/pages/CriativoStudioPage.tsx` — seletor qualidade, remover seletor de modelo, body novo
+- `src/lib/aiUsageTracker.ts` — novos tipos de uso openai-low/medium/high
 
-Estado novo no `CriativoStudioPage`:
-```ts
-const [factorVariations, setFactorVariations] = useState<FactorVariation[] | null>(null);
-const [factorImages, setFactorImages] = useState<(string|null)[]>([]);
-const [factorLoading, setFactorLoading] = useState(false);
-const [factorProgress, setFactorProgress] = useState(0); // 0..5
-```
+## 6. ⚠️ Pontos de atenção (preciso confirmação antes de implementar)
 
-Fluxo: ao clicar no botão →
-1. `factorLoading = true`, toast "Analisando criativo original e gerando 5 variações estratégicas..."
-2. Chama `criativo-fator` → recebe as 5 estratégias + prompts
-3. Inicializa `factorImages` com 5 `null`
-4. Dispara as 5 chamadas `criativo-generate` em paralelo, atualizando `factorImages[i]` à medida que cada uma volta (e incrementando `factorProgress`)
-5. Toast final "5 variações prontas"
+a. **`gpt-image-2` ainda não é um modelo público da OpenAI** (atualmente o modelo é `gpt-image-1`). A chamada vai falhar com 404 "model not found" até a OpenAI lançar. Você quer que eu use `gpt-image-2` literal (como spec) ou caia para `gpt-image-1` se 2 não existir?
 
-Erros individuais (uma das 5 falha) não derrubam as outras — apenas marca aquele card como "Erro, regenerar".
-
-## 3. UI — Botão e galeria das 5 variações
-
-### Botão "Aplicar Fator Criativo"
-
-Posicionado logo abaixo da galeria atual (Story + Quadrado), dentro do mesmo `GlassCard` da Step 4.
-
-- Aparece **somente quando** `storyImage || squareImage` existe (faz sentido só após ter o original)
-- Estilo: **fundo branco**, texto preto, com efeito de **shimmer/brilho** animado (gradiente conic ou linear-gradient deslizante via Tailwind `before:` + keyframes em `tailwind.config.ts`/`index.css`)
-- Ícone `Sparkles` à esquerda
-- Disabled enquanto `factorLoading`, mostrando spinner + "Gerando variação X de 5..."
-
-Pseudo:
-```tsx
-<button className="relative overflow-hidden rounded-md bg-white text-black px-5 py-2.5 font-medium shadow-[0_0_20px_rgba(255,255,255,0.4)] hover:shadow-[0_0_30px_rgba(255,255,255,0.6)] transition-shadow before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/60 before:to-transparent before:-translate-x-full hover:before:translate-x-full before:transition-transform before:duration-700">
-  <Sparkles /> Aplicar Fator Criativo
-</button>
-```
-Adicionar keyframes `shimmer` em `tailwind.config.ts` para um brilho contínuo sutil mesmo em idle (loop lento, opacidade baixa).
-
-### Galeria das 5 variações
-
-Renderizada **abaixo** das artes originais, em uma seção separada com título "Fator Criativo — 5 Variações Estratégicas":
-
-- Grid responsivo: `grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3`
-- Cada card:
-  - Thumbnail da imagem (clique → abre o `lightboxUrl` existente, reaproveitado)
-  - Badge superior: nome do eixo (ex: "Ângulo Emocional", "Persona", "Hook Visual")
-  - Linha curta com `estrategia.mudanca` (truncada, tooltip com texto completo)
-  - Botão pequeno "Baixar" (reaproveita `download()`)
-  - Skeleton/loading enquanto a respectiva imagem ainda não chegou
-- Em mobile: thumbnails compactas (`w-full max-w-[160px]`), respeitando a regra de UI compacta já memorizada
-
-## 4. Arquivos afetados
-
-- `supabase/functions/criativo-fator/index.ts` — **novo** (geração das 5 estratégias via tool calling)
-- `src/pages/CriativoStudioPage.tsx` — botão, estado, lógica de geração paralela, galeria das 5
-- `tailwind.config.ts` ou `src/index.css` — keyframes `shimmer` para o efeito de brilho
-
-## 5. Fora de escopo
-
-- Não muda Steps 1–3, nem `criativo-analyze-refs`, `criativo-improve-copy`, `criativo-generate`, `criativo-business-context`
-- Sem mudanças no banco / RLS / auth
-- Sem persistir as variações (sessão only — igual ao Story/Quadrado de hoje)
-- Sem regeneração individual de uma variação no v1 (só o conjunto inteiro). Adicionável depois.
-
-## 6. Por que isso resolve
-
-- A skill `FATOR-CRIATIVO.md` é declarativamente um **prompt de raciocínio estratégico**, perfeito para tool calling com Gemini Flash — gera os 5 pacotes coerentes de uma vez
-- Reaproveita 100% da pipeline visual existente (`criativo-generate` + `storyReference` para consistência cromática) → as 5 saem visualmente coerentes com a original
-- Botão branco com shimmer dá o peso de "ação especial" sem poluir a UI (segue Apple Glass + uso pontual de cor)
-- Geração paralela mantém o tempo total próximo ao de uma única imagem (Nano Banana ~8–15s) ao invés de 5x sequencial
+b. **Perda de referências visuais:** o endpoint `/v1/images/generations` da OpenAI **não aceita imagens de referência** (produto, logo, Story já gerada para consistência cromática). Hoje o Nano Banana usa essas refs como ground truth — é o que mantém rosto do produto, logo intacto e Story↔Quadrado coerentes. Opções:
+   - **(A)** Ignorar refs — qualidade visual cai bastante para criativos com produto/pessoa/logo.
+   - **(B)** Usar `/v1/images/edits` (multipart com até 16 imagens de input) quando houver `productImages`/`logoImage`/`storyReference`, e cair para `/generations` só quando não houver nenhuma ref. Recomendo essa.
+   
+   Qual prefere?
