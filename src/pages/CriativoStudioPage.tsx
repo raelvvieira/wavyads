@@ -28,6 +28,8 @@ import {
   Palette,
   Check,
   ChevronDown,
+  ZoomIn,
+  X,
 } from 'lucide-react';
 
 interface VisualAnalysis {
