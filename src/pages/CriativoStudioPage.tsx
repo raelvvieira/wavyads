@@ -820,6 +820,113 @@ A reference Story version of this same creative is attached as the FIRST image. 
               )}
             </div>
           )}
+
+          {(storyImage || squareImage) && (
+            <div className="pt-4 border-t border-white/5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-white" />
+                    Fator Criativo
+                  </h3>
+                  <p className="text-[11px] text-white/50 mt-0.5">
+                    Gera 5 variações estratégicas para alimentar o Andromeda do Meta com sinais distintos.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={applyFatorCriativo}
+                  disabled={factorLoading}
+                  className={cn(
+                    'relative overflow-hidden rounded-lg bg-white text-black px-5 py-2.5 text-sm font-semibold',
+                    'shadow-[0_0_24px_rgba(255,255,255,0.35)] hover:shadow-[0_0_36px_rgba(255,255,255,0.6)]',
+                    'transition-all disabled:opacity-70 disabled:cursor-wait',
+                    'before:absolute before:inset-0 before:bg-[linear-gradient(110deg,transparent_30%,rgba(255,255,255,0.9)_50%,transparent_70%)] before:bg-[length:200%_100%]',
+                    !factorLoading && 'before:animate-[shimmer_2.4s_ease-in-out_infinite]',
+                  )}
+                >
+                  <span className="relative flex items-center gap-2">
+                    {factorLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Gerando {factorProgress}/5…
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4" />
+                        Aplicar Fator Criativo
+                      </>
+                    )}
+                  </span>
+                </button>
+              </div>
+
+              {(factorVariations || factorLoading) && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
+                  {Array.from({ length: 5 }).map((_, i) => {
+                    const v = factorVariations?.[i];
+                    const img = factorImages[i];
+                    const err = factorErrors[i];
+                    const ratio = storyImage ? 'aspect-[9/16]' : 'aspect-square';
+                    return (
+                      <div key={i} className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[9px] uppercase tracking-wider text-accent font-semibold">
+                            #{i + 1} {v?.eixo || '...'}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => img && setLightboxUrl(img)}
+                          disabled={!img}
+                          className={cn(
+                            'group relative block w-full rounded-lg overflow-hidden glass',
+                            ratio,
+                            img ? 'cursor-zoom-in' : 'cursor-default',
+                          )}
+                        >
+                          {img ? (
+                            <>
+                              <img src={img} alt={v?.nome || `variação ${i + 1}`} className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                <ZoomIn className="h-5 w-5 text-white drop-shadow" />
+                              </div>
+                            </>
+                          ) : err ? (
+                            <div className="absolute inset-0 flex items-center justify-center p-2 text-[10px] text-destructive text-center">
+                              Erro ao gerar
+                            </div>
+                          ) : (
+                            <Skeleton className="w-full h-full" />
+                          )}
+                        </button>
+                        {v && (
+                          <p className="text-[10px] text-white/70 font-medium truncate" title={v.nome}>
+                            {v.nome}
+                          </p>
+                        )}
+                        {v && (
+                          <p className="text-[9px] text-white/40 line-clamp-2" title={v.estrategia.mudanca}>
+                            {v.estrategia.mudanca}
+                          </p>
+                        )}
+                        {img && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => download(img, `fator-${i + 1}-${v?.eixo}-${Date.now()}.png`)}
+                            className="w-full h-7 text-[10px]"
+                          >
+                            <Download className="h-3 w-3 mr-1" /> Baixar
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </GlassCard>
       )}
 
