@@ -99,6 +99,8 @@ export default function CriativoStudioPage() {
   const [generating, setGenerating] = useState(false);
   const [storyImage, setStoryImage] = useState<string | null>(null);
   const [squareImage, setSquareImage] = useState<string | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [contextLoading, setContextLoading] = useState(false);
 
   useEffect(() => {
     if (!roleLoading && !isAdmin) navigate('/dashboard');
