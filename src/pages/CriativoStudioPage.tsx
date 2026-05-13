@@ -199,6 +199,7 @@ export default function CriativoStudioPage() {
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
+      recordAiUsage('text-flash');
       setCopyResult(data as CopyResult);
     } catch (e: any) {
       toast({ title: 'Erro ao melhorar copy', description: e.message, variant: 'destructive' });
