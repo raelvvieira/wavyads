@@ -170,6 +170,7 @@ export default function CriativoStudioPage() {
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
+      recordAiUsage('text-flash');
       const a = data as VisualAnalysis;
       setAnalysis(a);
       setEditedDoc(a.designSystemDoc);
