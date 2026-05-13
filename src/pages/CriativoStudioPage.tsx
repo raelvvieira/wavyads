@@ -284,6 +284,69 @@ A reference Story version of this same creative is attached as the FIRST image. 
       .join('\n\n');
   };
 
+  const applyFatorCriativo = async () => {
+    if (!storyImage && !squareImage) return;
+    const aspect: 'story' | 'square' = storyImage ? 'story' : 'square';
+    setFactorLoading(true);
+    setFactorVariations(null);
+    setFactorImages([null, null, null, null, null]);
+    setFactorErrors([null, null, null, null, null]);
+    setFactorProgress(0);
+    try {
+      const originalPrompt = buildFinalPrompt(aspect);
+      const { data, error } = await supabase.functions.invoke('criativo-fator', {
+        body: {
+          originalPrompt,
+          copy: copySource === 'ai' ? copyResult : { rawCopy },
+          businessContext,
+          language,
+          aspect,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const variations = (data as any).variations as FactorVariation[];
+      setFactorVariations(variations);
+
+      await Promise.all(
+        variations.map(async (v, i) => {
+          try {
+            const { data: gd, error: ge } = await supabase.functions.invoke('criativo-generate', {
+              body: {
+                model,
+                prompt: v.promptCompleto,
+                aspectRatio: aspect,
+                referenceImages: productImages,
+                logoImage: logoImage[0] || null,
+                storyReference: storyImage,
+              },
+            });
+            if (ge) throw ge;
+            if ((gd as any)?.error) throw new Error((gd as any).error);
+            setFactorImages((prev) => {
+              const next = [...prev];
+              next[i] = (gd as any).imageUrl;
+              return next;
+            });
+          } catch (err: any) {
+            setFactorErrors((prev) => {
+              const next = [...prev];
+              next[i] = err?.message || 'Erro';
+              return next;
+            });
+          } finally {
+            setFactorProgress((p) => p + 1);
+          }
+        }),
+      );
+      toast({ title: '5 variações prontas' });
+    } catch (e: any) {
+      toast({ title: 'Erro no Fator Criativo', description: e.message, variant: 'destructive' });
+    } finally {
+      setFactorLoading(false);
+    }
+  };
+
   const generate = async (aspect: 'story' | 'square') => {
     setGenerating(true);
     if (aspect === 'square') setSquareImage(null);
