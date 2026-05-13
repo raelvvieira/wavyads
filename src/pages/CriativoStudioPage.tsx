@@ -108,6 +108,39 @@ export default function CriativoStudioPage() {
 
   const completed = [!!analysis, copyApproved, true, !!storyImage];
 
+  const generateBusinessContext = async () => {
+    if (!analysis && !copyResult && !rawCopy.trim()) return;
+    setContextLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('criativo-business-context', {
+        body: {
+          mood: analysis?.mood.adjetivos || [],
+          referencias: analysis?.mood.referencias || [],
+          evita: analysis?.mood.evita || [],
+          copy: copyResult || {},
+          rawCopy,
+          language,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const ctx = (data as any).context;
+      if (ctx) setBusinessContext(ctx);
+    } catch (e: any) {
+      toast({ title: 'Não consegui gerar o contexto', description: e.message, variant: 'destructive' });
+    } finally {
+      setContextLoading(false);
+    }
+  };
+
+  // Auto-generate business context when reaching step 4 the first time
+  useEffect(() => {
+    if (step === 3 && !businessContext && !contextLoading && (analysis || copyResult || rawCopy.trim())) {
+      generateBusinessContext();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
   const analyzeRefs = async () => {
     if (refImages.length === 0) {
       toast({ title: 'Adicione ao menos uma imagem', variant: 'destructive' });
