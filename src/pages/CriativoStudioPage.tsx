@@ -5,8 +5,12 @@ import { useRole } from '@/hooks/useRole';
 import { GlassCard } from '@/components/GlassCard';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useToast } from '@/hooks/use-toast';
 import { ImageDropzone } from '@/components/criativo/ImageDropzone';
 import { StepIndicator } from '@/components/criativo/StepIndicator';
@@ -22,22 +26,28 @@ import {
   RotateCcw,
   Palette,
   Check,
+  ChevronDown,
 } from 'lucide-react';
 
 interface VisualAnalysis {
-  paletaCores: string[];
-  tipografia: string;
-  composicao: string;
-  elementosGraficos: string;
-  estilo: string;
-  mood: string;
-  promptVisual: string;
+  composicao: { formato: string; estrutura: string; hierarquia: string; silencio: string };
+  fotografia: { tipo: string; luz: string; tratamento: string; integracao: string };
+  paleta: { dominante: string; secundaria: string; acento: string; saturacao: string; hexes: string[] };
+  tipografia: { familiaA: string; familiaB: string; contraste: string; alinhamento: string };
+  camadas: string[];
+  hierarquiaVisual: string;
+  espaco: string;
+  mood: { adjetivos: string[]; referencias: string[]; evita: string[] };
+  designSystemDoc: string;
 }
 
 interface CopyResult {
-  headline: string;
-  subheadline: string;
+  label: string;
+  titulo: string;
+  subtitulo: string;
+  dados: string;
   cta: string;
+  avaliacao: { clareza: string; hierarquia: string; brevidade: string; gatilho: string; tom: string };
   justificativa: string;
 }
 
@@ -46,6 +56,12 @@ const FREEPIK_MODELS = [
   { id: 'flux-dev', name: 'Flux Dev', desc: 'Equilíbrio entre qualidade e velocidade' },
   { id: 'mystic', name: 'Mystic 2K', desc: 'Alta qualidade fotorrealista' },
   { id: 'imagen3', name: 'Imagen 3', desc: 'Google Imagen via Freepik' },
+] as const;
+
+const LANGUAGES = [
+  { id: 'pt-BR', label: 'Português (BR)' },
+  { id: 'en', label: 'English' },
+  { id: 'es', label: 'Español' },
 ] as const;
 
 export default function CriativoStudioPage() {
@@ -59,7 +75,7 @@ export default function CriativoStudioPage() {
   const [refImages, setRefImages] = useState<string[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<VisualAnalysis | null>(null);
-  const [editedPrompt, setEditedPrompt] = useState('');
+  const [editedDoc, setEditedDoc] = useState('');
 
   // Step 2
   const [rawCopy, setRawCopy] = useState('');
@@ -71,9 +87,14 @@ export default function CriativoStudioPage() {
   // Step 3
   const [logoImage, setLogoImage] = useState<string[]>([]);
   const [productImages, setProductImages] = useState<string[]>([]);
+  const [preserveFaces, setPreserveFaces] = useState(true);
 
   // Step 4
   const [model, setModel] = useState<typeof FREEPIK_MODELS[number]['id']>('flux-dev');
+  const [language, setLanguage] = useState<string>('pt-BR');
+  const [businessContext, setBusinessContext] = useState('');
+  const [negativePrompt, setNegativePrompt] = useState('');
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [storyImage, setStoryImage] = useState<string | null>(null);
   const [squareImage, setSquareImage] = useState<string | null>(null);
@@ -96,8 +117,9 @@ export default function CriativoStudioPage() {
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      setAnalysis(data as VisualAnalysis);
-      setEditedPrompt((data as VisualAnalysis).promptVisual);
+      const a = data as VisualAnalysis;
+      setAnalysis(a);
+      setEditedDoc(a.designSystemDoc);
       toast({ title: 'Análise concluída' });
     } catch (e: any) {
       toast({ title: 'Erro ao analisar', description: e.message, variant: 'destructive' });
@@ -115,7 +137,11 @@ export default function CriativoStudioPage() {
     setCopyApproved(false);
     try {
       const { data, error } = await supabase.functions.invoke('criativo-improve-copy', {
-        body: { rawCopy },
+        body: {
+          rawCopy,
+          context: businessContext,
+          moodAdjetivos: analysis?.mood.adjetivos.join(', ') || '',
+        },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
@@ -129,36 +155,77 @@ export default function CriativoStudioPage() {
 
   const buildFinalPrompt = (aspect: 'story' | 'square') => {
     const dims = aspect === 'story'
-      ? '1080x1920 vertical 9:16 Instagram Story format'
-      : '1080x1080 perfect square 1:1 Instagram post format';
-    const visual = editedPrompt || analysis?.promptVisual || '';
-    const palette = analysis?.paletaCores?.join(', ') || '';
+      ? '9:16 vertical Instagram Story, 1080x1920px'
+      : '1:1 perfect square Instagram post, 1080x1080px';
+    const safeZone = aspect === 'story'
+      ? 'Top safe zone: keep 280px from the very top edge completely free of any text, graphic or important element. Bottom safe zone: keep 280px from the very bottom edge completely free. This protects against Instagram UI overlays (profile, stickers, reply bar).'
+      : 'Top safe zone: keep 120px from the top edge clear of important text. Bottom safe zone: keep 120px from the bottom edge clear.';
 
-    let copyBlock = '';
+    const intro = `[INTRODUCTION]
+Create a ${dims} advertisement image for ${businessContext.trim() || 'a professional brand'}.`;
+
+    const photoBlock = productImages.length > 0
+      ? `[ATTACHED PHOTOS]
+${productImages.length} reference image(s) provided showing the product/person/scene that must appear in the composition.
+${preserveFaces ? 'Preserve their exact likeness. Do NOT alter faces, skin tone, body shape or appearance in any way. Treat the subject as a fixed reference.' : ''}
+Integrate the subject naturally into the composition described below.`
+      : '';
+
+    const designSystem = editedDoc || analysis?.designSystemDoc || '';
+
+    const safe = `[SAFE ZONE]
+${safeZone}
+${aspect === 'square' ? 'Centered composition optimized for square 1:1 framing.' : ''}`;
+
+    // Text blocks from selected copy
+    let textBlocks = '';
     if (copySource === 'ai' && copyResult) {
-      copyBlock = `Include this text overlay (legible, professional typography):\nHeadline: "${copyResult.headline}"\n${copyResult.subheadline ? `Subheadline: "${copyResult.subheadline}"\n` : ''}CTA: "${copyResult.cta}"`;
+      const parts: string[] = [];
+      if (copyResult.label) parts.push(`LABEL (top, small uppercase, wide tracking, secondary color): "${copyResult.label}"`);
+      if (copyResult.titulo) parts.push(`MAIN TITLE (dominant, large, primary typeface, high contrast): "${copyResult.titulo}"`);
+      if (copyResult.subtitulo) parts.push(`SUBTITLE (medium, secondary typeface, supports the title): "${copyResult.subtitulo}"`);
+      if (copyResult.dados) parts.push(`DATA LINE (small, factual: date/place/price/spots): "${copyResult.dados}"`);
+      if (copyResult.cta) parts.push(`CTA (pill or button, accent color, bold): "${copyResult.cta}"`);
+      textBlocks = `[TEXT BLOCKS]
+All text must be rendered exactly as written, in ${language === 'pt-BR' ? 'Portuguese (Brazil)' : language === 'es' ? 'Spanish' : 'English'}, with professional typography and perfect legibility.
+${parts.join('\n')}`;
     } else if (copySource === 'original' && rawCopy.trim()) {
-      copyBlock = `Include this exact text as overlay on the creative (legible, professional typography, do not paraphrase):\n"${rawCopy.trim()}"`;
+      textBlocks = `[TEXT BLOCKS]
+Render the following exact text as overlay on the creative, in ${language === 'pt-BR' ? 'Portuguese (Brazil)' : language === 'es' ? 'Spanish' : 'English'}, professional typography, perfect legibility, do not paraphrase:
+"${rawCopy.trim()}"
+Distribute the text across the composition following the typography system and hierarchy from the design system above.`;
     }
 
-    const productNote = productImages.length > 0
-      ? `Feature the product/person/scene shown in the provided product reference images prominently in the composition.`
+    const logoBlock = logoImage.length > 0
+      ? `[BRAND LOGO]
+A brand logo is provided as a separate reference. Place it discreetly in a corner (top-left or bottom-right preferred), small, clean. Do NOT distort, recolor, recreate or redesign it — treat as a fixed brand asset.`
       : '';
 
-    const logoNote = logoImage.length > 0
-      ? `A brand logo is provided as a separate reference image. Include the brand logo discreetly in a corner of the composition (preferably top-left or bottom-right). Treat the logo as a fixed brand asset: do NOT distort it, do NOT recolor it, do NOT recreate or redesign it. Keep it small and clean.`
+    const moodBlock = analysis?.mood
+      ? `[MOOD]
+Feels like: ${analysis.mood.referencias.join(', ') || 'professional advertising'}.
+Tone: ${analysis.mood.adjetivos.join(', ')}.
+Not: ${analysis.mood.evita.join(', ')}.`
       : '';
 
-    return [
-      `Advertising creative for social media — ${dims}.`,
-      aspect === 'square' ? 'Centered composition optimized for square 1:1 framing.' : '',
-      visual,
-      palette ? `Color palette: ${palette}.` : '',
-      productNote,
-      logoNote,
-      copyBlock,
-      'High quality, polished, professional advertising design, sharp typography, brand-grade composition.',
-    ].filter(Boolean).join('\n\n');
+    const userNegatives = negativePrompt.trim()
+      ? negativePrompt.split('\n').map((l) => `- ${l.trim()}`).filter((l) => l.length > 2)
+      : [];
+    const evitaList = analysis?.mood.evita.map((e) => `- ${e}`) || [];
+
+    const doNot = `[DO NOT INCLUDE]
+${[...evitaList, ...userNegatives].join('\n')}
+- Any element within the top or bottom safe zones
+- Any text in a language other than ${language === 'pt-BR' ? 'Portuguese (Brazil)' : language === 'es' ? 'Spanish' : 'English'}
+- Misspelled, garbled or fake-looking text
+- Watermarks, signatures, low-resolution artifacts
+- Generic stock-photo aesthetic`;
+
+    const closing = `All text in the artwork MUST be written in ${language === 'pt-BR' ? 'Portuguese (Brazil)' : language === 'es' ? 'Spanish' : 'English'}. Final result: high quality, polished, professional advertising design, sharp typography, brand-grade composition.`;
+
+    return [intro, photoBlock, '[DESIGN SYSTEM]\n' + designSystem, safe, logoBlock, textBlocks, moodBlock, doNot, closing]
+      .filter(Boolean)
+      .join('\n\n');
   };
 
   const generate = async (aspect: 'story' | 'square') => {
@@ -199,13 +266,16 @@ export default function CriativoStudioPage() {
     setStep(0);
     setRefImages([]);
     setAnalysis(null);
-    setEditedPrompt('');
+    setEditedDoc('');
     setRawCopy('');
     setCopyResult(null);
     setCopyApproved(false);
     setCopySource('ai');
     setLogoImage([]);
     setProductImages([]);
+    setPreserveFaces(true);
+    setBusinessContext('');
+    setNegativePrompt('');
     setStoryImage(null);
     setSquareImage(null);
   };
@@ -228,7 +298,7 @@ export default function CriativoStudioPage() {
             Criativo Studio
           </h1>
           <p className="text-xs text-white/60 mt-1">
-            Crie criativos com IA: referências → copy → produto → arte final.
+            Referências → Copy → Produto → Arte. Metodologia de direção de arte aplicada a IA generativa.
           </p>
         </div>
         <Button variant="ghost" size="sm" onClick={reset}>
@@ -252,8 +322,7 @@ export default function CriativoStudioPage() {
               1. Referências visuais
             </h2>
             <p className="text-xs text-white/60 mt-1">
-              Carregue, arraste ou cole (Ctrl+V) imagens que servirão de inspiração.
-              A IA vai analisar paleta, tipografia, composição e estilo.
+              A IA decodifica as 8 dimensões: composição, fotografia, paleta, tipografia, camadas, hierarquia, espaço e mood.
             </p>
           </div>
 
@@ -279,33 +348,70 @@ export default function CriativoStudioPage() {
           {analysis && (
             <div className="space-y-4 pt-4 border-t border-white/10">
               <div className="grid sm:grid-cols-2 gap-3 text-xs">
-                <Info label="Estilo" value={analysis.estilo} />
-                <Info label="Mood" value={analysis.mood} />
-                <Info label="Tipografia" value={analysis.tipografia} />
-                <Info label="Composição" value={analysis.composicao} />
-                <Info label="Elementos gráficos" value={analysis.elementosGraficos} />
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-white/40 mb-2">Paleta</p>
-                  <div className="flex flex-wrap gap-2">
-                    {analysis.paletaCores.map((c) => (
-                      <div key={c} className="flex items-center gap-1.5 glass px-2 py-1 rounded-md">
-                        <div className="w-3.5 h-3.5 rounded border border-white/10" style={{ background: c }} />
+                <Section label="Composição">
+                  <Info k="Formato" v={analysis.composicao.formato} />
+                  <Info k="Estrutura" v={analysis.composicao.estrutura} />
+                  <Info k="Hierarquia" v={analysis.composicao.hierarquia} />
+                  <Info k="Silêncio" v={analysis.composicao.silencio} />
+                </Section>
+                <Section label="Fotografia">
+                  <Info k="Tipo" v={analysis.fotografia.tipo} />
+                  <Info k="Luz" v={analysis.fotografia.luz} />
+                  <Info k="Tratamento" v={analysis.fotografia.tratamento} />
+                  <Info k="Integração" v={analysis.fotografia.integracao} />
+                </Section>
+                <Section label="Tipografia">
+                  <Info k="Família A" v={analysis.tipografia.familiaA} />
+                  {analysis.tipografia.familiaB && <Info k="Família B" v={analysis.tipografia.familiaB} />}
+                  <Info k="Contraste" v={analysis.tipografia.contraste} />
+                  <Info k="Alinhamento" v={analysis.tipografia.alinhamento} />
+                </Section>
+                <Section label="Paleta">
+                  <Info k="Saturação" v={analysis.paleta.saturacao} />
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {analysis.paleta.hexes.map((c) => (
+                      <div key={c} className="flex items-center gap-1 glass px-1.5 py-0.5 rounded">
+                        <div className="w-3 h-3 rounded border border-white/10" style={{ background: c }} />
                         <span className="text-[10px] font-mono">{c}</span>
                       </div>
                     ))}
                   </div>
-                </div>
+                </Section>
+              </div>
+
+              <Section label="Camadas (de baixo para cima)">
+                <ol className="space-y-1 text-xs text-white/80 list-decimal list-inside">
+                  {analysis.camadas.map((l, i) => <li key={i}>{l}</li>)}
+                </ol>
+              </Section>
+
+              <div className="grid sm:grid-cols-3 gap-3">
+                <Section label="Mood">
+                  <p className="text-xs text-white/80">{analysis.mood.adjetivos.join(' · ')}</p>
+                </Section>
+                <Section label="Referências">
+                  <p className="text-xs text-white/80">{analysis.mood.referencias.join(', ')}</p>
+                </Section>
+                <Section label="Evita">
+                  <div className="flex flex-wrap gap-1">
+                    {analysis.mood.evita.map((e) => (
+                      <span key={e} className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/15 text-destructive border border-destructive/30">
+                        {e}
+                      </span>
+                    ))}
+                  </div>
+                </Section>
               </div>
 
               <div>
                 <p className="text-[10px] uppercase tracking-wider text-white/40 mb-2">
-                  Prompt visual (editável — esse texto será usado para gerar a arte)
+                  Design System Document (em inglês — vai direto pro prompt; editável)
                 </p>
                 <Textarea
-                  value={editedPrompt}
-                  onChange={(e) => setEditedPrompt(e.target.value)}
-                  rows={5}
-                  className="font-mono text-xs"
+                  value={editedDoc}
+                  onChange={(e) => setEditedDoc(e.target.value)}
+                  rows={8}
+                  className="font-mono text-[11px]"
                 />
               </div>
             </div>
@@ -319,12 +425,12 @@ export default function CriativoStudioPage() {
           <div>
             <h2 className="text-base font-semibold">2. Copywriting</h2>
             <p className="text-xs text-white/60 mt-1">
-              Escreva o que você quer vender. Você pode usar a copy original ou a versão otimizada pela IA.
+              Escreva sua copy. A IA devolve em 5 blocos visuais (label, título, subtítulo, dados, CTA). Você escolhe entre a sua original ou a sugestão.
             </p>
           </div>
 
           <Textarea
-            placeholder="Ex: Estamos vendendo curso de kitesurf em Floripa, foco em iniciantes, com instrutores certificados IKO..."
+            placeholder="Ex: Estamos vendendo curso de kitesurf em Floripa, foco em iniciantes, com instrutores certificados IKO, vagas a partir de R$ 890 começando dia 15/03..."
             value={rawCopy}
             onChange={(e) => setRawCopy(e.target.value)}
             rows={4}
@@ -343,7 +449,6 @@ export default function CriativoStudioPage() {
 
           {(copyResult || rawCopy.trim()) && (
             <div className="grid md:grid-cols-2 gap-3 pt-2">
-              {/* Original */}
               {rawCopy.trim() && (
                 <CopyOptionCard
                   title="Sua copy original"
@@ -358,10 +463,9 @@ export default function CriativoStudioPage() {
                 </CopyOptionCard>
               )}
 
-              {/* AI */}
               {copyResult && (
                 <CopyOptionCard
-                  title="Sugestão da IA"
+                  title="Sugestão da IA — 5 blocos"
                   accent
                   selected={copyApproved && copySource === 'ai'}
                   onSelect={() => {
@@ -370,25 +474,15 @@ export default function CriativoStudioPage() {
                     setStep(2);
                   }}
                 >
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-accent mb-0.5">Headline</p>
-                    <p className="text-sm font-semibold">{copyResult.headline}</p>
-                  </div>
-                  {copyResult.subheadline && (
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider text-white/40 mb-0.5">Subheadline</p>
-                      <p className="text-xs">{copyResult.subheadline}</p>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-white/40 mb-0.5">CTA</p>
-                    <p className="text-xs font-medium">{copyResult.cta}</p>
-                  </div>
+                  {copyResult.label && <CopyBlock label="Label" value={copyResult.label} small uppercase />}
+                  <CopyBlock label="Título" value={copyResult.titulo} bold />
+                  {copyResult.subtitulo && <CopyBlock label="Subtítulo" value={copyResult.subtitulo} />}
+                  {copyResult.dados && <CopyBlock label="Dados" value={copyResult.dados} small />}
+                  <CopyBlock label="CTA" value={copyResult.cta} accent />
                   {copyResult.justificativa && (
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider text-white/40 mb-0.5">Por quê funciona</p>
-                      <p className="text-[11px] text-white/60">{copyResult.justificativa}</p>
-                    </div>
+                    <p className="text-[11px] text-white/50 italic pt-1 border-t border-white/10">
+                      {copyResult.justificativa}
+                    </p>
                   )}
                 </CopyOptionCard>
               )}
@@ -431,6 +525,14 @@ export default function CriativoStudioPage() {
               label="Solte, clique ou cole imagens do produto/pessoa"
               maxImages={6}
             />
+            {productImages.length > 0 && (
+              <div className="flex items-center gap-3 pt-2">
+                <Switch id="preserve" checked={preserveFaces} onCheckedChange={setPreserveFaces} />
+                <Label htmlFor="preserve" className="text-xs cursor-pointer">
+                  Preservar rostos / identidade exatamente como nas referências
+                </Label>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-3">
@@ -450,13 +552,27 @@ export default function CriativoStudioPage() {
           <div>
             <h2 className="text-base font-semibold">4. Gerar criativo</h2>
             <p className="text-xs text-white/60 mt-1">
-              Escolha o modelo de IA e gere a arte. Comece pelo Story 1080x1920.
+              Configure contexto e modelo. Comece pelo Story 1080x1920 e depois recrie em quadrado.
             </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="biz" className="text-[10px] uppercase tracking-wider text-white/40">
+              Contexto do negócio (importante!)
+            </Label>
+            <Input
+              id="biz"
+              placeholder="Ex: Mentoria premium de harmonização facial em São Paulo / Bar de coquetelaria autoral em Pinheiros"
+              value={businessContext}
+              onChange={(e) => setBusinessContext(e.target.value)}
+              className="text-sm"
+            />
+            <p className="text-[10px] text-white/40">Quanto mais específico, melhor o tom visual. "Mentoria premium" ≠ "curso".</p>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-white/40 mb-2 block">Modelo</label>
+              <Label className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5 block">Modelo</Label>
               <Select value={model} onValueChange={(v) => setModel(v as any)}>
                 <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -471,7 +587,39 @@ export default function CriativoStudioPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5 block">Idioma do texto na arte</Label>
+              <Select value={language} onValueChange={setLanguage}>
+                <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {LANGUAGES.map((l) => (
+                    <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+
+          <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="text-xs">
+                <ChevronDown className={cn('h-3.5 w-3.5 mr-1 transition-transform', advancedOpen && 'rotate-180')} />
+                Opções avançadas (DO NOT INCLUDE)
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-2">
+              <Textarea
+                placeholder="Uma instrução por linha. Ex:&#10;cores neon&#10;sombras pesadas&#10;clip-art genérico"
+                value={negativePrompt}
+                onChange={(e) => setNegativePrompt(e.target.value)}
+                rows={3}
+                className="text-xs font-mono"
+              />
+              <p className="text-[10px] text-white/40 mt-1">
+                Itens que a IA deve evitar. Já incluímos automaticamente o que veio do "Evita" da análise visual.
+              </p>
+            </CollapsibleContent>
+          </Collapsible>
 
           <div className="flex gap-3 flex-wrap">
             <Button size="sm" onClick={() => generate('story')} disabled={generating}>
@@ -521,27 +669,28 @@ export default function CriativoStudioPage() {
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div>
-      <p className="text-[10px] uppercase tracking-wider text-white/40 mb-1">{label}</p>
-      <p className="text-xs text-white/80">{value}</p>
+    <div className="space-y-1.5">
+      <p className="text-[10px] uppercase tracking-wider text-accent font-semibold">{label}</p>
+      <div className="space-y-1">{children}</div>
+    </div>
+  );
+}
+
+function Info({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="text-xs">
+      <span className="text-white/40">{k}: </span>
+      <span className="text-white/85">{v}</span>
     </div>
   );
 }
 
 function CopyOptionCard({
-  title,
-  children,
-  selected,
-  onSelect,
-  accent,
+  title, children, selected, onSelect, accent,
 }: {
-  title: string;
-  children: React.ReactNode;
-  selected: boolean;
-  onSelect: () => void;
-  accent?: boolean;
+  title: string; children: React.ReactNode; selected: boolean; onSelect: () => void; accent?: boolean;
 }) {
   return (
     <div
@@ -564,6 +713,22 @@ function CopyOptionCard({
       >
         {selected ? 'Selecionada' : 'Usar essa'}
       </Button>
+    </div>
+  );
+}
+
+function CopyBlock({
+  label, value, bold, small, uppercase, accent,
+}: { label: string; value: string; bold?: boolean; small?: boolean; uppercase?: boolean; accent?: boolean }) {
+  return (
+    <div>
+      <p className={cn('text-[10px] uppercase tracking-wider mb-0.5', accent ? 'text-accent' : 'text-white/40')}>{label}</p>
+      <p className={cn(
+        small ? 'text-[11px]' : 'text-sm',
+        bold && 'font-semibold',
+        uppercase && 'uppercase tracking-wider',
+        accent && 'font-medium',
+      )}>{value}</p>
     </div>
   );
 }

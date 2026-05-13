@@ -8,42 +8,99 @@ const corsHeaders = {
 
 const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
-const SYSTEM = `Você é diretor de arte sênior especializado em criativos publicitários para redes sociais. Analise as imagens de referência fornecidas e extraia TODOS os detalhes visuais que servirão para recriar uma arte com o mesmo estilo. Responda em português brasileiro, de forma objetiva e estruturada.`;
+const SYSTEM = `Você é diretor de arte sênior de criativos publicitários. Sua tarefa NÃO é descrever o que está nas imagens — é DECODIFICAR as decisões de design por trás delas, dimensão por dimensão, com a profundidade técnica que uma IA geradora de imagem precisa para reproduzir o DNA visual.
+
+Princípio central: "Uma IA geradora não vê, ela LÊ." Não use palavras vagas como "elegante", "premium", "bonito". Use instruções precisas: opacidade %, blur strength, hex de cor, peso tipográfico (300/400/500/700), border-radius em px, posição em % do canvas.
+
+Analise as 8 dimensões da metodologia: Composição, Fotografia, Paleta, Tipografia, Camadas/Efeitos, Hierarquia, Espaço, Mood. Responda em português brasileiro nos campos descritivos, mas o campo designSystemDoc deve ser em INGLÊS técnico (vai direto para o prompt de geração).`;
 
 const TOOL_PARAMS = {
   type: "object",
   properties: {
-    paletaCores: {
-      type: "array",
-      description: "Cores principais identificadas em HEX",
-      items: { type: "string" },
+    composicao: {
+      type: "object",
+      properties: {
+        formato: { type: "string", description: "ex: 9:16 vertical, 1:1 quadrado, 4:5 retrato" },
+        estrutura: { type: "string", description: "Como o espaço é dividido — onde fica foto, onde fica texto, em que proporção" },
+        hierarquia: { type: "string", description: "Ordem de leitura: o que o olho pousa primeiro, segundo, terceiro" },
+        silencio: { type: "string", description: "Onde existe espaço intencional sem elementos" },
+      },
+      required: ["formato", "estrutura", "hierarquia", "silencio"],
+      additionalProperties: false,
+    },
+    fotografia: {
+      type: "object",
+      properties: {
+        tipo: { type: "string", description: "ex: pessoa meio corpo, produto centralizado, ambiente, abstrato" },
+        luz: { type: "string", description: "Direção, qualidade, temperatura — ex: natural lateral quente, estúdio frontal difusa" },
+        tratamento: { type: "string", description: "Tratamento de cor — ex: overlay warm 7%, dessaturado, virage cyan" },
+        integracao: { type: "string", description: "Foto é background completo, recortada sobre fundo sólido, ou elemento gráfico" },
+      },
+      required: ["tipo", "luz", "tratamento", "integracao"],
+      additionalProperties: false,
+    },
+    paleta: {
+      type: "object",
+      properties: {
+        dominante: { type: "string", description: "Cor dominante com hex aproximado, ex: 'off-white #F4F0E8'" },
+        secundaria: { type: "string", description: "Cor secundária com hex aproximado" },
+        acento: { type: "string", description: "Cor de acento (usada em pouca quantidade mas com força)" },
+        saturacao: { type: "string", description: "baixa, média ou alta" },
+        hexes: {
+          type: "array",
+          description: "Lista achatada de todos os hex codes identificados, ex: ['#0A0A0A', '#F4F0E8', '#C9A84C']",
+          items: { type: "string" },
+        },
+      },
+      required: ["dominante", "secundaria", "acento", "saturacao", "hexes"],
+      additionalProperties: false,
     },
     tipografia: {
-      type: "string",
-      description: "Estilo das fontes (serif, sans-serif moderno, display, manuscrita, peso, tamanho relativo)",
+      type: "object",
+      properties: {
+        familiaA: { type: "string", description: "Família 1 — referência de fonte (ex: Cormorant Garamond style serif), peso, uso, estilo" },
+        familiaB: { type: "string", description: "Família 2 — referência de fonte, peso, uso, estilo. String vazia se só houver uma." },
+        contraste: { type: "string", description: "Como as duas famílias contrastam (ex: serif elegante para título + sans bold uppercase para label)" },
+        alinhamento: { type: "string", description: "Dominante: centralizado, esquerda, direita" },
+      },
+      required: ["familiaA", "familiaB", "contraste", "alinhamento"],
+      additionalProperties: false,
     },
-    composicao: {
-      type: "string",
-      description: "Layout, hierarquia visual, alinhamento, regra dos terços, áreas de destaque",
+    camadas: {
+      type: "array",
+      description: "Camadas em ORDEM, de baixo para cima. Cada item descreve uma camada com especificações técnicas (opacidade, blur, cor, posição). Ex: 'Layer 1 — Background: full-bleed photo of subject, warm natural light'. 'Layer 2 — Gradient: bottom-to-top rgba(0,0,0,0.55) to rgba(0,0,0,0), covering 40% from bottom, for text legibility'. 'Layer 3 — Glass panel: white at 25% opacity, soft blur behind, 0.5px white border, border-radius 24px, centered at 70% from top'. Sempre inclua opacity, blur, border, radius e posição quando aplicável.",
+      items: { type: "string" },
     },
-    elementosGraficos: {
-      type: "string",
-      description: "Formas, ícones, recortes, sobreposições, gradientes, texturas, efeitos especiais",
-    },
-    estilo: {
-      type: "string",
-      description: "Estilo geral (minimalista, maximalista, retrô, futurista, orgânico, brutalista, etc.)",
-    },
+    hierarquiaVisual: { type: "string", description: "Hierarquia em 3 níveis e o que guia o olhar" },
+    espaco: { type: "string", description: "Densidade geral, uso de espaço negativo, padding interno dos painéis" },
     mood: {
-      type: "string",
-      description: "Sensação transmitida (luxuoso, divertido, urgente, sofisticado, jovem, etc.)",
+      type: "object",
+      properties: {
+        adjetivos: {
+          type: "array",
+          description: "3-5 adjetivos de mood (ex: editorial, minimalista, bold, clínico)",
+          items: { type: "string" },
+        },
+        referencias: {
+          type: "array",
+          description: "Marcas/publicações que esse design lembra (ex: Vogue Brasil, Apple, Aesop)",
+          items: { type: "string" },
+        },
+        evita: {
+          type: "array",
+          description: "O que esse design NÃO é — coisas que ele rejeita (ex: cores vibrantes, sombras pesadas, poluição visual, clip-art)",
+          items: { type: "string" },
+        },
+      },
+      required: ["adjetivos", "referencias", "evita"],
+      additionalProperties: false,
     },
-    promptVisual: {
+    designSystemDoc: {
       type: "string",
-      description: "Prompt visual consolidado em INGLÊS pronto para usar em modelo de geração de imagem (Flux/Mystic/Imagen). Descreva cenário, paleta, composição, tipografia e efeitos. NÃO inclua texto/copy ainda.",
+      description: "Documento Design System COMPLETO em INGLÊS técnico, formato markdown, pronto para ser injetado no prompt final de geração. Deve incluir todas as 8 dimensões com as especificações técnicas (opacity %, blur, hex, border, radius, %position). Esse texto vai direto para o modelo gerador (Flux/Mystic/Imagen/GPT Image).",
     },
   },
-  required: ["paletaCores", "tipografia", "composicao", "elementosGraficos", "estilo", "mood", "promptVisual"],
+  required: ["composicao", "fotografia", "paleta", "tipografia", "camadas", "hierarquiaVisual", "espaco", "mood", "designSystemDoc"],
   additionalProperties: false,
 };
 
@@ -65,12 +122,9 @@ serve(async (req) => {
     const userContent: any[] = [
       {
         type: "text",
-        text: `Analise estas ${images.length} imagem(ns) de referência e extraia todos os detalhes visuais para que possamos criar uma nova arte inspirada nelas.`,
+        text: `Analise estas ${images.length} imagem(ns) de referência aplicando a metodologia das 8 dimensões. Decodifique decisões de design — não descreva conteúdo. Documente camadas com opacidade, blur, borda, radius e posição. Devolva também o designSystemDoc em inglês técnico, pronto pra prompt.`,
       },
-      ...images.map((url: string) => ({
-        type: "image_url",
-        image_url: { url },
-      })),
+      ...images.map((url: string) => ({ type: "image_url", image_url: { url } })),
     ];
 
     const response = await fetch(AI_URL, {
@@ -90,7 +144,7 @@ serve(async (req) => {
             type: "function",
             function: {
               name: "extract_visual_analysis",
-              description: "Estrutura a análise visual das referências",
+              description: "Estrutura a análise visual em 8 dimensões + Design System Document",
               parameters: TOOL_PARAMS,
             },
           },
