@@ -556,7 +556,7 @@ ${[...evitaList, ...userNegatives].join('\n')}
           <div>
             <h2 className="text-base font-semibold">4. Gerar criativo</h2>
             <p className="text-xs text-white/60 mt-1">
-              Configure contexto e modelo. Comece pelo Story 1080x1920 e depois recrie em quadrado.
+              Renderiza copy, fotos e logo direto na imagem. Comece pelo Story 1080x1920 e depois recrie em quadrado.
             </p>
           </div>
 
