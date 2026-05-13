@@ -88,7 +88,7 @@ export default function CriativoStudioPage() {
   const [preserveFaces, setPreserveFaces] = useState(true);
 
   // Step 4
-  const [model, setModel] = useState<typeof FREEPIK_MODELS[number]['id']>('flux-dev');
+  const [model, setModel] = useState<typeof IMAGE_MODELS[number]['id']>('nano-banana-pro');
   const [language, setLanguage] = useState<string>('pt-BR');
   const [businessContext, setBusinessContext] = useState('');
   const [negativePrompt, setNegativePrompt] = useState('');
