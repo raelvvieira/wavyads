@@ -55,10 +55,12 @@ interface CopyResult {
   justificativa: string;
 }
 
-const IMAGE_MODELS = [
-  { id: 'nano-banana-pro', name: 'Nano Banana Pro', desc: 'Qualidade alta — usa fotos e logo, renderiza textos' },
-  { id: 'nano-banana-2', name: 'Nano Banana 2', desc: 'Mais rápido — boa qualidade, mesmo motor' },
-] as const;
+type Quality = 'low' | 'medium' | 'high';
+const QUALITY_OPTIONS: { id: Quality; name: string; desc: string }[] = [
+  { id: 'low', name: 'Low', desc: 'Rascunho rápido e barato' },
+  { id: 'medium', name: 'Medium', desc: 'Equilíbrio ideal para anúncios' },
+  { id: 'high', name: 'High', desc: 'Máxima qualidade para campanhas premium' },
+];
 
 const LANGUAGES = [
   { id: 'pt-BR', label: 'Português (BR)' },
@@ -92,7 +94,7 @@ export default function CriativoStudioPage() {
   const [preserveFaces, setPreserveFaces] = useState(true);
 
   // Step 4
-  const [model, setModel] = useState<typeof IMAGE_MODELS[number]['id']>('nano-banana-pro');
+  const [quality, setQuality] = useState<Quality>('medium');
   const [language, setLanguage] = useState<string>('pt-BR');
   const [businessContext, setBusinessContext] = useState('');
   const [negativePrompt, setNegativePrompt] = useState('');
@@ -313,23 +315,19 @@ A reference Story version of this same creative is attached as the FIRST image. 
       const variations = (data as any).variations as FactorVariation[];
       setFactorVariations(variations);
 
-      const imgUsageType = model === 'nano-banana-pro' ? 'image-nano-pro' : 'image-nano-2';
       await Promise.all(
         variations.map(async (v, i) => {
           try {
             const { data: gd, error: ge } = await supabase.functions.invoke('criativo-generate', {
               body: {
-                model,
                 prompt: v.promptCompleto,
                 aspectRatio: aspect,
-                referenceImages: productImages,
-                logoImage: logoImage[0] || null,
-                storyReference: storyImage,
+                isVariation: true,
               },
             });
             if (ge) throw ge;
             if ((gd as any)?.error) throw new Error((gd as any).error);
-            recordAiUsage(imgUsageType);
+            recordAiUsage('image-openai-medium');
             setFactorImages((prev) => {
               const next = [...prev];
               next[i] = (gd as any).imageUrl;
@@ -361,17 +359,14 @@ A reference Story version of this same creative is attached as the FIRST image. 
       const prompt = buildFinalPrompt(aspect);
       const { data, error } = await supabase.functions.invoke('criativo-generate', {
         body: {
-          model,
           prompt,
           aspectRatio: aspect,
-          referenceImages: productImages,
-          logoImage: logoImage[0] || null,
-          storyReference: aspect === 'square' ? storyImage : null,
+          quality,
         },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      recordAiUsage(model === 'nano-banana-pro' ? 'image-nano-pro' : 'image-nano-2');
+      recordAiUsage(`image-openai-${quality}` as const);
       const url = (data as any).imageUrl;
       if (aspect === 'story') setStoryImage(url);
       else setSquareImage(url);
@@ -721,34 +716,48 @@ A reference Story version of this same creative is attached as the FIRST image. 
             <p className="text-[10px] text-white/40">A IA cria com base no mood, referências e copy aprovada. Edite se quiser ajustar tom ou nicho.</p>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
-            <div>
-              <Label className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5 block">Modelo</Label>
-              <Select value={model} onValueChange={(v) => setModel(v as any)}>
-                <SelectTrigger className="text-[13px] sm:text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {IMAGE_MODELS.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      <div>
-                        <div className="font-medium text-sm">{m.name}</div>
-                        <div className="text-[11px] text-muted-foreground">{m.desc}</div>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div>
+            <Label className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5 block">
+              Qualidade da imagem (gpt-image-2)
+            </Label>
+            <div className="grid grid-cols-3 gap-2">
+              {QUALITY_OPTIONS.map((q) => {
+                const active = quality === q.id;
+                return (
+                  <button
+                    key={q.id}
+                    type="button"
+                    onClick={() => setQuality(q.id)}
+                    className={cn(
+                      'glass rounded-lg px-3 py-2 text-left transition border',
+                      active
+                        ? 'border-accent/60 bg-accent/10 ring-1 ring-accent/40'
+                        : 'border-white/10 hover:border-white/20',
+                    )}
+                  >
+                    <div className={cn('text-sm font-semibold', active ? 'text-accent' : 'text-white')}>
+                      {q.name}
+                    </div>
+                    <div className="text-[10px] text-white/60 leading-tight mt-0.5">{q.desc}</div>
+                  </button>
+                );
+              })}
             </div>
-            <div>
-              <Label className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5 block">Idioma do texto na arte</Label>
-              <Select value={language} onValueChange={setLanguage}>
-                <SelectTrigger className="text-[13px] sm:text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {LANGUAGES.map((l) => (
-                    <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <p className="text-[10px] text-white/40 mt-1.5">
+              Aplica-se à arte principal. As 5 variações do Fator Criativo usam sempre <span className="text-white/70">Medium</span>.
+            </p>
+          </div>
+
+          <div>
+            <Label className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5 block">Idioma do texto na arte</Label>
+            <Select value={language} onValueChange={setLanguage}>
+              <SelectTrigger className="text-[13px] sm:text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {LANGUAGES.map((l) => (
+                  <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>

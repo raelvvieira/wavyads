@@ -4,26 +4,31 @@ import { useEffect, useState, useCallback } from 'react';
  * Rastreador de uso de IA do Criativo Studio.
  * Persiste em localStorage por mês (YYYY-MM) e emite eventos para a UI atualizar.
  *
- * Custos estimados (USD), baseados em preços públicos do Google AI + margem ~20% do Lovable AI Gateway:
- *  - text-flash    (Gemini 2.5/3 Flash, ~1.5k tokens média)        => $0.001
- *  - image-nano-2  (Gemini 3.1 Flash Image — Nano Banana 2)        => $0.024
- *  - image-nano-pro(Gemini 3 Pro Image — Nano Banana Pro 1024px)   => $0.144
- *
- * Tokens são estimativas (imagem conta como ~1290 "tokens" equivalentes).
+ * Custos estimados (USD):
+ *  - text-flash         (Gemini 2.5/3 Flash via Lovable AI)        => $0.001
+ *  - image-openai-low   (gpt-image-2, low quality, 1024)           => $0.011
+ *  - image-openai-medium(gpt-image-2, medium quality, 1024)        => $0.042
+ *  - image-openai-high  (gpt-image-2, high quality, 1024)          => $0.167
  */
 
-export type AiUsageType = 'text-flash' | 'image-nano-2' | 'image-nano-pro';
+export type AiUsageType =
+  | 'text-flash'
+  | 'image-openai-low'
+  | 'image-openai-medium'
+  | 'image-openai-high';
 
 const COST_USD: Record<AiUsageType, number> = {
   'text-flash': 0.001,
-  'image-nano-2': 0.024,
-  'image-nano-pro': 0.144,
+  'image-openai-low': 0.011,
+  'image-openai-medium': 0.042,
+  'image-openai-high': 0.167,
 };
 
 const TOKENS_EST: Record<AiUsageType, number> = {
   'text-flash': 1500,
-  'image-nano-2': 1290,
-  'image-nano-pro': 1290,
+  'image-openai-low': 272,
+  'image-openai-medium': 1056,
+  'image-openai-high': 4160,
 };
 
 const USD_TO_BRL = 5.5;
@@ -36,7 +41,12 @@ interface MonthlyUsage {
 }
 
 const empty = (): MonthlyUsage => ({
-  calls: { 'text-flash': 0, 'image-nano-2': 0, 'image-nano-pro': 0 },
+  calls: {
+    'text-flash': 0,
+    'image-openai-low': 0,
+    'image-openai-medium': 0,
+    'image-openai-high': 0,
+  },
   tokens: 0,
   costUsd: 0,
 });
@@ -86,10 +96,11 @@ export interface AiUsageSnapshot extends MonthlyUsage {
 export function useAiUsage(): AiUsageSnapshot & { reset: () => void } {
   const compute = useCallback((): AiUsageSnapshot => {
     const u = read();
+    const totalCalls = (Object.values(u.calls) as number[]).reduce((a, b) => a + b, 0);
     return {
       ...u,
       costBrl: u.costUsd * USD_TO_BRL,
-      totalCalls: u.calls['text-flash'] + u.calls['image-nano-2'] + u.calls['image-nano-pro'],
+      totalCalls,
       monthLabel: new Date().toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
     };
   }, []);
