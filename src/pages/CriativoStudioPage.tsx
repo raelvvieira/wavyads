@@ -232,7 +232,13 @@ ${[...evitaList, ...userNegatives].join('\n')}
     try {
       const prompt = buildFinalPrompt(aspect);
       const { data, error } = await supabase.functions.invoke('criativo-generate', {
-        body: { model, prompt, aspectRatio: aspect },
+        body: {
+          model,
+          prompt,
+          aspectRatio: aspect,
+          referenceImages: productImages,
+          logoImage: logoImage[0] || null,
+        },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
