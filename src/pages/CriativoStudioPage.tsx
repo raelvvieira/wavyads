@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ImageDropzone } from '@/components/criativo/ImageDropzone';
 import { StepIndicator } from '@/components/criativo/StepIndicator';
 import { cn } from '@/lib/utils';
+import { recordAiUsage } from '@/lib/aiUsageTracker';
 import {
   Sparkles,
   Wand2,
@@ -139,6 +140,7 @@ export default function CriativoStudioPage() {
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
+      recordAiUsage('text-flash');
       const ctx = (data as any).context;
       if (ctx) setBusinessContext(ctx);
     } catch (e: any) {
@@ -168,6 +170,7 @@ export default function CriativoStudioPage() {
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
+      recordAiUsage('text-flash');
       const a = data as VisualAnalysis;
       setAnalysis(a);
       setEditedDoc(a.designSystemDoc);
@@ -196,6 +199,7 @@ export default function CriativoStudioPage() {
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
+      recordAiUsage('text-flash');
       setCopyResult(data as CopyResult);
     } catch (e: any) {
       toast({ title: 'Erro ao melhorar copy', description: e.message, variant: 'destructive' });
@@ -305,9 +309,11 @@ A reference Story version of this same creative is attached as the FIRST image. 
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
+      recordAiUsage('text-flash');
       const variations = (data as any).variations as FactorVariation[];
       setFactorVariations(variations);
 
+      const imgUsageType = model === 'nano-banana-pro' ? 'image-nano-pro' : 'image-nano-2';
       await Promise.all(
         variations.map(async (v, i) => {
           try {
@@ -323,6 +329,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
             });
             if (ge) throw ge;
             if ((gd as any)?.error) throw new Error((gd as any).error);
+            recordAiUsage(imgUsageType);
             setFactorImages((prev) => {
               const next = [...prev];
               next[i] = (gd as any).imageUrl;
@@ -364,6 +371,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
+      recordAiUsage(model === 'nano-banana-pro' ? 'image-nano-pro' : 'image-nano-2');
       const url = (data as any).imageUrl;
       if (aspect === 'story') setStoryImage(url);
       else setSquareImage(url);

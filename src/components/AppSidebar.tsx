@@ -12,8 +12,11 @@ import {
   Sparkles,
   Users,
   Wand2,
+  Zap,
+  RotateCcw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAiUsage } from '@/lib/aiUsageTracker';
 import wavyLogo from '@/assets/wavy-logo.png';
 
 export function AppSidebar() {
@@ -22,6 +25,12 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const { isAdmin } = useRole();
+  const usage = useAiUsage();
+
+  const fmtTokens = (n: number) =>
+    n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `${(n / 1_000).toFixed(1)}k` : String(n);
+  const fmtBrl = (n: number) =>
+    n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
 
   const handleLogout = async () => {
     await signOut();
@@ -110,7 +119,38 @@ export function AppSidebar() {
           )}
         </nav>
 
-        <div className="p-4 border-t border-white/10">
+        <div className="p-4 border-t border-white/10 space-y-3">
+          {isAdmin && (
+            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-white/40 font-medium">
+                  <Zap className="h-3 w-3 text-accent" />
+                  Uso de I.A · {usage.monthLabel}
+                </div>
+                <button
+                  onClick={() => {
+                    if (confirm('Zerar contador de uso deste mês?')) usage.reset();
+                  }}
+                  className="text-white/30 hover:text-white/70 transition-colors"
+                  title="Zerar contador"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                </button>
+              </div>
+              <div className="flex items-baseline justify-between">
+                <span className="text-lg font-semibold text-white tabular-nums">
+                  {fmtBrl(usage.costBrl)}
+                </span>
+                <span className="text-[11px] text-white/50 tabular-nums">
+                  {fmtTokens(usage.tokens)} tok
+                </span>
+              </div>
+              <div className="mt-1.5 text-[10px] text-white/40 tabular-nums">
+                {usage.totalCalls} chamadas · ${usage.costUsd.toFixed(3)} USD
+              </div>
+            </div>
+          )}
+
           <button onClick={handleLogout} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-white/60 transition-all duration-300 hover:bg-destructive/10 hover:text-destructive">
             <LogOut className="h-5 w-5" />
             Sair
