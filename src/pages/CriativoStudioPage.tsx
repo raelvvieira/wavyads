@@ -329,6 +329,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
             });
             if (ge) throw ge;
             if ((gd as any)?.error) throw new Error((gd as any).error);
+            recordAiUsage(imgUsageType);
             setFactorImages((prev) => {
               const next = [...prev];
               next[i] = (gd as any).imageUrl;
