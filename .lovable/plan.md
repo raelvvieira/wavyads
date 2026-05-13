@@ -1,75 +1,115 @@
-# Plano — Refinos no Criativo Studio
+# Plano — Fator Criativo (5 variações estratégicas)
 
-## 1. Contexto do negócio gerado pela IA (Step 4)
+## Visão geral
 
-Hoje o campo "Contexto do negócio" é texto livre digitado pelo usuário. Vou transformá-lo em **gerado automaticamente** com base em tudo que já foi capturado:
+Adicionar, ao final da Step 4 do Criativo Studio, um botão **"Aplicar Fator Criativo"** (branco, com efeito de brilho/shimmer). Ao clicar, geramos **5 novos criativos** estratégicos, exibidos lado a lado com os já criados (Story / Quadrado), seguindo a lógica da skill `FATOR-CRIATIVO.md`:
 
-- Mood/referências/adjetivos da Step 1 (análise visual)
-- Copy aprovada da Step 2 (label, título, subtítulo, dados, CTA)
-- Idioma escolhido
+- Cada variação muda **um eixo** diferente (ângulo emocional, frame de oferta, persona, hook visual, estrutura de copy)
+- Cada variação tem **copy nova + prompt visual novo**, mas mantém o **DNA visual da marca** (paleta, tipografia, logo, safe zones)
+- Renderizadas no mesmo formato que a arte original (Story 9:16 ou Quadrado 1:1 — usa o que já existe; se ambos existem, segue o Story)
 
-**Como:** quando o usuário entra na Step 4 (e ainda não tem `businessContext`), disparar uma chamada à edge function nova `criativo-business-context` que usa Lovable AI (`google/gemini-3-flash-preview`) para devolver 1–2 frases descrevendo o negócio/oferta. O campo continua editável (caso queira ajustar) e ganha um botão "Regenerar" ao lado.
+## 1. Nova edge function `criativo-fator`
 
-- Nova edge function: `supabase/functions/criativo-business-context/index.ts`
-- Hook no `CriativoStudioPage`: `useEffect` ao entrar na step 4 com `analysis` + `copyResult` presentes e `businessContext` vazio.
-- UI: label muda para "Contexto do negócio (gerado automaticamente)", com botão pequeno `RefreshCw` "Regenerar" e estado de loading.
+`supabase/functions/criativo-fator/index.ts`
 
-## 2. Lightbox para ampliar imagens geradas
+Responsável por **gerar os 5 pacotes estratégicos** (copy + prompt) via Lovable AI Gateway.
 
-Atualmente as imagens Story/Quadrado são miniaturas fixas (220px / 280px). Vou adicionar **clique para ampliar em fullscreen**:
+- Modelo: `google/gemini-3-flash-preview` (texto, rápido e barato)
+- Recebe:
+  - `originalPrompt` (string) — o `buildFinalPrompt(aspect)` exato usado para gerar a arte original
+  - `analysis` — design system + mood (para referência de DNA visual)
+  - `copyApproved` — copy aprovada (label/título/subtítulo/dados/CTA + idioma)
+  - `businessContext` — contexto do negócio
+  - `aspect` — `'story' | 'square'`
+- Usa **tool calling** (estruturado) com schema:
+  ```
+  variations: [{
+    eixo: 'emocional'|'oferta'|'persona'|'hook'|'estrutura',
+    nome: string,
+    estrategia: { mudanca: string, paraQuem: string },
+    copy: { label, titulo, subtitulo, dados, cta },
+    descricaoVisual: { hook, composicao, tom, diferenca },
+    promptCompleto: string  // prompt pronto para o Nano Banana, mantendo design system, safe zones, logo, idioma
+  }]  // length === 5
+  ```
+- System prompt incorpora a skill `FATOR-CRIATIVO.md` (texto integral inline) + instrução de "preservar o DNA visual" e regenerar os blocos `[INTRODUCTION]`, `[TEXT BLOCKS]`, `[MOOD]` adaptados ao novo eixo, mantendo `[DESIGN SYSTEM]`, `[SAFE ZONE]`, `[BRAND LOGO]`, `[DO NOT INCLUDE]` intactos.
+- Retorna `{ variations: [...] }`.
 
-- Usar o `Dialog` do shadcn (já no projeto) como lightbox.
-- Estado `lightboxUrl: string | null`. Clique em qualquer imagem gerada abre.
-- Modal full-viewport (max-w-[95vw], max-h-[90vh]), imagem com `object-contain`, fundo escuro, botão fechar e botão baixar dentro do modal.
-- Cursor `zoom-in` nas miniaturas + ícone de lupa no hover.
+## 2. Geração das 5 imagens
 
-## 3. Paridade visual Story ↔ Quadrado
+Após receber as 5 variações, no frontend chamamos a edge function existente `criativo-generate` **5 vezes em paralelo** (`Promise.all`), uma por variação:
+- `model` = mesmo modelo selecionado pelo usuário (Nano Banana Pro / 2)
+- `prompt` = `variation.promptCompleto`
+- `aspectRatio` = mesmo da arte original já gerada (`storyImage ? 'story' : 'square'`)
+- `referenceImages` = `productImages`
+- `logoImage` = `logoImage[0] || null`
+- `storyReference` = `storyImage` (a Story já gerada serve de **ground truth visual** para garantir consistência cromática nas 5 — reutiliza o mecanismo existente)
 
-**Diagnóstico:** as duas artes hoje são geradas em chamadas independentes ao Nano Banana, com prompts diferentes só pelo aspect ratio. O modelo não tem nenhuma referência visual da Story quando faz a Quadrada — por isso paleta, luz e tratamento divergem (Story azulada vs Quadrada lavada, no exemplo enviado).
+Estado novo no `CriativoStudioPage`:
+```ts
+const [factorVariations, setFactorVariations] = useState<FactorVariation[] | null>(null);
+const [factorImages, setFactorImages] = useState<(string|null)[]>([]);
+const [factorLoading, setFactorLoading] = useState(false);
+const [factorProgress, setFactorProgress] = useState(0); // 0..5
+```
 
-**Solução:** quando o usuário clica em "Recriar em 1080x1080" e já existe a Story:
+Fluxo: ao clicar no botão →
+1. `factorLoading = true`, toast "Analisando criativo original e gerando 5 variações estratégicas..."
+2. Chama `criativo-fator` → recebe as 5 estratégias + prompts
+3. Inicializa `factorImages` com 5 `null`
+4. Dispara as 5 chamadas `criativo-generate` em paralelo, atualizando `factorImages[i]` à medida que cada uma volta (e incrementando `factorProgress`)
+5. Toast final "5 variações prontas"
 
-1. Enviar a **própria Story gerada como referência adicional** para a chamada da Quadrada (`referenceImages: [story, ...productImages]`).
-2. Adicionar instrução no prompt da Quadrada:
-   > `[VISUAL CONSISTENCY] The first attached image is the Story version of this same creative. The square version MUST replicate the EXACT same color palette, lighting, photographic treatment, typography choices and overall mood — only the framing/composition changes to fit a 1:1 square. Treat the Story as the visual ground truth.`
-3. Deixar claro no prompt qual é a Story (primeira) vs produto/logo (depois) — atualizar o `refsHint` em `criativo-generate/index.ts` para suportar uma `storyReference?: string` opcional rotulada explicitamente.
+Erros individuais (uma das 5 falha) não derrubam as outras — apenas marca aquele card como "Erro, regenerar".
 
-Mudanças:
-- `supabase/functions/criativo-generate/index.ts`: aceitar campo `storyReference?: string`; se presente, anexar **antes** das outras refs e descrever seu papel no `refsHint`.
-- `CriativoStudioPage.tsx > generate('square')`: passar `storyReference: storyImage`.
-- `buildFinalPrompt('square')`: injetar bloco `[VISUAL CONSISTENCY]`.
+## 3. UI — Botão e galeria das 5 variações
 
-## 4. Mobile UI mais compacta e harmônica
+### Botão "Aplicar Fator Criativo"
 
-A página hoje tem padding `p-4` em mobile, cards densos, e os blocos de análise/copy ficam apertados (uso a 390px de viewport).
+Posicionado logo abaixo da galeria atual (Story + Quadrado), dentro do mesmo `GlassCard` da Step 4.
 
-Ajustes (apenas mobile, `< sm`):
+- Aparece **somente quando** `storyImage || squareImage` existe (faz sentido só após ter o original)
+- Estilo: **fundo branco**, texto preto, com efeito de **shimmer/brilho** animado (gradiente conic ou linear-gradient deslizante via Tailwind `before:` + keyframes em `tailwind.config.ts`/`index.css`)
+- Ícone `Sparkles` à esquerda
+- Disabled enquanto `factorLoading`, mostrando spinner + "Gerando variação X de 5..."
 
-- **Header**: reduzir `text-xl` → `text-lg` em mobile; subtítulo `text-[11px]`; botão "Recomeçar" vira ícone-only (`size="icon"`) com tooltip.
-- **StepIndicator**: já é horizontal — encurtar labels em mobile (`Refs`, `Copy`, `Produto`, `Arte`) e diminuir gaps.
-- **GlassCard**: padding interno reduzido em mobile (`p-3` ao invés do default).
-- **Step 1**: grid de 8 dimensões já é `sm:grid-cols-2` (1 coluna em mobile, OK). Reduzir tamanho do `Textarea` do design system de `rows={8}` → `rows={6}` e usar `text-[10px]` em mobile.
-- **Step 2**: as duas `CopyOptionCard` (Original vs IA) ficam em `grid-cols-1` em mobile (já está) — encolher padding `p-4` → `p-3` e fontes do `CopyBlock`.
-- **Step 4 — preview das artes**: hoje as larguras são fixas (220px/280px). Em mobile vou usar `w-full max-w-[200px]` para Story e `max-w-[260px]` para Quadrado, **sempre lado a lado** quando ambas existem (`flex-row` mesmo em mobile, com `gap-3`), conforme já memorizado.
-- **Botões de ação na Step 4**: empilhar full-width em mobile (`w-full sm:w-auto`).
-- **Inputs/Selects**: `text-sm` → `text-[13px]` em mobile.
+Pseudo:
+```tsx
+<button className="relative overflow-hidden rounded-md bg-white text-black px-5 py-2.5 font-medium shadow-[0_0_20px_rgba(255,255,255,0.4)] hover:shadow-[0_0_30px_rgba(255,255,255,0.6)] transition-shadow before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/60 before:to-transparent before:-translate-x-full hover:before:translate-x-full before:transition-transform before:duration-700">
+  <Sparkles /> Aplicar Fator Criativo
+</button>
+```
+Adicionar keyframes `shimmer` em `tailwind.config.ts` para um brilho contínuo sutil mesmo em idle (loop lento, opacidade baixa).
 
-## Arquivos afetados
+### Galeria das 5 variações
 
-- `src/pages/CriativoStudioPage.tsx` — auto-contexto, lightbox, storyReference no generate, refinos mobile.
-- `supabase/functions/criativo-generate/index.ts` — suporte a `storyReference` rotulado.
-- `supabase/functions/criativo-business-context/index.ts` — **novo**, gera contexto via Lovable AI.
-- `src/components/criativo/StepIndicator.tsx` — labels curtos em mobile.
+Renderizada **abaixo** das artes originais, em uma seção separada com título "Fator Criativo — 5 Variações Estratégicas":
 
-## Fora de escopo
+- Grid responsivo: `grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3`
+- Cada card:
+  - Thumbnail da imagem (clique → abre o `lightboxUrl` existente, reaproveitado)
+  - Badge superior: nome do eixo (ex: "Ângulo Emocional", "Persona", "Hook Visual")
+  - Linha curta com `estrategia.mudanca` (truncada, tooltip com texto completo)
+  - Botão pequeno "Baixar" (reaproveita `download()`)
+  - Skeleton/loading enquanto a respectiva imagem ainda não chegou
+- Em mobile: thumbnails compactas (`w-full max-w-[160px]`), respeitando a regra de UI compacta já memorizada
 
-- Step 3 (uploads), análise da Step 1 e edge `criativo-improve-copy` ficam como estão.
-- Sem mudanças no banco / RLS / auth.
-- Sem trocar modelo de geração (segue Nano Banana Pro / 2).
+## 4. Arquivos afetados
 
-## Por que isso resolve
+- `supabase/functions/criativo-fator/index.ts` — **novo** (geração das 5 estratégias via tool calling)
+- `src/pages/CriativoStudioPage.tsx` — botão, estado, lógica de geração paralela, galeria das 5
+- `tailwind.config.ts` ou `src/index.css` — keyframes `shimmer` para o efeito de brilho
 
-- Contexto auto-gerado tira fricção e fica coerente com o resto do briefing.
-- Lightbox dá ao usuário a inspeção que ele precisa antes de baixar.
-- Passar a Story como referência da Quadrada é o jeito nativo do Nano Banana garantir consistência cromática (ele aceita imagens de referência, e respeita instruções textuais fortes para "manter cor/luz idênticas").
-- Ajustes de mobile alinham com a regra de UI compacta já memorizada para o WAVY Dash.
+## 5. Fora de escopo
+
+- Não muda Steps 1–3, nem `criativo-analyze-refs`, `criativo-improve-copy`, `criativo-generate`, `criativo-business-context`
+- Sem mudanças no banco / RLS / auth
+- Sem persistir as variações (sessão only — igual ao Story/Quadrado de hoje)
+- Sem regeneração individual de uma variação no v1 (só o conjunto inteiro). Adicionável depois.
+
+## 6. Por que isso resolve
+
+- A skill `FATOR-CRIATIVO.md` é declarativamente um **prompt de raciocínio estratégico**, perfeito para tool calling com Gemini Flash — gera os 5 pacotes coerentes de uma vez
+- Reaproveita 100% da pipeline visual existente (`criativo-generate` + `storyReference` para consistência cromática) → as 5 saem visualmente coerentes com a original
+- Botão branco com shimmer dá o peso de "ação especial" sem poluir a UI (segue Apple Glass + uso pontual de cor)
+- Geração paralela mantém o tempo total próximo ao de uma única imagem (Nano Banana ~8–15s) ao invés de 5x sequencial
