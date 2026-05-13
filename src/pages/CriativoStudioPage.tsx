@@ -94,7 +94,7 @@ export default function CriativoStudioPage() {
   const [preserveFaces, setPreserveFaces] = useState(true);
 
   // Step 4
-  const [model, setModel] = useState<typeof IMAGE_MODELS[number]['id']>('nano-banana-pro');
+  const [quality, setQuality] = useState<Quality>('medium');
   const [language, setLanguage] = useState<string>('pt-BR');
   const [businessContext, setBusinessContext] = useState('');
   const [negativePrompt, setNegativePrompt] = useState('');
@@ -315,23 +315,19 @@ A reference Story version of this same creative is attached as the FIRST image. 
       const variations = (data as any).variations as FactorVariation[];
       setFactorVariations(variations);
 
-      const imgUsageType = model === 'nano-banana-pro' ? 'image-nano-pro' : 'image-nano-2';
       await Promise.all(
         variations.map(async (v, i) => {
           try {
             const { data: gd, error: ge } = await supabase.functions.invoke('criativo-generate', {
               body: {
-                model,
                 prompt: v.promptCompleto,
                 aspectRatio: aspect,
-                referenceImages: productImages,
-                logoImage: logoImage[0] || null,
-                storyReference: storyImage,
+                isVariation: true,
               },
             });
             if (ge) throw ge;
             if ((gd as any)?.error) throw new Error((gd as any).error);
-            recordAiUsage(imgUsageType);
+            recordAiUsage('image-openai-medium');
             setFactorImages((prev) => {
               const next = [...prev];
               next[i] = (gd as any).imageUrl;
@@ -363,17 +359,14 @@ A reference Story version of this same creative is attached as the FIRST image. 
       const prompt = buildFinalPrompt(aspect);
       const { data, error } = await supabase.functions.invoke('criativo-generate', {
         body: {
-          model,
           prompt,
           aspectRatio: aspect,
-          referenceImages: productImages,
-          logoImage: logoImage[0] || null,
-          storyReference: aspect === 'square' ? storyImage : null,
+          quality,
         },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      recordAiUsage(model === 'nano-banana-pro' ? 'image-nano-pro' : 'image-nano-2');
+      recordAiUsage(`image-openai-${quality}` as const);
       const url = (data as any).imageUrl;
       if (aspect === 'story') setStoryImage(url);
       else setSquareImage(url);
