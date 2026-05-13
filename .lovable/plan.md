@@ -1,60 +1,136 @@
-# Plano — Refino do Criativo Studio
+# Plano — Integrar a skill `criativo-studio` ao fluxo do Criativo Studio
 
-Mudanças apenas no frontend (`CriativoStudioPage.tsx` + leve ajuste em `criativo-generate` para reforçar o aspect ratio quadrado). Sem mexer em lógica de negócio nem em outras páginas.
+A skill é um framework profissional de 3 etapas (Leitura → Copy → Prompt). Hoje o Criativo Studio implementa o esqueleto, mas o output é genérico demais. Esse plano refina cada etapa para seguir literalmente a skill, mantendo o fluxo visual já aprovado de 4 passos.
 
-## 1. Tipografia geral menor
-- Header: `text-2xl sm:text-3xl` → `text-xl sm:text-2xl`; subtítulo `text-sm` → `text-xs`.
-- Títulos de step (`h2`): `text-lg` → `text-base`.
-- Descrições de step: `text-sm` → `text-xs`.
-- Labels e campos com escala reduzida (textarea e selects mantêm `text-sm` para legibilidade de input).
-- StepIndicator: ajustar para fonte menor (`text-xs`).
-- Resultado da copy: headline `text-lg` → `text-base`.
+## Resumo das mudanças por etapa
 
-## 2. Step 2 — manter copy original
-- Após gerar `copyResult`, mostrar **dois cards lado a lado**:
-  - "Sua copy original" (o `rawCopy` que o usuário escreveu)
-  - "Sugestão da IA" (atual `copyResult`)
-- Cada card com botão **"Usar essa"**.
-- Estado novo: `selectedCopySource: 'original' | 'ai'`.
-- `buildFinalPrompt` passa a usar a copy selecionada:
-  - Se `original`: injeta o `rawCopy` cru como bloco de texto/instrução para overlay.
-  - Se `ai`: comportamento atual (headline/subheadline/CTA).
-- "OK, usar essa" continua avançando para step 3.
+### Etapa 1 — `criativo-analyze-refs` (edge function)
+Reescrever o system prompt do Gemini Vision para extrair **as 8 dimensões da skill** e devolver o **Design System Document** estruturado:
 
-## 3. Step 3 — logo separado
-- Adicionar uma seção dedicada **"Logo da marca (opcional)"** acima do dropzone de produto/pessoa.
-- Novo estado `logoImage: string | null` (apenas 1 imagem).
-- Componente: dropzone reutilizado com `maxImages={1}` ou um mini-uploader específico.
-- `buildFinalPrompt` ganha instrução explícita quando há logo:
-  - "Include the brand logo (provided as a separate reference) discreetly in a corner of the composition. Do not distort, recolor or recreate the logo — treat it as a fixed brand asset."
-- Texto curto explicando: "A IA vai posicionar o logo discretamente no canto, sem distorcer."
+```json
+{
+  "composicao":   { "formato", "estrutura", "hierarquia", "silencio" },
+  "fotografia":   { "tipo", "luz", "tratamento", "integracao" },
+  "paleta":       { "dominante", "secundaria", "acento", "saturacao", "hexes": [] },
+  "tipografia":   { "familiaA", "familiaB", "contraste", "alinhamento" },
+  "camadas":      [ "Layer 1: …", "Layer 2: …", … ],
+  "hierarquiaVisual": "…",
+  "espaco":       "…",
+  "mood":         { "adjetivos": [], "referencias": [], "evita": [] },
+  "designSystemDoc": "string completa em formato markdown pronta pra ir no prompt final"
+}
+```
 
-## 4. Step 4 — preview menor + lado a lado + corrigir 1080x1080
+A UI passa a renderizar essas seções (incluindo "Camadas" como lista numerada e "Evita" em chip vermelho), mantendo o textarea editável agora preenchido com o `designSystemDoc` completo.
 
-### Preview menor
-- Container do grid: `grid sm:grid-cols-2 gap-4` mantém, mas cada imagem dentro de um wrapper com `max-w-[260px] mx-auto` (Story) e `max-w-[320px] mx-auto` (Square) para não ocupar tela inteira.
-- Adicionar `aspect-[9/16]` no Story e `aspect-square` no Square para manter proporção visual mesmo antes de carregar.
+### Etapa 2 — `criativo-improve-copy` (edge function)
+Reescrever para devolver a copy nos **5 blocos visuais** da skill, não em headline/sub/cta:
 
-### Sempre lado a lado quando há os dois
-- Já está em `sm:grid-cols-2`. Garantir que quando só Story existir ele fique centralizado (`justify-items-center`), e quando ambos existirem fiquem alinhados em colunas iguais.
-- Adicionar `items-start` para alinhar tops.
+```json
+{
+  "label":     "string opcional (topo, uppercase)",
+  "titulo":    "string (dominante)",
+  "subtitulo": "string opcional",
+  "dados":     "string opcional (data, local, preço, vagas)",
+  "cta":       "string",
+  "avaliacao": { "clareza", "hierarquia", "brevidade", "gatilho", "tom" },
+  "justificativa": "string"
+}
+```
 
-### Corrigir "Recriar em 1080x1080"
-Diagnóstico: o botão chama `generate('square')`, mas o problema provável é que o payload do Freepik para alguns modelos não respeita `square_1_1` quando o modelo já gerou em 9:16, ou o backend precisa de chave diferente. Ajustes:
-- No frontend: garantir que o botão fica **sempre habilitado** quando há `storyImage` (hoje só desabilita por `generating`, ok) e que o estado `squareImage` é resetado antes de nova chamada.
-- No backend (`criativo-generate`): revisar `buildPayload` para garantir aspect ratio quadrado:
-  - `classic-fast`: trocar `image.size` para `"square_1_1"` (já está, ok).
-  - `flux-dev`: `aspect_ratio: "1:1"` (ok).
-  - `mystic`: usar `aspect_ratio: "square_1_1"` (ok) — confirmar se o valor aceito é `"square"` ou `"square_1_1"`; ajustar se Freepik exigir `"square"`.
-  - `imagen3`: idem.
-- Adicionar log do payload final e da resposta para facilitar debug se ainda falhar.
-- Reforçar no prompt enviado a string "1:1 square format, centered composition" para o modelo seguir o aspect.
+A UI dos dois cards (original × IA) passa a mostrar esses blocos. A copy "original" continua sendo o texto cru do usuário (a IA não interfere se ele escolher essa).
+
+### Etapa 3 — Inputs novos identificados pela skill
+
+A skill exige informações que hoje **não estamos coletando**. Vou adicionar de forma enxuta, sem virar um formulário gigante:
+
+1. **Contexto do negócio** (textarea curto, 1 linha)
+   Onde: bloco no topo do Step 4 (ou pequeno acordeão).
+   Por quê: a skill diz "Premium facial harmonization mentorship ≠ beauty course". Sem isso o prompt fica genérico.
+   Default sugerido: vazio.
+
+2. **Idioma dos textos na arte** (Select: PT-BR / EN / ES)
+   Onde: Step 4, ao lado do Modelo.
+   Por quê: a skill exige "all text in the artwork must be in [idioma]" — default PT-BR.
+
+3. **Preservar rostos** (Switch)
+   Onde: Step 3, junto às imagens de produto/pessoa.
+   Por quê: skill diz "Preserve their exact likeness. Do not alter faces…".
+   Aparece apenas quando há ≥ 1 imagem em `productImages`.
+
+4. **DO NOT INCLUDE** (textarea opcional, colapsável)
+   Onde: Step 4, em "Opções avançadas".
+   Por quê: princípio 5 da skill — fechar brechas criativas.
+   Default: vazio (o sistema já injeta itens padrão como "no platform UI overlays").
+
+> Outras coisas que a skill pede (safe zones, ordem de camadas, princípios) são geradas automaticamente pelo `buildFinalPrompt`, sem virar input do usuário.
+
+### Etapa 4 — `buildFinalPrompt` (frontend)
+
+Reescrever para seguir literalmente a **Estrutura Universal do Prompt** da skill:
+
+```
+[INTRODUÇÃO]
+Create a {story|square} advertisement image (9:16 1080x1920 | 1:1 1080x1080)
+for {contextoDoNegocio}.
+
+[ATTACHED PHOTOS] (se houver productImages)
+The provided reference images contain {produto/pessoa/cenário}.
+{se preservarRostos: Preserve their exact likeness. Do not alter faces, skin tone or appearance.}
+
+[BACKGROUND & ATMOSPHERE]
+{Fotografia.tratamento, integração, temperatura — vindo da Etapa 1}
+
+[SAFE ZONE]
+Story → 280px top + 280px bottom livres.
+Square → 120px top + 120px bottom livres.
+
+[LAYER STACK]
+{Camadas extraídas pela Etapa 1, em ordem}
+
+[TEXT BLOCKS]
+{Blocos da copy escolhida — label/título/subtítulo/dados/cta com posição,
+família tipográfica vinda da Etapa 1, peso, cor da paleta}
+
+[TYPOGRAPHY SYSTEM]
+{Família A + Família B vindas da Etapa 1}
+
+[COLOR PALETTE]
+{Hexadecimais vindos da Etapa 1}
+
+[BRAND LOGO] (se houver logoImage)
+Place the brand logo discreetly in {top-left|bottom-right}, do not distort, do not recolor.
+
+[MOOD]
+Feels like {referências}. Tone: {adjetivos}. Not {evita}.
+
+[DO NOT INCLUDE]
+- {evita da Etapa 1}
+- {DO NOT INCLUDE custom do usuário}
+- Any element within the top or bottom safe zones
+- Any text in a language other than {idiomaSelecionado}
+
+All text in the artwork must be written in {idiomaSelecionado}.
+```
+
+### Etapa 5 — Tabela "iteração" da skill (futuro, fora deste escopo)
+
+A skill traz uma matriz de "problema observado → ajuste no prompt". Isso seria um próximo passo (botão "tive um problema com…" para iterar). Fora do escopo desta entrega.
 
 ## Arquivos afetados
-- `src/pages/CriativoStudioPage.tsx` (principal)
-- `src/components/criativo/StepIndicator.tsx` (fonte menor)
-- `supabase/functions/criativo-generate/index.ts` (ajustes de payload + log para o caso quadrado)
+
+- `supabase/functions/criativo-analyze-refs/index.ts` — novo system prompt + novo schema JSON.
+- `supabase/functions/criativo-improve-copy/index.ts` — novo schema com 5 blocos + avaliação.
+- `src/pages/CriativoStudioPage.tsx`:
+  - Tipos `VisualAnalysis` e `CopyResult` reescritos.
+  - Renderização do Design System Document na Step 1.
+  - Renderização dos 5 blocos da copy na Step 2.
+  - Novos campos: `businessContext`, `language`, `preserveFaces`, `negativePrompt`.
+  - `buildFinalPrompt` reescrito conforme estrutura universal.
 
 ## Fora do escopo
-- Persistência, novos modelos, nova página.
-- Mudanças nas funções `criativo-analyze-refs` e `criativo-improve-copy`.
+
+- Persistência (continua só sessão).
+- Novos modelos de geração.
+- Iteração assistida pós-imagem (problema → ajuste).
+- Mudar o componente `ImageDropzone` ou `StepIndicator`.
