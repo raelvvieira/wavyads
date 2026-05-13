@@ -21,7 +21,7 @@ export function StepIndicator({ steps, current, completed, onJump }: StepIndicat
               disabled={!clickable}
               onClick={() => clickable && onJump?.(i)}
               className={cn(
-                'flex items-center gap-2 px-3 py-2 rounded-lg transition-all',
+                'flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-all',
                 isCurrent && 'bg-accent/20 border border-accent/40',
                 !isCurrent && isDone && 'text-white/70 hover:bg-white/5',
                 !isCurrent && !isDone && 'text-white/30',
