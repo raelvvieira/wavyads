@@ -140,6 +140,7 @@ export default function CriativoStudioPage() {
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
+      recordAiUsage('text-flash');
       const ctx = (data as any).context;
       if (ctx) setBusinessContext(ctx);
     } catch (e: any) {
