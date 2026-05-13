@@ -12,8 +12,11 @@ import {
   Sparkles,
   Users,
   Wand2,
+  Zap,
+  RotateCcw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAiUsage } from '@/lib/aiUsageTracker';
 import wavyLogo from '@/assets/wavy-logo.png';
 
 export function AppSidebar() {
