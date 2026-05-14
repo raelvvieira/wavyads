@@ -752,7 +752,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
               })}
             </div>
             <p className="text-[10px] text-white/40 mt-1.5">
-              Aplica-se à arte principal. As 5 variações do Fator Criativo usam sempre <span className="text-white/70">Nano Banana 2</span>.
+              As 5 variações do Fator Criativo usam <span className="text-white/70">o mesmo modelo selecionado acima</span>.
             </p>
           </div>
 
