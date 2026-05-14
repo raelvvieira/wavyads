@@ -1,61 +1,28 @@
-# Plano: Conexão direta com Google Gemini Image API (Nano Banana)
+# Plano: Modelo dinâmico no Fator Criativo + paridade de prompt com Lovable AI
 
-Substituir o OpenAI `gpt-image-1` por chamada direta à **Google Generative Language API** (não Lovable AI Gateway, não Vertex), usando uma `GEMINI_API_KEY` própria.
+## 1. Modelo selecionado também no Fator Criativo
 
-## 1. Secret
+`src/pages/CriativoStudioPage.tsx` → `applyFatorCriativo`:
+- Trocar `model: 'gemini-3.1-flash-image-preview'` (hardcoded) por `model` (estado do select).
+- Trocar `recordAiUsage('image-gemini-flash-2')` por `recordAiUsage(MODEL_OPTIONS.find(m => m.id === model)?.usage || 'image-gemini-flash-2')`.
+- Atualizar a nota da UI (linha ~756): em vez de "As 5 variações usam sempre Nano Banana 2", dizer "As 5 variações do Fator Criativo usam o mesmo modelo selecionado acima".
 
-Adicionar `GEMINI_API_KEY` (Google AI Studio → aistudio.google.com/apikey).
+## 2. Paridade de prompt com a versão Lovable AI Gateway
 
-## 2. Edge function `criativo-generate` — reescrita
+A implementação antiga (msg #390) montava `fullPrompt` com 3 blocos: **aspect ratio instructions + main prompt + reference image hints**. A versão atual só faz `aspectInstruction + prompt`, sem o bloco de hints de referências.
 
-Endpoint direto:
-```
-POST https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={GEMINI_API_KEY}
-```
-
-Aceitar no body um campo novo `model` (string) e validar contra whitelist:
-- `gemini-2.5-flash-image` (Nano Banana — padrão rápido/barato)
-- `gemini-3-pro-image-preview` (Nano Banana Pro — máxima qualidade)
-- `gemini-3.1-flash-image-preview` (Nano Banana 2 — recomendado, rápido + qualidade Pro)
-
-Default: `gemini-3.1-flash-image-preview`.
-
-**Payload Gemini** (`generateContent`):
-- `contents[0].parts`:
-  - texto: prompt
-  - para cada referência (productImages, logoImage, storyReference): `{ inline_data: { mime_type, data: base64 } }` — converter as `data:` URLs atuais.
-- `generationConfig.responseModalities: ["IMAGE"]`
-- Aspect ratio: Gemini não tem `size` igual ao OpenAI; aplicar via prompt (`"vertical 9:16 story format"` / `"square 1:1"`) e remover o conceito de `quality` (Gemini não usa low/medium/high).
-
-**Resposta**: extrair `candidates[0].content.parts[].inline_data.data` (base64) → devolver `imageUrl: data:image/png;base64,...` (mesmo contrato atual, frontend não muda).
-
-**Erros**: mapear 401 (key inválida), 429 (rate), 403 (quota), demais → 502 com mensagem clara.
-
-## 3. Frontend `CriativoStudioPage.tsx`
-
-- Adicionar select de modelo (3 opções acima) próximo aos controles de aspect ratio/qualidade.
-- Remover/ocultar o seletor de **qualidade** (low/medium/high) — não se aplica ao Gemini. Manter aspect ratio (story/square).
-- Enviar `model` no body de `criativo-generate`.
-
-## 4. Tracker de custo `aiUsageTracker.ts`
-
-Adicionar tipos:
-- `image-gemini-flash` (~$0.039)
-- `image-gemini-pro` (~$0.134)
-- `image-gemini-flash-2` (~$0.039)
-
-Remover/depreciar os `image-openai-*` das chamadas novas (manter os tipos para histórico).
-
-## 5. Não mexer
-
-- `criativo-analyze-refs` continua no Lovable AI Gateway (Gemini 2.5 Pro para análise de texto/visão) — está funcionando.
-- `OPENAI_API_KEY` permanece como secret (não remover; outros fluxos podem usar).
+`supabase/functions/criativo-generate/index.ts`:
+- Manter `responseModalities: ["IMAGE"]` e `inline_data` (formato Gemini direto, equivalente ao `image_url` do Gateway).
+- Adicionar bloco de **reference image hints** ao `fullPrompt` quando houver refs anexadas, replicando o que o Gateway recebia:
+  ```
+  [REFERENCE IMAGES]
+  {N} reference image(s) attached. Use them as the source of truth for the subject's appearance, brand logo and visual consistency. Do not invent new faces or alter the brand mark.
+  ```
+- Ordem final: `aspectInstruction` → `prompt` (já contém todo o design system, copy, mood, do-not) → `referenceHints`.
+- Sem mudar o contrato com o frontend.
 
 ## Validação
 
-1. Gerar imagem sem refs → vem PNG válido.
-2. Gerar com produto + logo → Gemini respeita refs (forte do Nano Banana).
-3. Trocar modelo no select → request muda o path do endpoint.
-4. Story vs Square → prompt incorpora a instrução de formato.
-
-Após aprovar, peço a `GEMINI_API_KEY` via secret e implemento.
+1. Mudar para "Nano Banana Pro" no Step 4 → tanto a arte principal quanto as 5 variações usam Pro.
+2. Gerar com produto + logo → o bloco `[REFERENCE IMAGES]` aparece nos logs do edge function.
+3. Sem refs → o bloco é omitido.
