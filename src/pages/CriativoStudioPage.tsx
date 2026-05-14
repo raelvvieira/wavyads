@@ -123,6 +123,9 @@ export default function CriativoStudioPage() {
   const [factorErrors, setFactorErrors] = useState<(string | null)[]>([]);
   const [factorLoading, setFactorLoading] = useState(false);
   const [factorProgress, setFactorProgress] = useState(0);
+  const [factorSquareImages, setFactorSquareImages] = useState<(string | null)[]>([null, null, null, null, null]);
+  const [factorSquareLoading, setFactorSquareLoading] = useState<boolean[]>([false, false, false, false, false]);
+  const [mainSquareLoading, setMainSquareLoading] = useState(false);
 
   useEffect(() => {
     if (!roleLoading && !isAdmin) navigate('/dashboard');
@@ -335,6 +338,8 @@ A reference Story version of this same creative is attached as the FIRST image. 
     setFactorVariations(null);
     setFactorImages([null, null, null, null, null]);
     setFactorErrors([null, null, null, null, null]);
+    setFactorSquareImages([null, null, null, null, null]);
+    setFactorSquareLoading([false, false, false, false, false]);
     setFactorProgress(0);
     try {
       const originalPrompt = buildFinalPrompt(aspect);
@@ -395,8 +400,11 @@ A reference Story version of this same creative is attached as the FIRST image. 
   };
 
   const generate = async (aspect: 'story' | 'square') => {
+    if (aspect === 'square') {
+      await recreateSquare('main');
+      return;
+    }
     setGenerating(true);
-    if (aspect === 'square') setSquareImage(null);
     try {
       const prompt = buildFinalPrompt(aspect);
       const { data, error } = await supabase.functions.invoke('criativo-generate', {
@@ -406,21 +414,62 @@ A reference Story version of this same creative is attached as the FIRST image. 
           model,
           productImages,
           logoImage: logoImage[0] || null,
-          storyReference: aspect === 'square' ? storyImage : null,
+          storyReference: null,
         },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
       const usageType = MODEL_OPTIONS.find((m) => m.id === model)?.usage || 'image-gemini-flash-2';
       recordAiUsage(usageType);
-      const url = (data as any).imageUrl;
-      if (aspect === 'story') setStoryImage(url);
-      else setSquareImage(url);
-      toast({ title: `Imagem ${aspect === 'story' ? 'Story' : 'Quadrada'} gerada` });
+      setStoryImage((data as any).imageUrl);
+      toast({ title: 'Imagem Story gerada' });
     } catch (e: any) {
       toast({ title: 'Erro ao gerar', description: e.message, variant: 'destructive' });
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const recreateSquare = async (target: 'main' | number) => {
+    if (target === 'main') {
+      setMainSquareLoading(true);
+      setSquareImage(null);
+    } else {
+      setFactorSquareLoading((prev) => prev.map((v, i) => (i === target ? true : v)));
+      setFactorSquareImages((prev) => prev.map((v, i) => (i === target ? null : v)));
+    }
+    try {
+      const prompt = target === 'main'
+        ? buildFinalPrompt('square')
+        : factorVariations?.[target]?.promptCompleto;
+      if (!prompt) throw new Error('Prompt não disponível');
+      const { data, error } = await supabase.functions.invoke('criativo-generate', {
+        body: {
+          prompt,
+          aspectRatio: 'square',
+          model,
+          isVariation: typeof target === 'number',
+          productImages,
+          logoImage: logoImage[0] || null,
+          storyReference: storyImage,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const usageType = MODEL_OPTIONS.find((m) => m.id === model)?.usage || 'image-gemini-flash-2';
+      recordAiUsage(usageType);
+      const url = (data as any).imageUrl as string;
+      if (target === 'main') {
+        setSquareImage(url);
+      } else {
+        setFactorSquareImages((prev) => prev.map((v, i) => (i === target ? url : v)));
+      }
+      toast({ title: 'Quadrado 1080 gerado' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao gerar quadrado', description: e.message, variant: 'destructive' });
+    } finally {
+      if (target === 'main') setMainSquareLoading(false);
+      else setFactorSquareLoading((prev) => prev.map((v, i) => (i === target ? false : v)));
     }
   };
 
@@ -455,6 +504,8 @@ A reference Story version of this same creative is attached as the FIRST image. 
     setNegativePrompt('');
     setStoryImage(null);
     setSquareImage(null);
+    setFactorSquareImages([null, null, null, null, null]);
+    setFactorSquareLoading([false, false, false, false, false]);
   };
 
   if (roleLoading) {
@@ -852,75 +903,19 @@ A reference Story version of this same creative is attached as the FIRST image. 
             </CollapsibleContent>
           </Collapsible>
 
-          <div className="flex gap-2 sm:gap-3 flex-wrap">
-            <Button size="sm" onClick={() => generate('story')} disabled={generating} className="flex-1 sm:flex-none">
-              {generating ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> : <Wand2 className="h-3.5 w-3.5 mr-2" />}
-              {storyImage ? 'Gerar Story novamente' : 'Gerar Story (1080x1920)'}
-            </Button>
-            {storyImage && (
-              <Button size="sm" variant="outline" onClick={() => generate('square')} disabled={generating} className="flex-1 sm:flex-none">
-                {generating ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-2" />}
-                {squareImage ? 'Gerar Quadrado novamente' : 'Recriar em 1080x1080'}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex gap-2 sm:gap-3 flex-wrap">
+              <Button size="sm" onClick={() => generate('story')} disabled={generating} className="flex-1 sm:flex-none">
+                {generating ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> : <Wand2 className="h-3.5 w-3.5 mr-2" />}
+                {storyImage ? 'Gerar Story novamente' : 'Gerar Story (1080x1920)'}
               </Button>
-            )}
-            <Button size="sm" variant="ghost" onClick={() => setStep(2)}>
-              <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Voltar
-            </Button>
-          </div>
-
-          {(storyImage || squareImage) && (
-            <div className="flex flex-row flex-wrap gap-3 sm:gap-6 items-start justify-center pt-2">
-              {storyImage && (
-                <div className="space-y-2 w-[44vw] max-w-[200px] sm:w-[220px]">
-                  <p className="text-[10px] uppercase tracking-wider text-white/40 text-center">Story 1080x1920</p>
-                  <button
-                    type="button"
-                    onClick={() => setLightboxUrl(storyImage)}
-                    className="group relative block w-full rounded-xl overflow-hidden glass aspect-[9/16] cursor-zoom-in"
-                  >
-                    <img src={storyImage} alt="story" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
-                      <ZoomIn className="h-6 w-6 text-white drop-shadow" />
-                    </div>
-                  </button>
-                  <Button size="sm" variant="outline" onClick={() => download(storyImage, `criativo-story-${Date.now()}.png`)} className="w-full text-[11px] sm:text-xs">
-                    <Download className="h-3.5 w-3.5 mr-1.5" /> Baixar Story
-                  </Button>
-                </div>
-              )}
-              {squareImage && (
-                <div className="space-y-2 w-[44vw] max-w-[260px] sm:w-[280px]">
-                  <p className="text-[10px] uppercase tracking-wider text-white/40 text-center">Quadrado 1080x1080</p>
-                  <button
-                    type="button"
-                    onClick={() => setLightboxUrl(squareImage)}
-                    className="group relative block w-full rounded-xl overflow-hidden glass aspect-square cursor-zoom-in"
-                  >
-                    <img src={squareImage} alt="square" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
-                      <ZoomIn className="h-6 w-6 text-white drop-shadow" />
-                    </div>
-                  </button>
-                  <Button size="sm" variant="outline" onClick={() => download(squareImage, `criativo-square-${Date.now()}.png`)} className="w-full text-[11px] sm:text-xs">
-                    <Download className="h-3.5 w-3.5 mr-1.5" /> Baixar Quadrado
-                  </Button>
-                </div>
-              )}
+              <Button size="sm" variant="ghost" onClick={() => setStep(2)}>
+                <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Voltar
+              </Button>
             </div>
-          )}
 
-          {(storyImage || squareImage) && (
-            <div className="pt-4 border-t border-white/5 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div>
-                  <h3 className="text-sm font-semibold flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-white" />
-                    Fator Criativo
-                  </h3>
-                  <p className="text-[11px] text-white/50 mt-0.5">
-                    Gera 5 variações estratégicas para alimentar o Andromeda do Meta com sinais distintos.
-                  </p>
-                </div>
+            {storyImage && (
+              <div className="flex flex-col sm:items-end gap-1">
                 <button
                   type="button"
                   onClick={applyFatorCriativo}
@@ -947,72 +942,195 @@ A reference Story version of this same creative is attached as the FIRST image. 
                     )}
                   </span>
                 </button>
+                <p className="text-[10px] text-white/40 sm:text-right">
+                  Gera 5 variações estratégicas para alimentar o Andromeda do Meta.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {storyImage && (
+            <div className={cn(
+              'grid gap-3 sm:gap-4 pt-2',
+              (factorVariations || factorLoading)
+                ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-6'
+                : 'grid-cols-1 sm:grid-cols-2 max-w-md',
+            )}>
+              {/* Main column */}
+              <div className="space-y-2 min-w-0">
+                <p className="text-[9px] uppercase tracking-wider text-accent font-semibold">
+                  Principal
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setLightboxUrl(storyImage)}
+                  className="group relative block w-full rounded-lg overflow-hidden glass aspect-[9/16] cursor-zoom-in"
+                >
+                  <img src={storyImage} alt="story" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
+                    <ZoomIn className="h-5 w-5 text-white drop-shadow" />
+                  </div>
+                </button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => download(storyImage, `criativo-story-${Date.now()}.png`)}
+                  className="w-full h-7 text-[10px]"
+                >
+                  <Download className="h-3 w-3 mr-1" /> Baixar Story
+                </Button>
+                {!squareImage && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => recreateSquare('main')}
+                    disabled={mainSquareLoading}
+                    className="w-full h-7 text-[10px]"
+                  >
+                    {mainSquareLoading
+                      ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      : <RefreshCw className="h-3 w-3 mr-1" />}
+                    Recriar em 1080x1080
+                  </Button>
+                )}
+                {(squareImage || mainSquareLoading) && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => squareImage && setLightboxUrl(squareImage)}
+                      disabled={!squareImage}
+                      className={cn(
+                        'group relative block w-full rounded-lg overflow-hidden glass aspect-square',
+                        squareImage ? 'cursor-zoom-in' : 'cursor-default',
+                      )}
+                    >
+                      {squareImage ? (
+                        <>
+                          <img src={squareImage} alt="square" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
+                            <ZoomIn className="h-5 w-5 text-white drop-shadow" />
+                          </div>
+                        </>
+                      ) : (
+                        <Skeleton className="w-full h-full" />
+                      )}
+                    </button>
+                    {squareImage && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => download(squareImage, `criativo-square-${Date.now()}.png`)}
+                        className="w-full h-7 text-[10px]"
+                      >
+                        <Download className="h-3 w-3 mr-1" /> Baixar 1080x1080
+                      </Button>
+                    )}
+                  </>
+                )}
               </div>
 
-              {(factorVariations || factorLoading) && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
-                  {Array.from({ length: 5 }).map((_, i) => {
-                    const v = factorVariations?.[i];
-                    const img = factorImages[i];
-                    const err = factorErrors[i];
-                    const ratio = storyImage ? 'aspect-[9/16]' : 'aspect-square';
-                    return (
-                      <div key={i} className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[9px] uppercase tracking-wider text-accent font-semibold">
-                            #{i + 1} {v?.eixo || '...'}
-                          </span>
+              {/* Fator Criativo columns */}
+              {(factorVariations || factorLoading) && Array.from({ length: 5 }).map((_, i) => {
+                const v = factorVariations?.[i];
+                const img = factorImages[i];
+                const err = factorErrors[i];
+                const sqImg = factorSquareImages[i];
+                const sqLoading = factorSquareLoading[i];
+                return (
+                  <div key={i} className="space-y-2 min-w-0">
+                    <p className="text-[9px] uppercase tracking-wider text-accent font-semibold truncate">
+                      #{i + 1} {v?.eixo || '...'}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => img && setLightboxUrl(img)}
+                      disabled={!img}
+                      className={cn(
+                        'group relative block w-full rounded-lg overflow-hidden glass aspect-[9/16]',
+                        img ? 'cursor-zoom-in' : 'cursor-default',
+                      )}
+                    >
+                      {img ? (
+                        <>
+                          <img src={img} alt={v?.nome || `variação ${i + 1}`} className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
+                            <ZoomIn className="h-5 w-5 text-white drop-shadow" />
+                          </div>
+                        </>
+                      ) : err ? (
+                        <div className="absolute inset-0 flex items-center justify-center p-2 text-[10px] text-destructive text-center">
+                          Erro ao gerar
                         </div>
+                      ) : (
+                        <Skeleton className="w-full h-full" />
+                      )}
+                    </button>
+                    {v && (
+                      <p className="text-[10px] text-white/70 font-medium truncate" title={v.nome}>
+                        {v.nome}
+                      </p>
+                    )}
+                    {img && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => download(img, `fator-${i + 1}-${v?.eixo}-${Date.now()}.png`)}
+                        className="w-full h-7 text-[10px]"
+                      >
+                        <Download className="h-3 w-3 mr-1" /> Baixar Story
+                      </Button>
+                    )}
+                    {img && !sqImg && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => recreateSquare(i)}
+                        disabled={sqLoading}
+                        className="w-full h-7 text-[10px]"
+                      >
+                        {sqLoading
+                          ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          : <RefreshCw className="h-3 w-3 mr-1" />}
+                        Recriar em 1080x1080
+                      </Button>
+                    )}
+                    {(sqImg || sqLoading) && (
+                      <>
                         <button
                           type="button"
-                          onClick={() => img && setLightboxUrl(img)}
-                          disabled={!img}
+                          onClick={() => sqImg && setLightboxUrl(sqImg)}
+                          disabled={!sqImg}
                           className={cn(
-                            'group relative block w-full rounded-lg overflow-hidden glass',
-                            ratio,
-                            img ? 'cursor-zoom-in' : 'cursor-default',
+                            'group relative block w-full rounded-lg overflow-hidden glass aspect-square',
+                            sqImg ? 'cursor-zoom-in' : 'cursor-default',
                           )}
                         >
-                          {img ? (
+                          {sqImg ? (
                             <>
-                              <img src={img} alt={v?.nome || `variação ${i + 1}`} className="w-full h-full object-cover" />
+                              <img src={sqImg} alt={`variação ${i + 1} 1080`} className="w-full h-full object-cover" />
                               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
                                 <ZoomIn className="h-5 w-5 text-white drop-shadow" />
                               </div>
                             </>
-                          ) : err ? (
-                            <div className="absolute inset-0 flex items-center justify-center p-2 text-[10px] text-destructive text-center">
-                              Erro ao gerar
-                            </div>
                           ) : (
                             <Skeleton className="w-full h-full" />
                           )}
                         </button>
-                        {v && (
-                          <p className="text-[10px] text-white/70 font-medium truncate" title={v.nome}>
-                            {v.nome}
-                          </p>
-                        )}
-                        {v && (
-                          <p className="text-[9px] text-white/40 line-clamp-2" title={v.estrategia.mudanca}>
-                            {v.estrategia.mudanca}
-                          </p>
-                        )}
-                        {img && (
+                        {sqImg && (
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => download(img, `fator-${i + 1}-${v?.eixo}-${Date.now()}.png`)}
+                            onClick={() => download(sqImg, `fator-${i + 1}-square-${Date.now()}.png`)}
                             className="w-full h-7 text-[10px]"
                           >
-                            <Download className="h-3 w-3 mr-1" /> Baixar
+                            <Download className="h-3 w-3 mr-1" /> Baixar 1080x1080
                           </Button>
                         )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </GlassCard>

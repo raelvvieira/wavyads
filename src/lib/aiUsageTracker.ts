@@ -64,11 +64,26 @@ const empty = (): MonthlyUsage => ({
 });
 
 const monthKey = (d = new Date()) =>
-  `ai-usage:${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+  `ai-usage:${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+const cleanupOldMonths = () => {
+  const current = monthKey();
+  try {
+    const toRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('ai-usage:') && k !== current) toRemove.push(k);
+    }
+    toRemove.forEach((k) => localStorage.removeItem(k));
+  } catch {
+    // ignore
+  }
+};
 
 const read = (): MonthlyUsage => {
   if (typeof window === 'undefined') return empty();
   try {
+    cleanupOldMonths();
     const raw = localStorage.getItem(monthKey());
     if (!raw) return empty();
     const parsed = JSON.parse(raw);
