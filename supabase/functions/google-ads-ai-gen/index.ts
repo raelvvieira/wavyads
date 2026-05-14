@@ -10,6 +10,28 @@ const corsHeaders = {
 const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const MODEL = "google/gemini-2.5-flash";
 
+let SKILL_TEXT = "";
+try {
+  SKILL_TEXT = await Deno.readTextFile(new URL("./skill.md", import.meta.url));
+} catch (e) {
+  console.warn("skill.md not loaded:", e);
+}
+const SKILL_BLOCK = SKILL_TEXT
+  ? `\n\n=== SKILL OBRIGATÓRIA — GOOGLE ADS BRASIL ===\nSiga ESTRITAMENTE estas regras de método, estrutura e conteúdo:\n${SKILL_TEXT}\n=== FIM DA SKILL ===\n`
+  : "";
+
+function obsBlock(obs: string) {
+  return obs && obs.trim()
+    ? `\n\nOBSERVAÇÕES IMPORTANTES (do cliente / equipe) — devem influenciar fortemente o resultado:\n${obs.trim()}`
+    : "";
+}
+
+function descricaoGrupoBlock(d: string) {
+  return d && d.trim()
+    ? `\nContexto adicional do grupo: ${d.trim()}`
+    : "";
+}
+
 async function callAI(systemPrompt: string, userPrompt: string, toolName: string, toolParams: Record<string, unknown>) {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
