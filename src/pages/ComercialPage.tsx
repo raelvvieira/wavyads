@@ -593,7 +593,7 @@ export default function ComercialPage() {
                   <Field label="Idade" value={selected.age?.toString() || null} />
                   <Field label="Data nasc." value={selected.dob} />
                   <Field label="Ano nasc." value={selected.doby} />
-                  {isAdmin && <Field label="Cliente" value={clientNameById.get(selected.client_id) || null} />}
+                  {isAdmin && client?.name && <Field label="Cliente" value={client.name} />}
                 </div>
 
                 {selected.meta_event_id && (
