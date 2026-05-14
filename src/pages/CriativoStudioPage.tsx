@@ -46,6 +46,7 @@ interface VisualAnalysis {
 }
 
 interface CopyResult {
+  angulo?: string;
   label: string;
   titulo: string;
   subtitulo: string;
@@ -84,9 +85,12 @@ export default function CriativoStudioPage() {
   // Step 2
   const [rawCopy, setRawCopy] = useState('');
   const [improving, setImproving] = useState(false);
-  const [copyResult, setCopyResult] = useState<CopyResult | null>(null);
+  const [copyVariations, setCopyVariations] = useState<CopyResult[]>([]);
+  const [selectedVariationIdx, setSelectedVariationIdx] = useState<number | null>(null);
   const [copyApproved, setCopyApproved] = useState(false);
   const [copySource, setCopySource] = useState<'original' | 'ai'>('ai');
+  const [suggestedRawCopy, setSuggestedRawCopy] = useState('');
+  const [suggestingCopy, setSuggestingCopy] = useState(false);
 
   // Step 3
   const [logoImage, setLogoImage] = useState<string[]>([]);
@@ -125,9 +129,11 @@ export default function CriativoStudioPage() {
   }, [isAdmin, roleLoading, navigate]);
 
   const completed = [!!analysis, copyApproved, true, !!storyImage];
+  const selectedCopy: CopyResult | null =
+    selectedVariationIdx !== null ? copyVariations[selectedVariationIdx] || null : null;
 
   const generateBusinessContext = async () => {
-    if (!analysis && !copyResult && !rawCopy.trim()) return;
+    if (!analysis && !selectedCopy && !rawCopy.trim()) return;
     setContextLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('criativo-business-context', {
@@ -135,7 +141,7 @@ export default function CriativoStudioPage() {
           mood: analysis?.mood.adjetivos || [],
           referencias: analysis?.mood.referencias || [],
           evita: analysis?.mood.evita || [],
-          copy: copyResult || {},
+          copy: selectedCopy || {},
           rawCopy,
           language,
         },
@@ -154,11 +160,40 @@ export default function CriativoStudioPage() {
 
   // Auto-generate business context when reaching step 4 the first time
   useEffect(() => {
-    if (step === 3 && !businessContext && !contextLoading && (analysis || copyResult || rawCopy.trim())) {
+    if (step === 3 && !businessContext && !contextLoading && (analysis || selectedCopy || rawCopy.trim())) {
       generateBusinessContext();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
+
+  // Auto-suggest a draft copy when entering Step 2 with refs analyzed
+  useEffect(() => {
+    if (step !== 1 || !analysis || suggestedRawCopy || suggestingCopy) return;
+    let cancelled = false;
+    (async () => {
+      setSuggestingCopy(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('criativo-suggest-copy', {
+          body: { analysis, language },
+        });
+        if (cancelled) return;
+        if (error) throw error;
+        if ((data as any)?.error) throw new Error((data as any).error);
+        recordAiUsage('text-flash');
+        const s = ((data as any)?.suggestion || '').trim();
+        if (s) setSuggestedRawCopy(s);
+      } catch (e) {
+        // silencioso — apenas placeholder padrão
+        console.warn('suggest-copy', e);
+      } finally {
+        if (!cancelled) setSuggestingCopy(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, analysis]);
 
   const analyzeRefs = async () => {
     if (refImages.length === 0) {
@@ -202,7 +237,10 @@ export default function CriativoStudioPage() {
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
       recordAiUsage('text-flash');
-      setCopyResult(data as CopyResult);
+      const variations = ((data as any)?.variations || []) as CopyResult[];
+      if (!variations.length) throw new Error('IA não retornou variações');
+      setCopyVariations(variations);
+      setSelectedVariationIdx(null);
     } catch (e: any) {
       toast({ title: 'Erro ao melhorar copy', description: e.message, variant: 'destructive' });
     } finally {
@@ -236,13 +274,13 @@ ${aspect === 'square' ? 'Centered composition optimized for square 1:1 framing.'
 
     // Text blocks from selected copy
     let textBlocks = '';
-    if (copySource === 'ai' && copyResult) {
+    if (copySource === 'ai' && selectedCopy) {
       const parts: string[] = [];
-      if (copyResult.label) parts.push(`LABEL (top, small uppercase, wide tracking, secondary color): "${copyResult.label}"`);
-      if (copyResult.titulo) parts.push(`MAIN TITLE (dominant, large, primary typeface, high contrast): "${copyResult.titulo}"`);
-      if (copyResult.subtitulo) parts.push(`SUBTITLE (medium, secondary typeface, supports the title): "${copyResult.subtitulo}"`);
-      if (copyResult.dados) parts.push(`DATA LINE (small, factual: date/place/price/spots): "${copyResult.dados}"`);
-      if (copyResult.cta) parts.push(`CTA (pill or button, accent color, bold): "${copyResult.cta}"`);
+      if (selectedCopy.label) parts.push(`LABEL (top, small uppercase, wide tracking, secondary color): "${selectedCopy.label}"`);
+      if (selectedCopy.titulo) parts.push(`MAIN TITLE (dominant, large, primary typeface, high contrast): "${selectedCopy.titulo}"`);
+      if (selectedCopy.subtitulo) parts.push(`SUBTITLE (medium, secondary typeface, supports the title): "${selectedCopy.subtitulo}"`);
+      if (selectedCopy.dados) parts.push(`DATA LINE (small, factual: date/place/price/spots): "${selectedCopy.dados}"`);
+      if (selectedCopy.cta) parts.push(`CTA (pill or button, accent color, bold): "${selectedCopy.cta}"`);
       textBlocks = `[TEXT BLOCKS]
 All text must be rendered exactly as written, in ${language === 'pt-BR' ? 'Portuguese (Brazil)' : language === 'es' ? 'Spanish' : 'English'}, with professional typography and perfect legibility.
 ${parts.join('\n')}`;
@@ -303,7 +341,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
       const { data, error } = await supabase.functions.invoke('criativo-fator', {
         body: {
           originalPrompt,
-          copy: copySource === 'ai' ? copyResult : { rawCopy },
+          copy: copySource === 'ai' ? selectedCopy : { rawCopy },
           businessContext,
           language,
           aspect,
@@ -405,7 +443,9 @@ A reference Story version of this same creative is attached as the FIRST image. 
     setAnalysis(null);
     setEditedDoc('');
     setRawCopy('');
-    setCopyResult(null);
+    setCopyVariations([]);
+    setSelectedVariationIdx(null);
+    setSuggestedRawCopy('');
     setCopyApproved(false);
     setCopySource('ai');
     setLogoImage([]);
@@ -569,31 +609,48 @@ A reference Story version of this same creative is attached as the FIRST image. 
           </div>
 
           <Textarea
-            placeholder="Ex: Estamos vendendo curso de kitesurf em Floripa, foco em iniciantes, com instrutores certificados IKO, vagas a partir de R$ 890 começando dia 15/03..."
+            placeholder={suggestedRawCopy || 'Ex: Estamos vendendo curso de kitesurf em Floripa, foco em iniciantes, com instrutores certificados IKO, vagas a partir de R$ 890 começando dia 15/03...'}
             value={rawCopy}
             onChange={(e) => setRawCopy(e.target.value)}
-            rows={4}
+            rows={5}
             className="text-sm"
           />
+
+          {suggestingCopy && !suggestedRawCopy && (
+            <p className="text-[11px] text-white/40 flex items-center gap-1.5">
+              <Loader2 className="h-3 w-3 animate-spin" /> Gerando uma sugestão prévia baseada nas suas referências…
+            </p>
+          )}
+          {suggestedRawCopy && !rawCopy.trim() && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setRawCopy(suggestedRawCopy)}
+              className="text-xs"
+            >
+              <Wand2 className="h-3.5 w-3.5 mr-1.5" /> Usar sugestão como ponto de partida
+            </Button>
+          )}
 
           <div className="flex gap-3 flex-wrap">
             <Button size="sm" onClick={improveCopy} disabled={improving}>
               {improving ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-2" />}
-              {copyResult ? 'Refazer sugestão' : 'Sugerir versão otimizada'}
+              {copyVariations.length > 0 ? 'Refazer 4 sugestões' : 'Sugerir 4 versões otimizadas'}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setStep(0)}>
               <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Voltar
             </Button>
           </div>
 
-          {(copyResult || rawCopy.trim()) && (
-            <div className="grid md:grid-cols-2 gap-3 pt-2">
+          {(copyVariations.length > 0 || rawCopy.trim()) && (
+            <div className="space-y-3 pt-2">
               {rawCopy.trim() && (
                 <CopyOptionCard
                   title="Sua copy original"
                   selected={copyApproved && copySource === 'original'}
                   onSelect={() => {
                     setCopySource('original');
+                    setSelectedVariationIdx(null);
                     setCopyApproved(true);
                     setStep(2);
                   }}
@@ -602,28 +659,34 @@ A reference Story version of this same creative is attached as the FIRST image. 
                 </CopyOptionCard>
               )}
 
-              {copyResult && (
-                <CopyOptionCard
-                  title="Sugestão da IA — 5 blocos"
-                  accent
-                  selected={copyApproved && copySource === 'ai'}
-                  onSelect={() => {
-                    setCopySource('ai');
-                    setCopyApproved(true);
-                    setStep(2);
-                  }}
-                >
-                  {copyResult.label && <CopyBlock label="Label" value={copyResult.label} small uppercase />}
-                  <CopyBlock label="Título" value={copyResult.titulo} bold />
-                  {copyResult.subtitulo && <CopyBlock label="Subtítulo" value={copyResult.subtitulo} />}
-                  {copyResult.dados && <CopyBlock label="Dados" value={copyResult.dados} small />}
-                  <CopyBlock label="CTA" value={copyResult.cta} accent />
-                  {copyResult.justificativa && (
-                    <p className="text-[11px] text-white/50 italic pt-1 border-t border-white/10">
-                      {copyResult.justificativa}
-                    </p>
-                  )}
-                </CopyOptionCard>
+              {copyVariations.length > 0 && (
+                <div className="grid md:grid-cols-2 gap-3">
+                  {copyVariations.map((variation, idx) => (
+                    <CopyOptionCard
+                      key={idx}
+                      title={`Sugestão ${idx + 1}${variation.angulo ? ` — ${variation.angulo}` : ''}`}
+                      accent
+                      selected={copyApproved && copySource === 'ai' && selectedVariationIdx === idx}
+                      onSelect={() => {
+                        setCopySource('ai');
+                        setSelectedVariationIdx(idx);
+                        setCopyApproved(true);
+                        setStep(2);
+                      }}
+                    >
+                      {variation.label && <CopyBlock label="Label" value={variation.label} small uppercase />}
+                      <CopyBlock label="Título" value={variation.titulo} bold />
+                      {variation.subtitulo && <CopyBlock label="Subtítulo" value={variation.subtitulo} />}
+                      {variation.dados && <CopyBlock label="Dados" value={variation.dados} small />}
+                      <CopyBlock label="CTA" value={variation.cta} accent />
+                      {variation.justificativa && (
+                        <p className="text-[11px] text-white/50 italic pt-1 border-t border-white/10">
+                          {variation.justificativa}
+                        </p>
+                      )}
+                    </CopyOptionCard>
+                  ))}
+                </div>
               )}
             </div>
           )}
