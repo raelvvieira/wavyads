@@ -129,9 +129,11 @@ export default function CriativoStudioPage() {
   }, [isAdmin, roleLoading, navigate]);
 
   const completed = [!!analysis, copyApproved, true, !!storyImage];
+  const selectedCopy: CopyResult | null =
+    selectedVariationIdx !== null ? copyVariations[selectedVariationIdx] || null : null;
 
   const generateBusinessContext = async () => {
-    if (!analysis && !copyResult && !rawCopy.trim()) return;
+    if (!analysis && !selectedCopy && !rawCopy.trim()) return;
     setContextLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('criativo-business-context', {
@@ -139,7 +141,7 @@ export default function CriativoStudioPage() {
           mood: analysis?.mood.adjetivos || [],
           referencias: analysis?.mood.referencias || [],
           evita: analysis?.mood.evita || [],
-          copy: copyResult || {},
+          copy: selectedCopy || {},
           rawCopy,
           language,
         },
@@ -158,7 +160,7 @@ export default function CriativoStudioPage() {
 
   // Auto-generate business context when reaching step 4 the first time
   useEffect(() => {
-    if (step === 3 && !businessContext && !contextLoading && (analysis || copyResult || rawCopy.trim())) {
+    if (step === 3 && !businessContext && !contextLoading && (analysis || selectedCopy || rawCopy.trim())) {
       generateBusinessContext();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -206,7 +208,10 @@ export default function CriativoStudioPage() {
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
       recordAiUsage('text-flash');
-      setCopyResult(data as CopyResult);
+      const variations = ((data as any)?.variations || []) as CopyResult[];
+      if (!variations.length) throw new Error('IA não retornou variações');
+      setCopyVariations(variations);
+      setSelectedVariationIdx(null);
     } catch (e: any) {
       toast({ title: 'Erro ao melhorar copy', description: e.message, variant: 'destructive' });
     } finally {
