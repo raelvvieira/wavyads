@@ -123,6 +123,9 @@ export default function CriativoStudioPage() {
   const [factorErrors, setFactorErrors] = useState<(string | null)[]>([]);
   const [factorLoading, setFactorLoading] = useState(false);
   const [factorProgress, setFactorProgress] = useState(0);
+  const [factorSquareImages, setFactorSquareImages] = useState<(string | null)[]>([null, null, null, null, null]);
+  const [factorSquareLoading, setFactorSquareLoading] = useState<boolean[]>([false, false, false, false, false]);
+  const [mainSquareLoading, setMainSquareLoading] = useState(false);
 
   useEffect(() => {
     if (!roleLoading && !isAdmin) navigate('/dashboard');
