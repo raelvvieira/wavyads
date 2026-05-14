@@ -726,16 +726,16 @@ A reference Story version of this same creative is attached as the FIRST image. 
 
           <div>
             <Label className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5 block">
-              Qualidade da imagem (gpt-image-2)
+              Modelo de geração (Google Gemini)
             </Label>
-            <div className="grid grid-cols-3 gap-2">
-              {QUALITY_OPTIONS.map((q) => {
-                const active = quality === q.id;
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {MODEL_OPTIONS.map((m) => {
+                const active = model === m.id;
                 return (
                   <button
-                    key={q.id}
+                    key={m.id}
                     type="button"
-                    onClick={() => setQuality(q.id)}
+                    onClick={() => setModel(m.id)}
                     className={cn(
                       'glass rounded-lg px-3 py-2 text-left transition border',
                       active
@@ -744,15 +744,15 @@ A reference Story version of this same creative is attached as the FIRST image. 
                     )}
                   >
                     <div className={cn('text-sm font-semibold', active ? 'text-accent' : 'text-white')}>
-                      {q.name}
+                      {m.name}
                     </div>
-                    <div className="text-[10px] text-white/60 leading-tight mt-0.5">{q.desc}</div>
+                    <div className="text-[10px] text-white/60 leading-tight mt-0.5">{m.desc}</div>
                   </button>
                 );
               })}
             </div>
             <p className="text-[10px] text-white/40 mt-1.5">
-              Aplica-se à arte principal. As 5 variações do Fator Criativo usam sempre <span className="text-white/70">Medium</span>.
+              Aplica-se à arte principal. As 5 variações do Fator Criativo usam sempre <span className="text-white/70">Nano Banana 2</span>.
             </p>
           </div>
 
