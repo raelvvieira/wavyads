@@ -94,7 +94,7 @@ export default function CriativoStudioPage() {
   const [preserveFaces, setPreserveFaces] = useState(true);
 
   // Step 4
-  const [quality, setQuality] = useState<Quality>('medium');
+  const [model, setModel] = useState<GeminiModel>('gemini-3.1-flash-image-preview');
   const [language, setLanguage] = useState<string>('pt-BR');
   const [businessContext, setBusinessContext] = useState('');
   const [negativePrompt, setNegativePrompt] = useState('');
