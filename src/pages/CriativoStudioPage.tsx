@@ -580,31 +580,48 @@ A reference Story version of this same creative is attached as the FIRST image. 
           </div>
 
           <Textarea
-            placeholder="Ex: Estamos vendendo curso de kitesurf em Floripa, foco em iniciantes, com instrutores certificados IKO, vagas a partir de R$ 890 começando dia 15/03..."
+            placeholder={suggestedRawCopy || 'Ex: Estamos vendendo curso de kitesurf em Floripa, foco em iniciantes, com instrutores certificados IKO, vagas a partir de R$ 890 começando dia 15/03...'}
             value={rawCopy}
             onChange={(e) => setRawCopy(e.target.value)}
-            rows={4}
+            rows={5}
             className="text-sm"
           />
+
+          {suggestingCopy && !suggestedRawCopy && (
+            <p className="text-[11px] text-white/40 flex items-center gap-1.5">
+              <Loader2 className="h-3 w-3 animate-spin" /> Gerando uma sugestão prévia baseada nas suas referências…
+            </p>
+          )}
+          {suggestedRawCopy && !rawCopy.trim() && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setRawCopy(suggestedRawCopy)}
+              className="text-xs"
+            >
+              <Wand2 className="h-3.5 w-3.5 mr-1.5" /> Usar sugestão como ponto de partida
+            </Button>
+          )}
 
           <div className="flex gap-3 flex-wrap">
             <Button size="sm" onClick={improveCopy} disabled={improving}>
               {improving ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-2" />}
-              {copyResult ? 'Refazer sugestão' : 'Sugerir versão otimizada'}
+              {copyVariations.length > 0 ? 'Refazer 4 sugestões' : 'Sugerir 4 versões otimizadas'}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setStep(0)}>
               <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Voltar
             </Button>
           </div>
 
-          {(copyResult || rawCopy.trim()) && (
-            <div className="grid md:grid-cols-2 gap-3 pt-2">
+          {(copyVariations.length > 0 || rawCopy.trim()) && (
+            <div className="space-y-3 pt-2">
               {rawCopy.trim() && (
                 <CopyOptionCard
                   title="Sua copy original"
                   selected={copyApproved && copySource === 'original'}
                   onSelect={() => {
                     setCopySource('original');
+                    setSelectedVariationIdx(null);
                     setCopyApproved(true);
                     setStep(2);
                   }}
@@ -613,28 +630,34 @@ A reference Story version of this same creative is attached as the FIRST image. 
                 </CopyOptionCard>
               )}
 
-              {copyResult && (
-                <CopyOptionCard
-                  title="Sugestão da IA — 5 blocos"
-                  accent
-                  selected={copyApproved && copySource === 'ai'}
-                  onSelect={() => {
-                    setCopySource('ai');
-                    setCopyApproved(true);
-                    setStep(2);
-                  }}
-                >
-                  {copyResult.label && <CopyBlock label="Label" value={copyResult.label} small uppercase />}
-                  <CopyBlock label="Título" value={copyResult.titulo} bold />
-                  {copyResult.subtitulo && <CopyBlock label="Subtítulo" value={copyResult.subtitulo} />}
-                  {copyResult.dados && <CopyBlock label="Dados" value={copyResult.dados} small />}
-                  <CopyBlock label="CTA" value={copyResult.cta} accent />
-                  {copyResult.justificativa && (
-                    <p className="text-[11px] text-white/50 italic pt-1 border-t border-white/10">
-                      {copyResult.justificativa}
-                    </p>
-                  )}
-                </CopyOptionCard>
+              {copyVariations.length > 0 && (
+                <div className="grid md:grid-cols-2 gap-3">
+                  {copyVariations.map((variation, idx) => (
+                    <CopyOptionCard
+                      key={idx}
+                      title={`Sugestão ${idx + 1}${variation.angulo ? ` — ${variation.angulo}` : ''}`}
+                      accent
+                      selected={copyApproved && copySource === 'ai' && selectedVariationIdx === idx}
+                      onSelect={() => {
+                        setCopySource('ai');
+                        setSelectedVariationIdx(idx);
+                        setCopyApproved(true);
+                        setStep(2);
+                      }}
+                    >
+                      {variation.label && <CopyBlock label="Label" value={variation.label} small uppercase />}
+                      <CopyBlock label="Título" value={variation.titulo} bold />
+                      {variation.subtitulo && <CopyBlock label="Subtítulo" value={variation.subtitulo} />}
+                      {variation.dados && <CopyBlock label="Dados" value={variation.dados} small />}
+                      <CopyBlock label="CTA" value={variation.cta} accent />
+                      {variation.justificativa && (
+                        <p className="text-[11px] text-white/50 italic pt-1 border-t border-white/10">
+                          {variation.justificativa}
+                        </p>
+                      )}
+                    </CopyOptionCard>
+                  ))}
+                </div>
               )}
             </div>
           )}
