@@ -364,7 +364,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
         body: {
           prompt,
           aspectRatio: aspect,
-          quality,
+          model,
           productImages,
           logoImage: logoImage[0] || null,
           storyReference: aspect === 'square' ? storyImage : null,
@@ -372,7 +372,8 @@ A reference Story version of this same creative is attached as the FIRST image. 
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      recordAiUsage(`image-openai-${quality}` as const);
+      const usageType = MODEL_OPTIONS.find((m) => m.id === model)?.usage || 'image-gemini-flash-2';
+      recordAiUsage(usageType);
       const url = (data as any).imageUrl;
       if (aspect === 'story') setStoryImage(url);
       else setSquareImage(url);
