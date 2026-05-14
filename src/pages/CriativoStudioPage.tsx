@@ -414,7 +414,9 @@ A reference Story version of this same creative is attached as the FIRST image. 
     setAnalysis(null);
     setEditedDoc('');
     setRawCopy('');
-    setCopyResult(null);
+    setCopyVariations([]);
+    setSelectedVariationIdx(null);
+    setSuggestedRawCopy('');
     setCopyApproved(false);
     setCopySource('ai');
     setLogoImage([]);
