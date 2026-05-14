@@ -365,6 +365,9 @@ A reference Story version of this same creative is attached as the FIRST image. 
           prompt,
           aspectRatio: aspect,
           quality,
+          productImages,
+          logoImage: logoImage[0] || null,
+          storyReference: aspect === 'square' ? storyImage : null,
         },
       });
       if (error) throw error;
