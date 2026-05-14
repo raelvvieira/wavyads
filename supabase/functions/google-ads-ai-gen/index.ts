@@ -367,6 +367,8 @@ serve(async (req) => {
     const body = await req.json();
     const { action } = body;
     const cidadeCampanha = body.cidadeCampanha || "";
+    const observacoes = body.observacoes || "";
+    const descricaoGrupo = body.descricaoGrupo || "";
 
     let result: unknown;
 
@@ -374,31 +376,31 @@ serve(async (req) => {
       case "analyze": {
         const { site, descricao } = body;
         if (!site && !descricao) throw new Error("Informe o site ou a descrição da empresa");
-        result = await callAI(SYSTEM_ANALYZE, buildAnalyzePrompt(site || "", descricao || "", cidadeCampanha), "analyze_site", ANALYZE_TOOL_PARAMS);
+        result = await callAI(SYSTEM_ANALYZE, buildAnalyzePrompt(site || "", descricao || "", cidadeCampanha, observacoes), "analyze_site", ANALYZE_TOOL_PARAMS);
         break;
       }
       case "titles": {
         const { empresa, servico, cidade, diferenciais, cta } = body;
         if (!empresa || !servico) throw new Error("empresa e servico são obrigatórios");
-        result = await callAI(SYSTEM_TITLES, buildTitlesPrompt({ empresa, servico, cidade, diferenciais, cta, cidadeCampanha }), "generate_titles", TITLES_TOOL_PARAMS);
+        result = await callAI(SYSTEM_TITLES, buildTitlesPrompt({ empresa, servico, cidade, diferenciais, cta, cidadeCampanha, observacoes, descricaoGrupo }), "generate_titles", TITLES_TOOL_PARAMS);
         break;
       }
       case "descriptions": {
         const { empresa, servico, cidade, diferenciais, cta } = body;
         if (!empresa || !servico) throw new Error("empresa e servico são obrigatórios");
-        result = await callAI(SYSTEM_DESCRIPTIONS, buildDescriptionsPrompt({ empresa, servico, cidade, diferenciais, cta, cidadeCampanha }), "generate_descriptions", DESCRIPTIONS_TOOL_PARAMS);
+        result = await callAI(SYSTEM_DESCRIPTIONS, buildDescriptionsPrompt({ empresa, servico, cidade, diferenciais, cta, cidadeCampanha, observacoes, descricaoGrupo }), "generate_descriptions", DESCRIPTIONS_TOOL_PARAMS);
         break;
       }
       case "keywords": {
         const { empresa, servico, cidade, segmento, diferenciais } = body;
         if (!empresa || !servico) throw new Error("empresa e servico são obrigatórios");
-        result = await callAI(SYSTEM_KEYWORDS, buildKeywordsPrompt({ empresa, servico, cidade, segmento, diferenciais, cidadeCampanha }), "generate_keywords", KEYWORDS_TOOL_PARAMS);
+        result = await callAI(SYSTEM_KEYWORDS, buildKeywordsPrompt({ empresa, servico, cidade, segmento, diferenciais, cidadeCampanha, observacoes, descricaoGrupo }), "generate_keywords", KEYWORDS_TOOL_PARAMS);
         break;
       }
       case "regenerate_texto_unico": {
         const { empresa, servico, cidade, diferenciais, cta, textoAtual } = body;
         if (!textoAtual) throw new Error("textoAtual é obrigatório");
-        const userPrompt = `O texto único anterior ficou com ${textoAtual.length} caracteres. Reescreva em no máximo 270 caracteres mantendo: nome da empresa (${empresa}), cidade (${cidadeCampanha || cidade}), especialidade (${servico}), 2 diferenciais principais (${diferenciais}) e CTA WhatsApp. Seja objetivo, sem texto poético.${cidadeWarning(cidadeCampanha)}`;
+        const userPrompt = `O texto único anterior ficou com ${textoAtual.length} caracteres. Reescreva em no máximo 270 caracteres mantendo: nome da empresa (${empresa}), cidade (${cidadeCampanha || cidade}), especialidade (${servico}), 2 diferenciais principais (${diferenciais}) e CTA WhatsApp. Seja objetivo, sem texto poético.${cidadeWarning(cidadeCampanha)}${obsBlock(observacoes)}`;
         result = await callAI(SYSTEM_REGENERATE_TEXTO, userPrompt, "regenerate_texto", REGENERATE_TEXTO_TOOL_PARAMS);
         break;
       }
