@@ -389,44 +389,6 @@ export default function ComercialPage() {
         )}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <GlassCard>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center">
-              <Users className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Leads</p>
-              <p className="text-2xl font-bold metric-number">{totals.leads}</p>
-            </div>
-          </div>
-        </GlassCard>
-        <GlassCard>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-accent/15 text-accent flex items-center justify-center">
-              <ShoppingCart className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Compradores</p>
-              <p className="text-2xl font-bold metric-number">{totals.purchases}</p>
-            </div>
-          </div>
-        </GlassCard>
-        <GlassCard>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-accent/15 text-accent flex items-center justify-center">
-              <TrendingUp className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Valor total</p>
-              <p className="text-2xl font-bold metric-number">{formatBRL(totals.value)}</p>
-            </div>
-          </div>
-        </GlassCard>
-      </div>
-
-
       {/* Filters */}
       <GlassCard>
         <div className="flex flex-col lg:flex-row gap-3">
@@ -501,6 +463,86 @@ export default function ComercialPage() {
           )}
         </div>
       </GlassCard>
+
+      {/* Stats */}
+      <div className={cn(
+        'grid grid-cols-1 sm:grid-cols-2 gap-4',
+        showAttributionCards ? 'lg:grid-cols-3 xl:grid-cols-5' : 'lg:grid-cols-3'
+      )}>
+        <GlassCard>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center">
+              <Users className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Leads</p>
+              <p className="text-2xl font-bold metric-number">{totals.leads}</p>
+            </div>
+          </div>
+        </GlassCard>
+        <GlassCard>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-accent/15 text-accent flex items-center justify-center">
+              <ShoppingCart className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Compradores</p>
+              <p className="text-2xl font-bold metric-number">{totals.purchases}</p>
+            </div>
+          </div>
+        </GlassCard>
+        <GlassCard>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-accent/15 text-accent flex items-center justify-center">
+              <TrendingUp className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Valor total</p>
+              <p className="text-2xl font-bold metric-number">{formatBRL(totals.value)}</p>
+            </div>
+          </div>
+        </GlassCard>
+
+        {showAttributionCards && (
+          <>
+            <GlassCard
+              title="Conversões reconhecidas pela Meta no período selecionado (estimativa diária agregada)."
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-accent/15 text-accent flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground">Reconhecidos pela Meta</p>
+                  <p className="text-sm font-semibold metric-number whitespace-nowrap">
+                    Leads <span className="text-accent">{attributionTotals.recognizedLeads}</span>
+                    <span className="text-muted-foreground mx-1.5">·</span>
+                    Compras <span className="text-accent">{attributionTotals.recognizedPurchases}</span>
+                  </p>
+                </div>
+              </div>
+            </GlassCard>
+
+            <GlassCard
+              title="Estimativa por dia: quando enviamos mais conversões em um dia do que a Meta reconheceu, a diferença pode não ter sido atribuída. Não é possível saber quais contatos individualmente."
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground">Possivelmente não atribuídos</p>
+                  <p className="text-sm font-semibold metric-number whitespace-nowrap">
+                    Leads <span className="text-amber-400">{attributionTotals.unattributedLeads}</span>
+                    <span className="text-muted-foreground mx-1.5">·</span>
+                    Compras <span className="text-amber-400">{attributionTotals.unattributedPurchases}</span>
+                  </p>
+                </div>
+              </div>
+            </GlassCard>
+          </>
+        )}
+      </div>
 
       {/* Table */}
       <GlassCard className="p-0 overflow-hidden">
