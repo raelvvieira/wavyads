@@ -30,9 +30,10 @@ REGRAS:
 - Nunca prometa resultado mágico nem use superlativos absolutos proibidos pela Meta
 - Se a copy for evento/lançamento, preencha DADOS. Se for branding/produto contínuo, deixe DADOS vazio.`;
 
-const TOOL_PARAMS = {
+const VARIATION_SCHEMA = {
   type: "object",
   properties: {
+    angulo: { type: "string", description: "Nome curto do ângulo: 'Direto/Benefício', 'Urgência/Escassez', 'Curiosidade/Hook' ou 'Prova/Autoridade'." },
     label: { type: "string", description: "Label de topo, uppercase curto. String vazia se não fizer sentido." },
     titulo: { type: "string", description: "Título principal — dominante, até 60 caracteres" },
     subtitulo: { type: "string", description: "Subtítulo opcional, até 90 caracteres. String vazia se não usar." },
@@ -52,7 +53,22 @@ const TOOL_PARAMS = {
     },
     justificativa: { type: "string", description: "1-2 frases explicando o porquê dessa copy funcionar" },
   },
-  required: ["label", "titulo", "subtitulo", "dados", "cta", "avaliacao", "justificativa"],
+  required: ["angulo", "label", "titulo", "subtitulo", "dados", "cta", "avaliacao", "justificativa"],
+  additionalProperties: false,
+};
+
+const TOOL_PARAMS = {
+  type: "object",
+  properties: {
+    variations: {
+      type: "array",
+      description: "Exatamente 4 variações de copy, uma por ângulo: Direto/Benefício, Urgência/Escassez, Curiosidade/Hook, Prova/Autoridade.",
+      items: VARIATION_SCHEMA,
+      minItems: 4,
+      maxItems: 4,
+    },
+  },
+  required: ["variations"],
   additionalProperties: false,
 };
 
@@ -78,7 +94,13 @@ ${rawCopy}
 ${context ? `\nContexto do negócio: ${context}` : ""}
 ${moodAdjetivos ? `\nMood visual identificado: ${moodAdjetivos}` : ""}
 
-Aplique os 5 critérios de avaliação e devolva a copy reescrita nos 5 blocos visuais.`;
+Gere EXATAMENTE 4 variações da copy, cada uma com um ângulo distinto na seguinte ordem:
+1. "Direto/Benefício" — foco no benefício mais claro e direto.
+2. "Urgência/Escassez" — gatilho de tempo, vagas ou condição limitada.
+3. "Curiosidade/Hook" — abre um loop, pergunta provocativa ou afirmação inesperada.
+4. "Prova/Autoridade" — credenciais, números, certificações, autoridade.
+
+Cada variação mantém os 5 blocos visuais (label, título, subtítulo, dados, CTA), avaliação e justificativa. Não repita o mesmo título entre variações.`;
 
     const response = await fetch(AI_URL, {
       method: "POST",
@@ -127,9 +149,11 @@ Aplique os 5 critérios de avaliação e devolva a copy reescrita nos 5 blocos v
     const data = await response.json();
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall) throw new Error("IA não retornou copy estruturada");
-    const result = JSON.parse(toolCall.function.arguments);
+    const parsed = JSON.parse(toolCall.function.arguments);
+    const variations = Array.isArray(parsed?.variations) ? parsed.variations.slice(0, 4) : [];
+    if (variations.length === 0) throw new Error("IA não retornou variações");
 
-    return new Response(JSON.stringify(result), {
+    return new Response(JSON.stringify({ variations }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
