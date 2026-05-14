@@ -93,6 +93,7 @@ export function useGoogleAdsAI() {
   const [selectedFrentes, setSelectedFrentes] = useState<string[]>([]);
   const [cta, setCta] = useState('');
   const [cidadeCampanha, setCidadeCampanha] = useState('');
+  const [observacoes, setObservacoes] = useState('');
   const [frentesResults, setFrentesResults] = useState<Record<string, FrenteResult>>({});
   const [generating, setGenerating] = useState(false);
   const [currentFrenteIndex, setCurrentFrenteIndex] = useState(0);
@@ -110,7 +111,7 @@ export function useGoogleAdsAI() {
   const analyze = useCallback(async (site: string, descricao: string) => {
     setAnalyzing(true);
     try {
-      const result = await callEdge({ action: 'analyze', site, descricao, cidadeCampanha }) as AnalyzeResult;
+      const result = await callEdge({ action: 'analyze', site, descricao, cidadeCampanha, observacoes }) as AnalyzeResult;
       setAnalyzeResult(result);
       setCta(result.cta || 'whatsapp');
       setSelectedFrentes(result.frentes.map(f => f.id));
@@ -120,14 +121,37 @@ export function useGoogleAdsAI() {
     } finally {
       setAnalyzing(false);
     }
-  }, [callEdge, toast, cidadeCampanha]);
+  }, [callEdge, toast, cidadeCampanha, observacoes]);
+
+  // Edição dos grupos sugeridos
+  const updateFrente = useCallback((id: string, patch: Partial<Frente>) => {
+    setAnalyzeResult(prev => prev ? {
+      ...prev,
+      frentes: prev.frentes.map(f => f.id === id ? { ...f, ...patch } : f),
+    } : prev);
+  }, []);
+
+  const removeFrente = useCallback((id: string) => {
+    setAnalyzeResult(prev => prev ? {
+      ...prev,
+      frentes: prev.frentes.filter(f => f.id !== id),
+    } : prev);
+    setSelectedFrentes(prev => prev.filter(f => f !== id));
+  }, []);
+
+  const addFrente = useCallback(() => {
+    const id = `manual-${Date.now()}`;
+    const novo: Frente = { id, nome: '', icone: '✨', descricao: '', potencial: 'medio' };
+    setAnalyzeResult(prev => prev ? { ...prev, frentes: [...prev.frentes, novo] } : prev);
+    setSelectedFrentes(prev => [...prev, id]);
+  }, []);
 
   const generateForFrentes = useCallback(async () => {
     if (!analyzeResult) return;
     setGenerating(true);
     setStep(3);
 
-    const chosen = analyzeResult.frentes.filter(f => selectedFrentes.includes(f.id));
+    const chosen = analyzeResult.frentes.filter(f => selectedFrentes.includes(f.id) && f.nome.trim());
     const diferenciais = analyzeResult.diferenciais.join(', ');
     const baseParams = {
       empresa: analyzeResult.empresa,
@@ -136,6 +160,7 @@ export function useGoogleAdsAI() {
       diferenciais,
       cta,
       cidadeCampanha,
+      observacoes,
     };
 
     const initial: Record<string, FrenteResult> = {};
@@ -150,20 +175,20 @@ export function useGoogleAdsAI() {
       setCurrentFrenteIndex(i);
 
       try {
-        const titles = await callEdge({ action: 'titles', ...baseParams, servico: f.nome }) as TitlesResult;
+        const titles = await callEdge({ action: 'titles', ...baseParams, servico: f.nome, descricaoGrupo: f.descricao }) as TitlesResult;
         titles.titulos = fixTitulos(titles.titulos);
         setFrentesResults(prev => ({
           ...prev,
           [f.id]: { ...prev[f.id], titles, loadingTitles: false },
         }));
 
-        const descriptions = await callEdge({ action: 'descriptions', ...baseParams, servico: f.nome }) as DescriptionsResult;
+        const descriptions = await callEdge({ action: 'descriptions', ...baseParams, servico: f.nome, descricaoGrupo: f.descricao }) as DescriptionsResult;
         setFrentesResults(prev => ({
           ...prev,
           [f.id]: { ...prev[f.id], descriptions, loadingDescriptions: false },
         }));
 
-        const keywords = await callEdge({ action: 'keywords', ...baseParams, servico: f.nome }) as KeywordsResult;
+        const keywords = await callEdge({ action: 'keywords', ...baseParams, servico: f.nome, descricaoGrupo: f.descricao }) as KeywordsResult;
         setFrentesResults(prev => ({
           ...prev,
           [f.id]: { ...prev[f.id], keywords, loadingKeywords: false },
@@ -178,7 +203,7 @@ export function useGoogleAdsAI() {
     }
 
     setGenerating(false);
-  }, [analyzeResult, selectedFrentes, cta, cidadeCampanha, callEdge, toast]);
+  }, [analyzeResult, selectedFrentes, cta, cidadeCampanha, observacoes, callEdge, toast]);
 
   const regenerateTextoUnico = useCallback(async (frenteId: string) => {
     const fr = frentesResults[frenteId];
@@ -196,6 +221,7 @@ export function useGoogleAdsAI() {
         servico: fr.frente.nome,
         cidade: analyzeResult.cidade,
         cidadeCampanha,
+        observacoes,
         diferenciais: analyzeResult.diferenciais.join(', '),
         cta,
         textoAtual: fr.titles.textoUnico,
@@ -217,7 +243,7 @@ export function useGoogleAdsAI() {
         [frenteId]: { ...prev[frenteId], regeneratingTexto: false },
       }));
     }
-  }, [frentesResults, analyzeResult, cidadeCampanha, cta, callEdge, toast]);
+  }, [frentesResults, analyzeResult, cidadeCampanha, observacoes, cta, callEdge, toast]);
 
   const reset = useCallback(() => {
     setStep(1);
@@ -236,10 +262,12 @@ export function useGoogleAdsAI() {
     selectedFrentes, setSelectedFrentes,
     cta, setCta,
     cidadeCampanha, setCidadeCampanha,
+    observacoes, setObservacoes,
     frentesResults,
     generating, generateForFrentes,
     currentFrenteIndex,
     regenerateTextoUnico,
+    updateFrente, removeFrente, addFrente,
     reset,
   };
 }
