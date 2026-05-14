@@ -61,10 +61,34 @@ serve(async (req) => {
       ? "OUTPUT FORMAT: vertical 9:16 aspect ratio, 1080x1920px Instagram Story format."
       : "OUTPUT FORMAT: perfect 1:1 square aspect ratio, 1080x1080px Instagram post format.";
 
-    const fullPrompt = `${aspectInstruction}\n\n${prompt}`;
-
     // Build parts array: text + reference images (inline_data)
-    const parts: any[] = [{ text: fullPrompt }];
+    const parts: any[] = [];
+
+    const productImages = Array.isArray(body.productImages) ? body.productImages : [];
+    const refBlobs: { mime: string; data: string }[] = [];
+    for (const img of productImages.slice(0, 14)) {
+      const p = parseDataUrl(img);
+      if (p) refBlobs.push(p);
+    }
+    if (body.logoImage) {
+      const p = parseDataUrl(body.logoImage);
+      if (p) refBlobs.push(p);
+    }
+    if (!isStory && body.storyReference) {
+      const p = parseDataUrl(body.storyReference);
+      if (p) refBlobs.push(p);
+    }
+
+    const referenceHints = refBlobs.length > 0
+      ? `\n\n[REFERENCE IMAGES]\n${refBlobs.length} reference image(s) attached. Use them as the source of truth for the subject's appearance, brand logo and visual consistency. Do not invent new faces or alter the brand mark.`
+      : "";
+
+    const fullPrompt = `${aspectInstruction}\n\n${prompt}${referenceHints}`;
+
+    parts.push({ text: fullPrompt });
+    for (const r of refBlobs) {
+      parts.push({ inline_data: { mime_type: r.mime, data: r.data } });
+    }
 
     const productImages = Array.isArray(body.productImages) ? body.productImages : [];
     for (const img of productImages.slice(0, 14)) {
