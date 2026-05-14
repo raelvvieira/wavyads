@@ -210,16 +210,16 @@ REGRAS ABSOLUTAS:
 - Sempre inclua pelo menos 1 descrição com prova social
 - Sempre inclua pelo menos 1 descrição com benefício do serviço
 - Nunca repita informação entre descrições
-- Nunca use preços, portuguesismos, superlativos absolutos`;
+- Nunca use preços, portuguesismos, superlativos absolutos${SKILL_BLOCK}`;
 
-function buildDescriptionsPrompt(p: { empresa: string; servico: string; cidade: string; diferenciais: string; cta: string; cidadeCampanha: string }) {
+function buildDescriptionsPrompt(p: { empresa: string; servico: string; cidade: string; diferenciais: string; cta: string; cidadeCampanha: string; observacoes: string; descricaoGrupo: string }) {
   return `Empresa: ${p.empresa}
-Serviço: ${p.servico}
+Serviço: ${p.servico}${descricaoGrupoBlock(p.descricaoGrupo)}
 Cidade: ${p.cidadeCampanha || p.cidade}
 Diferenciais: ${p.diferenciais}
 CTA: ${p.cta}
 
-Crie 5 descrições de Google Ads Performance Max para este grupo.${cidadeWarning(p.cidadeCampanha)}`;
+Crie 5 descrições de Google Ads Performance Max para este grupo.${cidadeWarning(p.cidadeCampanha)}${obsBlock(p.observacoes)}`;
 }
 
 const DESCRIPTIONS_TOOL_PARAMS = {
