@@ -46,6 +46,7 @@ interface VisualAnalysis {
 }
 
 interface CopyResult {
+  angulo?: string;
   label: string;
   titulo: string;
   subtitulo: string;
@@ -84,9 +85,12 @@ export default function CriativoStudioPage() {
   // Step 2
   const [rawCopy, setRawCopy] = useState('');
   const [improving, setImproving] = useState(false);
-  const [copyResult, setCopyResult] = useState<CopyResult | null>(null);
+  const [copyVariations, setCopyVariations] = useState<CopyResult[]>([]);
+  const [selectedVariationIdx, setSelectedVariationIdx] = useState<number | null>(null);
   const [copyApproved, setCopyApproved] = useState(false);
   const [copySource, setCopySource] = useState<'original' | 'ai'>('ai');
+  const [suggestedRawCopy, setSuggestedRawCopy] = useState('');
+  const [suggestingCopy, setSuggestingCopy] = useState(false);
 
   // Step 3
   const [logoImage, setLogoImage] = useState<string[]>([]);
