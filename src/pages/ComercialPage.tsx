@@ -191,14 +191,15 @@ export default function ComercialPage() {
   };
 
   const { data: rows = [], isLoading } = useQuery({
-    queryKey: ['offline-conversions', clientFilter, typeFilter, dateRange?.since.toISOString(), dateRange?.until.toISOString()],
+    queryKey: ['offline-conversions', clientId, typeFilter, dateRange?.since.toISOString(), dateRange?.until.toISOString()],
+    enabled: !!clientId,
     queryFn: async () => {
       let q = supabase
         .from('offline_conversions')
         .select('*')
+        .eq('client_id', clientId!)
         .order('conversion_date', { ascending: false })
         .limit(1000);
-      if (clientFilter !== 'all') q = q.eq('client_id', clientFilter);
       if (typeFilter !== 'all') q = q.eq('event_name', typeFilter);
       if (dateRange) {
         q = q.gte('conversion_date', dateRange.since.toISOString())
@@ -210,18 +211,11 @@ export default function ComercialPage() {
     },
   });
 
-  const clientNameById = useMemo(() => {
-    const m = new Map<string, string>();
-    (clients || []).forEach(c => m.set(c.id, c.name));
-    return m;
-  }, [clients]);
-
-  // Determine which clients to query Meta insights for
+  // Determine if this client is synced for Meta insights
   const syncedClientIds = useMemo(() => {
-    const all = (clients || []).filter(c => c.is_synced && c.meta_ad_account_id).map(c => c.id);
-    if (clientFilter !== 'all') return all.includes(clientFilter) ? [clientFilter] : [];
-    return all;
-  }, [clients, clientFilter]);
+    if (client?.is_synced && client?.meta_ad_account_id) return [client.id];
+    return [];
+  }, [client]);
 
   // Fetch recognized conversions from Meta (aggregated daily by event_name)
   const { data: recognizedByDay } = useQuery({
