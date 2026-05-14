@@ -398,8 +398,11 @@ A reference Story version of this same creative is attached as the FIRST image. 
   };
 
   const generate = async (aspect: 'story' | 'square') => {
+    if (aspect === 'square') {
+      await recreateSquare('main');
+      return;
+    }
     setGenerating(true);
-    if (aspect === 'square') setSquareImage(null);
     try {
       const prompt = buildFinalPrompt(aspect);
       const { data, error } = await supabase.functions.invoke('criativo-generate', {
@@ -409,21 +412,62 @@ A reference Story version of this same creative is attached as the FIRST image. 
           model,
           productImages,
           logoImage: logoImage[0] || null,
-          storyReference: aspect === 'square' ? storyImage : null,
+          storyReference: null,
         },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
       const usageType = MODEL_OPTIONS.find((m) => m.id === model)?.usage || 'image-gemini-flash-2';
       recordAiUsage(usageType);
-      const url = (data as any).imageUrl;
-      if (aspect === 'story') setStoryImage(url);
-      else setSquareImage(url);
-      toast({ title: `Imagem ${aspect === 'story' ? 'Story' : 'Quadrada'} gerada` });
+      setStoryImage((data as any).imageUrl);
+      toast({ title: 'Imagem Story gerada' });
     } catch (e: any) {
       toast({ title: 'Erro ao gerar', description: e.message, variant: 'destructive' });
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const recreateSquare = async (target: 'main' | number) => {
+    if (target === 'main') {
+      setMainSquareLoading(true);
+      setSquareImage(null);
+    } else {
+      setFactorSquareLoading((prev) => prev.map((v, i) => (i === target ? true : v)));
+      setFactorSquareImages((prev) => prev.map((v, i) => (i === target ? null : v)));
+    }
+    try {
+      const prompt = target === 'main'
+        ? buildFinalPrompt('square')
+        : factorVariations?.[target]?.promptCompleto;
+      if (!prompt) throw new Error('Prompt não disponível');
+      const { data, error } = await supabase.functions.invoke('criativo-generate', {
+        body: {
+          prompt,
+          aspectRatio: 'square',
+          model,
+          isVariation: typeof target === 'number',
+          productImages,
+          logoImage: logoImage[0] || null,
+          storyReference: storyImage,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const usageType = MODEL_OPTIONS.find((m) => m.id === model)?.usage || 'image-gemini-flash-2';
+      recordAiUsage(usageType);
+      const url = (data as any).imageUrl as string;
+      if (target === 'main') {
+        setSquareImage(url);
+      } else {
+        setFactorSquareImages((prev) => prev.map((v, i) => (i === target ? url : v)));
+      }
+      toast({ title: 'Quadrado 1080 gerado' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao gerar quadrado', description: e.message, variant: 'destructive' });
+    } finally {
+      if (target === 'main') setMainSquareLoading(false);
+      else setFactorSquareLoading((prev) => prev.map((v, i) => (i === target ? false : v)));
     }
   };
 
