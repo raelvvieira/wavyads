@@ -502,6 +502,8 @@ A reference Story version of this same creative is attached as the FIRST image. 
     setNegativePrompt('');
     setStoryImage(null);
     setSquareImage(null);
+    setFactorSquareImages([null, null, null, null, null]);
+    setFactorSquareLoading([false, false, false, false, false]);
   };
 
   if (roleLoading) {
