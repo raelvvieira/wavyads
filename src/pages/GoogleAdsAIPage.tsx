@@ -465,6 +465,17 @@ export default function GoogleAdsAIPage() {
                   disabled={step > 1}
                 />
               </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Observações (opcional)</label>
+                <Textarea
+                  value={observacoes}
+                  onChange={e => setObservacoes(e.target.value)}
+                  placeholder="Promoções vigentes, restrições, foco em determinado serviço, tom de voz, público específico..."
+                  rows={3}
+                  className="glass-input resize-none"
+                  disabled={step > 1}
+                />
+              </div>
               {step === 1 && (
                 <Button
                   onClick={handleAnalyze}
@@ -474,7 +485,7 @@ export default function GoogleAdsAIPage() {
                   {analyzing ? (
                     <><Sparkles className="h-4 w-4 animate-spin" /> Analisando...</>
                   ) : (
-                    <><Sparkles className="h-4 w-4" /> Analisar com I.A</>
+                    <><Sparkles className="h-4 w-4" /> Sugerir grupos com I.A</>
                   )}
                 </Button>
               )}
