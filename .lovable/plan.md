@@ -1,56 +1,47 @@
-# Restaurar qualidade da geração de imagem no Criativo Studio
+## Objetivo
 
-## Causa raiz
-O endpoint atual `/v1/images/generations` da OpenAI **só aceita texto**. Foto do produto, logo e a Story (usada como ground truth cromático para o Quadrado) estão sendo descartados antes de chegar ao modelo. O prompt textual em si está sendo enviado por completo (~5050 chars confirmados nos logs) — o problema é a perda das refs visuais.
+Tornar a página **Comercial** individual por cliente. Hoje, ao clicar em "Comercial", admin não vê uma forma clara de escolher cliente (o filtro fica perdido entre vários selects). O plano anterior foi aprovado mas não chegou a ser implementado — esta é a execução dele.
+
+## Comportamento final
+
+- **Admin** clica em "Comercial" → vê uma **grade de cards de clientes** (com busca), clica em um → entra em `/comercial/:clientId` com os dados só daquele cliente.
+- **Cliente final** clica em "Comercial" → é redirecionado automaticamente para `/comercial/<seuId>`.
+- A página individual tem botão **"← Voltar"** (apenas admin) para voltar à lista.
 
 ## Mudanças
 
-### 1. `supabase/functions/criativo-generate/index.ts` — reescrita
+### 1. `src/App.tsx`
+Adicionar rota nova:
+```
+/comercial            → <ComercialIndexPage />   (novo)
+/comercial/:clientId  → <ComercialPage />        (refatorado)
+```
 
-- **Modelo:** `gpt-image-1` (gpt-image-1.5 não existe publicamente; edits só funciona com gpt-image-1).
-- **Body novo:**
-  ```ts
-  {
-    prompt: string,
-    aspectRatio: 'story' | 'square',
-    quality?: 'low' | 'medium' | 'high',
-    isVariation?: boolean,
-    productImages?: string[],   // data URLs
-    logoImage?: string | null,  // data URL
-    storyReference?: string | null  // data URL — só p/ square
-  }
-  ```
-- **Roteamento:**
-  - Se houver pelo menos 1 ref → `POST /v1/images/edits` (multipart/form-data).
-  - Se não houver refs → mantém `POST /v1/images/generations` (atual).
-- **Multipart edits:**
-  - Converter cada data URL em `Blob` e anexar como `image[]` (até 16). Ordem: `productImages...`, depois `logoImage`, depois `storyReference` (se square).
-  - Campos: `model=gpt-image-1`, `prompt`, `n=1`, `size` (1024x1536 story / 1024x1024 square), `quality` (final).
-- **Resposta:** OpenAI `/edits` retorna `b64_json` por padrão → converter para `data:image/png;base64,...`. Manter compat com `url`.
-- **Erros:** preservar mapeamento 401/429/402 atual; logar `prompt_chars`, contagem de refs, endpoint usado.
+### 2. Novo `src/pages/ComercialIndexPage.tsx`
+- `useRole()` + `useClients()` + `useClientUsers()`.
+- Se não-admin: `useEffect` busca o `client_id` do usuário em `client_users` e faz `navigate('/comercial/<id>', { replace: true })`.
+- Se admin: header "Comercial — Selecione um cliente", input de busca, grid de `GlassCard`s clicáveis (nome do cliente + status de sync). Mesmo padrão visual do dashboard.
+- Estado de loading enquanto role carrega.
 
-### 2. `src/pages/CriativoStudioPage.tsx` — passar refs
+### 3. `src/pages/ComercialPage.tsx` (refatorar)
+- Ler `clientId` via `useParams<{ clientId: string }>()`.
+- **Remover** o `<Select>` "Cliente" e o estado `clientFilter`.
+- Query de `offline_conversions` passa a usar `eq('client_id', clientId)` direto.
+- `syncedClientIds` vira `[clientId]` (se o cliente está sincronizado).
+- Header passa a mostrar **nome do cliente** + botão "← Voltar" (visível só para admin, navega para `/comercial`).
+- Se `clientId` inválido / sem acesso: empty state com botão voltar (RLS já garante zero leak).
+- Remover coluna redundante "Cliente" da tabela (se existir).
 
-- Em `generate(aspect)`: incluir no body
-  ```ts
-  productImages,
-  logoImage: logoImage[0] || null,
-  storyReference: aspect === 'square' ? storyImage : null
-  ```
-- Em `applyFatorCriativo` (loop das 5 variações): passar as MESMAS refs (`productImages`, `logoImage[0]`, e `storyImage` quando aspect=square) — assim cada variação herda o DNA visual original.
-- Nenhuma mudança de UI. Os blocos `[ATTACHED PHOTOS]`, `[BRAND LOGO]`, `[VISUAL CONSISTENCY]` no prompt continuam — agora coerentes com as imagens efetivamente enviadas.
+### 4. `src/components/AppSidebar.tsx`
+Manter `to: '/comercial'` (nada a mudar — o index decide para onde levar).
 
-### 3. Sem mudança em
-- `criativo-fator` (texto, segue Lovable AI / Gemini).
-- `aiUsageTracker` (custos da OpenAI por qualidade já cobrem ambos endpoints).
-- `buildFinalPrompt()` (prompt já está completo e está sendo enviado integralmente).
+## Validação
 
-## Validação após implementar
-1. Deploy `criativo-generate`.
-2. Testar geração Story com produto + logo: confirmar nos logs `endpoint=edits, refs=2`.
-3. Gerar Quadrado depois do Story: confirmar `refs=3` (com storyReference).
-4. Verificar visualmente que rosto/produto/logo estão preservados e que Story↔Quadrado têm a mesma paleta.
+- Admin → `/comercial` mostra grid → clica → `/comercial/<id>` com dados filtrados → "Voltar" retorna ao grid.
+- Cliente final → `/comercial` → redirecionado para `/comercial/<seuId>` → vê só seus dados (sem dropdown de cliente).
+- Admin acessa `/comercial/<id-inexistente>` → empty state.
 
-## Riscos
-- Conta OpenAI precisa ter `billing_hard_limit` resolvido (erro 402 anterior). Independente desta mudança.
-- `gpt-image-1` pode aplicar quality='high' com latência maior (~30-60s). Aceitável para criativos premium.
+## Riscos / fora de escopo
+
+- Sem mudanças em DB, RLS ou edge functions — apenas roteamento e UI.
+- Caso raro de usuário com múltiplos `client_users`: usa o primeiro; seletor multi-cliente fica para depois.

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, startOfDay, endOfDay, subDays, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import {
@@ -13,10 +14,11 @@ import {
   Loader2,
   CalendarIcon,
   AlertTriangle,
+  ArrowLeft,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRole } from '@/hooks/useRole';
-import { useClients } from '@/hooks/useClients';
+import { useClient } from '@/hooks/useClients';
 import { GlassCard } from '@/components/GlassCard';
 import {
   Sheet,
@@ -141,11 +143,12 @@ function TypeBadge({ event }: { event: string }) {
 }
 
 export default function ComercialPage() {
+  const { clientId } = useParams<{ clientId: string }>();
+  const navigate = useNavigate();
   const { isAdmin, isLoading: roleLoading } = useRole();
-  const { data: clients } = useClients();
+  const { data: client } = useClient(clientId);
   const qc = useQueryClient();
 
-  const [clientFilter, setClientFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'Lead' | 'Purchase'>('all');
   const [attributionFilter, setAttributionFilter] = useState<'all' | 'recognized' | 'unrecognized'>('all');
   const [search, setSearch] = useState('');
@@ -188,14 +191,15 @@ export default function ComercialPage() {
   };
 
   const { data: rows = [], isLoading } = useQuery({
-    queryKey: ['offline-conversions', clientFilter, typeFilter, dateRange?.since.toISOString(), dateRange?.until.toISOString()],
+    queryKey: ['offline-conversions', clientId, typeFilter, dateRange?.since.toISOString(), dateRange?.until.toISOString()],
+    enabled: !!clientId,
     queryFn: async () => {
       let q = supabase
         .from('offline_conversions')
         .select('*')
+        .eq('client_id', clientId!)
         .order('conversion_date', { ascending: false })
         .limit(1000);
-      if (clientFilter !== 'all') q = q.eq('client_id', clientFilter);
       if (typeFilter !== 'all') q = q.eq('event_name', typeFilter);
       if (dateRange) {
         q = q.gte('conversion_date', dateRange.since.toISOString())
@@ -207,18 +211,11 @@ export default function ComercialPage() {
     },
   });
 
-  const clientNameById = useMemo(() => {
-    const m = new Map<string, string>();
-    (clients || []).forEach(c => m.set(c.id, c.name));
-    return m;
-  }, [clients]);
-
-  // Determine which clients to query Meta insights for
+  // Determine if this client is synced for Meta insights
   const syncedClientIds = useMemo(() => {
-    const all = (clients || []).filter(c => c.is_synced && c.meta_ad_account_id).map(c => c.id);
-    if (clientFilter !== 'all') return all.includes(clientFilter) ? [clientFilter] : [];
-    return all;
-  }, [clients, clientFilter]);
+    if (client?.is_synced && client?.meta_ad_account_id) return [client.id];
+    return [];
+  }, [client]);
 
   // Fetch recognized conversions from Meta (aggregated daily by event_name)
   const { data: recognizedByDay } = useQuery({
@@ -341,11 +338,26 @@ export default function ComercialPage() {
 
   return (
     <div className="p-6 pt-20 lg:pt-6 space-y-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Comercial</h1>
-        <p className="text-sm text-muted-foreground">
-          Lista de Leads e Compradores registrados manualmente para a Meta.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Comercial {client?.name && <span className="text-muted-foreground font-normal">· {client.name}</span>}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Lista de Leads e Compradores registrados manualmente para a Meta.
+          </p>
+        </div>
+        {isAdmin && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/comercial')}
+            className="glass-input rounded-xl shrink-0"
+          >
+            <ArrowLeft className="h-4 w-4 mr-1.5" />
+            Voltar
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
@@ -398,19 +410,6 @@ export default function ComercialPage() {
               className="glass-input w-full rounded-xl py-2.5 pl-10 pr-4 text-sm"
             />
           </div>
-          {isAdmin && (
-            <Select value={clientFilter} onValueChange={(v) => { setClientFilter(v); setPage(0); }}>
-              <SelectTrigger className="w-full lg:w-[220px] glass-input rounded-xl">
-                <SelectValue placeholder="Cliente" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os clientes</SelectItem>
-                {(clients || []).map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
           <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v as any); setPage(0); }}>
             <SelectTrigger className="w-full lg:w-[160px] glass-input rounded-xl">
               <SelectValue />
@@ -487,19 +486,19 @@ export default function ComercialPage() {
                 <th className="text-right px-4 py-3 font-medium">Valor</th>
                 <th className="text-left px-4 py-3 font-medium">Data</th>
                 <th className="text-left px-4 py-3 font-medium">Status</th>
-                {isAdmin && <th className="text-left px-4 py-3 font-medium">Cliente</th>}
+                
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={isAdmin ? 8 : 7} className="px-4 py-12 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
                     <Loader2 className="h-5 w-5 animate-spin inline-block" />
                   </td>
                 </tr>
               ) : pageRows.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 8 : 7} className="px-4 py-12 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
                     Nenhum registro encontrado.
                   </td>
                 </tr>
@@ -532,11 +531,6 @@ export default function ComercialPage() {
                         )}
                       </div>
                     </td>
-                    {isAdmin && (
-                      <td className="px-4 py-3 text-muted-foreground whitespace-normal break-words">
-                        {clientNameById.get(r.client_id) || '—'}
-                      </td>
-                    )}
                   </tr>
                 ))
               )}
@@ -599,7 +593,7 @@ export default function ComercialPage() {
                   <Field label="Idade" value={selected.age?.toString() || null} />
                   <Field label="Data nasc." value={selected.dob} />
                   <Field label="Ano nasc." value={selected.doby} />
-                  {isAdmin && <Field label="Cliente" value={clientNameById.get(selected.client_id) || null} />}
+                  {isAdmin && client?.name && <Field label="Cliente" value={client.name} />}
                 </div>
 
                 {selected.meta_event_id && (
