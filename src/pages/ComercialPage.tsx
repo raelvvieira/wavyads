@@ -4,9 +4,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, startOfDay, endOfDay, subDays, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import {
   Search,
-  Users,
-  ShoppingCart,
-  TrendingUp,
   CheckCircle2,
   XCircle,
   Clock,
@@ -15,6 +12,7 @@ import {
   CalendarIcon,
   AlertTriangle,
   ArrowLeft,
+  Send,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRole } from '@/hooks/useRole';
