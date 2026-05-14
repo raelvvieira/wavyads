@@ -1,47 +1,51 @@
 ## Objetivo
 
-Tornar a página **Comercial** individual por cliente. Hoje, ao clicar em "Comercial", admin não vê uma forma clara de escolher cliente (o filtro fica perdido entre vários selects). O plano anterior foi aprovado mas não chegou a ser implementado — esta é a execução dele.
+Substituir o badge "Possivelmente não atribuído" (linha-a-linha) por **cards no topo da página** que resumem a atribuição no período filtrado, e reorganizar a hierarquia: filtros logo abaixo do título, depois cards (existentes + novos), depois a tabela.
 
-## Comportamento final
+## Mudanças em `src/pages/ComercialPage.tsx`
 
-- **Admin** clica em "Comercial" → vê uma **grade de cards de clientes** (com busca), clica em um → entra em `/comercial/:clientId` com os dados só daquele cliente.
-- **Cliente final** clica em "Comercial" → é redirecionado automaticamente para `/comercial/<seuId>`.
-- A página individual tem botão **"← Voltar"** (apenas admin) para voltar à lista.
+### 1. Reordenar a página
 
-## Mudanças
+Nova ordem vertical:
+1. Header (título "Comercial · Cliente" + subtítulo + botão Voltar)
+2. **Barra de filtros** (busca, tipo, atribuição, período) — movida para cima
+3. **Grid de cards de KPI** (3 atuais + 2 novos)
+4. Tabela
 
-### 1. `src/App.tsx`
-Adicionar rota nova:
-```
-/comercial            → <ComercialIndexPage />   (novo)
-/comercial/:clientId  → <ComercialPage />        (refatorado)
-```
+### 2. Remover badge por linha
 
-### 2. Novo `src/pages/ComercialIndexPage.tsx`
-- `useRole()` + `useClients()` + `useClientUsers()`.
-- Se não-admin: `useEffect` busca o `client_id` do usuário em `client_users` e faz `navigate('/comercial/<id>', { replace: true })`.
-- Se admin: header "Comercial — Selecione um cliente", input de busca, grid de `GlassCard`s clicáveis (nome do cliente + status de sync). Mesmo padrão visual do dashboard.
-- Estado de loading enquanto role carrega.
+- Remover a coluna/badge "Possivelmente não atribuído" de cada `<tr>` (linhas 523–531).
+- Manter `isPossiblyUnattributed` e o filtro "Não reconhecidos (estim.)" — continua útil para filtrar a tabela.
 
-### 3. `src/pages/ComercialPage.tsx` (refatorar)
-- Ler `clientId` via `useParams<{ clientId: string }>()`.
-- **Remover** o `<Select>` "Cliente" e o estado `clientFilter`.
-- Query de `offline_conversions` passa a usar `eq('client_id', clientId)` direto.
-- `syncedClientIds` vira `[clientId]` (se o cliente está sincronizado).
-- Header passa a mostrar **nome do cliente** + botão "← Voltar" (visível só para admin, navega para `/comercial`).
-- Se `clientId` inválido / sem acesso: empty state com botão voltar (RLS já garante zero leak).
-- Remover coluna redundante "Cliente" da tabela (se existir).
+### 3. Novos cards de atribuição (no topo, junto aos atuais)
 
-### 4. `src/components/AppSidebar.tsx`
-Manter `to: '/comercial'` (nada a mudar — o index decide para onde levar).
+Calcular sobre `filtered` (respeita filtros de tipo/data/atribuição/busca) e sobre `recognizedByDay` (já é função do `dateRange`):
+
+- **Reconhecidos pela Meta** (estim.): soma de `recognizedByDay` no período, separado em Leads/Compras numa única linha (ex.: "Leads 7 · Compras 12"). Ícone `CheckCircle2`, cor `accent`.
+- **Possivelmente não atribuídos** (estim.): soma, por dia e por tipo, de `max(0, sentByDayType - recognized)` no período. Mesmo formato de duas métricas. Ícone `AlertTriangle`, cor âmbar.
+
+Tooltip do card âmbar (via `title=`):
+> "Estimativa por dia: quando enviamos mais conversões em um dia do que a Meta reconheceu, a diferença pode não ter sido atribuída. Não é possível saber quais contatos individualmente."
+
+Ambos os cards reagem ao filtro de data (já reagem, pois dependem de `dateRange`/`recognizedByDay`/`sentByDayType`).
+
+### 4. Layout do grid
+
+Mudar grid de `lg:grid-cols-3` para `lg:grid-cols-5` (ou `xl:grid-cols-5`, `lg:grid-cols-3` mobile-friendly). Mantém o mesmo padrão visual `GlassCard`.
+
+### 5. Quando o cliente não está sincronizado com Meta
+
+Os 2 cards novos só fazem sentido se `syncedClientIds.length > 0`. Caso contrário, esconder os 2 cards (manter os 3 originais).
 
 ## Validação
 
-- Admin → `/comercial` mostra grid → clica → `/comercial/<id>` com dados filtrados → "Voltar" retorna ao grid.
-- Cliente final → `/comercial` → redirecionado para `/comercial/<seuId>` → vê só seus dados (sem dropdown de cliente).
-- Admin acessa `/comercial/<id-inexistente>` → empty state.
+- Filtro de data muda → cards de atribuição atualizam.
+- Filtro "Não reconhecidos" continua filtrando tabela.
+- Nenhum badge âmbar aparece mais nas linhas.
+- Cliente sem sync Meta: só vê os 3 cards originais.
+- Ordem visual: título → filtros → 5 cards → tabela.
 
-## Riscos / fora de escopo
+## Fora de escopo
 
-- Sem mudanças em DB, RLS ou edge functions — apenas roteamento e UI.
-- Caso raro de usuário com múltiplos `client_users`: usa o primeiro; seletor multi-cliente fica para depois.
+- Sem mudanças em DB, RLS ou edge functions.
+- Lógica de heurística (`isPossiblyUnattributed`, `sentByDayType`, `recognizedByDay`) inalterada.

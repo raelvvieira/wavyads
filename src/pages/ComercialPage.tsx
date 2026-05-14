@@ -304,6 +304,35 @@ export default function ComercialPage() {
     return { leads, purchases, value };
   }, [filtered]);
 
+  // Attribution totals across the date range (independent of search/type filter,
+  // because they reflect what Meta reported per day vs. what we sent per day).
+  const attributionTotals = useMemo(() => {
+    let recognizedLeads = 0;
+    let recognizedPurchases = 0;
+    let unattributedLeads = 0;
+    let unattributedPurchases = 0;
+
+    if (recognizedByDay) {
+      recognizedByDay.forEach((v) => {
+        recognizedLeads += v.Lead || 0;
+        recognizedPurchases += v.Purchase || 0;
+      });
+    }
+
+    // For each day+type we sent, compute max(0, sent - recognized)
+    sentByDayType.forEach((sent, key) => {
+      const [day, type] = key.split('|') as [string, 'Lead' | 'Purchase'];
+      const rec = recognizedByDay?.get(day)?.[type] || 0;
+      const diff = Math.max(0, sent - rec);
+      if (type === 'Lead') unattributedLeads += diff;
+      else unattributedPurchases += diff;
+    });
+
+    return { recognizedLeads, recognizedPurchases, unattributedLeads, unattributedPurchases };
+  }, [recognizedByDay, sentByDayType]);
+
+  const showAttributionCards = syncedClientIds.length > 0;
+
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
