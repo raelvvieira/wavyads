@@ -148,16 +148,17 @@ REGRAS ABSOLUTAS:
 - Nunca use preços, portuguesismos de Portugal, superlativos absolutos
 - CTA brasileiro: WhatsApp é o mais eficiente. Use "Agende pelo WhatsApp", "Fale no WhatsApp"
 - Inclua prova social com números reais quando possível
-- Texto único: 200-280 caracteres descrevendo o negócio de forma objetiva, rico em keywords`;
+- Texto único: 200-280 caracteres descrevendo o negócio de forma objetiva, rico em keywords
+- Caminho de exibição: dominio › slug-servico › cidade — sem acento, sem espaço${SKILL_BLOCK}`;
 
-function buildTitlesPrompt(p: { empresa: string; servico: string; cidade: string; diferenciais: string; cta: string; cidadeCampanha: string }) {
+function buildTitlesPrompt(p: { empresa: string; servico: string; cidade: string; diferenciais: string; cta: string; cidadeCampanha: string; observacoes: string; descricaoGrupo: string }) {
   return `Empresa: ${p.empresa}
-Serviço: ${p.servico}
+Serviço: ${p.servico}${descricaoGrupoBlock(p.descricaoGrupo)}
 Cidade: ${p.cidadeCampanha || p.cidade}
 Diferenciais: ${p.diferenciais}
 CTA: ${p.cta}
 
-Crie 15 títulos curtos (máx 30 chars), 5 títulos longos (máx 90 chars), caminho de exibição e texto único para Google Ads Performance Max para este grupo.${cidadeWarning(p.cidadeCampanha)}`;
+Crie 15 títulos curtos (máx 30 chars), 5 títulos longos (máx 90 chars), caminho de exibição e texto único para Google Ads Performance Max para este grupo.${cidadeWarning(p.cidadeCampanha)}${obsBlock(p.observacoes)}`;
 }
 
 const TITLES_TOOL_PARAMS = {
