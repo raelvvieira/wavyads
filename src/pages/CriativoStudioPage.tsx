@@ -323,6 +323,9 @@ A reference Story version of this same creative is attached as the FIRST image. 
                 prompt: v.promptCompleto,
                 aspectRatio: aspect,
                 isVariation: true,
+                productImages,
+                logoImage: logoImage[0] || null,
+                storyReference: aspect === 'square' ? storyImage : null,
               },
             });
             if (ge) throw ge;
