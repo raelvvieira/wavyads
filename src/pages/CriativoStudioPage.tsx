@@ -55,11 +55,11 @@ interface CopyResult {
   justificativa: string;
 }
 
-type Quality = 'low' | 'medium' | 'high';
-const QUALITY_OPTIONS: { id: Quality; name: string; desc: string }[] = [
-  { id: 'low', name: 'Low', desc: 'Rascunho rápido e barato' },
-  { id: 'medium', name: 'Medium', desc: 'Equilíbrio ideal para anúncios' },
-  { id: 'high', name: 'High', desc: 'Máxima qualidade para campanhas premium' },
+type GeminiModel = 'gemini-2.5-flash-image' | 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview';
+const MODEL_OPTIONS: { id: GeminiModel; name: string; desc: string; usage: 'image-gemini-flash' | 'image-gemini-flash-2' | 'image-gemini-pro' }[] = [
+  { id: 'gemini-2.5-flash-image', name: 'Nano Banana', desc: 'Rápido e barato', usage: 'image-gemini-flash' },
+  { id: 'gemini-3.1-flash-image-preview', name: 'Nano Banana 2', desc: 'Rápido com qualidade Pro (recomendado)', usage: 'image-gemini-flash-2' },
+  { id: 'gemini-3-pro-image-preview', name: 'Nano Banana Pro', desc: 'Máxima qualidade, mais lento', usage: 'image-gemini-pro' },
 ];
 
 const LANGUAGES = [
