@@ -143,11 +143,12 @@ function TypeBadge({ event }: { event: string }) {
 }
 
 export default function ComercialPage() {
+  const { clientId } = useParams<{ clientId: string }>();
+  const navigate = useNavigate();
   const { isAdmin, isLoading: roleLoading } = useRole();
-  const { data: clients } = useClients();
+  const { data: client } = useClient(clientId);
   const qc = useQueryClient();
 
-  const [clientFilter, setClientFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'Lead' | 'Purchase'>('all');
   const [attributionFilter, setAttributionFilter] = useState<'all' | 'recognized' | 'unrecognized'>('all');
   const [search, setSearch] = useState('');
