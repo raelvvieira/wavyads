@@ -35,7 +35,7 @@ export default function MetaCallbackPage() {
           onSuccess: (data) => {
             setStatus('success');
             if (window.opener) {
-              window.opener.postMessage({ type: 'META_OAUTH_CALLBACK', accounts: data.accounts || [] }, '*');
+              window.opener.postMessage({ type: 'META_OAUTH_CALLBACK', accounts: data.accounts || [] }, window.location.origin);
               setTimeout(() => window.close(), 1500);
             }
           },
