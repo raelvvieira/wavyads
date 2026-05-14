@@ -245,13 +245,13 @@ ${aspect === 'square' ? 'Centered composition optimized for square 1:1 framing.'
 
     // Text blocks from selected copy
     let textBlocks = '';
-    if (copySource === 'ai' && copyResult) {
+    if (copySource === 'ai' && selectedCopy) {
       const parts: string[] = [];
-      if (copyResult.label) parts.push(`LABEL (top, small uppercase, wide tracking, secondary color): "${copyResult.label}"`);
-      if (copyResult.titulo) parts.push(`MAIN TITLE (dominant, large, primary typeface, high contrast): "${copyResult.titulo}"`);
-      if (copyResult.subtitulo) parts.push(`SUBTITLE (medium, secondary typeface, supports the title): "${copyResult.subtitulo}"`);
-      if (copyResult.dados) parts.push(`DATA LINE (small, factual: date/place/price/spots): "${copyResult.dados}"`);
-      if (copyResult.cta) parts.push(`CTA (pill or button, accent color, bold): "${copyResult.cta}"`);
+      if (selectedCopy.label) parts.push(`LABEL (top, small uppercase, wide tracking, secondary color): "${selectedCopy.label}"`);
+      if (selectedCopy.titulo) parts.push(`MAIN TITLE (dominant, large, primary typeface, high contrast): "${selectedCopy.titulo}"`);
+      if (selectedCopy.subtitulo) parts.push(`SUBTITLE (medium, secondary typeface, supports the title): "${selectedCopy.subtitulo}"`);
+      if (selectedCopy.dados) parts.push(`DATA LINE (small, factual: date/place/price/spots): "${selectedCopy.dados}"`);
+      if (selectedCopy.cta) parts.push(`CTA (pill or button, accent color, bold): "${selectedCopy.cta}"`);
       textBlocks = `[TEXT BLOCKS]
 All text must be rendered exactly as written, in ${language === 'pt-BR' ? 'Portuguese (Brazil)' : language === 'es' ? 'Spanish' : 'English'}, with professional typography and perfect legibility.
 ${parts.join('\n')}`;
@@ -312,7 +312,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
       const { data, error } = await supabase.functions.invoke('criativo-fator', {
         body: {
           originalPrompt,
-          copy: copySource === 'ai' ? copyResult : { rawCopy },
+          copy: copySource === 'ai' ? selectedCopy : { rawCopy },
           businessContext,
           language,
           aspect,
