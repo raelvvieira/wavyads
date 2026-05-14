@@ -139,6 +139,7 @@ export default function AdminDashboard() {
   // Listen for popup message
   useEffect(() => {
     const handler = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
       if (event.data?.type === 'META_OAUTH_CALLBACK' && event.data?.accounts) {
         setPendingAccounts(event.data.accounts);
         setSyncingClientId(null);

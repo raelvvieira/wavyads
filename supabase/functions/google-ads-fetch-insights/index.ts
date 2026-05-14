@@ -165,8 +165,13 @@ Deno.serve(async (req) => {
     const customerId = clientRecord.google_ads_customer_id;
     const accessToken = await refreshAccessToken(supabase, clientRecord, googleClientId, googleClientSecret);
 
+    const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
     const since = timeRange?.since || "2024-01-01";
     const until = timeRange?.until || new Date().toISOString().split("T")[0];
+    if (!DATE_RE.test(since) || !DATE_RE.test(until)) {
+      return new Response(JSON.stringify({ error: "Formato de data inválido (esperado YYYY-MM-DD)" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     // ==================== CAMPAIGNS ====================
     if (action === "campaigns") {

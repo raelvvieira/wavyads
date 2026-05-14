@@ -224,6 +224,14 @@ Deno.serve(async (req) => {
     const timeRange = body.time_range as { since: string; until: string } | undefined;
     const datePreset = body.date_preset || "last_30d";
 
+    if (timeRange) {
+      const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+      if (!DATE_RE.test(timeRange.since) || !DATE_RE.test(timeRange.until)) {
+        return new Response(JSON.stringify({ error: "Formato de data inválido (esperado YYYY-MM-DD)" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
     if (!clientId) {
       return new Response(JSON.stringify({ error: "client_id é obrigatório" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
