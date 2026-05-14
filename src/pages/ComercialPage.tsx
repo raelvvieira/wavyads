@@ -304,6 +304,35 @@ export default function ComercialPage() {
     return { leads, purchases, value };
   }, [filtered]);
 
+  // Attribution totals across the date range (independent of search/type filter,
+  // because they reflect what Meta reported per day vs. what we sent per day).
+  const attributionTotals = useMemo(() => {
+    let recognizedLeads = 0;
+    let recognizedPurchases = 0;
+    let unattributedLeads = 0;
+    let unattributedPurchases = 0;
+
+    if (recognizedByDay) {
+      recognizedByDay.forEach((v) => {
+        recognizedLeads += v.Lead || 0;
+        recognizedPurchases += v.Purchase || 0;
+      });
+    }
+
+    // For each day+type we sent, compute max(0, sent - recognized)
+    sentByDayType.forEach((sent, key) => {
+      const [day, type] = key.split('|') as [string, 'Lead' | 'Purchase'];
+      const rec = recognizedByDay?.get(day)?.[type] || 0;
+      const diff = Math.max(0, sent - rec);
+      if (type === 'Lead') unattributedLeads += diff;
+      else unattributedPurchases += diff;
+    });
+
+    return { recognizedLeads, recognizedPurchases, unattributedLeads, unattributedPurchases };
+  }, [recognizedByDay, sentByDayType]);
+
+  const showAttributionCards = syncedClientIds.length > 0;
+
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
@@ -359,44 +388,6 @@ export default function ComercialPage() {
           </Button>
         )}
       </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <GlassCard>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center">
-              <Users className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Leads</p>
-              <p className="text-2xl font-bold metric-number">{totals.leads}</p>
-            </div>
-          </div>
-        </GlassCard>
-        <GlassCard>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-accent/15 text-accent flex items-center justify-center">
-              <ShoppingCart className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Compradores</p>
-              <p className="text-2xl font-bold metric-number">{totals.purchases}</p>
-            </div>
-          </div>
-        </GlassCard>
-        <GlassCard>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-accent/15 text-accent flex items-center justify-center">
-              <TrendingUp className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Valor total</p>
-              <p className="text-2xl font-bold metric-number">{formatBRL(totals.value)}</p>
-            </div>
-          </div>
-        </GlassCard>
-      </div>
-
 
       {/* Filters */}
       <GlassCard>
@@ -473,6 +464,86 @@ export default function ComercialPage() {
         </div>
       </GlassCard>
 
+      {/* Stats */}
+      <div className={cn(
+        'grid grid-cols-1 sm:grid-cols-2 gap-4',
+        showAttributionCards ? 'lg:grid-cols-3 xl:grid-cols-5' : 'lg:grid-cols-3'
+      )}>
+        <GlassCard>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center">
+              <Users className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Leads</p>
+              <p className="text-2xl font-bold metric-number">{totals.leads}</p>
+            </div>
+          </div>
+        </GlassCard>
+        <GlassCard>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-accent/15 text-accent flex items-center justify-center">
+              <ShoppingCart className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Compradores</p>
+              <p className="text-2xl font-bold metric-number">{totals.purchases}</p>
+            </div>
+          </div>
+        </GlassCard>
+        <GlassCard>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-accent/15 text-accent flex items-center justify-center">
+              <TrendingUp className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Valor total</p>
+              <p className="text-2xl font-bold metric-number">{formatBRL(totals.value)}</p>
+            </div>
+          </div>
+        </GlassCard>
+
+        {showAttributionCards && (
+          <>
+            <GlassCard
+              title="Conversões reconhecidas pela Meta no período selecionado (estimativa diária agregada)."
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-accent/15 text-accent flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground">Reconhecidos pela Meta</p>
+                  <p className="text-sm font-semibold metric-number whitespace-nowrap">
+                    Leads <span className="text-accent">{attributionTotals.recognizedLeads}</span>
+                    <span className="text-muted-foreground mx-1.5">·</span>
+                    Compras <span className="text-accent">{attributionTotals.recognizedPurchases}</span>
+                  </p>
+                </div>
+              </div>
+            </GlassCard>
+
+            <GlassCard
+              title="Estimativa por dia: quando enviamos mais conversões em um dia do que a Meta reconheceu, a diferença pode não ter sido atribuída. Não é possível saber quais contatos individualmente."
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground">Possivelmente não atribuídos</p>
+                  <p className="text-sm font-semibold metric-number whitespace-nowrap">
+                    Leads <span className="text-amber-400">{attributionTotals.unattributedLeads}</span>
+                    <span className="text-muted-foreground mx-1.5">·</span>
+                    Compras <span className="text-amber-400">{attributionTotals.unattributedPurchases}</span>
+                  </p>
+                </div>
+              </div>
+            </GlassCard>
+          </>
+        )}
+      </div>
+
       {/* Table */}
       <GlassCard className="p-0 overflow-hidden">
         <div className="overflow-x-auto">
@@ -518,18 +589,7 @@ export default function ComercialPage() {
                     <td className="px-4 py-3 text-right metric-number">{formatBRL(r.value)}</td>
                     <td className="px-4 py-3 whitespace-nowrap">{format(new Date(r.conversion_date), 'dd/MM/yyyy')}</td>
                     <td className="px-4 py-3">
-                      <div className="flex flex-col gap-1 items-start">
-                        <StatusBadge status={r.send_status} error={r.error_message} />
-                        {isPossiblyUnattributed(r) && (
-                          <span
-                            title="Estimativa: a Meta não confirma atribuição por contato individual. Marcado quando, no mesmo dia, o número de envios deste tipo é maior que o de conversões reconhecidas pela Meta."
-                            className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30"
-                          >
-                            <AlertTriangle className="h-2.5 w-2.5" />
-                            Possivelmente não atribuído
-                          </span>
-                        )}
-                      </div>
+                      <StatusBadge status={r.send_status} error={r.error_message} />
                     </td>
                   </tr>
                 ))
