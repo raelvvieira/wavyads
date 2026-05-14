@@ -166,6 +166,35 @@ export default function CriativoStudioPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
+  // Auto-suggest a draft copy when entering Step 2 with refs analyzed
+  useEffect(() => {
+    if (step !== 1 || !analysis || suggestedRawCopy || suggestingCopy) return;
+    let cancelled = false;
+    (async () => {
+      setSuggestingCopy(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('criativo-suggest-copy', {
+          body: { analysis, language },
+        });
+        if (cancelled) return;
+        if (error) throw error;
+        if ((data as any)?.error) throw new Error((data as any).error);
+        recordAiUsage('text-flash');
+        const s = ((data as any)?.suggestion || '').trim();
+        if (s) setSuggestedRawCopy(s);
+      } catch (e) {
+        // silencioso — apenas placeholder padrão
+        console.warn('suggest-copy', e);
+      } finally {
+        if (!cancelled) setSuggestingCopy(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, analysis]);
+
   const analyzeRefs = async () => {
     if (refImages.length === 0) {
       toast({ title: 'Adicione ao menos uma imagem', variant: 'destructive' });
