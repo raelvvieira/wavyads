@@ -295,12 +295,13 @@ export default function ComercialPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, search, attributionFilter, sentByDayType, recognizedByDay]);
 
+  // Period totals (driven by date + type filters only — not search/attribution).
   const totals = useMemo(() => {
-    const leads = filtered.filter(r => r.event_name === 'Lead').length;
-    const purchases = filtered.filter(r => r.event_name === 'Purchase').length;
-    const value = filtered.reduce((s, r) => s + (r.value || 0), 0);
+    const leads = rows.filter(r => r.event_name === 'Lead').length;
+    const purchases = rows.filter(r => r.event_name === 'Purchase').length;
+    const value = rows.reduce((s, r) => s + (r.value || 0), 0);
     return { leads, purchases, value };
-  }, [filtered]);
+  }, [rows]);
 
   // Attribution totals across the date range (independent of search/type filter,
   // because they reflect what Meta reported per day vs. what we sent per day).
