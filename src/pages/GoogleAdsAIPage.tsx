@@ -529,33 +529,73 @@ export default function GoogleAdsAIPage() {
               </div>
 
               <div>
-                <label className="text-xs text-muted-foreground mb-2 block">Frentes de anúncio</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs text-muted-foreground">Grupos sugeridos (editáveis)</label>
+                  {step === 2 && (
+                    <button
+                      onClick={addFrente}
+                      className="text-xs text-accent hover:underline flex items-center gap-1"
+                    >
+                      <Plus className="h-3 w-3" /> Adicionar grupo
+                    </button>
+                  )}
+                </div>
                 <div className="space-y-2">
-                  {analyzeResult.frentes.map(f => (
-                    <label key={f.id} className={cn(
-                      'flex items-start gap-3 p-3 rounded-lg border transition-colors cursor-pointer',
-                      selectedFrentes.includes(f.id)
-                        ? 'border-accent/40 bg-accent/5'
-                        : 'border-white/10 bg-transparent hover:bg-white/5'
-                    )}>
-                      <Checkbox
-                        checked={selectedFrentes.includes(f.id)}
-                        onCheckedChange={() => toggleFrente(f.id)}
-                        disabled={step > 2}
-                        className="mt-0.5"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span>{f.icone}</span>
-                          <span className="text-sm font-medium text-foreground">{f.nome}</span>
-                          <Badge variant={f.potencial === 'alto' ? 'default' : 'secondary'} className="text-xs ml-auto">
-                            {f.potencial}
-                          </Badge>
+                  {analyzeResult.frentes.map(f => {
+                    const checked = selectedFrentes.includes(f.id);
+                    const editable = step === 2;
+                    return (
+                      <div key={f.id} className={cn(
+                        'flex items-start gap-2 p-3 rounded-lg border transition-colors',
+                        checked ? 'border-accent/40 bg-accent/5' : 'border-white/10 bg-transparent'
+                      )}>
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={() => toggleFrente(f.id)}
+                          disabled={!editable}
+                          className="mt-1"
+                        />
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-base">{f.icone}</span>
+                            {editable ? (
+                              <Input
+                                value={f.nome}
+                                onChange={e => updateFrente(f.id, { nome: e.target.value })}
+                                placeholder="Nome do grupo (ex: Aulas de Kitesurf)"
+                                className="glass-input h-7 text-sm flex-1"
+                              />
+                            ) : (
+                              <span className="text-sm font-medium text-foreground flex-1">{f.nome}</span>
+                            )}
+                            <Badge variant={f.potencial === 'alto' ? 'default' : 'secondary'} className="text-xs">
+                              {f.potencial}
+                            </Badge>
+                          </div>
+                          {editable ? (
+                            <Textarea
+                              value={f.descricao}
+                              onChange={e => updateFrente(f.id, { descricao: e.target.value })}
+                              placeholder="Descrição curta do serviço deste grupo"
+                              rows={2}
+                              className="glass-input resize-none text-xs"
+                            />
+                          ) : (
+                            <p className="text-xs text-muted-foreground">{f.descricao}</p>
+                          )}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">{f.descricao}</p>
+                        {editable && (
+                          <button
+                            onClick={() => removeFrente(f.id)}
+                            className="p-1 rounded text-muted-foreground hover:text-destructive transition-colors"
+                            title="Remover grupo"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
-                    </label>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
