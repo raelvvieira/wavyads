@@ -366,8 +366,11 @@ export default function GoogleAdsAIPage() {
     selectedFrentes, setSelectedFrentes,
     cta, setCta,
     cidadeCampanha, setCidadeCampanha,
+    observacoes, setObservacoes,
     frentesResults, generating, generateForFrentes,
-    currentFrenteIndex, regenerateTextoUnico, reset,
+    currentFrenteIndex, regenerateTextoUnico,
+    updateFrente, removeFrente, addFrente,
+    reset,
   } = useGoogleAdsAI();
 
   const [site, setSite] = useState('');
