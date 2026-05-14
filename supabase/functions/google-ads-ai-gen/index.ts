@@ -93,15 +93,17 @@ function cidadeWarning(cidadeCampanha: string) {
 }
 
 // ── CHAMADA 0: ANÁLISE ──
-const SYSTEM_ANALYZE = `Você é especialista em Google Ads Performance Max para o mercado brasileiro. Analise sites e identifique frentes de anúncios de alta conversão. Responda APENAS JSON puro. Sem markdown. Sem backticks. Sem texto fora do JSON. Português do Brasil. Nunca use portuguesismos de Portugal.`;
+const SYSTEM_ANALYZE = `Você é especialista em Google Ads Performance Max para o mercado brasileiro. Analise sites e identifique frentes de anúncios de alta conversão. Responda APENAS JSON puro. Sem markdown. Sem backticks. Sem texto fora do JSON. Português do Brasil. Nunca use portuguesismos de Portugal.
 
-function buildAnalyzePrompt(site: string, descricao: string, cidadeCampanha: string) {
+REGRA CRÍTICA: cada frente é UM serviço único (message-match). Nunca misture serviços no mesmo grupo. A campanha é por cidade — todos os grupos referenciam a mesma cidade.${SKILL_BLOCK}`;
+
+function buildAnalyzePrompt(site: string, descricao: string, cidadeCampanha: string, observacoes: string) {
   return `Analise o site ${site} com base nestas informações adicionais:
 ${descricao}
 
-Identifique empresa, cidade, diferenciais e as melhores frentes de anúncio para Google Ads Performance Max.
+Identifique empresa, cidade, diferenciais e sugira EXATAMENTE 6 frentes de anúncio (grupos) de alta conversão para Google Ads Performance Max — cada frente sendo UM serviço/oferta específico (nunca genérico, nunca combinando serviços).
 
-Retorne os dados estruturados com: empresa, segmento, cidade, cta (whatsapp/formulario/telefone), diferenciais (array de strings), e frentes (array com id, nome, icone emoji, descricao curta, potencial alto/medio).${cidadeWarning(cidadeCampanha)}`;
+Retorne os dados estruturados com: empresa, segmento, cidade, cta (whatsapp/formulario/telefone), diferenciais (array de strings), e frentes (array com EXATAMENTE 6 itens — id slug curto, nome do serviço, icone emoji representativo, descricao curta de 1 linha, potencial alto/medio).${cidadeWarning(cidadeCampanha)}${obsBlock(observacoes)}`;
 }
 
 const ANALYZE_TOOL_PARAMS = {
@@ -114,6 +116,8 @@ const ANALYZE_TOOL_PARAMS = {
     diferenciais: { type: "array", items: { type: "string" } },
     frentes: {
       type: "array",
+      minItems: 6,
+      maxItems: 6,
       items: {
         type: "object",
         properties: {
