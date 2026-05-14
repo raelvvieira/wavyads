@@ -322,6 +322,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
               body: {
                 prompt: v.promptCompleto,
                 aspectRatio: aspect,
+                model: 'gemini-3.1-flash-image-preview',
                 isVariation: true,
                 productImages,
                 logoImage: logoImage[0] || null,
@@ -330,7 +331,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
             });
             if (ge) throw ge;
             if ((gd as any)?.error) throw new Error((gd as any).error);
-            recordAiUsage('image-openai-medium');
+            recordAiUsage('image-gemini-flash-2');
             setFactorImages((prev) => {
               const next = [...prev];
               next[i] = (gd as any).imageUrl;
