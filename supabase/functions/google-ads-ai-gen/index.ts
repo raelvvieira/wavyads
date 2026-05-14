@@ -259,16 +259,16 @@ SNIPPETS: cada snippet deve ter no máximo 25 caracteres. Devem ser termos curto
 
 REGRA CRÍTICA DE ACENTUAÇÃO: Todas as palavras-chave devem usar português brasileiro correto com acentuação completa. Exemplos corretos: florianópolis, são paulo, goiânia, curitiba. Nunca omita acentos. O Google Ads no Brasil trata termos com e sem acento de forma diferente.
 
-FRASES DE DESTAQUE: nunca use pontuação no final das frases de destaque (sem ponto, sem exclamação, sem interrogação). O Google Ads rejeita automaticamente frases de destaque com pontuação. Correto: 'Instrutores Certificados IKO'. Errado: 'Instrutores Certificados IKO!'.`;
+FRASES DE DESTAQUE: nunca use pontuação no final das frases de destaque (sem ponto, sem exclamação, sem interrogação). O Google Ads rejeita automaticamente frases de destaque com pontuação. Correto: 'Instrutores Certificados IKO'. Errado: 'Instrutores Certificados IKO!'.${SKILL_BLOCK}`;
 
-function buildKeywordsPrompt(p: { empresa: string; servico: string; cidade: string; segmento: string; diferenciais: string; cidadeCampanha: string }) {
+function buildKeywordsPrompt(p: { empresa: string; servico: string; cidade: string; segmento: string; diferenciais: string; cidadeCampanha: string; observacoes: string; descricaoGrupo: string }) {
   return `Empresa: ${p.empresa}
-Serviço: ${p.servico}
+Serviço: ${p.servico}${descricaoGrupoBlock(p.descricaoGrupo)}
 Cidade: ${p.cidadeCampanha || p.cidade}
 Segmento: ${p.segmento}
 Diferenciais: ${p.diferenciais}
 
-Crie temas de pesquisa, extensões e configurações para Google Ads Performance Max.${cidadeWarning(p.cidadeCampanha)}`;
+Crie temas de pesquisa, extensões e configurações para Google Ads Performance Max.${cidadeWarning(p.cidadeCampanha)}${obsBlock(p.observacoes)}`;
 }
 
 const KEYWORDS_TOOL_PARAMS = {
