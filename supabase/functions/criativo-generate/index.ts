@@ -89,27 +89,11 @@ serve(async (req) => {
     for (const r of refBlobs) {
       parts.push({ inline_data: { mime_type: r.mime, data: r.data } });
     }
-
-    const productImages = Array.isArray(body.productImages) ? body.productImages : [];
-    for (const img of productImages.slice(0, 14)) {
-      const p = parseDataUrl(img);
-      if (p) parts.push({ inline_data: { mime_type: p.mime, data: p.data } });
-    }
-    if (body.logoImage) {
-      const p = parseDataUrl(body.logoImage);
-      if (p) parts.push({ inline_data: { mime_type: p.mime, data: p.data } });
-    }
-    if (!isStory && body.storyReference) {
-      const p = parseDataUrl(body.storyReference);
-      if (p) parts.push({ inline_data: { mime_type: p.mime, data: p.data } });
-    }
-
-    const refsCount = parts.length - 1;
     console.log("criativo-generate (gemini direct) →", {
       model,
       aspectRatio,
       prompt_chars: fullPrompt.length,
-      refs: refsCount,
+      refs: refBlobs.length,
     });
 
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
