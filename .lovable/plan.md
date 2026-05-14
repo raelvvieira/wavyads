@@ -1,51 +1,59 @@
-## Objetivo
+## Problema
 
-Substituir o badge "Possivelmente não atribuído" (linha-a-linha) por **cards no topo da página** que resumem a atribuição no período filtrado, e reorganizar a hierarquia: filtros logo abaixo do título, depois cards (existentes + novos), depois a tabela.
+Hoje há 5 cards desalinhados que confundem:
+- "Leads 0" e "Compradores 18" referem-se a **conversões enviadas manualmente** à Meta (do banco `offline_conversions`).
+- "Reconhecidos pela Meta — Leads 66" vem da **API da Meta** e inclui *todos* os leads da conta (ads forms etc.), não só os enviados manualmente.
+- Resultado: dois números de "Leads" lado a lado significando coisas diferentes → parece bug ou repetição.
 
-## Mudanças em `src/pages/ComercialPage.tsx`
+Além disso, "Leads/Compradores/Valor" são afetados por todos os filtros (busca, tipo, atribuição, data) enquanto os de atribuição só pelo filtro de data — comportamentos misturados na mesma faixa.
 
-### 1. Reordenar a página
+## Solução: 3 cards consolidados, todos atrelados ao período
 
-Nova ordem vertical:
-1. Header (título "Comercial · Cliente" + subtítulo + botão Voltar)
-2. **Barra de filtros** (busca, tipo, atribuição, período) — movida para cima
-3. **Grid de cards de KPI** (3 atuais + 2 novos)
-4. Tabela
+Substituir os 5 cards por **3 cards horizontais**, cada um agrupando métricas relacionadas. Todos reagem **apenas ao filtro de data** (consistência), e não aos filtros de busca/tipo/atribuição (que são da tabela).
 
-### 2. Remover badge por linha
+```text
+┌────────────────────────────────┬────────────────────────────────┬────────────────────────────────┐
+│ 📤  ENVIADOS À META            │ ✅  RECONHECIDOS PELA META     │ ⚠️  POSSIVELMENTE NÃO ATRIB.   │
+│                                │                                │                                │
+│ Leads     0    Compras   18    │ Leads    66    Compras    6    │ Leads     0    Compras   12    │
+│ Valor total       R$ 35.704    │ (estimativa diária agregada)   │ (gap diário; não rastreável    │
+│                                │                                │  por contato)                  │
+└────────────────────────────────┴────────────────────────────────┴────────────────────────────────┘
+```
 
-- Remover a coluna/badge "Possivelmente não atribuído" de cada `<tr>` (linhas 523–531).
-- Manter `isPossiblyUnattributed` e o filtro "Não reconhecidos (estim.)" — continua útil para filtrar a tabela.
+### Card 1 — "Enviados à Meta" (azul)
+- Funde os 3 cards atuais (Leads, Compradores, Valor).
+- Conta sobre `rows` (já filtrado server-side por data + tipo). Para que seja consistente entre os 3 cards, **ignorar** `search` e `attributionFilter` no cálculo (continuam afetando só a tabela).
+- Layout: 2 métricas em linha (Leads · Compras) + valor total embaixo, em destaque.
+- Ícone: `Send` ou `Upload`.
 
-### 3. Novos cards de atribuição (no topo, junto aos atuais)
+### Card 2 — "Reconhecidos pela Meta" (accent verde)
+- Mantém lógica atual (`recognizedByDay`).
+- Ícone: `CheckCircle2`.
+- Sublabel pequeno: "estimativa diária agregada".
 
-Calcular sobre `filtered` (respeita filtros de tipo/data/atribuição/busca) e sobre `recognizedByDay` (já é função do `dateRange`):
+### Card 3 — "Possivelmente não atribuídos" (âmbar)
+- Mantém lógica atual (gap por dia).
+- Ícone: `AlertTriangle`.
+- Sublabel pequeno: "gap diário — não rastreável por contato".
+- Tooltip mantido.
 
-- **Reconhecidos pela Meta** (estim.): soma de `recognizedByDay` no período, separado em Leads/Compras numa única linha (ex.: "Leads 7 · Compras 12"). Ícone `CheckCircle2`, cor `accent`.
-- **Possivelmente não atribuídos** (estim.): soma, por dia e por tipo, de `max(0, sentByDayType - recognized)` no período. Mesmo formato de duas métricas. Ícone `AlertTriangle`, cor âmbar.
+### Quando o cliente não tem sync Meta
+- Mostrar **só o Card 1** ocupando largura total (`grid-cols-1`), porque cards 2 e 3 dependem de dados Meta.
 
-Tooltip do card âmbar (via `title=`):
-> "Estimativa por dia: quando enviamos mais conversões em um dia do que a Meta reconheceu, a diferença pode não ter sido atribuída. Não é possível saber quais contatos individualmente."
-
-Ambos os cards reagem ao filtro de data (já reagem, pois dependem de `dateRange`/`recognizedByDay`/`sentByDayType`).
-
-### 4. Layout do grid
-
-Mudar grid de `lg:grid-cols-3` para `lg:grid-cols-5` (ou `xl:grid-cols-5`, `lg:grid-cols-3` mobile-friendly). Mantém o mesmo padrão visual `GlassCard`.
-
-### 5. Quando o cliente não está sincronizado com Meta
-
-Os 2 cards novos só fazem sentido se `syncedClientIds.length > 0`. Caso contrário, esconder os 2 cards (manter os 3 originais).
+### Layout
+- Grid: `grid-cols-1 lg:grid-cols-3 gap-4`.
+- Cada card mais alto (~120px) para acomodar 2 linhas de métricas com hierarquia clara.
+- Tipografia: label pequeno em cima, números grandes em destaque, sublabel discreto embaixo.
 
 ## Validação
 
-- Filtro de data muda → cards de atribuição atualizam.
-- Filtro "Não reconhecidos" continua filtrando tabela.
-- Nenhum badge âmbar aparece mais nas linhas.
-- Cliente sem sync Meta: só vê os 3 cards originais.
-- Ordem visual: título → filtros → 5 cards → tabela.
+- Mudar período → todos os 3 cards atualizam juntos.
+- Mudar busca/tipo na tabela → cards **não** mudam (ficou claro que cards = visão do período, tabela = exploração).
+- Cliente sem sync Meta → 1 card único.
+- Sem mais "Leads 0" ao lado de "Leads 66" — fica claro que são coisas diferentes (Enviados vs Reconhecidos).
 
 ## Fora de escopo
 
-- Sem mudanças em DB, RLS ou edge functions.
-- Lógica de heurística (`isPossiblyUnattributed`, `sentByDayType`, `recognizedByDay`) inalterada.
+- Sem mudanças em DB, RLS, edge functions ou na tabela.
+- Sem mudanças nos filtros existentes.

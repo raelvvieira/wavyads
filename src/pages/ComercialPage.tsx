@@ -4,9 +4,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, startOfDay, endOfDay, subDays, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import {
   Search,
-  Users,
-  ShoppingCart,
-  TrendingUp,
   CheckCircle2,
   XCircle,
   Clock,
@@ -15,6 +12,7 @@ import {
   CalendarIcon,
   AlertTriangle,
   ArrowLeft,
+  Send,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRole } from '@/hooks/useRole';
@@ -297,12 +295,13 @@ export default function ComercialPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, search, attributionFilter, sentByDayType, recognizedByDay]);
 
+  // Period totals (driven by date + type filters only — not search/attribution).
   const totals = useMemo(() => {
-    const leads = filtered.filter(r => r.event_name === 'Lead').length;
-    const purchases = filtered.filter(r => r.event_name === 'Purchase').length;
-    const value = filtered.reduce((s, r) => s + (r.value || 0), 0);
+    const leads = rows.filter(r => r.event_name === 'Lead').length;
+    const purchases = rows.filter(r => r.event_name === 'Purchase').length;
+    const value = rows.reduce((s, r) => s + (r.value || 0), 0);
     return { leads, purchases, value };
-  }, [filtered]);
+  }, [rows]);
 
   // Attribution totals across the date range (independent of search/type filter,
   // because they reflect what Meta reported per day vs. what we sent per day).
@@ -464,78 +463,89 @@ export default function ComercialPage() {
         </div>
       </GlassCard>
 
-      {/* Stats */}
+      {/* Stats — sempre 3 cards consolidados, todos atrelados ao período selecionado */}
       <div className={cn(
-        'grid grid-cols-1 sm:grid-cols-2 gap-4',
-        showAttributionCards ? 'lg:grid-cols-3 xl:grid-cols-5' : 'lg:grid-cols-3'
+        'grid grid-cols-1 gap-4',
+        showAttributionCards ? 'lg:grid-cols-3' : 'lg:grid-cols-1'
       )}>
-        <GlassCard>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center">
-              <Users className="h-5 w-5" />
+        {/* Card 1 — Enviados à Meta (consolida Leads + Compras + Valor) */}
+        <GlassCard title="Conversões offline enviadas manualmente à Meta no período selecionado.">
+          <div className="flex items-start gap-4">
+            <div className="h-11 w-11 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center shrink-0">
+              <Send className="h-5 w-5" />
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Leads</p>
-              <p className="text-2xl font-bold metric-number">{totals.leads}</p>
-            </div>
-          </div>
-        </GlassCard>
-        <GlassCard>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-accent/15 text-accent flex items-center justify-center">
-              <ShoppingCart className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Compradores</p>
-              <p className="text-2xl font-bold metric-number">{totals.purchases}</p>
-            </div>
-          </div>
-        </GlassCard>
-        <GlassCard>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-accent/15 text-accent flex items-center justify-center">
-              <TrendingUp className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Valor total</p>
-              <p className="text-2xl font-bold metric-number">{formatBRL(totals.value)}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                Enviados à Meta
+              </p>
+              <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 mt-1.5">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl font-bold metric-number text-blue-400">{totals.leads}</span>
+                  <span className="text-xs text-muted-foreground">Leads</span>
+                </div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl font-bold metric-number text-blue-400">{totals.purchases}</span>
+                  <span className="text-xs text-muted-foreground">Compras</span>
+                </div>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-2">
+                Valor total: <span className="text-foreground font-semibold metric-number">{formatBRL(totals.value)}</span>
+              </p>
             </div>
           </div>
         </GlassCard>
 
         {showAttributionCards && (
           <>
-            <GlassCard
-              title="Conversões reconhecidas pela Meta no período selecionado (estimativa diária agregada)."
-            >
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-accent/15 text-accent flex items-center justify-center shrink-0">
+            {/* Card 2 — Reconhecidos pela Meta */}
+            <GlassCard title="Conversões reconhecidas pela Meta no período (todas as fontes da conta, não só envios manuais).">
+              <div className="flex items-start gap-4">
+                <div className="h-11 w-11 rounded-xl bg-accent/15 text-accent flex items-center justify-center shrink-0">
                   <CheckCircle2 className="h-5 w-5" />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground">Reconhecidos pela Meta</p>
-                  <p className="text-sm font-semibold metric-number whitespace-nowrap">
-                    Leads <span className="text-accent">{attributionTotals.recognizedLeads}</span>
-                    <span className="text-muted-foreground mx-1.5">·</span>
-                    Compras <span className="text-accent">{attributionTotals.recognizedPurchases}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Reconhecidos pela Meta
+                  </p>
+                  <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 mt-1.5">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-2xl font-bold metric-number text-accent">{attributionTotals.recognizedLeads}</span>
+                      <span className="text-xs text-muted-foreground">Leads</span>
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-2xl font-bold metric-number text-accent">{attributionTotals.recognizedPurchases}</span>
+                      <span className="text-xs text-muted-foreground">Compras</span>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-2">
+                    Estimativa diária agregada da API da Meta.
                   </p>
                 </div>
               </div>
             </GlassCard>
 
-            <GlassCard
-              title="Estimativa por dia: quando enviamos mais conversões em um dia do que a Meta reconheceu, a diferença pode não ter sido atribuída. Não é possível saber quais contatos individualmente."
-            >
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center shrink-0">
+            {/* Card 3 — Possivelmente não atribuídos */}
+            <GlassCard title="Estimativa por dia: quando enviamos mais conversões em um dia do que a Meta reconheceu, a diferença pode não ter sido atribuída. Não é possível saber quais contatos individualmente.">
+              <div className="flex items-start gap-4">
+                <div className="h-11 w-11 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center shrink-0">
                   <AlertTriangle className="h-5 w-5" />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground">Possivelmente não atribuídos</p>
-                  <p className="text-sm font-semibold metric-number whitespace-nowrap">
-                    Leads <span className="text-amber-400">{attributionTotals.unattributedLeads}</span>
-                    <span className="text-muted-foreground mx-1.5">·</span>
-                    Compras <span className="text-amber-400">{attributionTotals.unattributedPurchases}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Possivelmente não atribuídos
+                  </p>
+                  <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 mt-1.5">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-2xl font-bold metric-number text-amber-400">{attributionTotals.unattributedLeads}</span>
+                      <span className="text-xs text-muted-foreground">Leads</span>
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-2xl font-bold metric-number text-amber-400">{attributionTotals.unattributedPurchases}</span>
+                      <span className="text-xs text-muted-foreground">Compras</span>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-2">
+                    Gap diário — não rastreável por contato.
                   </p>
                 </div>
               </div>
