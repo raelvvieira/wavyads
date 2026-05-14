@@ -1,59 +1,61 @@
-## Problema
+# Plano: Conexão direta com Google Gemini Image API (Nano Banana)
 
-Hoje há 5 cards desalinhados que confundem:
-- "Leads 0" e "Compradores 18" referem-se a **conversões enviadas manualmente** à Meta (do banco `offline_conversions`).
-- "Reconhecidos pela Meta — Leads 66" vem da **API da Meta** e inclui *todos* os leads da conta (ads forms etc.), não só os enviados manualmente.
-- Resultado: dois números de "Leads" lado a lado significando coisas diferentes → parece bug ou repetição.
+Substituir o OpenAI `gpt-image-1` por chamada direta à **Google Generative Language API** (não Lovable AI Gateway, não Vertex), usando uma `GEMINI_API_KEY` própria.
 
-Além disso, "Leads/Compradores/Valor" são afetados por todos os filtros (busca, tipo, atribuição, data) enquanto os de atribuição só pelo filtro de data — comportamentos misturados na mesma faixa.
+## 1. Secret
 
-## Solução: 3 cards consolidados, todos atrelados ao período
+Adicionar `GEMINI_API_KEY` (Google AI Studio → aistudio.google.com/apikey).
 
-Substituir os 5 cards por **3 cards horizontais**, cada um agrupando métricas relacionadas. Todos reagem **apenas ao filtro de data** (consistência), e não aos filtros de busca/tipo/atribuição (que são da tabela).
+## 2. Edge function `criativo-generate` — reescrita
 
-```text
-┌────────────────────────────────┬────────────────────────────────┬────────────────────────────────┐
-│ 📤  ENVIADOS À META            │ ✅  RECONHECIDOS PELA META     │ ⚠️  POSSIVELMENTE NÃO ATRIB.   │
-│                                │                                │                                │
-│ Leads     0    Compras   18    │ Leads    66    Compras    6    │ Leads     0    Compras   12    │
-│ Valor total       R$ 35.704    │ (estimativa diária agregada)   │ (gap diário; não rastreável    │
-│                                │                                │  por contato)                  │
-└────────────────────────────────┴────────────────────────────────┴────────────────────────────────┘
+Endpoint direto:
+```
+POST https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={GEMINI_API_KEY}
 ```
 
-### Card 1 — "Enviados à Meta" (azul)
-- Funde os 3 cards atuais (Leads, Compradores, Valor).
-- Conta sobre `rows` (já filtrado server-side por data + tipo). Para que seja consistente entre os 3 cards, **ignorar** `search` e `attributionFilter` no cálculo (continuam afetando só a tabela).
-- Layout: 2 métricas em linha (Leads · Compras) + valor total embaixo, em destaque.
-- Ícone: `Send` ou `Upload`.
+Aceitar no body um campo novo `model` (string) e validar contra whitelist:
+- `gemini-2.5-flash-image` (Nano Banana — padrão rápido/barato)
+- `gemini-3-pro-image-preview` (Nano Banana Pro — máxima qualidade)
+- `gemini-3.1-flash-image-preview` (Nano Banana 2 — recomendado, rápido + qualidade Pro)
 
-### Card 2 — "Reconhecidos pela Meta" (accent verde)
-- Mantém lógica atual (`recognizedByDay`).
-- Ícone: `CheckCircle2`.
-- Sublabel pequeno: "estimativa diária agregada".
+Default: `gemini-3.1-flash-image-preview`.
 
-### Card 3 — "Possivelmente não atribuídos" (âmbar)
-- Mantém lógica atual (gap por dia).
-- Ícone: `AlertTriangle`.
-- Sublabel pequeno: "gap diário — não rastreável por contato".
-- Tooltip mantido.
+**Payload Gemini** (`generateContent`):
+- `contents[0].parts`:
+  - texto: prompt
+  - para cada referência (productImages, logoImage, storyReference): `{ inline_data: { mime_type, data: base64 } }` — converter as `data:` URLs atuais.
+- `generationConfig.responseModalities: ["IMAGE"]`
+- Aspect ratio: Gemini não tem `size` igual ao OpenAI; aplicar via prompt (`"vertical 9:16 story format"` / `"square 1:1"`) e remover o conceito de `quality` (Gemini não usa low/medium/high).
 
-### Quando o cliente não tem sync Meta
-- Mostrar **só o Card 1** ocupando largura total (`grid-cols-1`), porque cards 2 e 3 dependem de dados Meta.
+**Resposta**: extrair `candidates[0].content.parts[].inline_data.data` (base64) → devolver `imageUrl: data:image/png;base64,...` (mesmo contrato atual, frontend não muda).
 
-### Layout
-- Grid: `grid-cols-1 lg:grid-cols-3 gap-4`.
-- Cada card mais alto (~120px) para acomodar 2 linhas de métricas com hierarquia clara.
-- Tipografia: label pequeno em cima, números grandes em destaque, sublabel discreto embaixo.
+**Erros**: mapear 401 (key inválida), 429 (rate), 403 (quota), demais → 502 com mensagem clara.
+
+## 3. Frontend `CriativoStudioPage.tsx`
+
+- Adicionar select de modelo (3 opções acima) próximo aos controles de aspect ratio/qualidade.
+- Remover/ocultar o seletor de **qualidade** (low/medium/high) — não se aplica ao Gemini. Manter aspect ratio (story/square).
+- Enviar `model` no body de `criativo-generate`.
+
+## 4. Tracker de custo `aiUsageTracker.ts`
+
+Adicionar tipos:
+- `image-gemini-flash` (~$0.039)
+- `image-gemini-pro` (~$0.134)
+- `image-gemini-flash-2` (~$0.039)
+
+Remover/depreciar os `image-openai-*` das chamadas novas (manter os tipos para histórico).
+
+## 5. Não mexer
+
+- `criativo-analyze-refs` continua no Lovable AI Gateway (Gemini 2.5 Pro para análise de texto/visão) — está funcionando.
+- `OPENAI_API_KEY` permanece como secret (não remover; outros fluxos podem usar).
 
 ## Validação
 
-- Mudar período → todos os 3 cards atualizam juntos.
-- Mudar busca/tipo na tabela → cards **não** mudam (ficou claro que cards = visão do período, tabela = exploração).
-- Cliente sem sync Meta → 1 card único.
-- Sem mais "Leads 0" ao lado de "Leads 66" — fica claro que são coisas diferentes (Enviados vs Reconhecidos).
+1. Gerar imagem sem refs → vem PNG válido.
+2. Gerar com produto + logo → Gemini respeita refs (forte do Nano Banana).
+3. Trocar modelo no select → request muda o path do endpoint.
+4. Story vs Square → prompt incorpora a instrução de formato.
 
-## Fora de escopo
-
-- Sem mudanças em DB, RLS, edge functions ou na tabela.
-- Sem mudanças nos filtros existentes.
+Após aprovar, peço a `GEMINI_API_KEY` via secret e implemento.
