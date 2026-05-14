@@ -15,13 +15,19 @@ export type AiUsageType =
   | 'text-flash'
   | 'image-openai-low'
   | 'image-openai-medium'
-  | 'image-openai-high';
+  | 'image-openai-high'
+  | 'image-gemini-flash'
+  | 'image-gemini-flash-2'
+  | 'image-gemini-pro';
 
 const COST_USD: Record<AiUsageType, number> = {
   'text-flash': 0.001,
   'image-openai-low': 0.011,
   'image-openai-medium': 0.042,
   'image-openai-high': 0.167,
+  'image-gemini-flash': 0.039,
+  'image-gemini-flash-2': 0.039,
+  'image-gemini-pro': 0.134,
 };
 
 const TOKENS_EST: Record<AiUsageType, number> = {
@@ -29,6 +35,9 @@ const TOKENS_EST: Record<AiUsageType, number> = {
   'image-openai-low': 272,
   'image-openai-medium': 1056,
   'image-openai-high': 4160,
+  'image-gemini-flash': 1290,
+  'image-gemini-flash-2': 1290,
+  'image-gemini-pro': 2048,
 };
 
 const USD_TO_BRL = 5.5;
@@ -46,6 +55,9 @@ const empty = (): MonthlyUsage => ({
     'image-openai-low': 0,
     'image-openai-medium': 0,
     'image-openai-high': 0,
+    'image-gemini-flash': 0,
+    'image-gemini-flash-2': 0,
+    'image-gemini-pro': 0,
   },
   tokens: 0,
   costUsd: 0,

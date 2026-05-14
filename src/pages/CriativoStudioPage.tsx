@@ -55,11 +55,11 @@ interface CopyResult {
   justificativa: string;
 }
 
-type Quality = 'low' | 'medium' | 'high';
-const QUALITY_OPTIONS: { id: Quality; name: string; desc: string }[] = [
-  { id: 'low', name: 'Low', desc: 'Rascunho rápido e barato' },
-  { id: 'medium', name: 'Medium', desc: 'Equilíbrio ideal para anúncios' },
-  { id: 'high', name: 'High', desc: 'Máxima qualidade para campanhas premium' },
+type GeminiModel = 'gemini-2.5-flash-image' | 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview';
+const MODEL_OPTIONS: { id: GeminiModel; name: string; desc: string; usage: 'image-gemini-flash' | 'image-gemini-flash-2' | 'image-gemini-pro' }[] = [
+  { id: 'gemini-2.5-flash-image', name: 'Nano Banana', desc: 'Rápido e barato', usage: 'image-gemini-flash' },
+  { id: 'gemini-3.1-flash-image-preview', name: 'Nano Banana 2', desc: 'Rápido com qualidade Pro (recomendado)', usage: 'image-gemini-flash-2' },
+  { id: 'gemini-3-pro-image-preview', name: 'Nano Banana Pro', desc: 'Máxima qualidade, mais lento', usage: 'image-gemini-pro' },
 ];
 
 const LANGUAGES = [
@@ -94,7 +94,7 @@ export default function CriativoStudioPage() {
   const [preserveFaces, setPreserveFaces] = useState(true);
 
   // Step 4
-  const [quality, setQuality] = useState<Quality>('medium');
+  const [model, setModel] = useState<GeminiModel>('gemini-3.1-flash-image-preview');
   const [language, setLanguage] = useState<string>('pt-BR');
   const [businessContext, setBusinessContext] = useState('');
   const [negativePrompt, setNegativePrompt] = useState('');
@@ -322,6 +322,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
               body: {
                 prompt: v.promptCompleto,
                 aspectRatio: aspect,
+                model: 'gemini-3.1-flash-image-preview',
                 isVariation: true,
                 productImages,
                 logoImage: logoImage[0] || null,
@@ -330,7 +331,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
             });
             if (ge) throw ge;
             if ((gd as any)?.error) throw new Error((gd as any).error);
-            recordAiUsage('image-openai-medium');
+            recordAiUsage('image-gemini-flash-2');
             setFactorImages((prev) => {
               const next = [...prev];
               next[i] = (gd as any).imageUrl;
@@ -364,7 +365,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
         body: {
           prompt,
           aspectRatio: aspect,
-          quality,
+          model,
           productImages,
           logoImage: logoImage[0] || null,
           storyReference: aspect === 'square' ? storyImage : null,
@@ -372,7 +373,8 @@ A reference Story version of this same creative is attached as the FIRST image. 
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      recordAiUsage(`image-openai-${quality}` as const);
+      const usageType = MODEL_OPTIONS.find((m) => m.id === model)?.usage || 'image-gemini-flash-2';
+      recordAiUsage(usageType);
       const url = (data as any).imageUrl;
       if (aspect === 'story') setStoryImage(url);
       else setSquareImage(url);
@@ -724,16 +726,16 @@ A reference Story version of this same creative is attached as the FIRST image. 
 
           <div>
             <Label className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5 block">
-              Qualidade da imagem (gpt-image-2)
+              Modelo de geração (Google Gemini)
             </Label>
-            <div className="grid grid-cols-3 gap-2">
-              {QUALITY_OPTIONS.map((q) => {
-                const active = quality === q.id;
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {MODEL_OPTIONS.map((m) => {
+                const active = model === m.id;
                 return (
                   <button
-                    key={q.id}
+                    key={m.id}
                     type="button"
-                    onClick={() => setQuality(q.id)}
+                    onClick={() => setModel(m.id)}
                     className={cn(
                       'glass rounded-lg px-3 py-2 text-left transition border',
                       active
@@ -742,15 +744,15 @@ A reference Story version of this same creative is attached as the FIRST image. 
                     )}
                   >
                     <div className={cn('text-sm font-semibold', active ? 'text-accent' : 'text-white')}>
-                      {q.name}
+                      {m.name}
                     </div>
-                    <div className="text-[10px] text-white/60 leading-tight mt-0.5">{q.desc}</div>
+                    <div className="text-[10px] text-white/60 leading-tight mt-0.5">{m.desc}</div>
                   </button>
                 );
               })}
             </div>
             <p className="text-[10px] text-white/40 mt-1.5">
-              Aplica-se à arte principal. As 5 variações do Fator Criativo usam sempre <span className="text-white/70">Medium</span>.
+              Aplica-se à arte principal. As 5 variações do Fator Criativo usam sempre <span className="text-white/70">Nano Banana 2</span>.
             </p>
           </div>
 
