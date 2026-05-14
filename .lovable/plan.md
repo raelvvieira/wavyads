@@ -1,37 +1,61 @@
-# Plano: Sugestão de copy no placeholder + 4 variações de copy otimizada
+# Plano — Uso mensal + reorganização do Step 4
 
-## 1. Pré-sugestão dentro do textarea (Step 2)
+## 1. Uso de IA cumulativo mensal (com reset automático)
 
-Nova edge function `criativo-suggest-copy` (Lovable AI Gateway, `gemini-2.5-flash`):
-- Body: `{ analysis, language }` — recebe a análise visual da Step 1.
-- Devolve: `{ suggestion: string }` — uma copy bruta, ~2-3 linhas, em PT-BR, baseada no `mood.adjetivos`, `mood.referencias` e `designSystemDoc`. Tom: rascunho que o anunciante completaria.
-- Sem armazenar nada.
+`src/lib/aiUsageTracker.ts`:
+- `monthKey()` passa a usar **hora local** (`getFullYear`/`getMonth`) para casar com o label "MAI. DE 26" da UI.
+- `read()` ganha um *housekeeping*: ao ler o mês atual, varre `localStorage` e remove qualquer chave `ai-usage:YYYY-MM` que não seja a do mês corrente. Assim, ao virar o mês, o painel mostra zero automaticamente (não é necessário botão de reset).
+- `recordAiUsage` continua acumulando dentro do mesmo mês.
+- Sem mudanças em `useAiUsage` nem nos pontos de chamada.
 
-Frontend `CriativoStudioPage.tsx`:
-- Novo estado `suggestedRawCopy: string`.
-- Quando `step === 1` é alcançado pela primeira vez **com `analysis` presente** e `rawCopy` vazio, chamar a função em background e gravar o resultado em `suggestedRawCopy`.
-- Renderizar a sugestão como **valor placeholder real do textarea**: usar o atributo `placeholder={suggestedRawCopy || 'Ex: ...'}`.
-- Se o usuário começar a digitar, o placeholder some (comportamento nativo). Sugestão nunca sobrescreve o que ele escreve.
-- Adicionar um pequeno botão "Usar sugestão" abaixo do textarea (só aparece quando `suggestedRawCopy && !rawCopy.trim()`) que faz `setRawCopy(suggestedRawCopy)` para o usuário poder editar a partir dela.
+## 2. Step 4 — nova organização (Story em cima, 1080 embaixo, Fator à direita)
 
-## 2. 4 variações de copy otimizada
+### Botões do topo (linha 855)
+Manter apenas: **Gerar Story** (ou "Gerar Story novamente") + **Aplicar Fator Criativo** + **Voltar**.
+Remover o botão "Recriar em 1080x1080" do topo. Remover também o card separado "Fator Criativo" com seu próprio header (linhas 912–950) — o título e descrição ficam ao lado do botão no topo, dentro da mesma linha de ações.
 
-`supabase/functions/criativo-improve-copy/index.ts`:
-- Trocar o tool de objeto único por um tool que devolve `{ variations: CopyResult[] }` com **4 itens**.
-- Cada variação com ângulo distinto: (a) Direto/Benefício, (b) Urgência/Escassez, (c) Curiosidade/Hook, (d) Prova/Autoridade. Adicionar campo `angulo: string` em cada `CopyResult` para identificar.
-- System prompt instrui a gerar 4 ângulos diferentes mantendo a estrutura de 5 blocos.
+### Estado novo
+- `factorSquareImages: (string | null)[]` (length 5).
+- `factorSquareLoading: boolean[]` (length 5).
+- Função `recreateSquare(index: number | 'main')`:
+  - Para `'main'`: usa o `buildFinalPrompt('square')` atual e seta `squareImage`.
+  - Para índice `i`: usa `factorVariations[i].promptCompleto`, chama `criativo-generate` com `aspect: 'square'` e `storyReference: storyImage` (consistência visual com a story original já garantida pelo prompt). Salva em `factorSquareImages[i]`.
+- Refatorar `generate('square')` para reusar `recreateSquare('main')`.
 
-Frontend:
-- Estado muda: `copyResult: CopyResult | null` → `copyVariations: CopyResult[]` + `selectedVariationIdx: number | null`.
-- Substituir o card único de "Sugestão da IA" por **grid de 4 cards** (1 col mobile, 2 cols md). Cada card mostra `angulo` como header, label/título/subtítulo/dados/CTA + justificativa.
-- Card "Sua copy original" continua ao lado (acima do grid de 4).
-- Selecionar um card → `selectedVariationIdx = i`, `copySource = 'ai'`, `copyApproved = true`, `setStep(2)`.
-- Em `buildFinalPrompt` (linha 239), trocar `copyResult` por `copyVariations[selectedVariationIdx!]`.
-- `applyFatorCriativo` (linha 306) e `generateBusinessContext` (linha 138): mesma substituição.
+### Layout (desktop ≥ lg)
+Grid único com 6 colunas: **1 coluna para a arte principal + 5 para o Fator**.
+```text
+┌──────────┬──────┬──────┬──────┬──────┬──────┐
+│ Story    │ Fa1  │ Fa2  │ Fa3  │ Fa4  │ Fa5  │
+│ (main)   │      │      │      │      │      │
+│ ⬇ Baixar │ ⬇    │ ⬇    │ ⬇    │ ⬇    │ ⬇    │
+│ ⟳ 1080   │ ⟳    │ ⟳    │ ⟳    │ ⟳    │ ⟳    │
+├──────────┼──────┼──────┼──────┼──────┼──────┤
+│ Sq1080   │ Sq1  │ Sq2  │ Sq3  │ Sq4  │ Sq5  │
+│ ⬇ Baixar │ ⬇    │ ⬇    │ ⬇    │ ⬇    │ ⬇    │
+└──────────┴──────┴──────┴──────┴──────┴──────┘
+```
+Cada coluna tem a mesma estrutura:
+1. Story 9:16 (clique → lightbox)
+2. Botão **Baixar Story**
+3. Botão **Recriar em 1080x1080** (ou loader; some quando o square existe)
+4. Se `squareImage` existe: square 1:1 + botão **Baixar 1080x1080**
+
+Antes de aplicar Fator, só a coluna principal é renderizada — assim a tela inicial fica limpa e o "Aplicar Fator Criativo" fica visível no topo. Após aplicar, as 5 colunas aparecem à direita (skeletons enquanto carregam).
+
+### Responsivo
+- `grid-cols-2` mobile, `md:grid-cols-3`, `lg:grid-cols-6`.
+- Em mobile/tablet, as 6 colunas quebram naturalmente para baixo, mas a ordem semântica (Story principal primeiro, depois variações 1→5) é preservada.
+- Cada coluna usa `min-w-0` para evitar overflow das pré-visualizações.
+
+### Limpezas
+- Remover do JSX antigo: o bloco de "Recriar em 1080x1080" no topo, a `div` separada de exibição (linhas 871–910), e o card inteiro de Fator (linhas 912–1010, mantendo só o handler).
+- Manter `lightboxUrl` e `download()` como estão.
 
 ## Validação
-
-1. Step 1 concluída com refs → entra em Step 2 → placeholder do textarea já tem rascunho contextualizado.
-2. Click "Usar sugestão" → preenche textarea, fica editável.
-3. Click "Sugerir versão otimizada" → aparecem 4 cards com ângulos distintos.
-4. Selecionar um → próximo passo usa exatamente aquela variação no prompt final.
+1. Vira o mês → painel de uso mostra zero sem ação manual; histórico do mês passado some do `localStorage`.
+2. Step 4 inicial → 1 coluna com Story + botões "Baixar Story" e "Recriar em 1080x1080" embaixo.
+3. Click "Recriar em 1080x1080" → square aparece logo abaixo, com "Baixar 1080x1080".
+4. Click "Aplicar Fator Criativo" (botão no topo) → 5 colunas aparecem à direita com skeletons → preenchem.
+5. Click "Recriar em 1080x1080" em uma variação → square aparece só naquela coluna.
+6. Mobile (≤768px): grid quebra em 2 colunas, ordem preservada, sem overflow horizontal.
