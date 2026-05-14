@@ -338,11 +338,26 @@ export default function ComercialPage() {
 
   return (
     <div className="p-6 pt-20 lg:pt-6 space-y-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Comercial</h1>
-        <p className="text-sm text-muted-foreground">
-          Lista de Leads e Compradores registrados manualmente para a Meta.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Comercial {client?.name && <span className="text-muted-foreground font-normal">· {client.name}</span>}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Lista de Leads e Compradores registrados manualmente para a Meta.
+          </p>
+        </div>
+        {isAdmin && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/comercial')}
+            className="glass-input rounded-xl shrink-0"
+          >
+            <ArrowLeft className="h-4 w-4 mr-1.5" />
+            Voltar
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
@@ -395,19 +410,6 @@ export default function ComercialPage() {
               className="glass-input w-full rounded-xl py-2.5 pl-10 pr-4 text-sm"
             />
           </div>
-          {isAdmin && (
-            <Select value={clientFilter} onValueChange={(v) => { setClientFilter(v); setPage(0); }}>
-              <SelectTrigger className="w-full lg:w-[220px] glass-input rounded-xl">
-                <SelectValue placeholder="Cliente" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os clientes</SelectItem>
-                {(clients || []).map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
           <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v as any); setPage(0); }}>
             <SelectTrigger className="w-full lg:w-[160px] glass-input rounded-xl">
               <SelectValue />
