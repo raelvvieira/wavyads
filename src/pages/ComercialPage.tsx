@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, startOfDay, endOfDay, subDays, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import {
@@ -13,10 +14,11 @@ import {
   Loader2,
   CalendarIcon,
   AlertTriangle,
+  ArrowLeft,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRole } from '@/hooks/useRole';
-import { useClients } from '@/hooks/useClients';
+import { useClient } from '@/hooks/useClients';
 import { GlassCard } from '@/components/GlassCard';
 import {
   Sheet,
