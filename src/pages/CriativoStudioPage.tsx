@@ -338,6 +338,8 @@ A reference Story version of this same creative is attached as the FIRST image. 
     setFactorVariations(null);
     setFactorImages([null, null, null, null, null]);
     setFactorErrors([null, null, null, null, null]);
+    setFactorSquareImages([null, null, null, null, null]);
+    setFactorSquareLoading([false, false, false, false, false]);
     setFactorProgress(0);
     try {
       const originalPrompt = buildFinalPrompt(aspect);
