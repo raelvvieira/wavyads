@@ -486,19 +486,19 @@ export default function ComercialPage() {
                 <th className="text-right px-4 py-3 font-medium">Valor</th>
                 <th className="text-left px-4 py-3 font-medium">Data</th>
                 <th className="text-left px-4 py-3 font-medium">Status</th>
-                {isAdmin && <th className="text-left px-4 py-3 font-medium">Cliente</th>}
+                
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={isAdmin ? 8 : 7} className="px-4 py-12 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
                     <Loader2 className="h-5 w-5 animate-spin inline-block" />
                   </td>
                 </tr>
               ) : pageRows.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 8 : 7} className="px-4 py-12 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
                     Nenhum registro encontrado.
                   </td>
                 </tr>
@@ -531,11 +531,6 @@ export default function ComercialPage() {
                         )}
                       </div>
                     </td>
-                    {isAdmin && (
-                      <td className="px-4 py-3 text-muted-foreground whitespace-normal break-words">
-                        {clientNameById.get(r.client_id) || '—'}
-                      </td>
-                    )}
                   </tr>
                 ))
               )}
