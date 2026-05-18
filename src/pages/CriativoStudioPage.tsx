@@ -730,28 +730,98 @@ A reference Story version of this same creative is attached as the FIRST image. 
             </p>
           </div>
 
-          <Textarea
-            placeholder={suggestedRawCopy || 'Ex: Estamos vendendo curso de kitesurf em Floripa, foco em iniciantes, com instrutores certificados IKO, vagas a partir de R$ 890 começando dia 15/03...'}
-            value={rawCopy}
-            onChange={(e) => setRawCopy(e.target.value)}
-            rows={5}
-            className="text-sm"
-          />
+          {/* URL do site/produto (opcional) */}
+          <div className="space-y-1.5">
+            <Label className="text-[10px] uppercase tracking-wider text-white/40 flex items-center gap-1.5">
+              <Globe className="h-3 w-3" /> URL do site ou produto (opcional)
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                type="url"
+                placeholder="https://exemplo.com/produto"
+                value={productUrl}
+                onChange={(e) => { setProductUrl(e.target.value); setUrlError(null); }}
+                disabled={urlReading}
+                className="text-[13px] sm:text-sm"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={fetchProductUrl}
+                disabled={urlReading || !productUrl.trim()}
+                className="shrink-0"
+              >
+                {urlReading
+                  ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  : <Globe className="h-3.5 w-3.5 mr-1.5" />}
+                {urlContext ? 'Reler' : 'Ler site'}
+              </Button>
+            </div>
+            {urlReading && (
+              <p className="text-[11px] text-white/50 flex items-center gap-1.5">
+                <Loader2 className="h-3 w-3 animate-spin" /> Lendo conteúdo do site…
+              </p>
+            )}
+            {urlContext && !urlReading && (
+              <p className="text-[11px] text-accent flex items-center gap-1.5">
+                <Check className="h-3 w-3" /> Site lido — usado como base da sugestão
+                {urlContext.title ? ` · ${urlContext.title.slice(0, 60)}` : ''}
+              </p>
+            )}
+            {urlError && !urlReading && (
+              <p className="text-[11px] text-destructive">{urlError}</p>
+            )}
+          </div>
+
+          {/* Sugestão da IA + botão prominente */}
+          {suggestedRawCopy && (
+            <div className="rounded-lg border border-accent/30 bg-accent/5 p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <span className="text-[10px] uppercase tracking-wider text-accent font-semibold flex items-center gap-1.5">
+                  <Sparkles className="h-3 w-3" /> Copy sugerida pela IA
+                </span>
+                <div className="flex gap-1.5">
+                  <Button
+                    size="sm"
+                    onClick={() => setRawCopy(suggestedRawCopy)}
+                    className="bg-accent text-black hover:bg-accent/90 h-7 text-[11px]"
+                  >
+                    <Check className="h-3 w-3 mr-1" /> Usar copy sugerida
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => generateSuggestedCopy(urlContext)}
+                    disabled={suggestingCopy}
+                    className="h-7 text-[11px]"
+                  >
+                    {suggestingCopy
+                      ? <Loader2 className="h-3 w-3 animate-spin" />
+                      : <RefreshCw className="h-3 w-3" />}
+                  </Button>
+                </div>
+              </div>
+              <p className="text-[12px] text-white/80 leading-relaxed whitespace-pre-wrap">{suggestedRawCopy}</p>
+            </div>
+          )}
+
+          <div>
+            <Label className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5 block">
+              Sua copy (editável)
+            </Label>
+            <Textarea
+              placeholder={suggestedRawCopy || 'Ex: Estamos vendendo curso de kitesurf em Floripa, foco em iniciantes…'}
+              value={rawCopy}
+              onChange={(e) => setRawCopy(e.target.value)}
+              rows={5}
+              className="text-sm"
+            />
+          </div>
 
           {suggestingCopy && !suggestedRawCopy && (
             <p className="text-[11px] text-white/40 flex items-center gap-1.5">
-              <Loader2 className="h-3 w-3 animate-spin" /> Gerando uma sugestão prévia baseada nas suas referências…
+              <Loader2 className="h-3 w-3 animate-spin" /> Gerando uma sugestão prévia{urlContext ? ' com base no site' : ' baseada nas suas referências'}…
             </p>
-          )}
-          {suggestedRawCopy && !rawCopy.trim() && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setRawCopy(suggestedRawCopy)}
-              className="text-xs"
-            >
-              <Wand2 className="h-3.5 w-3.5 mr-1.5" /> Usar sugestão como ponto de partida
-            </Button>
           )}
 
           <div className="flex gap-3 flex-wrap">
