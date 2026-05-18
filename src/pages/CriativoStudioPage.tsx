@@ -577,6 +577,12 @@ A reference Story version of this same creative is attached as the FIRST image. 
     setSquareImage(null);
     setFactorSquareImages([null, null, null, null, null]);
     setFactorSquareLoading([false, false, false, false, false]);
+    setProductUrl('');
+    setUrlContext(null);
+    setUrlError(null);
+    setEditedVersions({});
+    setEditPanelKey(null);
+    setEditFeedback('');
   };
 
   if (roleLoading) {
