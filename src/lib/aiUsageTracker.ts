@@ -1,14 +1,10 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Rastreador de uso de IA do Criativo Studio.
- * Persiste em localStorage por mês (YYYY-MM) e emite eventos para a UI atualizar.
- *
- * Custos estimados (USD):
- *  - text-flash         (Gemini 2.5/3 Flash via Lovable AI)        => $0.001
- *  - image-openai-low   (gpt-image-2, low quality, 1024)           => $0.011
- *  - image-openai-medium(gpt-image-2, medium quality, 1024)        => $0.042
- *  - image-openai-high  (gpt-image-2, high quality, 1024)          => $0.167
+ * Persiste em `ai_usage_events` (Supabase) — acumulado mensal compartilhado
+ * entre todos os admins, calculado em fuso horário America/Sao_Paulo.
  */
 
 export type AiUsageType =
@@ -43,106 +39,103 @@ const TOKENS_EST: Record<AiUsageType, number> = {
 const USD_TO_BRL = 5.5;
 const EVENT = 'ai-usage-changed';
 
-interface MonthlyUsage {
-  calls: Record<AiUsageType, number>;
-  tokens: number;
-  costUsd: number;
-}
+const currentMonthKeySP = () => {
+  // YYYY-MM in America/Sao_Paulo
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+  });
+  const parts = fmt.formatToParts(new Date());
+  const y = parts.find((p) => p.type === 'year')?.value;
+  const m = parts.find((p) => p.type === 'month')?.value;
+  return `${y}-${m}`;
+};
 
-const empty = (): MonthlyUsage => ({
-  calls: {
-    'text-flash': 0,
-    'image-openai-low': 0,
-    'image-openai-medium': 0,
-    'image-openai-high': 0,
-    'image-gemini-flash': 0,
-    'image-gemini-flash-2': 0,
-    'image-gemini-pro': 0,
-  },
-  tokens: 0,
-  costUsd: 0,
-});
-
-const monthKey = (d = new Date()) =>
-  `ai-usage:${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-
-const cleanupOldMonths = () => {
-  const current = monthKey();
+export async function recordAiUsage(type: AiUsageType, count = 1) {
   try {
-    const toRemove: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.startsWith('ai-usage:') && k !== current) toRemove.push(k);
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from('ai_usage_events').insert({
+      user_id: user?.id ?? null,
+      usage_type: type,
+      count,
+      cost_usd: COST_USD[type] * count,
+      tokens: TOKENS_EST[type] * count,
+    } as any);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(EVENT));
     }
-    toRemove.forEach((k) => localStorage.removeItem(k));
-  } catch {
-    // ignore
+  } catch (e) {
+    console.warn('recordAiUsage failed', e);
   }
-};
-
-const read = (): MonthlyUsage => {
-  if (typeof window === 'undefined') return empty();
-  try {
-    cleanupOldMonths();
-    const raw = localStorage.getItem(monthKey());
-    if (!raw) return empty();
-    const parsed = JSON.parse(raw);
-    return { ...empty(), ...parsed, calls: { ...empty().calls, ...(parsed.calls || {}) } };
-  } catch {
-    return empty();
-  }
-};
-
-const write = (u: MonthlyUsage) => {
-  try {
-    localStorage.setItem(monthKey(), JSON.stringify(u));
-    window.dispatchEvent(new CustomEvent(EVENT));
-  } catch {
-    // ignore quota
-  }
-};
-
-export function recordAiUsage(type: AiUsageType, count = 1) {
-  const cur = read();
-  cur.calls[type] = (cur.calls[type] || 0) + count;
-  cur.tokens += TOKENS_EST[type] * count;
-  cur.costUsd += COST_USD[type] * count;
-  write(cur);
 }
 
-export function resetAiUsage() {
-  write(empty());
-}
-
-export interface AiUsageSnapshot extends MonthlyUsage {
+export interface AiUsageSnapshot {
+  costUsd: number;
   costBrl: number;
+  tokens: number;
   totalCalls: number;
   monthLabel: string;
+  loading: boolean;
 }
 
-export function useAiUsage(): AiUsageSnapshot & { reset: () => void } {
-  const compute = useCallback((): AiUsageSnapshot => {
-    const u = read();
-    const totalCalls = (Object.values(u.calls) as number[]).reduce((a, b) => a + b, 0);
-    return {
-      ...u,
-      costBrl: u.costUsd * USD_TO_BRL,
-      totalCalls,
-      monthLabel: new Date().toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
-    };
+const monthLabel = () =>
+  new Date().toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+
+export function useAiUsage(): AiUsageSnapshot {
+  const [snap, setSnap] = useState<AiUsageSnapshot>({
+    costUsd: 0,
+    costBrl: 0,
+    tokens: 0,
+    totalCalls: 0,
+    monthLabel: monthLabel(),
+    loading: true,
+  });
+  const mounted = useRef(true);
+
+  const refresh = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('ai_usage_events')
+        .select('count, cost_usd, tokens')
+        .eq('month_key', currentMonthKeySP())
+        .limit(10000);
+      if (error) throw error;
+      if (!mounted.current) return;
+      let costUsd = 0;
+      let tokens = 0;
+      let totalCalls = 0;
+      for (const row of (data || []) as Array<{ count: number; cost_usd: number; tokens: number }>) {
+        costUsd += Number(row.cost_usd) || 0;
+        tokens += Number(row.tokens) || 0;
+        totalCalls += Number(row.count) || 0;
+      }
+      setSnap({
+        costUsd,
+        costBrl: costUsd * USD_TO_BRL,
+        tokens,
+        totalCalls,
+        monthLabel: monthLabel(),
+        loading: false,
+      });
+    } catch (e) {
+      if (!mounted.current) return;
+      setSnap((s) => ({ ...s, loading: false }));
+    }
   }, []);
 
-  const [snap, setSnap] = useState<AiUsageSnapshot>(compute);
-
   useEffect(() => {
-    const refresh = () => setSnap(compute());
-    window.addEventListener(EVENT, refresh);
-    window.addEventListener('storage', refresh);
+    mounted.current = true;
+    refresh();
+    const onChange = () => refresh();
+    window.addEventListener(EVENT, onChange);
+    const interval = window.setInterval(refresh, 60_000);
     return () => {
-      window.removeEventListener(EVENT, refresh);
-      window.removeEventListener('storage', refresh);
+      mounted.current = false;
+      window.removeEventListener(EVENT, onChange);
+      window.clearInterval(interval);
     };
-  }, [compute]);
+  }, [refresh]);
 
-  return { ...snap, reset: () => { resetAiUsage(); setSnap(compute()); } };
+  return snap;
 }

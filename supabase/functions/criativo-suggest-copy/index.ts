@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
-const SYSTEM = `Você é copywriter sênior de criativos publicitários. Sua tarefa é escrever um RASCUNHO inicial curto de copy bruta (2-4 linhas) que o anunciante poderá editar. Use as referências visuais, mood e design system fornecidos para inferir o segmento, tom e oferta provável. Português brasileiro, natural, sem listar tópicos, sem aspas, sem títulos. Apenas o texto corrido como se o anunciante estivesse descrevendo o que quer anunciar (ex: "Estamos vendendo curso de kitesurf em Floripa, foco em iniciantes, com instrutores certificados IKO, vagas a partir de R$ 890 começando dia 15/03..."). NUNCA invente dados específicos como datas, preços ou nomes próprios — se não houver evidência clara nas referências, mantenha vago e plausível.`;
+const SYSTEM = `Você é copywriter sênior de criativos publicitários. Sua tarefa é escrever um RASCUNHO inicial curto de copy bruta (2-4 linhas) que o anunciante poderá editar. Use as referências visuais, mood e design system fornecidos para inferir o segmento, tom e oferta provável. Se houver conteúdo extraído do site/produto do anunciante, BASEIE A OFERTA NELE — não invente dados que não estejam nesse conteúdo. Português brasileiro, natural, sem listar tópicos, sem aspas, sem títulos. Apenas o texto corrido como se o anunciante estivesse descrevendo o que quer anunciar. NUNCA invente dados específicos como datas, preços ou nomes próprios — se não houver evidência clara, mantenha vago e plausível.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -17,7 +17,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
 
-    const { analysis, language } = await req.json();
+    const { analysis, language, urlContext } = await req.json();
     if (!analysis) {
       return new Response(JSON.stringify({ error: "analysis obrigatório" }), {
         status: 400,
@@ -27,14 +27,21 @@ serve(async (req) => {
 
     const lang = language === "en" ? "English" : language === "es" ? "Spanish" : "Portuguese (Brazil)";
 
+    const urlBlock = urlContext && (urlContext.title || urlContext.description || urlContext.text)
+      ? `\n\nConteúdo extraído do site/produto fornecido pelo anunciante (USE COMO BASE PRINCIPAL):
+Título: ${urlContext.title || "(sem título)"}
+Descrição: ${urlContext.description || "(sem descrição)"}
+Trecho: ${(urlContext.text || "").slice(0, 3500)}`
+      : "";
+
     const userPrompt = `Idioma: ${lang}
 Mood adjetivos: ${(analysis?.mood?.adjetivos || []).join(", ")}
 Referências visuais: ${(analysis?.mood?.referencias || []).join(", ")}
 Evita: ${(analysis?.mood?.evita || []).join(", ")}
 Design system resumido:
-${(analysis?.designSystemDoc || "").slice(0, 800)}
+${(analysis?.designSystemDoc || "").slice(0, 800)}${urlBlock}
 
-Escreva um rascunho curto (2-4 linhas) descrevendo a oferta provável que combinaria com essas referências. Apenas o texto, sem prefixos.`;
+Escreva um rascunho curto (2-4 linhas) descrevendo a oferta provável que combinaria com essas referências${urlContext ? " e, principalmente, com o conteúdo do site acima" : ""}. Apenas o texto, sem prefixos.`;
 
     const response = await fetch(AI_URL, {
       method: "POST",

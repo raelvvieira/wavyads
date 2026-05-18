@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_usage_events: {
+        Row: {
+          cost_usd: number
+          count: number
+          created_at: string
+          id: string
+          month_key: string
+          tokens: number
+          usage_type: string
+          user_id: string | null
+        }
+        Insert: {
+          cost_usd?: number
+          count?: number
+          created_at?: string
+          id?: string
+          month_key: string
+          tokens?: number
+          usage_type: string
+          user_id?: string | null
+        }
+        Update: {
+          cost_usd?: number
+          count?: number
+          created_at?: string
+          id?: string
+          month_key?: string
+          tokens?: number
+          usage_type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       client_pixels: {
         Row: {
           access_token: string

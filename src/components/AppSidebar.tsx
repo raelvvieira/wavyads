@@ -13,7 +13,6 @@ import {
   Users,
   Wand2,
   Zap,
-  RotateCcw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAiUsage } from '@/lib/aiUsageTracker';
@@ -121,32 +120,18 @@ export function AppSidebar() {
 
         <div className="p-4 border-t border-white/10 space-y-3">
           {isAdmin && (
-            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-white/40 font-medium">
-                  <Zap className="h-3 w-3 text-accent" />
-                  Uso de I.A · {usage.monthLabel}
-                </div>
-                <button
-                  onClick={() => {
-                    if (confirm('Zerar contador de uso deste mês?')) usage.reset();
-                  }}
-                  className="text-white/30 hover:text-white/70 transition-colors"
-                  title="Zerar contador"
-                >
-                  <RotateCcw className="h-3 w-3" />
-                </button>
+            <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
+              <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-wider text-white/40 font-medium">
+                <Zap className="h-3 w-3 text-accent" />
+                Uso de I.A · {usage.monthLabel}
               </div>
-              <div className="flex items-baseline justify-between">
-                <span className="text-lg font-semibold text-white tabular-nums">
+              <div className="mt-1 flex items-baseline justify-between gap-2">
+                <span className="text-sm font-semibold text-white tabular-nums">
                   {fmtBrl(usage.costBrl)}
                 </span>
-                <span className="text-[11px] text-white/50 tabular-nums">
+                <span className="text-[10px] text-white/50 tabular-nums">
                   {fmtTokens(usage.tokens)} tok
                 </span>
-              </div>
-              <div className="mt-1.5 text-[10px] text-white/40 tabular-nums">
-                {usage.totalCalls} chamadas · ${usage.costUsd.toFixed(3)} USD
               </div>
             </div>
           )}
