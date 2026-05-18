@@ -1090,190 +1090,320 @@ A reference Story version of this same creative is attached as the FIRST image. 
             )}
           </div>
 
-          {storyImage && (
-            <div className={cn(
-              'grid gap-3 sm:gap-4 pt-2',
-              (factorVariations || factorLoading)
-                ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-6'
-                : 'grid-cols-1 sm:grid-cols-2 max-w-md',
-            )}>
-              {/* Main column */}
-              <div className="space-y-2 min-w-0">
-                <p className="text-[9px] uppercase tracking-wider text-accent font-semibold">
-                  Principal
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setLightboxUrl(storyImage)}
-                  className="group relative block w-full rounded-lg overflow-hidden glass aspect-[9/16] cursor-zoom-in"
-                >
-                  <img src={storyImage} alt="story" className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <ZoomIn className="h-5 w-5 text-white drop-shadow" />
+          {storyImage && (() => {
+            const mainStoryKey = 'main:story';
+            const mainSquareKey = 'main:square';
+            const mainStoryPrompt = buildFinalPrompt('story');
+            const mainSquarePrompt = buildFinalPrompt('square');
+
+            const renderEditPanel = (key: string, originalImage: string, aspect: 'story' | 'square', originalPrompt: string) => {
+              if (editPanelKey !== key) return null;
+              const loading = editLoadingKey === key;
+              return (
+                <div className="rounded-md border border-accent/30 bg-accent/5 p-2 space-y-1.5">
+                  <Textarea
+                    placeholder="Ex.: troque o CTA por 'Comece agora', tire o galho da esquerda…"
+                    value={editFeedback}
+                    onChange={(e) => setEditFeedback(e.target.value)}
+                    rows={3}
+                    className="text-[11px]"
+                    disabled={loading}
+                  />
+                  <div className="flex gap-1.5">
+                    <Button
+                      size="sm"
+                      onClick={() => editArt(key, originalImage, aspect, originalPrompt)}
+                      disabled={loading || !editFeedback.trim()}
+                      className="flex-1 h-7 text-[10px] bg-accent text-black hover:bg-accent/90"
+                    >
+                      {loading
+                        ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        : <Check className="h-3 w-3 mr-1" />}
+                      Aplicar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => { setEditPanelKey(null); setEditFeedback(''); }}
+                      disabled={loading}
+                      className="h-7 text-[10px]"
+                    >
+                      Cancelar
+                    </Button>
                   </div>
-                </button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => download(storyImage, `criativo-story-${Date.now()}.png`)}
-                  className="w-full h-7 text-[10px]"
-                >
-                  <Download className="h-3 w-3 mr-1" /> Baixar Story
-                </Button>
-                {!squareImage && (
+                </div>
+              );
+            };
+
+            const renderEditButton = (key: string) => (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setEditPanelKey(editPanelKey === key ? null : key);
+                  setEditFeedback('');
+                }}
+                className="w-full h-7 text-[10px]"
+              >
+                <Pencil className="h-3 w-3 mr-1" /> Editar com I.A
+              </Button>
+            );
+
+            const renderEditedColumns = (sourceKey: string, aspect: 'story' | 'square', srcLabel: string) =>
+              (editedVersions[sourceKey] || []).map((ed, idx) => (
+                <div key={`${sourceKey}-edit-${idx}`} className="space-y-2 min-w-0">
+                  <p className="text-[9px] uppercase tracking-wider text-accent/80 font-semibold truncate">
+                    ✎ {srcLabel} · edit {idx + 1}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setLightboxUrl(ed.url)}
+                    className={cn(
+                      'group relative block w-full rounded-lg overflow-hidden glass cursor-zoom-in',
+                      aspect === 'story' ? 'aspect-[9/16]' : 'aspect-square',
+                    )}
+                  >
+                    <img src={ed.url} alt="editado" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <ZoomIn className="h-5 w-5 text-white drop-shadow" />
+                    </div>
+                  </button>
+                  <p className="text-[10px] text-white/50 italic line-clamp-2" title={ed.feedback}>
+                    "{ed.feedback}"
+                  </p>
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => recreateSquare('main')}
-                    disabled={mainSquareLoading}
+                    onClick={() => download(ed.url, `criativo-edit-${Date.now()}.png`)}
                     className="w-full h-7 text-[10px]"
                   >
-                    {mainSquareLoading
-                      ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                      : <RefreshCw className="h-3 w-3 mr-1" />}
-                    Recriar em 1080x1080
+                    <Download className="h-3 w-3 mr-1" /> Baixar editada
                   </Button>
-                )}
-                {(squareImage || mainSquareLoading) && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => squareImage && setLightboxUrl(squareImage)}
-                      disabled={!squareImage}
-                      className={cn(
-                        'group relative block w-full rounded-lg overflow-hidden glass aspect-square',
-                        squareImage ? 'cursor-zoom-in' : 'cursor-default',
-                      )}
-                    >
-                      {squareImage ? (
-                        <>
-                          <img src={squareImage} alt="square" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
-                            <ZoomIn className="h-5 w-5 text-white drop-shadow" />
-                          </div>
-                        </>
-                      ) : (
-                        <Skeleton className="w-full h-full" />
-                      )}
-                    </button>
-                    {squareImage && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => download(squareImage, `criativo-square-${Date.now()}.png`)}
-                        className="w-full h-7 text-[10px]"
-                      >
-                        <Download className="h-3 w-3 mr-1" /> Baixar 1080x1080
-                      </Button>
-                    )}
-                  </>
-                )}
-              </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => discardEdit(sourceKey, idx)}
+                    className="w-full h-7 text-[10px] text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-3 w-3 mr-1" /> Descartar
+                  </Button>
+                </div>
+              ));
 
-              {/* Fator Criativo columns */}
-              {(factorVariations || factorLoading) && Array.from({ length: 5 }).map((_, i) => {
-                const v = factorVariations?.[i];
-                const img = factorImages[i];
-                const err = factorErrors[i];
-                const sqImg = factorSquareImages[i];
-                const sqLoading = factorSquareLoading[i];
-                return (
-                  <div key={i} className="space-y-2 min-w-0">
-                    <p className="text-[9px] uppercase tracking-wider text-accent font-semibold truncate">
-                      #{i + 1} {v?.eixo || '...'}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => img && setLightboxUrl(img)}
-                      disabled={!img}
-                      className={cn(
-                        'group relative block w-full rounded-lg overflow-hidden glass aspect-[9/16]',
-                        img ? 'cursor-zoom-in' : 'cursor-default',
-                      )}
+            return (
+              <div className={cn(
+                'grid gap-3 sm:gap-4 pt-2',
+                'grid-cols-2 md:grid-cols-3 lg:grid-cols-6',
+              )}>
+                {/* Main column */}
+                <div className="space-y-2 min-w-0">
+                  <p className="text-[9px] uppercase tracking-wider text-accent font-semibold">
+                    Principal
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setLightboxUrl(storyImage)}
+                    className="group relative block w-full rounded-lg overflow-hidden glass aspect-[9/16] cursor-zoom-in"
+                  >
+                    <img src={storyImage} alt="story" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <ZoomIn className="h-5 w-5 text-white drop-shadow" />
+                    </div>
+                  </button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => download(storyImage, `criativo-story-${Date.now()}.png`)}
+                    className="w-full h-7 text-[10px]"
+                  >
+                    <Download className="h-3 w-3 mr-1" /> Baixar Story
+                  </Button>
+                  {!squareImage && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => recreateSquare('main')}
+                      disabled={mainSquareLoading}
+                      className="w-full h-7 text-[10px]"
                     >
-                      {img ? (
+                      {mainSquareLoading
+                        ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        : <RefreshCw className="h-3 w-3 mr-1" />}
+                      Recriar em 1080x1080
+                    </Button>
+                  )}
+                  {renderEditButton(mainStoryKey)}
+                  {renderEditPanel(mainStoryKey, storyImage, 'story', mainStoryPrompt)}
+                  {(squareImage || mainSquareLoading) && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => squareImage && setLightboxUrl(squareImage)}
+                        disabled={!squareImage}
+                        className={cn(
+                          'group relative block w-full rounded-lg overflow-hidden glass aspect-square',
+                          squareImage ? 'cursor-zoom-in' : 'cursor-default',
+                        )}
+                      >
+                        {squareImage ? (
+                          <>
+                            <img src={squareImage} alt="square" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
+                              <ZoomIn className="h-5 w-5 text-white drop-shadow" />
+                            </div>
+                          </>
+                        ) : (
+                          <Skeleton className="w-full h-full" />
+                        )}
+                      </button>
+                      {squareImage && (
                         <>
-                          <img src={img} alt={v?.nome || `variação ${i + 1}`} className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
-                            <ZoomIn className="h-5 w-5 text-white drop-shadow" />
-                          </div>
-                        </>
-                      ) : err ? (
-                        <div className="absolute inset-0 flex items-center justify-center p-2 text-[10px] text-destructive text-center">
-                          Erro ao gerar
-                        </div>
-                      ) : (
-                        <Skeleton className="w-full h-full" />
-                      )}
-                    </button>
-                    {v && (
-                      <p className="text-[10px] text-white/70 font-medium truncate" title={v.nome}>
-                        {v.nome}
-                      </p>
-                    )}
-                    {img && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => download(img, `fator-${i + 1}-${v?.eixo}-${Date.now()}.png`)}
-                        className="w-full h-7 text-[10px]"
-                      >
-                        <Download className="h-3 w-3 mr-1" /> Baixar Story
-                      </Button>
-                    )}
-                    {img && !sqImg && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => recreateSquare(i)}
-                        disabled={sqLoading}
-                        className="w-full h-7 text-[10px]"
-                      >
-                        {sqLoading
-                          ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                          : <RefreshCw className="h-3 w-3 mr-1" />}
-                        Recriar em 1080x1080
-                      </Button>
-                    )}
-                    {(sqImg || sqLoading) && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => sqImg && setLightboxUrl(sqImg)}
-                          disabled={!sqImg}
-                          className={cn(
-                            'group relative block w-full rounded-lg overflow-hidden glass aspect-square',
-                            sqImg ? 'cursor-zoom-in' : 'cursor-default',
-                          )}
-                        >
-                          {sqImg ? (
-                            <>
-                              <img src={sqImg} alt={`variação ${i + 1} 1080`} className="w-full h-full object-cover" />
-                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                <ZoomIn className="h-5 w-5 text-white drop-shadow" />
-                              </div>
-                            </>
-                          ) : (
-                            <Skeleton className="w-full h-full" />
-                          )}
-                        </button>
-                        {sqImg && (
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => download(sqImg, `fator-${i + 1}-square-${Date.now()}.png`)}
+                            onClick={() => download(squareImage, `criativo-square-${Date.now()}.png`)}
                             className="w-full h-7 text-[10px]"
                           >
                             <Download className="h-3 w-3 mr-1" /> Baixar 1080x1080
                           </Button>
+                          {renderEditButton(mainSquareKey)}
+                          {renderEditPanel(mainSquareKey, squareImage, 'square', mainSquarePrompt)}
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Edições da principal (story) */}
+                {renderEditedColumns(mainStoryKey, 'story', 'Principal')}
+                {/* Edições da principal (square) */}
+                {squareImage && renderEditedColumns(mainSquareKey, 'square', 'Principal 1:1')}
+
+                {/* Fator Criativo columns */}
+                {(factorVariations || factorLoading) && Array.from({ length: 5 }).flatMap((_, i) => {
+                  const v = factorVariations?.[i];
+                  const img = factorImages[i];
+                  const err = factorErrors[i];
+                  const sqImg = factorSquareImages[i];
+                  const sqLoading = factorSquareLoading[i];
+                  const stKey = `f${i}:story`;
+                  const sqKey = `f${i}:square`;
+                  const stPrompt = v?.promptCompleto || '';
+
+                  const column = (
+                    <div key={`f${i}`} className="space-y-2 min-w-0">
+                      <p className="text-[9px] uppercase tracking-wider text-accent font-semibold truncate">
+                        #{i + 1} {v?.eixo || '...'}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => img && setLightboxUrl(img)}
+                        disabled={!img}
+                        className={cn(
+                          'group relative block w-full rounded-lg overflow-hidden glass aspect-[9/16]',
+                          img ? 'cursor-zoom-in' : 'cursor-default',
                         )}
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                      >
+                        {img ? (
+                          <>
+                            <img src={img} alt={v?.nome || `variação ${i + 1}`} className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
+                              <ZoomIn className="h-5 w-5 text-white drop-shadow" />
+                            </div>
+                          </>
+                        ) : err ? (
+                          <div className="absolute inset-0 flex items-center justify-center p-2 text-[10px] text-destructive text-center">
+                            Erro ao gerar
+                          </div>
+                        ) : (
+                          <Skeleton className="w-full h-full" />
+                        )}
+                      </button>
+                      {v && (
+                        <p className="text-[10px] text-white/70 font-medium truncate" title={v.nome}>
+                          {v.nome}
+                        </p>
+                      )}
+                      {img && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => download(img, `fator-${i + 1}-${v?.eixo}-${Date.now()}.png`)}
+                          className="w-full h-7 text-[10px]"
+                        >
+                          <Download className="h-3 w-3 mr-1" /> Baixar Story
+                        </Button>
+                      )}
+                      {img && !sqImg && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => recreateSquare(i)}
+                          disabled={sqLoading}
+                          className="w-full h-7 text-[10px]"
+                        >
+                          {sqLoading
+                            ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                            : <RefreshCw className="h-3 w-3 mr-1" />}
+                          Recriar em 1080x1080
+                        </Button>
+                      )}
+                      {img && (
+                        <>
+                          {renderEditButton(stKey)}
+                          {renderEditPanel(stKey, img, 'story', stPrompt)}
+                        </>
+                      )}
+                      {(sqImg || sqLoading) && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => sqImg && setLightboxUrl(sqImg)}
+                            disabled={!sqImg}
+                            className={cn(
+                              'group relative block w-full rounded-lg overflow-hidden glass aspect-square',
+                              sqImg ? 'cursor-zoom-in' : 'cursor-default',
+                            )}
+                          >
+                            {sqImg ? (
+                              <>
+                                <img src={sqImg} alt={`variação ${i + 1} 1080`} className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                  <ZoomIn className="h-5 w-5 text-white drop-shadow" />
+                                </div>
+                              </>
+                            ) : (
+                              <Skeleton className="w-full h-full" />
+                            )}
+                          </button>
+                          {sqImg && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => download(sqImg, `fator-${i + 1}-square-${Date.now()}.png`)}
+                                className="w-full h-7 text-[10px]"
+                              >
+                                <Download className="h-3 w-3 mr-1" /> Baixar 1080x1080
+                              </Button>
+                              {renderEditButton(sqKey)}
+                              {renderEditPanel(sqKey, sqImg, 'square', stPrompt)}
+                            </>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  );
+
+                  return [
+                    column,
+                    ...renderEditedColumns(stKey, 'story', `#${i + 1}`),
+                    ...(sqImg ? renderEditedColumns(sqKey, 'square', `#${i + 1} 1:1`) : []),
+                  ];
+                })}
+              </div>
+            );
+          })()}
         </GlassCard>
       )}
 
