@@ -134,6 +134,13 @@ export default function CriativoStudioPage() {
   const [factorSquareLoading, setFactorSquareLoading] = useState<boolean[]>([false, false, false, false, false]);
   const [mainSquareLoading, setMainSquareLoading] = useState(false);
 
+  // Edições por imagem
+  type EditedVersion = { url: string; feedback: string };
+  const [editedVersions, setEditedVersions] = useState<Record<string, EditedVersion[]>>({});
+  const [editPanelKey, setEditPanelKey] = useState<string | null>(null);
+  const [editFeedback, setEditFeedback] = useState('');
+  const [editLoadingKey, setEditLoadingKey] = useState<string | null>(null);
+
   useEffect(() => {
     if (!roleLoading && !isAdmin) navigate('/dashboard');
   }, [isAdmin, roleLoading, navigate]);
