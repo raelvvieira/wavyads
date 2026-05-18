@@ -31,6 +31,9 @@ import {
   ChevronDown,
   ZoomIn,
   X,
+  Globe,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 
 interface VisualAnalysis {
