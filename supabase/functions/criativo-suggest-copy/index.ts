@@ -17,7 +17,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
 
-    const { analysis, language } = await req.json();
+    const { analysis, language, urlContext } = await req.json();
     if (!analysis) {
       return new Response(JSON.stringify({ error: "analysis obrigatório" }), {
         status: 400,
@@ -27,14 +27,21 @@ serve(async (req) => {
 
     const lang = language === "en" ? "English" : language === "es" ? "Spanish" : "Portuguese (Brazil)";
 
+    const urlBlock = urlContext && (urlContext.title || urlContext.description || urlContext.text)
+      ? `\n\nConteúdo extraído do site/produto fornecido pelo anunciante (USE COMO BASE PRINCIPAL):
+Título: ${urlContext.title || "(sem título)"}
+Descrição: ${urlContext.description || "(sem descrição)"}
+Trecho: ${(urlContext.text || "").slice(0, 3500)}`
+      : "";
+
     const userPrompt = `Idioma: ${lang}
 Mood adjetivos: ${(analysis?.mood?.adjetivos || []).join(", ")}
 Referências visuais: ${(analysis?.mood?.referencias || []).join(", ")}
 Evita: ${(analysis?.mood?.evita || []).join(", ")}
 Design system resumido:
-${(analysis?.designSystemDoc || "").slice(0, 800)}
+${(analysis?.designSystemDoc || "").slice(0, 800)}${urlBlock}
 
-Escreva um rascunho curto (2-4 linhas) descrevendo a oferta provável que combinaria com essas referências. Apenas o texto, sem prefixos.`;
+Escreva um rascunho curto (2-4 linhas) descrevendo a oferta provável que combinaria com essas referências${urlContext ? " e, principalmente, com o conteúdo do site acima" : ""}. Apenas o texto, sem prefixos.`;
 
     const response = await fetch(AI_URL, {
       method: "POST",
