@@ -101,7 +101,10 @@ serve(async (req) => {
       ? "Keep the exact 1:1 square framing of the original (1080x1080)."
       : "Keep the exact 9:16 vertical framing of the original (1080x1920).";
 
-    const fullPrompt = `${editPrompt}\n\n${aspectNote}`;
+    const fullPrompt = `CRITICAL: Apply EVERY numbered change in the instructions below. Do not skip any. Subtractive changes (remove / reduce / "menos" / "sem") are AS MANDATORY as additive ones — if you only add new elements without removing the ones the user asked to remove, the edit is a failure.\n\n${editPrompt}\n\n${aspectNote}`;
+
+    console.log("[edit-image] userFeedback:", userFeedback);
+    console.log("[edit-image] built editPrompt:", editPrompt);
 
     const parts: any[] = [{ text: fullPrompt }, { inline_data: { mime_type: ref.mime, data: ref.data } }];
 
