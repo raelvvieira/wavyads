@@ -9,19 +9,30 @@ const corsHeaders = {
 const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const GEMINI_MODEL = "gemini-3.1-flash-image-preview";
 
-const SYSTEM_BUILDER = `You are a surgical photo-edit prompt writer for an image-generation model. Your job is to convert a short user feedback into a precise edit instruction that changes ONLY what the user asked, while preserving everything else from the original image with pixel-level fidelity.
+const SYSTEM_BUILDER = `You are a surgical photo-edit prompt writer for an image-generation model. Your job is to convert short user feedback into a precise, IMPERATIVE edit instruction that applies EVERY change the user asked for — additive AND subtractive — while preserving everything else with pixel-level fidelity.
 
-Hard rules:
-- Change ONLY what the user explicitly requested. Do not "improve", "enhance" or restyle anything else.
+CRITICAL PARSING RULES (most failures happen here):
+1. DECOMPOSE the feedback into atomic changes. If the user mentioned N distinct changes (even in a single sentence with "e"/"and"/"mas"/"but"/"porém"), output exactly N numbered changes. Never merge multiple requests into one vague instruction.
+2. SUBTRACTIVE CHANGES ARE MANDATORY. If the user asked to remove, reduce, take out, "menos", "sem", "tirar", "remover" — you MUST emit it as its own numbered change with the same strength as additive ones. NEVER silently drop a subtractive instruction in favor of an additive one. This is the #1 failure mode.
+3. CONVERT QUALITATIVE INTO QUANTITATIVE IMPERATIVE:
+   - "menos X" / "less X" / "fewer X" → "REMOVE at least 60-70% of the existing X. Only 1-2 small, subtle instances of X may remain, if any."
+   - "sem X" / "no X" / "without X" → "COMPLETELY REMOVE every X. ZERO X must remain visible anywhere in the image."
+   - "mais Y" / "more Y" → "SIGNIFICANTLY INCREASE Y, making it a clearly dominant element in its area (roughly 2-3x more than currently visible)."
+   - "trocar X por Y" / "replace X with Y" → "REMOVE every X and REPLACE with Y in the same positions."
+
+PRESERVATION RULES (apply to everything NOT mentioned by the user):
 - Preserve identity: faces, body, hair, skin tone, clothing, hands, pose — EXACT.
 - Preserve composition, framing, aspect ratio, camera angle, depth of field, lighting direction, color grading, mood and atmosphere.
 - Preserve brand assets: logo, typography, copy text (every character), CTA, badges, colors, palette, gradients.
 - No quality degradation, no resizing, no cropping, no re-rendering of untouched areas.
-- If the user asks to remove something, fill the area in a way that matches the existing background/style seamlessly.
-- If the user asks to change text, change ONLY that text, keeping font, size, color, position and language identical.
-- Output ONE concise paragraph in English directed to the image model, starting with "EDIT THIS IMAGE:" and listing only the change(s).
-- After the change description, append: "Preserve absolutely everything else: identity, framing, composition, lighting, palette, typography, all other text, logo, and quality."
-- Do not invent new elements that were not asked for.`;
+- When removing something, fill the area seamlessly matching the surrounding background/style.
+- When changing text, change ONLY that text, keeping font, size, color, position and language identical.
+- Do not invent new elements that were not asked for.
+
+OUTPUT FORMAT (strict):
+Start with the literal line: "EDIT THIS IMAGE — apply EVERY numbered change below. Each item is mandatory."
+Then a numbered list (1., 2., 3., …) with one atomic change per line, written as an imperative command in English.
+End with the literal line: "Preserve absolutely everything else: identity, framing, composition, lighting, palette, typography, all other text, logo, and overall quality. Do not skip any numbered change above — subtractive changes are as mandatory as additive ones."`;
 
 function parseDataUrl(dataUrl: string): { mime: string; data: string } | null {
   const m = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
@@ -48,7 +59,7 @@ Write the surgical edit instruction now.`;
     method: "POST",
     headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: "google/gemini-3-flash-preview",
       messages: [
         { role: "system", content: SYSTEM_BUILDER },
         { role: "user", content: userMsg },
@@ -90,7 +101,10 @@ serve(async (req) => {
       ? "Keep the exact 1:1 square framing of the original (1080x1080)."
       : "Keep the exact 9:16 vertical framing of the original (1080x1920).";
 
-    const fullPrompt = `${editPrompt}\n\n${aspectNote}`;
+    const fullPrompt = `CRITICAL: Apply EVERY numbered change in the instructions below. Do not skip any. Subtractive changes (remove / reduce / "menos" / "sem") are AS MANDATORY as additive ones — if you only add new elements without removing the ones the user asked to remove, the edit is a failure.\n\n${editPrompt}\n\n${aspectNote}`;
+
+    console.log("[edit-image] userFeedback:", userFeedback);
+    console.log("[edit-image] built editPrompt:", editPrompt);
 
     const parts: any[] = [{ text: fullPrompt }, { inline_data: { mime_type: ref.mime, data: ref.data } }];
 
