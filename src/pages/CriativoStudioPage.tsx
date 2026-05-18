@@ -94,6 +94,10 @@ export default function CriativoStudioPage() {
   const [copySource, setCopySource] = useState<'original' | 'ai'>('ai');
   const [suggestedRawCopy, setSuggestedRawCopy] = useState('');
   const [suggestingCopy, setSuggestingCopy] = useState(false);
+  const [productUrl, setProductUrl] = useState('');
+  const [urlReading, setUrlReading] = useState(false);
+  const [urlContext, setUrlContext] = useState<{ title: string; description: string; text: string } | null>(null);
+  const [urlError, setUrlError] = useState<string | null>(null);
 
   // Step 3
   const [logoImage, setLogoImage] = useState<string[]>([]);
