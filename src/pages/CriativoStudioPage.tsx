@@ -183,34 +183,91 @@ export default function CriativoStudioPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
+  const generateSuggestedCopy = async (ctx: typeof urlContext) => {
+    if (!analysis) return;
+    setSuggestingCopy(true);
+    setSuggestedRawCopy('');
+    try {
+      const { data, error } = await supabase.functions.invoke('criativo-suggest-copy', {
+        body: { analysis, language, urlContext: ctx || undefined },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      recordAiUsage('text-flash');
+      const s = ((data as any)?.suggestion || '').trim();
+      if (s) setSuggestedRawCopy(s);
+    } catch (e) {
+      console.warn('suggest-copy', e);
+    } finally {
+      setSuggestingCopy(false);
+    }
+  };
+
   // Auto-suggest a draft copy when entering Step 2 with refs analyzed
   useEffect(() => {
     if (step !== 1 || !analysis || suggestedRawCopy || suggestingCopy) return;
-    let cancelled = false;
-    (async () => {
-      setSuggestingCopy(true);
-      try {
-        const { data, error } = await supabase.functions.invoke('criativo-suggest-copy', {
-          body: { analysis, language },
-        });
-        if (cancelled) return;
-        if (error) throw error;
-        if ((data as any)?.error) throw new Error((data as any).error);
-        recordAiUsage('text-flash');
-        const s = ((data as any)?.suggestion || '').trim();
-        if (s) setSuggestedRawCopy(s);
-      } catch (e) {
-        // silencioso — apenas placeholder padrão
-        console.warn('suggest-copy', e);
-      } finally {
-        if (!cancelled) setSuggestingCopy(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    generateSuggestedCopy(urlContext);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, analysis]);
+
+  const fetchProductUrl = async () => {
+    const url = productUrl.trim();
+    if (!url) return;
+    setUrlReading(true);
+    setUrlError(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('criativo-fetch-url', { body: { url } });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const ctx = data as { title: string; description: string; text: string };
+      setUrlContext(ctx);
+      toast({ title: 'Site lido', description: ctx.title || ctx.description?.slice(0, 80) || 'Conteúdo capturado' });
+      await generateSuggestedCopy(ctx);
+    } catch (e: any) {
+      const msg = e?.message || 'Não consegui ler o site';
+      setUrlError(msg);
+      toast({ title: 'Erro ao ler site', description: msg, variant: 'destructive' });
+    } finally {
+      setUrlReading(false);
+    }
+  };
+
+  const editArt = async (key: string, originalImage: string, aspect: 'story' | 'square', originalPrompt: string) => {
+    const feedback = editFeedback.trim();
+    if (!feedback) {
+      toast({ title: 'Descreva a edição', variant: 'destructive' });
+      return;
+    }
+    setEditLoadingKey(key);
+    try {
+      const { data, error } = await supabase.functions.invoke('criativo-edit-image', {
+        body: { originalImage, userFeedback: feedback, originalPrompt, aspect, language },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      recordAiUsage('text-flash');
+      recordAiUsage('image-gemini-flash-2');
+      const url = (data as any).editedImageUrl as string;
+      setEditedVersions((prev) => ({
+        ...prev,
+        [key]: [...(prev[key] || []), { url, feedback }],
+      }));
+      setEditPanelKey(null);
+      setEditFeedback('');
+      toast({ title: 'Edição aplicada' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao editar', description: e?.message || 'Erro', variant: 'destructive' });
+    } finally {
+      setEditLoadingKey(null);
+    }
+  };
+
+  const discardEdit = (key: string, idx: number) => {
+    setEditedVersions((prev) => ({
+      ...prev,
+      [key]: (prev[key] || []).filter((_, i) => i !== idx),
+    }));
+  };
 
   const analyzeRefs = async () => {
     if (refImages.length === 0) {
