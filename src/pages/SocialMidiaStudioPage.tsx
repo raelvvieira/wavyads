@@ -112,8 +112,8 @@ export default function SocialMidiaStudioPage() {
         />
       </div>
 
-      {/* Etapa 1 — Scraper */}
-      {pipeline.etapa_atual === 0 && (
+      {/* Etapa 1 — Scraper (lista) */}
+      {pipeline.etapa_atual === 0 && !isExtractingCopy && (
         <div className="flex flex-col lg:flex-row gap-4">
           <MyBaseSidebar profiles={profiles} onAdd={add} onRemove={remove} />
 
@@ -166,17 +166,33 @@ export default function SocialMidiaStudioPage() {
         </div>
       )}
 
+      {/* Etapa 1.5 — Extração de Copy */}
+      {isExtractingCopy && pipeline.post_viral && (
+        <CopyExtractionStep
+          post={pipeline.post_viral}
+          rawItem={getRaw(pipeline.post_viral.id) || pipeline.post_viral}
+          onBack={() => setPipeline((s) => ({ ...s, post_viral: null, post_copy: null }))}
+          onApprove={(copy) => {
+            setPipeline((s) => ({ ...s, post_copy: copy, etapa_atual: 1 }));
+            toast({ title: "Copy do post salva", description: "Avançando para a Pesquisa" });
+          }}
+        />
+      )}
+
       {/* Etapa 2 — Pesquisa */}
       {pipeline.etapa_atual === 1 && (
         <ResearchStep
           post={pipeline.post_viral}
           initialTema={pipeline.tema || undefined}
+          copyReferencia={pipeline.post_copy?.copy_consolidada}
           onApprove={(briefing, tema) => {
             setPipeline((s) => ({ ...s, briefing_texto: briefing, tema, etapa_atual: 2 }));
             toast({ title: "Briefing salvo", description: "Avançando para Formato" });
           }}
         />
       )}
+
+
 
       {/* Etapa 3 — Formato + Copy */}
       {pipeline.etapa_atual === 2 && pipeline.tema && pipeline.briefing_texto && (
