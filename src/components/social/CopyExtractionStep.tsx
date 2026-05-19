@@ -3,6 +3,8 @@ import { Loader2, ArrowLeft, RotateCw, Check, Sparkles, ImageIcon, FileText } fr
 import { GlassCard } from "@/components/GlassCard";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { recordAiUsage } from "@/lib/aiUsageTracker";
+import { proxiedImageUrl } from "@/lib/socialImage";
 import type { ViralPost } from "@/hooks/useViralScraper";
 import type { PostCopy } from "@/types/social";
 
@@ -53,6 +55,10 @@ export function CopyExtractionStep({ post, rawItem, onBack, onApprove }: Props) 
       if (data?.error) throw new Error(data.error);
       setCopy(data as PostCopy);
       setConsolidada(data?.copy_consolidada || "");
+      // Contabiliza uso de API
+      const usage = data?.usage || { transcribe_calls: 0, ocr_calls: 0 };
+      if (usage.transcribe_calls > 0) recordAiUsage("apify-transcribe", usage.transcribe_calls);
+      if (usage.ocr_calls > 0) recordAiUsage("vision-ocr", usage.ocr_calls);
     } catch (e: any) {
       setError(e?.message || "Falha ao extrair copy");
     } finally {
@@ -72,7 +78,17 @@ export function CopyExtractionStep({ post, rawItem, onBack, onApprove }: Props) 
       <div className="flex items-start justify-between gap-4 mb-4">
         <div className="flex items-start gap-3 min-w-0">
           {post.thumbnail ? (
-            <img src={post.thumbnail} alt="" className="w-16 h-16 rounded-lg object-cover border border-white/10" />
+            <img
+              src={post.thumbnail}
+              alt=""
+              className="w-16 h-16 rounded-lg object-cover border border-white/10"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                const img = e.currentTarget as HTMLImageElement;
+                const proxied = proxiedImageUrl(post.thumbnail);
+                if (proxied && img.src !== proxied) img.src = proxied;
+              }}
+            />
           ) : (
             <div className="w-16 h-16 rounded-lg bg-white/5 flex items-center justify-center">
               <ImageIcon className="w-5 h-5 text-white/30" />
