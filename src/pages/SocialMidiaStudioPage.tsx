@@ -6,6 +6,7 @@ import { StepIndicator } from "@/components/criativo/StepIndicator";
 import { GlassCard } from "@/components/GlassCard";
 import { MyBaseSidebar, useMyBase } from "@/components/social/MyBaseSidebar";
 import { ViralResultsList } from "@/components/social/ViralResultsList";
+import { ResearchStep } from "@/components/social/ResearchStep";
 import { useViralScraper, type ViralSource, type ViralPost } from "@/hooks/useViralScraper";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -16,7 +17,8 @@ const SHORT = ["1", "2", "3", "4", "5", "6"];
 interface Pipeline {
   etapa_atual: number;
   post_viral: ViralPost | null;
-  briefing: string | null;
+  briefing_texto: string | null;
+  tema: string | null;
   formato: string | null;
   copy: string | null;
   imagens: string[] | null;
@@ -38,7 +40,8 @@ export default function SocialMidiaStudioPage() {
   const [pipeline, setPipeline] = useState<Pipeline>({
     etapa_atual: 0,
     post_viral: null,
-    briefing: null,
+    briefing_texto: null,
+    tema: null,
     formato: null,
     copy: null,
     imagens: null,
@@ -161,7 +164,23 @@ export default function SocialMidiaStudioPage() {
         </div>
       )}
 
-      {pipeline.etapa_atual > 0 && (
+      {pipeline.etapa_atual === 1 && (
+        <ResearchStep
+          post={pipeline.post_viral}
+          initialTema={pipeline.tema || undefined}
+          onApprove={(briefing, tema) => {
+            setPipeline((s) => ({
+              ...s,
+              briefing_texto: briefing,
+              tema,
+              etapa_atual: Math.max(s.etapa_atual, 2),
+            }));
+            toast({ title: "Briefing salvo", description: "Avançando para Formato" });
+          }}
+        />
+      )}
+
+      {pipeline.etapa_atual > 1 && (
         <GlassCard className="text-center py-16">
           <div className="text-xs uppercase tracking-wider text-accent mb-2">Etapa {pipeline.etapa_atual + 1}</div>
           <h2 className="text-xl font-semibold mb-2">{STEPS[pipeline.etapa_atual]}</h2>
@@ -169,6 +188,7 @@ export default function SocialMidiaStudioPage() {
           {pipeline.post_viral && (
             <p className="text-xs text-white/40">
               Referência: <span className="text-white/70">@{pipeline.post_viral.username}</span>
+              {pipeline.tema && <> · Tema: <span className="text-white/70">{pipeline.tema}</span></>}
             </p>
           )}
         </GlassCard>
