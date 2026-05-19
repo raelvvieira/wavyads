@@ -1,51 +1,81 @@
-## Etapa 4 — Image Agent (apenas formatos com imagem)
+## Atualizar Scraper — Extração de Copy do Post Selecionado
 
-**Regra de entrada:** se `pipeline.formato === "reel"`, o pipeline encerra na Etapa 3 (copy aprovada = entregável final, mostrar tela de conclusão com roteiro/legenda/hashtags + botão "Exportar"). Para os demais formatos (`carrossel_imagem`, `carrossel_texto`, `carrossel_lista`, `post_unico`), seguir para a Etapa 4.
+Inspirado no agente Python v6, adicionar uma nova **etapa de extração de copy** entre o Scraper (Etapa 1) e a Pesquisa (Etapa 2). Quando o usuário escolher um post no scraper, em vez de avançar direto, abre um painel de extração mostrando legenda + transcrição (reel) ou OCR (post/carrossel) consolidados, editáveis e confirmáveis.
 
 ### Fluxo UX
 
-1. Grid com 1 card por slide (mesma ordem da copy). Cada card mostra: número, título, badge do tipo, `visual_prompt` e placeholder de imagem.
-2. Topo: **"Gerar imagens de todos os slides"** com progresso "Gerando 3/7…".
-3. Ações inline por card:
-   - **🔄 Regerar** — refaz só aquela imagem.
-   - **✏️ Editar prompt** — `Dialog` com textarea do `visual_prompt`, salva e regera.
-   - **⬆️ Upload manual** — input file, substitui a imagem.
-   - **🔍 Buscar no banco** — `Dialog` com busca Freepik, grid de resultados clicáveis.
-4. Formato de imagem:
-   - `carrossel_texto` / `carrossel_lista` → fundo sólido + tipografia (gerado também via IA com prompt específico de "tipografia grande, fundo sólido, sem foto").
-   - `carrossel_imagem` / `post_unico` → foto/ilustração 1080x1080.
-5. Rodapé: **"Aprovar Imagens →"** salva `pipeline.imagens` e avança para etapa 5. Desabilitado se algum slide estiver sem imagem.
+1. Usuário clica num card de resultado no Scraper → em vez de avançar imediatamente para Pesquisa, o app dispara `social-extract-copy` com o post bruto.
+2. Renderiza `<CopyExtractionStep>` (substituindo a grid de resultados temporariamente):
+   - **Cabeçalho**: thumb do post + autor + tipo + métricas.
+   - **Loading state**: "🔍 Extraindo copy do post… (transcrevendo áudio / lendo imagem com OCR)".
+   - **Resultado**:
+     - Para **Reel** → bloco "Transcrição" + bloco "Legenda" + textarea "Copy consolidada (editável)".
+     - Para **Carrossel** → lista de slides com OCR slide a slide + bloco "Legenda" + textarea "Copy consolidada".
+     - Para **Post estático** → bloco "Texto na imagem (OCR)" + bloco "Legenda" + textarea "Copy consolidada".
+   - Cada bloco mostra status (`✅ ok`, `⚠️ sem texto detectado`, `❌ erro`).
+   - Botões: **🔄 Re-extrair** · **← Voltar** · **✅ Usar esta copy →** (avança para Pesquisa).
+3. Ao confirmar, salva no pipeline e segue para `ResearchStep`. O tema sugerido vira o primeiro hashtag ou as primeiras 12 palavras da copy consolidada (igual à derivação atual).
 
-### Geração
-
-- Edge function `social-image-gen` via **Lovable AI Gateway** com `google/gemini-3-pro-image-preview` (sem chave extra, usa `LOVABLE_API_KEY`).
-- Input por slide: `{ visual_prompt, formato, tema, estilo_global }`.
-- Estilo global derivado do post viral + briefing (paleta, mood), injetado no system prompt para coerência entre slides.
-- Output salvo em bucket público `social-media` no Storage; estado guarda apenas a URL.
-- Edge function `freepik-search` faz proxy para `https://api.freepik.com/v1/resources` (usa `FREEPIK_API_KEY`).
-
-### Estado
+### Estado global (pipeline)
 
 ```ts
-pipeline.imagens = [
-  { slide_index: 0, url: "...", source: "ai" | "freepik" | "upload", prompt_usado: "..." },
-  ...
-]
-pipeline.etapa_atual = 4
+pipeline.post_viral = ViralPost                          // já existe
+pipeline.post_copy = {
+  tipo: "reel" | "carrossel" | "post_estatico",
+  transcricao?: string,
+  texto_visual?: string,                                  // OCR post único
+  slides?: { slide: number; texto: string; status: string }[],
+  legenda: string,
+  hashtags: string[],
+  copy_consolidada: string,                               // editável pelo usuário
+  status: { legenda: string; transcricao?: string; ocr?: string }
+}
+pipeline.tema = derivado de copy_consolidada ou hashtag
 ```
 
-### Arquivos
+A copy consolidada aprovada é injetada como **contexto extra** no `ResearchStep` (passada para `social-research` como `copy_referencia`) e fica disponível mais tarde para a Etapa 3 (Copy) como inspiração de tom/estrutura.
+
+### Edge function nova: `social-extract-copy`
+
+Recebe o **post bruto** retornado pelo Apify (não a versão normalizada). Para isso, ajustar `apify-scrape` para devolver também `raw` lado a lado com `items`, para que o front consiga reenviar o item bruto na extração.
+
+Lógica baseada no Python v6:
+
+- `extractCopy(item)`:
+  - Detecta tipo via `type`/`productType` (`video`/`reel` → reel; `sidecar`/`carousel` → carrossel; senão → post estático).
+- **Reel**: chama actor Apify `invideoiq/video-transcriber` com `video_urls: ["https://www.instagram.com/p/{shortCode}/"]`. Lê `result.transcript[].text`. Fallback para legenda se vazio.
+- **Carrossel**: para cada `childPosts[].displayUrl`, chama Google Vision `images:annotate` (TEXT_DETECTION) via download da imagem + base64. Concatena `[Slide N] texto`.
+- **Post estático**: OCR de `displayUrl` com Google Vision.
+- Retorna o objeto completo de copy + `copy_consolidada` ("\n\n" join).
+
+Timeouts amplos (até 5min para transcrição) — usar `run-sync-get-dataset-items` com `timeout=300`.
+
+### Secrets necessários
+
+- `APIFY_TOKEN` — já configurado ✅
+- `GOOGLE_VISION_API_KEY` — **novo, usuário precisa adicionar** (será solicitado no início da implementação)
+
+Se `GOOGLE_VISION_API_KEY` estiver ausente, a extração de OCR é pulada graciosamente e os blocos visuais ficam com status `⚠️ OCR desabilitado (faltando GOOGLE_VISION_API_KEY)`. A transcrição de reel continua funcionando só com Apify.
+
+### Mudanças em `apify-scrape`
+
+- Retornar `{ items, raw }` em vez de só `items`, onde `raw[i]` corresponde a `items[i]` (mesma ordem). O front guarda `raw[i]` junto do card para reenviar na extração.
+- Manter compatibilidade: front passa a usar `raw` quando disponível.
+
+### Componentes novos / editados
 
 Novos:
-- `src/components/social/ImageStep.tsx` — orquestração + grid + botão global.
-- `src/components/social/SlideImageCard.tsx` — card por slide.
-- `src/components/social/FreepikSearchDialog.tsx` — busca no banco.
-- `src/components/social/ReelFinalStep.tsx` — tela de entrega final do reel (pula imagens).
-- `supabase/functions/social-image-gen/index.ts`
-- `supabase/functions/freepik-search/index.ts`
+- `src/components/social/CopyExtractionStep.tsx` — loading + render dos blocos + textarea editável + confirmar/voltar.
+- `supabase/functions/social-extract-copy/index.ts` — orquestração de transcrição (Apify) + OCR (Vision).
 
 Editar:
-- `src/pages/SocialMidiaStudioPage.tsx` — quando `etapa_atual === 3`: renderizar `<ReelFinalStep>` se formato = reel, senão `<ImageStep>`. Atualizar `StepIndicator` para indicar que o reel termina antes (ou ocultar passos 5/6 quando formato = reel). Adicionar `imagens` ao tipo `Pipeline`.
+- `src/hooks/useViralScraper.ts` — armazenar `raw` por item; expor método `getRaw(id)`.
+- `supabase/functions/apify-scrape/index.ts` — retornar `raw` paralelo.
+- `src/pages/SocialMidiaStudioPage.tsx` — estado intermediário entre etapa 0 (scraper) e 1 (pesquisa): ao escolher post, renderizar `<CopyExtractionStep>` antes de marcar `etapa_atual = 1`. Salvar `post_copy` no pipeline. Adicionar campo ao tipo `Pipeline`.
+- `src/components/social/ResearchStep.tsx` — aceitar `copyReferencia?: string` e enviar para edge `social-research` como contexto extra no prompt ("Considere essa copy de referência: …").
+- `supabase/functions/social-research/index.ts` — opcionalmente injetar `copy_referencia` no user prompt quando presente.
 
-Migration:
-- Criar bucket público `social-media` no Storage (apenas admins podem fazer upload).
+### Pontos abertos
+
+- Confirma adicionar a secret `GOOGLE_VISION_API_KEY`? Sem ela, só reels (transcrição) terão copy extraída automaticamente.
+- A transcrição via `invideoiq/video-transcriber` é paga no Apify e pode levar até alguns minutos — está OK?
