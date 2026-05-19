@@ -7,22 +7,26 @@ import { GlassCard } from "@/components/GlassCard";
 import { MyBaseSidebar, useMyBase } from "@/components/social/MyBaseSidebar";
 import { ViralResultsList } from "@/components/social/ViralResultsList";
 import { ResearchStep } from "@/components/social/ResearchStep";
+import { FormatStep } from "@/components/social/FormatStep";
+import { ImageStep } from "@/components/social/ImageStep";
+import { ReelFinalStep } from "@/components/social/ReelFinalStep";
 import { useViralScraper, type ViralSource, type ViralPost } from "@/hooks/useViralScraper";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import type { Formato, CopyAprovada, SlideImagem } from "@/types/social";
 
-const STEPS = ["Scraper", "Pesquisa", "Formato", "Copy", "Imagens", "Design"];
-const SHORT = ["1", "2", "3", "4", "5", "6"];
+const STEPS = ["Scraper", "Pesquisa", "Formato", "Imagens", "Design"];
+const SHORT = ["1", "2", "3", "4", "5"];
 
 interface Pipeline {
   etapa_atual: number;
   post_viral: ViralPost | null;
   briefing_texto: string | null;
   tema: string | null;
-  formato: string | null;
-  copy: string | null;
-  imagens: string[] | null;
-  template: string | null;
+  formato: Formato | null;
+  num_slides: number;
+  copy_aprovada: CopyAprovada | null;
+  imagens: SlideImagem[] | null;
 }
 
 const SOURCE_CARDS: { id: ViralSource; emoji: string; icon: any; title: string; desc: string }[] = [
@@ -43,13 +47,15 @@ export default function SocialMidiaStudioPage() {
     briefing_texto: null,
     tema: null,
     formato: null,
-    copy: null,
+    num_slides: 0,
+    copy_aprovada: null,
     imagens: null,
-    template: null,
   });
   const [source, setSource] = useState<ViralSource>("base");
   const [theme, setTheme] = useState("");
   const [url, setUrl] = useState("");
+
+  const isReel = pipeline.formato === "reel";
 
   const completed = useMemo(
     () => STEPS.map((_, i) => i < pipeline.etapa_atual),
@@ -85,7 +91,7 @@ export default function SocialMidiaStudioPage() {
           </div>
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Social Mídia Studio</h1>
-            <p className="text-sm text-white/50">Pipeline viral → conteúdo pronto em 6 etapas</p>
+            <p className="text-sm text-white/50">Pipeline viral → conteúdo pronto</p>
           </div>
         </div>
       </header>
@@ -100,6 +106,7 @@ export default function SocialMidiaStudioPage() {
         />
       </div>
 
+      {/* Etapa 1 — Scraper */}
       {pipeline.etapa_atual === 0 && (
         <div className="flex flex-col lg:flex-row gap-4">
           <MyBaseSidebar profiles={profiles} onAdd={add} onRemove={remove} />
@@ -128,35 +135,24 @@ export default function SocialMidiaStudioPage() {
             </div>
 
             {source === "theme" && (
-              <input
-                value={theme}
-                onChange={(e) => setTheme(e.target.value)}
+              <input value={theme} onChange={(e) => setTheme(e.target.value)}
                 placeholder="ex: trafegopago, ecommerce, dropshipping"
-                className="glass-input w-full rounded-lg px-3 py-2.5 text-sm"
-              />
+                className="glass-input w-full rounded-lg px-3 py-2.5 text-sm" />
             )}
             {source === "url" && (
-              <input
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
+              <input value={url} onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://www.instagram.com/p/..."
-                className="glass-input w-full rounded-lg px-3 py-2.5 text-sm"
-              />
+                className="glass-input w-full rounded-lg px-3 py-2.5 text-sm" />
             )}
 
-            <button
-              onClick={handleSearch}
-              disabled={loading}
-              className="btn-accent rounded-lg px-5 py-2.5 text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-50"
-            >
+            <button onClick={handleSearch} disabled={loading}
+              className="btn-accent rounded-lg px-5 py-2.5 text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-50">
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
               Buscar Virais
             </button>
 
             {error && (
-              <div className="glass rounded-lg px-4 py-3 text-sm text-destructive border-destructive/30">
-                {error}
-              </div>
+              <div className="glass rounded-lg px-4 py-3 text-sm text-destructive border-destructive/30">{error}</div>
             )}
 
             <ViralResultsList posts={results} loading={loading} onPick={pickPost} />
@@ -164,33 +160,60 @@ export default function SocialMidiaStudioPage() {
         </div>
       )}
 
+      {/* Etapa 2 — Pesquisa */}
       {pipeline.etapa_atual === 1 && (
         <ResearchStep
           post={pipeline.post_viral}
           initialTema={pipeline.tema || undefined}
           onApprove={(briefing, tema) => {
-            setPipeline((s) => ({
-              ...s,
-              briefing_texto: briefing,
-              tema,
-              etapa_atual: Math.max(s.etapa_atual, 2),
-            }));
+            setPipeline((s) => ({ ...s, briefing_texto: briefing, tema, etapa_atual: 2 }));
             toast({ title: "Briefing salvo", description: "Avançando para Formato" });
           }}
         />
       )}
 
-      {pipeline.etapa_atual > 1 && (
+      {/* Etapa 3 — Formato + Copy */}
+      {pipeline.etapa_atual === 2 && pipeline.tema && pipeline.briefing_texto && (
+        <FormatStep
+          tema={pipeline.tema}
+          briefing={pipeline.briefing_texto}
+          onApprove={(formato, num_slides, copy) => {
+            setPipeline((s) => ({
+              ...s, formato, num_slides, copy_aprovada: copy, etapa_atual: 3,
+            }));
+            toast({
+              title: "Copy aprovada",
+              description: formato === "reel" ? "Reel finalizado" : "Avançando para Imagens",
+            });
+          }}
+        />
+      )}
+
+      {/* Etapa 4 — Imagens (ou final do Reel) */}
+      {pipeline.etapa_atual === 3 && pipeline.copy_aprovada && pipeline.formato && (
+        isReel ? (
+          <ReelFinalStep tema={pipeline.tema || ""} copy={pipeline.copy_aprovada} />
+        ) : (
+          <ImageStep
+            formato={pipeline.formato as Exclude<Formato, "reel">}
+            tema={pipeline.tema || ""}
+            copy={pipeline.copy_aprovada}
+            estiloGlobal={pipeline.post_viral?.caption?.slice(0, 200)}
+            initial={pipeline.imagens || undefined}
+            onApprove={(imagens) => {
+              setPipeline((s) => ({ ...s, imagens, etapa_atual: 4 }));
+              toast({ title: "Imagens aprovadas", description: "Avançando para Design" });
+            }}
+          />
+        )
+      )}
+
+      {/* Etapa 5 — Design (placeholder) */}
+      {pipeline.etapa_atual === 4 && (
         <GlassCard className="text-center py-16">
-          <div className="text-xs uppercase tracking-wider text-accent mb-2">Etapa {pipeline.etapa_atual + 1}</div>
-          <h2 className="text-xl font-semibold mb-2">{STEPS[pipeline.etapa_atual]}</h2>
-          <p className="text-sm text-white/50 mb-4">Em breve</p>
-          {pipeline.post_viral && (
-            <p className="text-xs text-white/40">
-              Referência: <span className="text-white/70">@{pipeline.post_viral.username}</span>
-              {pipeline.tema && <> · Tema: <span className="text-white/70">{pipeline.tema}</span></>}
-            </p>
-          )}
+          <div className="text-xs uppercase tracking-wider text-accent mb-2">Etapa 5 · Design</div>
+          <h2 className="text-xl font-semibold mb-2">Em breve</h2>
+          <p className="text-sm text-white/50">Aplicação de template visual nos slides.</p>
         </GlassCard>
       )}
     </div>
