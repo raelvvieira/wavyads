@@ -4,6 +4,7 @@ import { Sparkles, Check, Loader2 } from "lucide-react";
 import { SlideImageCard } from "./SlideImageCard";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { recordAiUsage } from "@/lib/aiUsageTracker";
 import type { CopyAprovada, Formato, SlideImagem } from "@/types/social";
 
 interface Props {
@@ -43,6 +44,7 @@ export function ImageStep({ formato, tema, copy, estiloGlobal, initial, onApprov
         });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
+        recordAiUsage("image-gemini-pro", 1);
         out[i] = {
           slide_index: i,
           url: data.url,

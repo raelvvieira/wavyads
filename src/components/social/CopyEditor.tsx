@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { RotateCw, Check, X, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { recordAiUsage } from "@/lib/aiUsageTracker";
 import { cn } from "@/lib/utils";
 import type { CopyAprovada, Slide, ReelCena, Formato, SlideTipo } from "@/types/social";
 
@@ -65,6 +66,7 @@ export function CopyEditor({ formato, tema, initial, onApprove, onRegenAll }: Pr
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      recordAiUsage("text-claude-sonnet", 1);
       if (isReel) updateCena(rewriteOpen, data);
       else updateSlide(rewriteOpen, data);
       toast({ title: "Slide reescrito" });
