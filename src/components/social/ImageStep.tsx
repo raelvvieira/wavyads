@@ -97,8 +97,9 @@ export function ImageStep({ formato, tema, copy, estiloGlobal, initial, onApprov
           >
             {isBatch ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {isBatch
-              ? `Gerando ${batchProgress!.done}/${batchProgress!.total}…`
-              : "Gerar imagens de todos os slides"}
+              ? `Buscando ${batchProgress!.done}/${batchProgress!.total}…`
+              : "Buscar imagens (fontes reais + IA fallback)"}
+
           </button>
         </div>
       </GlassCard>
