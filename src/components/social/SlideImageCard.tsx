@@ -91,13 +91,18 @@ export function SlideImageCard({
         </div>
         {image && (
           <Badge variant="outline" className={cn(
+            "text-[10px]",
             image.source === "ai" && "border-accent/40 text-accent",
-            image.source === "freepik" && "border-blue-500/40 text-blue-300",
+            image.source === "google" && "border-blue-500/40 text-blue-300",
+            image.source === "pexels" && "border-emerald-500/40 text-emerald-300",
+            image.source === "freepik" && "border-cyan-500/40 text-cyan-300",
+            image.source === "freepik-stock" && "border-cyan-500/40 text-cyan-300",
             image.source === "upload" && "border-violet-500/40 text-violet-300",
           )}>
-            {image.source}
+            {image.fonte || image.source}
           </Badge>
         )}
+
       </div>
 
       <div className="aspect-square rounded-lg overflow-hidden bg-white/[0.03] border border-white/10 mb-3 relative">
