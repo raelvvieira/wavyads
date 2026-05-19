@@ -15,6 +15,7 @@ import ComercialPage from "@/pages/ComercialPage";
 import ComercialIndexPage from "@/pages/ComercialIndexPage";
 import GoogleAdsAIPage from "@/pages/GoogleAdsAIPage";
 import CriativoStudioPage from "@/pages/CriativoStudioPage";
+import SocialMidiaStudioPage from "@/pages/SocialMidiaStudioPage";
 import MetaCallbackPage from "@/pages/MetaCallbackPage";
 import GoogleAdsCallbackPage from "@/pages/GoogleAdsCallbackPage";
 import NotFound from "./pages/NotFound";
