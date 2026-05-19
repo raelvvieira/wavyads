@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { recordAiUsage } from "@/lib/aiUsageTracker";
 
 export type ViralSource = "base" | "theme" | "url" | "top";
 
@@ -34,6 +35,7 @@ export function useViralScraper() {
       const { data, error: fnErr } = await supabase.functions.invoke("apify-scrape", { body: params });
       if (fnErr) throw fnErr;
       if (data?.error) throw new Error(data.error);
+      recordAiUsage("apify-scrape", 1);
       setResults(data?.items || []);
       setRaw(data?.raw || {});
     } catch (e: any) {

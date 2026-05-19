@@ -98,11 +98,14 @@ Deno.serve(async (req) => {
     let transcricao = "";
     let textoVisual = "";
     let slides: { slide: number; texto: string; status: string }[] | undefined;
+    let transcribe_calls = 0;
+    let ocr_calls = 0;
 
     if (tipo === "reel") {
       if (!APIFY_TOKEN) {
         status.transcricao = "erro_config";
       } else {
+        transcribe_calls = 1;
         transcricao = await transcribeReel(item, APIFY_TOKEN);
         status.transcricao = transcricao ? "ok" : "sem_fala_detectada";
       }
@@ -115,6 +118,7 @@ Deno.serve(async (req) => {
         slides = [];
         for (let i = 0; i < children.length; i++) {
           const slideUrl = children[i]?.displayUrl || children[i]?.imageUrl || children[i]?.url;
+          if (slideUrl) ocr_calls++;
           const texto = slideUrl ? await ocrImage(slideUrl, VISION_KEY) : "";
           slides.push({ slide: i + 1, texto, status: texto ? "ok" : "sem_texto" });
         }
@@ -126,6 +130,7 @@ Deno.serve(async (req) => {
       if (!VISION_KEY) {
         status.ocr = "ocr_desabilitado";
       } else if (imgUrl) {
+        ocr_calls = 1;
         textoVisual = await ocrImage(imgUrl, VISION_KEY);
         status.ocr = textoVisual ? "ok" : "sem_texto_detectado";
       } else {
@@ -153,6 +158,7 @@ Deno.serve(async (req) => {
       hashtags,
       copy_consolidada,
       status,
+      usage: { transcribe_calls, ocr_calls },
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e: any) {
     console.error("[social-extract-copy] fatal", e);

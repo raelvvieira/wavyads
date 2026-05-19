@@ -54,5 +54,6 @@ export interface PostCopy {
     transcricao?: string | null;
     ocr?: string | null;
   };
+  usage?: { transcribe_calls: number; ocr_calls: number };
 }
 

@@ -7,6 +7,7 @@ import { RotateCw, Pencil, Upload, ImageIcon, Loader2 } from "lucide-react";
 import { FreepikSearchDialog } from "./FreepikSearchDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { recordAiUsage } from "@/lib/aiUsageTracker";
 import { cn } from "@/lib/utils";
 import type { Slide, SlideImagem, Formato } from "@/types/social";
 
@@ -45,6 +46,7 @@ export function SlideImageCard({
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      recordAiUsage("image-gemini-pro", 1);
       onChange({
         slide_index: slideIndex,
         url: data.url,

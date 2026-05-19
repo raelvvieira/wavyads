@@ -196,19 +196,26 @@ export default function SocialMidiaStudioPage() {
 
       {/* Etapa 3 — Formato + Copy */}
       {pipeline.etapa_atual === 2 && pipeline.tema && pipeline.briefing_texto && (
-        <FormatStep
-          tema={pipeline.tema}
-          briefing={pipeline.briefing_texto}
-          onApprove={(formato, num_slides, copy) => {
-            setPipeline((s) => ({
-              ...s, formato, num_slides, copy_aprovada: copy, etapa_atual: 3,
-            }));
-            toast({
-              title: "Copy aprovada",
-              description: formato === "reel" ? "Reel finalizado" : "Avançando para Imagens",
-            });
-          }}
-        />
+        <>
+          {pipeline.briefing_texto.startsWith("[Pesquisa pulada") && (
+            <div className="max-w-2xl mx-auto mb-4 glass rounded-lg px-4 py-3 text-xs text-white/70 border-accent/30">
+              ⚡ Pesquisa pulada — gerando copy apenas com a referência do post viral.
+            </div>
+          )}
+          <FormatStep
+            tema={pipeline.tema}
+            briefing={pipeline.briefing_texto}
+            onApprove={(formato, num_slides, copy) => {
+              setPipeline((s) => ({
+                ...s, formato, num_slides, copy_aprovada: copy, etapa_atual: 3,
+              }));
+              toast({
+                title: "Copy aprovada",
+                description: formato === "reel" ? "Reel finalizado" : "Avançando para Imagens",
+              });
+            }}
+          />
+        </>
       )}
 
       {/* Etapa 4 — Imagens (ou final do Reel) */}

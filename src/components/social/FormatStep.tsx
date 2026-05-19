@@ -5,6 +5,7 @@ import { FormatPicker } from "./FormatPicker";
 import { CopyEditor } from "./CopyEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { recordAiUsage } from "@/lib/aiUsageTracker";
 import type { Formato, CopyAprovada } from "@/types/social";
 
 interface Props {
@@ -39,6 +40,7 @@ export function FormatStep({ tema, briefing, onApprove }: Props) {
       const { data, error } = await supabase.functions.invoke("social-copy", { body });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      recordAiUsage("text-claude-sonnet", 1);
       setCopy(data as CopyAprovada);
     } catch (e: any) {
       toast({ title: "Falha ao gerar copy", description: e.message, variant: "destructive" });

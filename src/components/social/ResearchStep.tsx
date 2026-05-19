@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { Loader2, Search, RotateCw, Check } from "lucide-react";
+import { Loader2, Search, RotateCw, Check, SkipForward } from "lucide-react";
 import { GlassCard } from "@/components/GlassCard";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { recordAiUsage } from "@/lib/aiUsageTracker";
 import type { ViralPost } from "@/hooks/useViralScraper";
 
 interface Props {
@@ -50,6 +51,7 @@ export function ResearchStep({ post, initialTema, initialAngulo, copyReferencia,
       if (fnErr) throw fnErr;
       if (data?.error) throw new Error(data.error);
       setBriefing(data?.briefing || "");
+      if (data?.briefing) recordAiUsage("text-claude-websearch", 1);
       if (!data?.briefing) setError("A pesquisa retornou vazia. Tente novamente.");
 
     } catch (e: any) {
@@ -57,6 +59,17 @@ export function ResearchStep({ post, initialTema, initialAngulo, copyReferencia,
     } finally {
       setLoading(false);
     }
+  };
+
+  const skip = () => {
+    if (!tema.trim()) {
+      toast({ title: "Defina um tema antes de pular", variant: "destructive" });
+      return;
+    }
+    const fallback = (copyReferencia && copyReferencia.trim())
+      ? `[Pesquisa pulada — usando copy do post viral como referência]\n\nTema: ${tema.trim()}\n\n${copyReferencia.trim()}`
+      : `[Pesquisa pulada — sem briefing externo]\n\nTema: ${tema.trim()}`;
+    onApprove(fallback, tema.trim());
   };
 
   // estado: pré-pesquisa
@@ -73,12 +86,26 @@ export function ResearchStep({ post, initialTema, initialAngulo, copyReferencia,
             placeholder="Sobre o que pesquisar?"
           />
           <p className="text-xs text-white/40 mb-6">Você pode ajustar o tema antes de pesquisar.</p>
-          <button
-            onClick={run}
-            className="btn-accent rounded-lg px-6 py-3 text-sm font-semibold inline-flex items-center gap-2"
-          >
-            <Search className="h-4 w-4" /> Iniciar Pesquisa
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2 justify-center">
+            <button
+              onClick={run}
+              className="btn-accent rounded-lg px-6 py-3 text-sm font-semibold inline-flex items-center justify-center gap-2"
+            >
+              <Search className="h-4 w-4" /> Iniciar Pesquisa
+            </button>
+            <button
+              onClick={skip}
+              className="glass rounded-lg px-6 py-3 text-sm font-medium inline-flex items-center justify-center gap-2 hover:bg-white/5"
+              title="Pula a pesquisa e usa só a copy extraída do post viral"
+            >
+              <SkipForward className="h-4 w-4" /> Pular pesquisa
+            </button>
+          </div>
+          {copyReferencia && (
+            <p className="text-[11px] text-white/40 mt-3">
+              Ao pular, a copy extraída do post viral será usada como referência.
+            </p>
+          )}
           {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
         </div>
       </GlassCard>
