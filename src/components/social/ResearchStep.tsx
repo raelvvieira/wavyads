@@ -23,7 +23,7 @@ function deriveTema(post: ViralPost | null, initialTema?: string): string {
   return caption.split(" ").slice(0, 12).join(" ");
 }
 
-export function ResearchStep({ post, initialTema, initialAngulo, onApprove }: Props) {
+export function ResearchStep({ post, initialTema, initialAngulo, copyReferencia, onApprove }: Props) {
   const [tema, setTema] = useState(() => deriveTema(post, initialTema));
   const [loading, setLoading] = useState(false);
   const [briefing, setBriefing] = useState("");
@@ -45,12 +45,13 @@ export function ResearchStep({ post, initialTema, initialAngulo, onApprove }: Pr
     setBriefing("");
     try {
       const { data, error: fnErr } = await supabase.functions.invoke("social-research", {
-        body: { tema: tema.trim(), angulo: initialAngulo || "" },
+        body: { tema: tema.trim(), angulo: initialAngulo || "", copy_referencia: copyReferencia || "" },
       });
       if (fnErr) throw fnErr;
       if (data?.error) throw new Error(data.error);
       setBriefing(data?.briefing || "");
       if (!data?.briefing) setError("A pesquisa retornou vazia. Tente novamente.");
+
     } catch (e: any) {
       setError(e?.message || "Falha ao pesquisar");
     } finally {
