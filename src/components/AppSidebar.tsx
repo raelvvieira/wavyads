@@ -12,6 +12,7 @@ import {
   Sparkles,
   Users,
   Wand2,
+  PlayCircle,
   Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -45,6 +46,7 @@ export function AppSidebar() {
     { to: '/insights', icon: Lightbulb, label: 'Insights', show: isAdmin },
     { to: '/google-ads-ai', icon: Sparkles, label: 'Google Ads I.A', show: isAdmin },
     { to: '/criativo-studio', icon: Wand2, label: 'Criativo Studio', show: isAdmin },
+    { to: '/social-midia-studio', icon: PlayCircle, label: 'Social Mídia Studio', show: isAdmin },
     { to: '/configuracoes', icon: Settings, label: 'Configurações', show: isAdmin },
   ];
 
