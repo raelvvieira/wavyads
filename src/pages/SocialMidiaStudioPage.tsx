@@ -17,7 +17,8 @@ const SHORT = ["1", "2", "3", "4", "5", "6"];
 interface Pipeline {
   etapa_atual: number;
   post_viral: ViralPost | null;
-  briefing: string | null;
+  briefing_texto: string | null;
+  tema: string | null;
   formato: string | null;
   copy: string | null;
   imagens: string[] | null;
