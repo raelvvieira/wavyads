@@ -9,8 +9,10 @@ interface Props {
   post: ViralPost | null;
   initialTema?: string;
   initialAngulo?: string;
+  copyReferencia?: string;
   onApprove: (briefing: string, tema: string) => void;
 }
+
 
 function deriveTema(post: ViralPost | null, initialTema?: string): string {
   if (initialTema) return initialTema;
