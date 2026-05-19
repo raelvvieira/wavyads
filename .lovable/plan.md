@@ -1,83 +1,128 @@
-# Plano · Etapa 4 (Imagens) — Inteligência multi-fonte + Gemini direto
+# Plano · Etapa 5 — Designer (templates + render no navegador)
 
 ## Objetivo
 
-Reduzir custos da etapa de imagens trocando o gateway da Lovable AI pela API Gemini direta (mesma do **Criativo Studio**) e adicionando uma pipeline inteligente que prioriza **fotos reais** (Google Images, Pexels, Freepik Stock) e **só gera com IA quando necessário**.
+Receber `CopyAprovada` (etapa 3) + `SlideImagem[]` (etapa 4) e montar os slides finais em **3 templates** (A/B/C), com preview ao vivo, troca de template em 1 clique, e exportação em **PNG 1080×1350** (download individual ou ZIP do carrossel). Sem Playwright/Telegram — tudo client-side.
 
-## Mudanças
+## Stack
 
-### 1. Nova edge function: `social-image-search`
+- **Renderização**: componentes React puros (1 por template), tamanho fixo 1080×1350 com `transform: scale()` no preview.
+- **Export PNG**: `html-to-image` (lib leve, sem dependências de servidor). Adiciona via `bun add html-to-image`.
+- **ZIP**: `jszip` para empacotar todos os slides do carrossel.
+- **Fonts**: Montserrat via Google Fonts (já carregada no template HTML original).
 
-Orquestrador que recebe um slide e retorna `{ url, fonte, tipo_visual, ok, usage }`.
+## Componentes novos
 
-**Fluxo (porta do agente v3.1):**
-
-```text
-classificar_tipo_visual(titulo, corpo, prompt)
-   │
-   ├── pessoa   → Google Images (keynote/event) → Google ampla → IA Gemini
-   ├── empresa  → Google Images (sede/screenshot) → Google ampla → IA Gemini
-   ├── hardware → Google Images (press kit) → Google product → sem imagem
-   ├── diagrama → Google Images (diagrama oficial) → sem imagem
-   └── ambiente → Pexels (lifestyle) → Google → IA Gemini
+```
+src/components/social/design/
+├── DesignStep.tsx           # orquestrador da etapa 5
+├── TemplatePicker.tsx       # toggle A/B/C com preview thumbnail
+├── ProfileEditor.tsx        # nome, @handle, avatar (upload p/ bucket)
+├── SlideCanvas.tsx          # wrapper 1080x1350 + scaling responsivo
+├── templates/
+│   ├── TemplateA.tsx        # dark cinematográfico
+│   ├── TemplateB.tsx        # light / twitter style
+│   ├── TemplateC.tsx        # editorial escuro
+│   └── shared.ts            # tipos + util determinarFormato()
 ```
 
-Inclui:
-- `BRAND_ICONS`, `HARDWARE_KEYWORDS`, `DIAGRAMA_KEYWORDS`, `LIFESTYLE_QUERIES`
-- `DOMINIOS_REJEITADOS` (Shutterstock/Getty/iStock etc.) e listas preferenciais (TECH/NEGOCIOS/IMPRENSA/HARDWARE/LIFESTYLE)
-- `selecionar_melhor_resultado`: filtra resolução ≥ 800px, rejeita stock pago, prioriza domínio editorial e orientação portrait para cover
-- Google Images via Apify actor `hooli/google-images-scraper` (token `APIFY_TOKEN` já existe)
-- Pexels via `PEXELS_API_KEY` (será solicitado caso o usuário queira ativar — opcional, sem ele cai direto para Google)
-- Freepik Stock via `FREEPIK_API_KEY` (já existe) como fallback adicional para ambiente
-- Retorna `usage`: contagem de `{ apify_calls, pexels_calls, freepik_stock_calls, gemini_calls }`
+Cada `TemplateX.tsx` exporta um componente que recebe:
 
-Retorno final faz upload da imagem (quando vier de fonte externa, baixa e re-hospeda no bucket `social-media` para evitar hotlink quebrado).
+```ts
+interface TemplateSlideProps {
+  slideIndex: number;       // 0-based
+  total: number;
+  titulo: string;
+  corpo: string;
+  imgUrl?: string;
+  tipoSlide: SlideTipo;     // cover, problema, agitacao, solucao, lista, prova, cta
+  formato: "cover" | "light" | "text_only" | "dark" | "cta";
+  profile: { nome: string; handle: string; avatarUrl: string };
+}
+```
 
-### 2. Geração com IA — trocar gateway pela API Gemini direta
+E renderiza `<div style={{ width: 1080, height: 1350 }}>...</div>` com estilo fiel ao agente Python (cores, fontes, footer com pills WAVY+handle, copyright, gradient avatar ring para template B etc.).
 
-Refatorar `social-image-gen`:
-- Remover chamada para `ai.gateway.lovable.dev` (LOVABLE_API_KEY)
-- Usar `GEMINI_API_KEY` chamando `generativelanguage.googleapis.com/v1beta/models/{model}:generateContent` (mesma chamada do `criativo-generate`)
-- Modelo padrão: `gemini-3.1-flash-image-preview` (mais barato; já é o default do Criativo)
-- Manter o upload para `social-media` bucket
-- Enriquecer prompt no estilo `enriquecer_prompt_freepik` do agente v3.1 (cinematic editorial, dramatic lighting)
+## Mapeamento formato por slide
 
-### 3. Frontend — `ImageStep.tsx` e `SlideImageCard.tsx`
+Igual ao agente v3 (`determinar_formato_slide`):
 
-- O botão **"Gerar imagens de todos os slides"** passa a chamar `social-image-search` em vez de `social-image-gen` direto.
-- O card mostra o badge da `fonte` retornada (Google, Pexels, Freepik, IA Gemini, sem imagem) com cores distintas.
-- Botão **"Regerar com IA"** (RotateCw) continua chamando `social-image-gen` (rota de geração explícita).
-- Quando `fonte = "sem_imagem"`, mostrar CTA para abrir Freepik manual ou upload.
+| Condição | formato |
+|---|---|
+| `slideIndex === 0` ou `tipoSlide === "cover"` | `cover` |
+| `slideIndex === total - 1` ou `tipoSlide === "cta"` | `cta` |
+| `tipoSlide === "prova"` | `text_only` |
+| `tipoSlide === "problema"` ou `"agitacao"` | `dark` |
+| default | `light` |
 
-### 4. Tracking de custos
+## Fluxo do `DesignStep`
 
-Adicionar em `src/lib/aiUsageTracker.ts`:
-- `apify-google-images` (~$0.005/query)
-- `pexels-search` ($0 — free tier, mas contabilizado como request)
-- `freepik-stock-search` (~$0.002)
+```text
+┌─────────────────────────────────────────────────────────┐
+│ Etapa 5 · Design                                        │
+├─────────────────────────────────────────────────────────┤
+│ [Template: ●A  ○B  ○C]    [Perfil: avatar + @handle]   │
+├─────────────────────────────────────────────────────────┤
+│ Grid de previews escalados (cada slide 270x337.5)       │
+│ ┌──┐ ┌──┐ ┌──┐ ┌──┐                                    │
+│ │01│ │02│ │03│ │04│  …                                  │
+│ └──┘ └──┘ └──┘ └──┘                                    │
+├─────────────────────────────────────────────────────────┤
+│ [Baixar slide atual]   [Baixar tudo (.zip)]            │
+│ [Aprovar e finalizar →]                                 │
+└─────────────────────────────────────────────────────────┘
+```
 
-`ImageStep` lê `data.usage` retornado pelo `social-image-search` e chama `recordAiUsage` para cada fonte usada. Geração IA continua contando como `image-gemini-pro`.
+- Clicar num slide abre modal com preview 1:1 e botões "Baixar PNG" / "Trocar imagem (volta etapa 4)".
+- Export: `toPng(node, { width: 1080, height: 1350, pixelRatio: 1 })` → `Blob` → `JSZip` → `saveAs("carrossel-${tema}.zip")`.
 
-## Detalhes técnicos
+## Perfil persistente
 
-**Arquivos novos:**
-- `supabase/functions/social-image-search/index.ts`
+Tabela leve para guardar o perfil padrão do usuário (1 row por user):
 
-**Arquivos editados:**
-- `supabase/functions/social-image-gen/index.ts` — trocar gateway → Gemini direto
-- `supabase/config.toml` — adicionar bloco `[functions.social-image-search]` (verify_jwt default)
-- `src/components/social/ImageStep.tsx` — usar `social-image-search` no botão "gerar todos", tracking por fonte
-- `src/components/social/SlideImageCard.tsx` — badge dinâmico de fonte, separar "buscar foto real" vs "gerar IA"
-- `src/types/social.ts` — adicionar `fonte` e `tipo_visual` em `SlideImagem`
-- `src/lib/aiUsageTracker.ts` — novos tipos de uso
+```sql
+CREATE TABLE social_profiles (
+  user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  nome text NOT NULL DEFAULT 'WAVY',
+  handle text NOT NULL DEFAULT '@wavy.mkt',
+  avatar_url text,
+  template_padrao text NOT NULL DEFAULT 'A',
+  updated_at timestamptz DEFAULT now()
+);
+ALTER TABLE social_profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "own_profile" ON social_profiles FOR ALL TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+```
 
-**Secrets:**
-- `GEMINI_API_KEY` ✅ já existe
-- `APIFY_TOKEN` ✅ já existe
-- `FREEPIK_API_KEY` ✅ já existe
-- `PEXELS_API_KEY` ❌ — opcional. Sem ela o fluxo `ambiente` pula direto para Google Images. Pergunto se o usuário quer adicionar.
+Avatar é upload normal para bucket `social-media` (já existe, público).
 
-## Pergunta antes de implementar
+## Integração com `SocialMidiaStudioPage.tsx`
 
-1. **Pexels**: ativar? (custo zero, melhora muito o tipo `ambiente`). Se sim, peço a chave depois.
-2. **Modelo Gemini para IA**: confirma `gemini-3.1-flash-image-preview` (mais barato) ou prefere `gemini-3-pro-image-preview` (mesma qualidade do Criativo Studio quando o usuário escolhe "pro")?
+- Após `ImageStep.onApprove(imagens)` → state vai para etapa 5 (`DesignStep`), recebendo `copy`, `imagens`, `tema`, `formato`.
+- `DesignStep.onFinish()` finaliza pipeline (pode disparar toast "Carrossel pronto!" e oferecer "Começar novo").
+- Para `Formato === "reel"`: pular a etapa 5 (o `ReelFinalStep` já entrega o roteiro). Mostrar mensagem "Reels não geram slides — use o roteiro da etapa 3".
+
+## Tracking de custos
+
+Etapa 5 é 100% client-side, **custo zero de API**. Não precisa `recordAiUsage`.
+
+## Arquivos
+
+**Novos:**
+- `src/components/social/design/DesignStep.tsx`
+- `src/components/social/design/TemplatePicker.tsx`
+- `src/components/social/design/ProfileEditor.tsx`
+- `src/components/social/design/SlideCanvas.tsx`
+- `src/components/social/design/templates/{TemplateA,TemplateB,TemplateC,shared}.{tsx,ts}`
+- `src/hooks/useSocialProfile.ts`
+- `supabase/migrations/*_social_profiles.sql`
+
+**Editados:**
+- `src/pages/SocialMidiaStudioPage.tsx` — wiring da etapa 5
+- `src/types/social.ts` — adicionar `Profile` e `Template = "A"|"B"|"C"`
+- `package.json` — `html-to-image`, `jszip`, `file-saver` (via `bun add`)
+
+## Perguntas antes de implementar
+
+1. **Avatar padrão**: a URL hardcoded no script (`PROFILE_IMAGE_FALLBACK = "https://i.ibb.co/bMtB5PZL/..."`) é da WAVY ou de teste? Quer manter como fallback global ou exigir upload na primeira vez?
+2. **Templates extras**: começo com os 3 (A/B/C) idênticos ao Python, ou já adapto cores ao tema WAVY Dash (preto + verde #1ACD8A) substituindo os gradientes laranja/rosa atuais?
+3. **Resolução de export**: 1080×1350 (4:5 Instagram, fiel ao original) ou também oferecer 1080×1080 (1:1) como opção?

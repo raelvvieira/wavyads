@@ -11,6 +11,8 @@ import { ResearchStep } from "@/components/social/ResearchStep";
 import { FormatStep } from "@/components/social/FormatStep";
 import { ImageStep } from "@/components/social/ImageStep";
 import { ReelFinalStep } from "@/components/social/ReelFinalStep";
+import { DesignStep } from "@/components/social/design/DesignStep";
+
 import { useViralScraper, type ViralSource, type ViralPost } from "@/hooks/useViralScraper";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -237,14 +239,30 @@ export default function SocialMidiaStudioPage() {
         )
       )}
 
-      {/* Etapa 5 — Design (placeholder) */}
-      {pipeline.etapa_atual === 4 && (
-        <GlassCard className="text-center py-16">
-          <div className="text-xs uppercase tracking-wider text-accent mb-2">Etapa 5 · Design</div>
-          <h2 className="text-xl font-semibold mb-2">Em breve</h2>
-          <p className="text-sm text-white/50">Aplicação de template visual nos slides.</p>
-        </GlassCard>
+      {/* Etapa 5 — Design */}
+      {pipeline.etapa_atual === 4 && pipeline.copy_aprovada && (
+        isReel ? (
+          <GlassCard className="text-center py-16">
+            <div className="text-xs uppercase tracking-wider text-accent mb-2">Etapa 5 · Design</div>
+            <h2 className="text-xl font-semibold mb-2">Reels não geram slides</h2>
+            <p className="text-sm text-white/50">Use o roteiro entregue na etapa anterior.</p>
+          </GlassCard>
+        ) : (
+          <DesignStep
+            tema={pipeline.tema || ""}
+            copy={pipeline.copy_aprovada}
+            imagens={pipeline.imagens || []}
+            onFinish={() => {
+              toast({ title: "Carrossel finalizado!", description: "Pipeline completo." });
+              setPipeline({
+                etapa_atual: 0, post_viral: null, post_copy: null, briefing_texto: null,
+                tema: null, formato: null, num_slides: 0, copy_aprovada: null, imagens: null,
+              });
+            }}
+          />
+        )
       )}
+
     </div>
   );
 }

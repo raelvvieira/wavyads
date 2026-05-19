@@ -275,6 +275,33 @@ export type Database = {
         }
         Relationships: []
       }
+      social_profiles: {
+        Row: {
+          avatar_url: string | null
+          handle: string
+          nome: string
+          template_padrao: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          handle?: string
+          nome?: string
+          template_padrao?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          handle?: string
+          nome?: string
+          template_padrao?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
