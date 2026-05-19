@@ -40,7 +40,8 @@ export default function SocialMidiaStudioPage() {
   const [pipeline, setPipeline] = useState<Pipeline>({
     etapa_atual: 0,
     post_viral: null,
-    briefing: null,
+    briefing_texto: null,
+    tema: null,
     formato: null,
     copy: null,
     imagens: null,
