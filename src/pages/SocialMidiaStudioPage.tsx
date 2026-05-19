@@ -6,6 +6,7 @@ import { StepIndicator } from "@/components/criativo/StepIndicator";
 import { GlassCard } from "@/components/GlassCard";
 import { MyBaseSidebar, useMyBase } from "@/components/social/MyBaseSidebar";
 import { ViralResultsList } from "@/components/social/ViralResultsList";
+import { ResearchStep } from "@/components/social/ResearchStep";
 import { useViralScraper, type ViralSource, type ViralPost } from "@/hooks/useViralScraper";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
