@@ -6,6 +6,7 @@ import { StepIndicator } from "@/components/criativo/StepIndicator";
 import { GlassCard } from "@/components/GlassCard";
 import { MyBaseSidebar, useMyBase } from "@/components/social/MyBaseSidebar";
 import { ViralResultsList } from "@/components/social/ViralResultsList";
+import { CopyExtractionStep } from "@/components/social/CopyExtractionStep";
 import { ResearchStep } from "@/components/social/ResearchStep";
 import { FormatStep } from "@/components/social/FormatStep";
 import { ImageStep } from "@/components/social/ImageStep";
@@ -13,7 +14,7 @@ import { ReelFinalStep } from "@/components/social/ReelFinalStep";
 import { useViralScraper, type ViralSource, type ViralPost } from "@/hooks/useViralScraper";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import type { Formato, CopyAprovada, SlideImagem } from "@/types/social";
+import type { Formato, CopyAprovada, SlideImagem, PostCopy } from "@/types/social";
 
 const STEPS = ["Scraper", "Pesquisa", "Formato", "Imagens", "Design"];
 const SHORT = ["1", "2", "3", "4", "5"];
@@ -21,6 +22,7 @@ const SHORT = ["1", "2", "3", "4", "5"];
 interface Pipeline {
   etapa_atual: number;
   post_viral: ViralPost | null;
+  post_copy: PostCopy | null;
   briefing_texto: string | null;
   tema: string | null;
   formato: Formato | null;
@@ -28,6 +30,7 @@ interface Pipeline {
   copy_aprovada: CopyAprovada | null;
   imagens: SlideImagem[] | null;
 }
+
 
 const SOURCE_CARDS: { id: ViralSource; emoji: string; icon: any; title: string; desc: string }[] = [
   { id: "base", emoji: "📋", icon: ClipboardList, title: "Minha Base", desc: "Últimos posts dos perfis salvos" },
@@ -39,11 +42,12 @@ const SOURCE_CARDS: { id: ViralSource; emoji: string; icon: any; title: string; 
 export default function SocialMidiaStudioPage() {
   const { isAdmin, isLoading } = useRole();
   const { profiles, add, remove } = useMyBase();
-  const { loading, results, error, search } = useViralScraper();
+  const { loading, results, error, search, getRaw } = useViralScraper();
 
   const [pipeline, setPipeline] = useState<Pipeline>({
     etapa_atual: 0,
     post_viral: null,
+    post_copy: null,
     briefing_texto: null,
     tema: null,
     formato: null,
@@ -56,6 +60,8 @@ export default function SocialMidiaStudioPage() {
   const [url, setUrl] = useState("");
 
   const isReel = pipeline.formato === "reel";
+  // Estado intermediário entre Scraper (0) e Pesquisa (1): post selecionado mas copy ainda não aprovada
+  const isExtractingCopy = pipeline.etapa_atual === 0 && !!pipeline.post_viral && !pipeline.post_copy;
 
   const completed = useMemo(
     () => STEPS.map((_, i) => i < pipeline.etapa_atual),
@@ -78,9 +84,9 @@ export default function SocialMidiaStudioPage() {
   };
 
   const pickPost = (p: ViralPost) => {
-    setPipeline((s) => ({ ...s, post_viral: p, etapa_atual: Math.max(s.etapa_atual, 1) }));
-    toast({ title: "Referência selecionada", description: `@${p.username}` });
+    setPipeline((s) => ({ ...s, post_viral: p, post_copy: null }));
   };
+
 
   return (
     <div className="container mx-auto px-4 lg:px-6 pt-20 lg:pt-6 pb-10 max-w-7xl">
@@ -106,8 +112,8 @@ export default function SocialMidiaStudioPage() {
         />
       </div>
 
-      {/* Etapa 1 — Scraper */}
-      {pipeline.etapa_atual === 0 && (
+      {/* Etapa 1 — Scraper (lista) */}
+      {pipeline.etapa_atual === 0 && !isExtractingCopy && (
         <div className="flex flex-col lg:flex-row gap-4">
           <MyBaseSidebar profiles={profiles} onAdd={add} onRemove={remove} />
 
@@ -160,17 +166,33 @@ export default function SocialMidiaStudioPage() {
         </div>
       )}
 
+      {/* Etapa 1.5 — Extração de Copy */}
+      {isExtractingCopy && pipeline.post_viral && (
+        <CopyExtractionStep
+          post={pipeline.post_viral}
+          rawItem={getRaw(pipeline.post_viral.id) || pipeline.post_viral}
+          onBack={() => setPipeline((s) => ({ ...s, post_viral: null, post_copy: null }))}
+          onApprove={(copy) => {
+            setPipeline((s) => ({ ...s, post_copy: copy, etapa_atual: 1 }));
+            toast({ title: "Copy do post salva", description: "Avançando para a Pesquisa" });
+          }}
+        />
+      )}
+
       {/* Etapa 2 — Pesquisa */}
       {pipeline.etapa_atual === 1 && (
         <ResearchStep
           post={pipeline.post_viral}
           initialTema={pipeline.tema || undefined}
+          copyReferencia={pipeline.post_copy?.copy_consolidada}
           onApprove={(briefing, tema) => {
             setPipeline((s) => ({ ...s, briefing_texto: briefing, tema, etapa_atual: 2 }));
             toast({ title: "Briefing salvo", description: "Avançando para Formato" });
           }}
         />
       )}
+
+
 
       {/* Etapa 3 — Formato + Copy */}
       {pipeline.etapa_atual === 2 && pipeline.tema && pipeline.briefing_texto && (

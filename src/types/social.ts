@@ -40,3 +40,19 @@ export interface SlideImagem {
   source: "ai" | "freepik" | "upload";
   prompt_usado: string;
 }
+
+export interface PostCopy {
+  tipo: "reel" | "carrossel" | "post_estatico";
+  transcricao?: string;
+  texto_visual?: string;
+  slides?: { slide: number; texto: string; status: string }[];
+  legenda: string;
+  hashtags: string[];
+  copy_consolidada: string;
+  status: {
+    legenda?: string | null;
+    transcricao?: string | null;
+    ocr?: string | null;
+  };
+}
+
