@@ -1,81 +1,51 @@
-## Atualizar Scraper — Extração de Copy do Post Selecionado
+# Ajustes no Social Mídia Studio
 
-Inspirado no agente Python v6, adicionar uma nova **etapa de extração de copy** entre o Scraper (Etapa 1) e a Pesquisa (Etapa 2). Quando o usuário escolher um post no scraper, em vez de avançar direto, abre um painel de extração mostrando legenda + transcrição (reel) ou OCR (post/carrossel) consolidados, editáveis e confirmáveis.
+## 1. Thumbnails do Instagram quebrando
 
-### Fluxo UX
+O Instagram bloqueia hotlink quando o navegador envia `Referer`. Solução em duas camadas:
 
-1. Usuário clica num card de resultado no Scraper → em vez de avançar imediatamente para Pesquisa, o app dispara `social-extract-copy` com o post bruto.
-2. Renderiza `<CopyExtractionStep>` (substituindo a grid de resultados temporariamente):
-   - **Cabeçalho**: thumb do post + autor + tipo + métricas.
-   - **Loading state**: "🔍 Extraindo copy do post… (transcrevendo áudio / lendo imagem com OCR)".
-   - **Resultado**:
-     - Para **Reel** → bloco "Transcrição" + bloco "Legenda" + textarea "Copy consolidada (editável)".
-     - Para **Carrossel** → lista de slides com OCR slide a slide + bloco "Legenda" + textarea "Copy consolidada".
-     - Para **Post estático** → bloco "Texto na imagem (OCR)" + bloco "Legenda" + textarea "Copy consolidada".
-   - Cada bloco mostra status (`✅ ok`, `⚠️ sem texto detectado`, `❌ erro`).
-   - Botões: **🔄 Re-extrair** · **← Voltar** · **✅ Usar esta copy →** (avança para Pesquisa).
-3. Ao confirmar, salva no pipeline e segue para `ResearchStep`. O tema sugerido vira o primeiro hashtag ou as primeiras 12 palavras da copy consolidada (igual à derivação atual).
+- **Camada rápida (frontend)**: adicionar `referrerPolicy="no-referrer"` e `crossOrigin="anonymous"` nas `<img>` que renderizam `post.thumbnail` em `ViralResultsList.tsx` e `CopyExtractionStep.tsx`. Resolve a maioria dos casos.
+- **Fallback (edge function)**: criar `supabase/functions/image-proxy/index.ts` que recebe `?url=` e devolve os bytes da imagem com `Cache-Control` longo. Usar essa rota como `src` quando a imagem original falhar (handler `onError` troca para o proxy). Garante que carrosséis/posts antigos também apareçam.
 
-### Estado global (pipeline)
+## 2. Pular a etapa de Pesquisa
 
-```ts
-pipeline.post_viral = ViralPost                          // já existe
-pipeline.post_copy = {
-  tipo: "reel" | "carrossel" | "post_estatico",
-  transcricao?: string,
-  texto_visual?: string,                                  // OCR post único
-  slides?: { slide: number; texto: string; status: string }[],
-  legenda: string,
-  hashtags: string[],
-  copy_consolidada: string,                               // editável pelo usuário
-  status: { legenda: string; transcricao?: string; ocr?: string }
-}
-pipeline.tema = derivado de copy_consolidada ou hashtag
-```
+Em `ResearchStep.tsx`, adicionar um botão secundário "Pular pesquisa" ao lado de "Iniciar Pesquisa" (estado pré-pesquisa). Ao clicar:
 
-A copy consolidada aprovada é injetada como **contexto extra** no `ResearchStep` (passada para `social-research` como `copy_referencia`) e fica disponível mais tarde para a Etapa 3 (Copy) como inspiração de tom/estrutura.
+- chama `onApprove(briefingFallback, tema)` onde `briefingFallback` = `copyReferencia` (copy consolidada já extraída) ou, se vazia, um briefing mínimo `Tema: {tema}\n\nReferência: legenda do post viral`.
+- Atualizar `SocialMidiaStudioPage.tsx` para tratar `briefing_texto` vazio sem quebrar (já passa por `etapa_atual === 2 && tema && briefing` — basta o fallback nunca ser vazio).
+- Mostrar um aviso visual quando o usuário entra na etapa 3 sem pesquisa real ("Pulado pesquisa — usando só a copy de referência").
 
-### Edge function nova: `social-extract-copy`
+## 3. Contabilizar todos os custos de API
 
-Recebe o **post bruto** retornado pelo Apify (não a versão normalizada). Para isso, ajustar `apify-scrape` para devolver também `raw` lado a lado com `items`, para que o front consiga reenviar o item bruto na extração.
+Hoje `recordAiUsage` (em `src/lib/aiUsageTracker.ts`) só cobre Criativo Studio. Expandir para cobrir o pipeline Social Mídia:
 
-Lógica baseada no Python v6:
+- **Novos tipos** em `AiUsageType` + `COST_USD` + `TOKENS_EST`:
+  - `text-claude-sonnet` (geração de copy / rewrite) — custo estimado por chamada
+  - `text-claude-websearch` (pesquisa em `social-research`) — custo + tool calls
+  - `apify-scrape` (busca de virais) — preço fixo médio por run
+  - `apify-transcribe` (reels) — preço por minuto/run
+  - `vision-ocr` (Google Vision) — por imagem
+- **Onde chamar `recordAiUsage`** (sempre no frontend após `supabase.functions.invoke` bem-sucedido):
+  - `useViralScraper.search` → `apify-scrape`
+  - `CopyExtractionStep.extract` → `apify-transcribe` (1x se reel) e/ou `vision-ocr` (Nx slides). Para saber a quantidade, a edge `social-extract-copy` precisa devolver no JSON contadores: `usage: { transcribe_calls, ocr_calls }`. Atualizar a função para retornar isso.
+  - `ResearchStep.run` → `text-claude-websearch`
+  - `FormatStep` (chamadas a `social-copy`) → `text-claude-sonnet` por geração e por rewrite
+  - `ImageStep` / `ReelFinalStep` (já chamam `social-image-gen`) → reaproveitar tipos `image-gemini-*` ou `image-openai-*` existentes conforme o modelo escolhido
+- A `useAiUsage` já agrega tudo em `ai_usage_events` (mensal, todos admins). Nada muda no contador exibido — só passa a refletir o consumo real do Social Mídia.
 
-- `extractCopy(item)`:
-  - Detecta tipo via `type`/`productType` (`video`/`reel` → reel; `sidecar`/`carousel` → carrossel; senão → post estático).
-- **Reel**: chama actor Apify `invideoiq/video-transcriber` com `video_urls: ["https://www.instagram.com/p/{shortCode}/"]`. Lê `result.transcript[].text`. Fallback para legenda se vazio.
-- **Carrossel**: para cada `childPosts[].displayUrl`, chama Google Vision `images:annotate` (TEXT_DETECTION) via download da imagem + base64. Concatena `[Slide N] texto`.
-- **Post estático**: OCR de `displayUrl` com Google Vision.
-- Retorna o objeto completo de copy + `copy_consolidada` ("\n\n" join).
+## Arquivos afetados
 
-Timeouts amplos (até 5min para transcrição) — usar `run-sync-get-dataset-items` com `timeout=300`.
+- `src/components/social/ViralResultsList.tsx` — referrer policy + fallback proxy
+- `src/components/social/CopyExtractionStep.tsx` — referrer policy + métricas
+- `src/components/social/ResearchStep.tsx` — botão "Pular pesquisa" + tracking
+- `src/components/social/FormatStep.tsx` — tracking após `social-copy`
+- `src/components/social/ImageStep.tsx` / `ReelFinalStep.tsx` — tracking após image gen
+- `src/hooks/useViralScraper.ts` — tracking após scrape
+- `src/lib/aiUsageTracker.ts` — novos tipos + custos
+- `src/pages/SocialMidiaStudioPage.tsx` — aviso "pesquisa pulada"
+- `supabase/functions/social-extract-copy/index.ts` — devolver `usage` (contadores)
+- `supabase/functions/image-proxy/index.ts` — novo, proxy de imagem com cache
 
-### Secrets necessários
+## Observação sobre custos
 
-- `APIFY_TOKEN` — já configurado ✅
-- `GOOGLE_VISION_API_KEY` — **novo, usuário precisa adicionar** (será solicitado no início da implementação)
-
-Se `GOOGLE_VISION_API_KEY` estiver ausente, a extração de OCR é pulada graciosamente e os blocos visuais ficam com status `⚠️ OCR desabilitado (faltando GOOGLE_VISION_API_KEY)`. A transcrição de reel continua funcionando só com Apify.
-
-### Mudanças em `apify-scrape`
-
-- Retornar `{ items, raw }` em vez de só `items`, onde `raw[i]` corresponde a `items[i]` (mesma ordem). O front guarda `raw[i]` junto do card para reenviar na extração.
-- Manter compatibilidade: front passa a usar `raw` quando disponível.
-
-### Componentes novos / editados
-
-Novos:
-- `src/components/social/CopyExtractionStep.tsx` — loading + render dos blocos + textarea editável + confirmar/voltar.
-- `supabase/functions/social-extract-copy/index.ts` — orquestração de transcrição (Apify) + OCR (Vision).
-
-Editar:
-- `src/hooks/useViralScraper.ts` — armazenar `raw` por item; expor método `getRaw(id)`.
-- `supabase/functions/apify-scrape/index.ts` — retornar `raw` paralelo.
-- `src/pages/SocialMidiaStudioPage.tsx` — estado intermediário entre etapa 0 (scraper) e 1 (pesquisa): ao escolher post, renderizar `<CopyExtractionStep>` antes de marcar `etapa_atual = 1`. Salvar `post_copy` no pipeline. Adicionar campo ao tipo `Pipeline`.
-- `src/components/social/ResearchStep.tsx` — aceitar `copyReferencia?: string` e enviar para edge `social-research` como contexto extra no prompt ("Considere essa copy de referência: …").
-- `supabase/functions/social-research/index.ts` — opcionalmente injetar `copy_referencia` no user prompt quando presente.
-
-### Pontos abertos
-
-- Confirma adicionar a secret `GOOGLE_VISION_API_KEY`? Sem ela, só reels (transcrição) terão copy extraída automaticamente.
-- A transcrição via `invideoiq/video-transcriber` é paga no Apify e pode levar até alguns minutos — está OK?
+Os valores em USD para Claude Sonnet, Apify e Vision são estimativas médias por chamada (Sonnet ~$0.015/req, Apify scrape ~$0.01/run, transcribe ~$0.03/reel, Vision ~$0.0015/imagem). Se quiser, posso usar outros valores fixos — me diga antes de implementar.
