@@ -19,7 +19,10 @@ export type AiUsageType =
   | 'text-claude-websearch'
   | 'apify-scrape'
   | 'apify-transcribe'
-  | 'vision-ocr';
+  | 'vision-ocr'
+  | 'apify-google-images'
+  | 'pexels-search'
+  | 'freepik-stock-search';
 
 const COST_USD: Record<AiUsageType, number> = {
   'text-flash': 0.001,
@@ -34,6 +37,9 @@ const COST_USD: Record<AiUsageType, number> = {
   'apify-scrape': 0.01,
   'apify-transcribe': 0.03,
   'vision-ocr': 0.0015,
+  'apify-google-images': 0.005,
+  'pexels-search': 0,
+  'freepik-stock-search': 0.002,
 };
 
 const TOKENS_EST: Record<AiUsageType, number> = {
@@ -49,6 +55,9 @@ const TOKENS_EST: Record<AiUsageType, number> = {
   'apify-scrape': 0,
   'apify-transcribe': 0,
   'vision-ocr': 0,
+  'apify-google-images': 0,
+  'pexels-search': 0,
+  'freepik-stock-search': 0,
 };
 
 const USD_TO_BRL = 5.5;
