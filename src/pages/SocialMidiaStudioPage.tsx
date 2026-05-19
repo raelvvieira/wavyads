@@ -11,6 +11,8 @@ import { ResearchStep } from "@/components/social/ResearchStep";
 import { FormatStep } from "@/components/social/FormatStep";
 import { ImageStep } from "@/components/social/ImageStep";
 import { ReelFinalStep } from "@/components/social/ReelFinalStep";
+import { DesignStep } from "@/components/social/design/DesignStep";
+
 import { useViralScraper, type ViralSource, type ViralPost } from "@/hooks/useViralScraper";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
