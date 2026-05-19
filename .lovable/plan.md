@@ -1,105 +1,51 @@
-# Social Mídia Studio
+## Etapa 4 — Image Agent (apenas formatos com imagem)
 
-Nova página exclusiva para admins, adicionada à seção **Gestão WAVY** da sidebar, entre **Criativo Studio** e **Configurações**. Ícone: `PlayCircle` (lucide).
+**Regra de entrada:** se `pipeline.formato === "reel"`, o pipeline encerra na Etapa 3 (copy aprovada = entregável final, mostrar tela de conclusão com roteiro/legenda/hashtags + botão "Exportar"). Para os demais formatos (`carrossel_imagem`, `carrossel_texto`, `carrossel_lista`, `post_unico`), seguir para a Etapa 4.
 
-## Arquitetura
+### Fluxo UX
 
-- Rota: `/social-midia-studio` em `src/App.tsx`, protegida por `ProtectedRoute` + checagem `isAdmin` (mesmo padrão das demais páginas admin).
-- Página: `src/pages/SocialMidiaStudioPage.tsx`.
-- Componentes novos em `src/components/social/`:
-  - `SocialStepIndicator.tsx` (reaproveita visual do `criativo/StepIndicator.tsx`).
-  - `MyBaseSidebar.tsx` (lista de perfis salvos em `localStorage`).
-  - `ViralSourcePicker.tsx` (4 cards de fonte).
-  - `ViralResultsList.tsx` (cards de posts retornados).
-- Hook: `src/hooks/useViralScraper.ts` (chama Apify, normaliza resposta).
-- Estado do pipeline: contexto local `SocialStudioContext` dentro da página (não precisa global agora), com shape:
-  ```ts
-  { etapa_atual, post_viral, briefing, formato, copy, imagens, template }
-  ```
+1. Grid com 1 card por slide (mesma ordem da copy). Cada card mostra: número, título, badge do tipo, `visual_prompt` e placeholder de imagem.
+2. Topo: **"Gerar imagens de todos os slides"** com progresso "Gerando 3/7…".
+3. Ações inline por card:
+   - **🔄 Regerar** — refaz só aquela imagem.
+   - **✏️ Editar prompt** — `Dialog` com textarea do `visual_prompt`, salva e regera.
+   - **⬆️ Upload manual** — input file, substitui a imagem.
+   - **🔍 Buscar no banco** — `Dialog` com busca Freepik, grid de resultados clicáveis.
+4. Formato de imagem:
+   - `carrossel_texto` / `carrossel_lista` → fundo sólido + tipografia (gerado também via IA com prompt específico de "tipografia grande, fundo sólido, sem foto").
+   - `carrossel_imagem` / `post_unico` → foto/ilustração 1080x1080.
+5. Rodapé: **"Aprovar Imagens →"** salva `pipeline.imagens` e avança para etapa 5. Desabilitado se algum slide estiver sem imagem.
 
-## Stepper (topo)
+### Geração
 
-6 etapas horizontais, mesmo visual do Criativo Studio:
-1. Scraper
-2. Pesquisa
-3. Formato
-4. Copy
-5. Imagens
-6. Design
+- Edge function `social-image-gen` via **Lovable AI Gateway** com `google/gemini-3-pro-image-preview` (sem chave extra, usa `LOVABLE_API_KEY`).
+- Input por slide: `{ visual_prompt, formato, tema, estilo_global }`.
+- Estilo global derivado do post viral + briefing (paleta, mood), injetado no system prompt para coerência entre slides.
+- Output salvo em bucket público `social-media` no Storage; estado guarda apenas a URL.
+- Edge function `freepik-search` faz proxy para `https://api.freepik.com/v1/resources` (usa `FREEPIK_API_KEY`).
 
-Estado ativo em verde `#1ACD8A`, concluídas com checkmark, futuras com opacidade baixa. Etapas anteriores são clicáveis para voltar.
+### Estado
 
-## Etapa 1 — Viral Scraper (funcional)
-
-**Layout em duas colunas dentro do painel da etapa:**
-
-- **Coluna esquerda (280px)** — `MyBaseSidebar`:
-  - Header "Minha Base" + botão `+`.
-  - Lista de @perfis (máx 10), cada item com ícone de lixeira.
-  - Persistido em `localStorage` (chave `wavy:social:base`).
-  - Seed inicial (na primeira visita): `@brmetaverso, @noevarner.ai, @kylewhitrow, @paidotrafego, @pedrosobral, @caduneiva, @g4.business, @v4company, @nateherkai, @oreidotrafego`.
-
-- **Coluna direita (flex-1)**:
-  - 4 cards de fonte (grid 2x2 no desktop, 1 col mobile):
-    - 📋 Minha Base
-    - 🔍 Por Tema → revela `<Input>` para tema/hashtag.
-    - 🔗 Link Direto → revela `<Input>` para URL.
-    - 🔥 Top Viral Geral
-  - Botão verde **"Buscar Virais"** com loading state.
-  - Abaixo: `ViralResultsList` com cards (@username, badge tipo, views, likes, trecho da legenda 120 chars, botão "Usar como referência →").
-
-## Integração Apify (frontend direto)
-
-Hook `useViralScraper` faz `fetch` direto para Apify, usando `import.meta.env.VITE_APIFY_TOKEN`.
-
-Endpoint base:
-```
-https://api.apify.com/v2/acts/{actor}/run-sync-get-dataset-items?token={VITE_APIFY_TOKEN}
-```
-
-Mapeamento por fonte:
-- **Minha Base** → actor `apify~instagram-post-scraper`, body `{ username: [...perfis], resultsLimit: 10, onlyPostsNewerThan: "5 days" }`.
-- **Por Tema** → actor `apify~instagram-hashtag-scraper`, body `{ hashtags: [tema], resultsLimit: 10 }`.
-- **Link Direto** → actor `apify~instagram-post-scraper`, body `{ directUrls: [url], resultsLimit: 10 }`.
-- **Top Viral Geral** → mesma chamada da Base com lista default + `resultsLimit: 20` e ordenação por views desc client-side.
-
-Resposta normalizada para cards:
 ```ts
-{ id, username, type: 'Reel'|'Carrossel'|'Post', views, likes, caption, url, thumbnail }
+pipeline.imagens = [
+  { slide_index: 0, url: "...", source: "ai" | "freepik" | "upload", prompt_usado: "..." },
+  ...
+]
+pipeline.etapa_atual = 4
 ```
 
-Erros (token inválido, rate limit) viram toast destrutivo.
+### Arquivos
 
-## Avanço de etapa
+Novos:
+- `src/components/social/ImageStep.tsx` — orquestração + grid + botão global.
+- `src/components/social/SlideImageCard.tsx` — card por slide.
+- `src/components/social/FreepikSearchDialog.tsx` — busca no banco.
+- `src/components/social/ReelFinalStep.tsx` — tela de entrega final do reel (pula imagens).
+- `supabase/functions/social-image-gen/index.ts`
+- `supabase/functions/freepik-search/index.ts`
 
-Ao clicar **"Usar como referência →"** em um post:
-- Salva `post_viral` no estado.
-- Marca etapa 1 como concluída.
-- Avança para etapa 2.
+Editar:
+- `src/pages/SocialMidiaStudioPage.tsx` — quando `etapa_atual === 3`: renderizar `<ReelFinalStep>` se formato = reel, senão `<ImageStep>`. Atualizar `StepIndicator` para indicar que o reel termina antes (ou ocultar passos 5/6 quando formato = reel). Adicionar `imagens` ao tipo `Pipeline`.
 
-## Etapas 2–6 (placeholders)
-
-Cada uma renderiza um `GlassCard` centralizado com o título da etapa e badge **"Em breve"**. Sem lógica adicional.
-
-## Token Apify
-
-Precisa do secret/env `VITE_APIFY_TOKEN`. Como é `VITE_*`, fica exposto no bundle do frontend — o usuário deve confirmar se aceita esse trade-off (o spec pediu "sem backend, todas as chamadas direto do frontend"). Vou pedir o token via `add_secret` no início da implementação e mostrar como configurá-lo como variável `VITE_APIFY_TOKEN` no `.env` (ou similar) — Lovable secrets não expõe `VITE_*` automaticamente ao client, então pode ser necessário um pequeno edge function proxy. **Confirmar com o usuário antes de implementar:** chamada 100% client com token público OU proxy via edge function simples (sem persistência) para esconder o token.
-
-## Sidebar
-
-Em `src/components/AppSidebar.tsx`, adicionar item no array `adminItems`:
-```ts
-{ to: '/social-midia-studio', icon: PlayCircle, label: 'Social Mídia Studio', show: isAdmin }
-```
-posicionado entre Criativo Studio e Configurações.
-
-## Estilo
-
-100% tokens existentes: `glass`, `accent` (#1ACD8A), `text-white/70`, bordas `white/10`, fonte SF Pro Display. Mobile: `pt-20 lg:pt-6` no container raiz, conforme regra do projeto.
-
-## Entregáveis desta iteração
-
-- Sidebar atualizada + rota.
-- Página com stepper + Etapa 1 totalmente funcional (Apify real).
-- Etapas 2–6 com placeholders.
-- Persistência de "Minha Base" em localStorage.
+Migration:
+- Criar bucket público `social-media` no Storage (apenas admins podem fazer upload).
