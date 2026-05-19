@@ -12,6 +12,7 @@ import {
   Sparkles,
   Users,
   Wand2,
+  PlayCircle,
   Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
