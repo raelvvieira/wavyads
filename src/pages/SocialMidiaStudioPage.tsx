@@ -42,11 +42,12 @@ const SOURCE_CARDS: { id: ViralSource; emoji: string; icon: any; title: string; 
 export default function SocialMidiaStudioPage() {
   const { isAdmin, isLoading } = useRole();
   const { profiles, add, remove } = useMyBase();
-  const { loading, results, error, search } = useViralScraper();
+  const { loading, results, error, search, getRaw } = useViralScraper();
 
   const [pipeline, setPipeline] = useState<Pipeline>({
     etapa_atual: 0,
     post_viral: null,
+    post_copy: null,
     briefing_texto: null,
     tema: null,
     formato: null,
@@ -59,6 +60,8 @@ export default function SocialMidiaStudioPage() {
   const [url, setUrl] = useState("");
 
   const isReel = pipeline.formato === "reel";
+  // Estado intermediário entre Scraper (0) e Pesquisa (1): post selecionado mas copy ainda não aprovada
+  const isExtractingCopy = pipeline.etapa_atual === 0 && !!pipeline.post_viral && !pipeline.post_copy;
 
   const completed = useMemo(
     () => STEPS.map((_, i) => i < pipeline.etapa_atual),
@@ -81,9 +84,9 @@ export default function SocialMidiaStudioPage() {
   };
 
   const pickPost = (p: ViralPost) => {
-    setPipeline((s) => ({ ...s, post_viral: p, etapa_atual: Math.max(s.etapa_atual, 1) }));
-    toast({ title: "Referência selecionada", description: `@${p.username}` });
+    setPipeline((s) => ({ ...s, post_viral: p, post_copy: null }));
   };
+
 
   return (
     <div className="container mx-auto px-4 lg:px-6 pt-20 lg:pt-6 pb-10 max-w-7xl">
