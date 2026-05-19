@@ -43,6 +43,7 @@ const App = () => (
               <Route path="/comercial/:clientId" element={<ComercialPage />} />
               <Route path="/google-ads-ai" element={<GoogleAdsAIPage />} />
               <Route path="/criativo-studio" element={<CriativoStudioPage />} />
+              <Route path="/social-midia-studio" element={<SocialMidiaStudioPage />} />
               <Route path="/configuracoes" element={<SettingsPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
