@@ -93,11 +93,17 @@ Deno.serve(async (req) => {
       });
     }
 
-    const items = await res.json();
+    const items: any[] = await res.json();
     let normalized = normalize(items);
+    // Map normalized.id -> raw item for the front to reuse on extract-copy
+    const rawById: Record<string, any> = {};
+    for (let i = 0; i < normalized.length; i++) {
+      const rawItem = items[i] ?? items.find((it: any) => (it.id || it.shortCode || it.url) === normalized[i].id);
+      if (rawItem) rawById[normalized[i].id] = rawItem;
+    }
     if (source === "top") normalized = normalized.sort((a, b) => b.views - a.views).slice(0, 12);
 
-    return new Response(JSON.stringify({ items: normalized }), {
+    return new Response(JSON.stringify({ items: normalized, raw: rawById }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
