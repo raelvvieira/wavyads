@@ -1,5 +1,6 @@
 import { ArrowRight, Heart, Eye } from "lucide-react";
 import type { ViralPost } from "@/hooks/useViralScraper";
+import { proxiedImageUrl } from "@/lib/socialImage";
 
 function fmt(n: number) {
   if (!n) return "0";
@@ -43,7 +44,18 @@ export function ViralResultsList({
 
           {p.thumbnail && (
             <a href={p.url} target="_blank" rel="noreferrer" className="block aspect-video rounded-lg overflow-hidden bg-white/5">
-              <img src={p.thumbnail} alt="" className="w-full h-full object-cover" loading="lazy" />
+              <img
+                src={p.thumbnail}
+                alt=""
+                className="w-full h-full object-cover"
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  const img = e.currentTarget as HTMLImageElement;
+                  const proxied = proxiedImageUrl(p.thumbnail);
+                  if (proxied && img.src !== proxied) img.src = proxied;
+                }}
+              />
             </a>
           )}
 
