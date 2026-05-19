@@ -37,8 +37,10 @@ export interface CopyAprovada {
 export interface SlideImagem {
   slide_index: number;
   url: string;
-  source: "ai" | "freepik" | "upload";
+  source: "ai" | "freepik" | "upload" | "google" | "pexels" | "freepik-stock" | "none";
   prompt_usado: string;
+  fonte?: string;
+  tipo_visual?: "pessoa" | "empresa" | "hardware" | "diagrama" | "ambiente";
 }
 
 export interface PostCopy {
