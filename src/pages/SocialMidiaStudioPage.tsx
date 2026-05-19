@@ -164,7 +164,23 @@ export default function SocialMidiaStudioPage() {
         </div>
       )}
 
-      {pipeline.etapa_atual > 0 && (
+      {pipeline.etapa_atual === 1 && (
+        <ResearchStep
+          post={pipeline.post_viral}
+          initialTema={pipeline.tema || undefined}
+          onApprove={(briefing, tema) => {
+            setPipeline((s) => ({
+              ...s,
+              briefing_texto: briefing,
+              tema,
+              etapa_atual: Math.max(s.etapa_atual, 2),
+            }));
+            toast({ title: "Briefing salvo", description: "Avançando para Formato" });
+          }}
+        />
+      )}
+
+      {pipeline.etapa_atual > 1 && (
         <GlassCard className="text-center py-16">
           <div className="text-xs uppercase tracking-wider text-accent mb-2">Etapa {pipeline.etapa_atual + 1}</div>
           <h2 className="text-xl font-semibold mb-2">{STEPS[pipeline.etapa_atual]}</h2>
@@ -172,6 +188,7 @@ export default function SocialMidiaStudioPage() {
           {pipeline.post_viral && (
             <p className="text-xs text-white/40">
               Referência: <span className="text-white/70">@{pipeline.post_viral.username}</span>
+              {pipeline.tema && <> · Tema: <span className="text-white/70">{pipeline.tema}</span></>}
             </p>
           )}
         </GlassCard>
