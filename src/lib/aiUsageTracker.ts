@@ -14,7 +14,12 @@ export type AiUsageType =
   | 'image-openai-high'
   | 'image-gemini-flash'
   | 'image-gemini-flash-2'
-  | 'image-gemini-pro';
+  | 'image-gemini-pro'
+  | 'text-claude-sonnet'
+  | 'text-claude-websearch'
+  | 'apify-scrape'
+  | 'apify-transcribe'
+  | 'vision-ocr';
 
 const COST_USD: Record<AiUsageType, number> = {
   'text-flash': 0.001,
@@ -24,6 +29,11 @@ const COST_USD: Record<AiUsageType, number> = {
   'image-gemini-flash': 0.039,
   'image-gemini-flash-2': 0.039,
   'image-gemini-pro': 0.134,
+  'text-claude-sonnet': 0.015,
+  'text-claude-websearch': 0.025,
+  'apify-scrape': 0.01,
+  'apify-transcribe': 0.03,
+  'vision-ocr': 0.0015,
 };
 
 const TOKENS_EST: Record<AiUsageType, number> = {
@@ -34,6 +44,11 @@ const TOKENS_EST: Record<AiUsageType, number> = {
   'image-gemini-flash': 1290,
   'image-gemini-flash-2': 1290,
   'image-gemini-pro': 2048,
+  'text-claude-sonnet': 2000,
+  'text-claude-websearch': 3000,
+  'apify-scrape': 0,
+  'apify-transcribe': 0,
+  'vision-ocr': 0,
 };
 
 const USD_TO_BRL = 5.5;
