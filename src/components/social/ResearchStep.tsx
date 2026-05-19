@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { Loader2, Search, RotateCw, Check } from "lucide-react";
+import { Loader2, Search, RotateCw, Check, SkipForward } from "lucide-react";
 import { GlassCard } from "@/components/GlassCard";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { recordAiUsage } from "@/lib/aiUsageTracker";
 import type { ViralPost } from "@/hooks/useViralScraper";
 
 interface Props {
@@ -50,6 +51,7 @@ export function ResearchStep({ post, initialTema, initialAngulo, copyReferencia,
       if (fnErr) throw fnErr;
       if (data?.error) throw new Error(data.error);
       setBriefing(data?.briefing || "");
+      if (data?.briefing) recordAiUsage("text-claude-websearch", 1);
       if (!data?.briefing) setError("A pesquisa retornou vazia. Tente novamente.");
 
     } catch (e: any) {
@@ -57,6 +59,17 @@ export function ResearchStep({ post, initialTema, initialAngulo, copyReferencia,
     } finally {
       setLoading(false);
     }
+  };
+
+  const skip = () => {
+    if (!tema.trim()) {
+      toast({ title: "Defina um tema antes de pular", variant: "destructive" });
+      return;
+    }
+    const fallback = (copyReferencia && copyReferencia.trim())
+      ? `[Pesquisa pulada — usando copy do post viral como referência]\n\nTema: ${tema.trim()}\n\n${copyReferencia.trim()}`
+      : `[Pesquisa pulada — sem briefing externo]\n\nTema: ${tema.trim()}`;
+    onApprove(fallback, tema.trim());
   };
 
   // estado: pré-pesquisa
