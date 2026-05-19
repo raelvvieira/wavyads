@@ -17,6 +17,7 @@ export interface ViralPost {
 export function useViralScraper() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<ViralPost[]>([]);
+  const [raw, setRaw] = useState<Record<string, any>>({});
   const [error, setError] = useState<string | null>(null);
 
   const search = async (params: {
@@ -28,11 +29,13 @@ export function useViralScraper() {
     setLoading(true);
     setError(null);
     setResults([]);
+    setRaw({});
     try {
       const { data, error: fnErr } = await supabase.functions.invoke("apify-scrape", { body: params });
       if (fnErr) throw fnErr;
       if (data?.error) throw new Error(data.error);
       setResults(data?.items || []);
+      setRaw(data?.raw || {});
     } catch (e: any) {
       setError(e?.message || "Falha ao buscar virais");
     } finally {
@@ -40,5 +43,7 @@ export function useViralScraper() {
     }
   };
 
-  return { loading, results, error, search };
+  const getRaw = (id: string) => raw[id];
+
+  return { loading, results, error, search, getRaw };
 }
