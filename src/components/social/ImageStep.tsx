@@ -31,35 +31,53 @@ export function ImageStep({ formato, tema, copy, estiloGlobal, initial, onApprov
     const out: (SlideImagem | null)[] = [...images];
     for (let i = 0; i < slides.length; i++) {
       try {
-        const { data, error } = await supabase.functions.invoke("social-image-gen", {
+        const { data, error } = await supabase.functions.invoke("social-image-search", {
           body: {
+            slide_index: i,
+            slide_titulo: slides[i].titulo,
+            slide_corpo: slides[i].corpo,
+            slide_tipo: slides[i].tipo,
             visual_prompt: slides[i].visual_prompt,
             formato,
             tema,
             estilo_global: estiloGlobal,
-            slide_index: i,
-            slide_titulo: slides[i].titulo,
-            slide_corpo: slides[i].corpo,
           },
         });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
-        recordAiUsage("image-gemini-pro", 1);
-        out[i] = {
-          slide_index: i,
-          url: data.url,
-          source: "ai",
-          prompt_usado: data.prompt_usado || slides[i].visual_prompt,
-        };
-        setImages([...out]);
+
+        // Track usage per source called
+        const u = data?.usage || {};
+        if (u.apify_calls) recordAiUsage("apify-google-images", u.apify_calls);
+        if (u.pexels_calls) recordAiUsage("pexels-search", u.pexels_calls);
+        if (u.freepik_stock_calls) recordAiUsage("freepik-stock-search", u.freepik_stock_calls);
+        if (u.gemini_calls) recordAiUsage("image-gemini-pro", u.gemini_calls);
+
+        if (data?.ok && data.url) {
+          out[i] = {
+            slide_index: i,
+            url: data.url,
+            source: data.source || "ai",
+            prompt_usado: data.prompt_usado || slides[i].visual_prompt,
+            fonte: data.fonte,
+            tipo_visual: data.tipo_visual,
+          };
+          setImages([...out]);
+        } else {
+          toast({
+            title: `Slide ${i + 1}: sem imagem`,
+            description: `Tipo: ${data?.tipo_visual || "?"}. Use Freepik ou upload manual.`,
+          });
+        }
       } catch (e: any) {
         toast({ title: `Falha no slide ${i + 1}`, description: e.message, variant: "destructive" });
       }
       setBatchProgress({ done: i + 1, total: slides.length });
     }
     setBatchProgress(null);
-    toast({ title: "Imagens geradas" });
+    toast({ title: "Busca de imagens concluída" });
   };
+
 
   const allDone = images.every(Boolean);
   const isBatch = batchProgress !== null;
@@ -79,8 +97,9 @@ export function ImageStep({ formato, tema, copy, estiloGlobal, initial, onApprov
           >
             {isBatch ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {isBatch
-              ? `Gerando ${batchProgress!.done}/${batchProgress!.total}…`
-              : "Gerar imagens de todos os slides"}
+              ? `Buscando ${batchProgress!.done}/${batchProgress!.total}…`
+              : "Buscar imagens (fontes reais + IA fallback)"}
+
           </button>
         </div>
       </GlassCard>

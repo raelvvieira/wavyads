@@ -23,3 +23,7 @@ verify_jwt = false
 
 [functions.image-proxy]
 verify_jwt = false
+
+[functions.social-image-search]
+verify_jwt = true
+
