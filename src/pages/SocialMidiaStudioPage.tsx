@@ -6,6 +6,7 @@ import { StepIndicator } from "@/components/criativo/StepIndicator";
 import { GlassCard } from "@/components/GlassCard";
 import { MyBaseSidebar, useMyBase } from "@/components/social/MyBaseSidebar";
 import { ViralResultsList } from "@/components/social/ViralResultsList";
+import { CopyExtractionStep } from "@/components/social/CopyExtractionStep";
 import { ResearchStep } from "@/components/social/ResearchStep";
 import { FormatStep } from "@/components/social/FormatStep";
 import { ImageStep } from "@/components/social/ImageStep";
@@ -13,7 +14,7 @@ import { ReelFinalStep } from "@/components/social/ReelFinalStep";
 import { useViralScraper, type ViralSource, type ViralPost } from "@/hooks/useViralScraper";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import type { Formato, CopyAprovada, SlideImagem } from "@/types/social";
+import type { Formato, CopyAprovada, SlideImagem, PostCopy } from "@/types/social";
 
 const STEPS = ["Scraper", "Pesquisa", "Formato", "Imagens", "Design"];
 const SHORT = ["1", "2", "3", "4", "5"];
@@ -21,6 +22,7 @@ const SHORT = ["1", "2", "3", "4", "5"];
 interface Pipeline {
   etapa_atual: number;
   post_viral: ViralPost | null;
+  post_copy: PostCopy | null;
   briefing_texto: string | null;
   tema: string | null;
   formato: Formato | null;
@@ -28,6 +30,7 @@ interface Pipeline {
   copy_aprovada: CopyAprovada | null;
   imagens: SlideImagem[] | null;
 }
+
 
 const SOURCE_CARDS: { id: ViralSource; emoji: string; icon: any; title: string; desc: string }[] = [
   { id: "base", emoji: "📋", icon: ClipboardList, title: "Minha Base", desc: "Últimos posts dos perfis salvos" },
