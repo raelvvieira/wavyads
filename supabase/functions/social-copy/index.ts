@@ -1,4 +1,5 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { WAVY_COPY_SKILL } from "./wavy-skill.ts";
 
 const MODEL = "claude-sonnet-4-20250514";
 
