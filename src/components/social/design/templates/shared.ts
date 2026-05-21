@@ -1,6 +1,7 @@
-import type { SlideTipo, Formato } from "@/types/social";
+import type { SlideTipo } from "@/types/social";
 
-export type TemplateId = "1" | "2A" | "2B" | "3" | "4";
+/** IDs canônicos unificados com a Wavy Copy Skill. */
+export type TemplateId = "1A" | "1B" | "2A" | "2B" | "4" | "5";
 export type FormatoSlide = "cover" | "content" | "statement" | "tension" | "cta";
 
 export interface SocialProfile {
@@ -66,9 +67,8 @@ export function determinarFormato(tipo: SlideTipo, slideIndex: number, total: nu
   return "content";
 }
 
-export function templateFromFormato(f?: Formato | null): TemplateId {
-  if (f === "carrossel_texto") return "2B";
-  if (f === "carrossel_lista") return "2A";
-  if (f === "post_unico") return "3";
-  return "1";
+/** Identidade — TemplateId já é igual ao CopyPatternId (exceto Reel "3" que não tem design). */
+export function templateFromPattern(p?: string | null): TemplateId {
+  if (p === "1A" || p === "1B" || p === "2A" || p === "2B" || p === "4" || p === "5") return p;
+  return "2A"; // default storytelling
 }
