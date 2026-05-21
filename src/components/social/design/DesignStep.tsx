@@ -7,26 +7,31 @@ import { GlassCard } from "@/components/GlassCard";
 import { TemplatePicker } from "./TemplatePicker";
 import { ProfileEditor } from "./ProfileEditor";
 import { SlideCanvas } from "./SlideCanvas";
-import { TemplateA } from "./templates/TemplateA";
-import { TemplateB } from "./templates/TemplateB";
-import { TemplateC } from "./templates/TemplateC";
-import { determinarFormato, type TemplateId, type TemplateSlideProps } from "./templates/shared";
+import { Template1 } from "./templates/Template1";
+import { Template2A } from "./templates/Template2A";
+import { Template2B } from "./templates/Template2B";
+import { Template3 } from "./templates/Template3";
+import { Template4 } from "./templates/Template4";
+import { determinarFormato, templateFromFormato, type TemplateId, type TemplateSlideProps } from "./templates/shared";
 import { useSocialProfile } from "@/hooks/useSocialProfile";
 import { toast } from "@/hooks/use-toast";
-import type { CopyAprovada, SlideImagem } from "@/types/social";
+import type { CopyAprovada, SlideImagem, Formato } from "@/types/social";
 
 interface Props {
   tema: string;
   copy: CopyAprovada;
   imagens: SlideImagem[];
+  formato?: Formato | null;
   onFinish: () => void;
 }
 
-const TEMPLATES = { A: TemplateA, B: TemplateB, C: TemplateC };
+const TEMPLATES = { "1": Template1, "2A": Template2A, "2B": Template2B, "3": Template3, "4": Template4 };
 
-export function DesignStep({ tema, copy, imagens, onFinish }: Props) {
+export function DesignStep({ tema, copy, imagens, formato, onFinish }: Props) {
   const { profile, template, save, uploadAvatar } = useSocialProfile();
-  const [currentTemplate, setCurrentTemplate] = useState<TemplateId>(template);
+  // Auto-suggest template from formato, but allow user override
+  const suggested = templateFromFormato(formato);
+  const [currentTemplate, setCurrentTemplate] = useState<TemplateId>(suggested || template);
   const [exporting, setExporting] = useState(false);
   const slideRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
