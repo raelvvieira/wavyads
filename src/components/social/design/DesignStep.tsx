@@ -7,30 +7,24 @@ import { GlassCard } from "@/components/GlassCard";
 import { TemplatePicker } from "./TemplatePicker";
 import { ProfileEditor } from "./ProfileEditor";
 import { SlideCanvas } from "./SlideCanvas";
-import { Template1 } from "./templates/Template1";
-import { Template2A } from "./templates/Template2A";
-import { Template2B } from "./templates/Template2B";
-import { Template3 } from "./templates/Template3";
-import { Template4 } from "./templates/Template4";
-import { determinarFormato, templateFromFormato, type TemplateId, type TemplateSlideProps } from "./templates/shared";
+import { PATTERN_TEMPLATES } from "./templates";
+import { determinarFormato, templateFromPattern, type TemplateId, type TemplateSlideProps } from "./templates/shared";
 import { useSocialProfile } from "@/hooks/useSocialProfile";
 import { toast } from "@/hooks/use-toast";
-import type { CopyAprovada, SlideImagem, Formato } from "@/types/social";
+import type { CopyAprovada, SlideImagem, CopyPatternId } from "@/types/social";
 
 interface Props {
   tema: string;
   copy: CopyAprovada;
   imagens: SlideImagem[];
-  formato?: Formato | null;
+  patternId?: CopyPatternId | null;
   onFinish: () => void;
 }
 
-const TEMPLATES = { "1": Template1, "2A": Template2A, "2B": Template2B, "3": Template3, "4": Template4 };
-
-export function DesignStep({ tema, copy, imagens, formato, onFinish }: Props) {
+export function DesignStep({ tema, copy, imagens, patternId, onFinish }: Props) {
   const { profile, template, save, uploadAvatar } = useSocialProfile();
-  // Auto-suggest template from formato, but allow user override
-  const suggested = templateFromFormato(formato);
+  // Auto: pattern_id da copy → template, com override manual.
+  const suggested = templateFromPattern(patternId ?? copy.pattern_id);
   const [currentTemplate, setCurrentTemplate] = useState<TemplateId>(suggested || template);
   const [exporting, setExporting] = useState(false);
   const slideRefs = useRef<Map<number, HTMLDivElement>>(new Map());
@@ -52,7 +46,7 @@ export function DesignStep({ tema, copy, imagens, formato, onFinish }: Props) {
     }));
   }, [slides, imagens, total, profile]);
 
-  const Template = TEMPLATES[currentTemplate];
+  const Template = PATTERN_TEMPLATES[currentTemplate];
 
   const setRef = (i: number) => (el: HTMLDivElement | null) => {
     if (el) slideRefs.current.set(i, el);
@@ -65,7 +59,6 @@ export function DesignStep({ tema, copy, imagens, formato, onFinish }: Props) {
     const node = slideRefs.current.get(i);
     if (!node) return;
     try {
-      // Render at native scale (undo the preview transform temporarily)
       const dataUrl = await toPng(node, {
         width: 1080, height: 1350, pixelRatio: 1,
         canvasWidth: 1080, canvasHeight: 1350,
@@ -111,7 +104,7 @@ export function DesignStep({ tema, copy, imagens, formato, onFinish }: Props) {
       <GlassCard>
         <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
           <div>
-            <div className="text-xs uppercase tracking-wider text-accent">Etapa 5 · Design</div>
+            <div className="text-xs uppercase tracking-wider text-accent">Etapa 5 · Design · Padrão {currentTemplate}</div>
             <h2 className="text-lg font-semibold">Aplicar template visual e exportar</h2>
           </div>
           <div className="flex items-center gap-2">
