@@ -7,15 +7,16 @@ interface StepIndicatorProps {
   current: number; // 0-based
   completed: boolean[];
   onJump?: (idx: number) => void;
+  allowJumpAny?: boolean;
 }
 
-export function StepIndicator({ steps, shortSteps, current, completed, onJump }: StepIndicatorProps) {
+export function StepIndicator({ steps, shortSteps, current, completed, onJump, allowJumpAny }: StepIndicatorProps) {
   return (
     <div className="flex items-center gap-1.5 sm:gap-4 overflow-x-auto pb-2">
       {steps.map((label, i) => {
         const isCurrent = i === current;
         const isDone = completed[i];
-        const clickable = onJump && (isDone || i <= current);
+        const clickable = !!onJump && (allowJumpAny || isDone || i <= current);
         const short = shortSteps?.[i] || label;
         return (
           <div key={i} className="flex items-center gap-1.5 sm:gap-4 flex-shrink-0">
