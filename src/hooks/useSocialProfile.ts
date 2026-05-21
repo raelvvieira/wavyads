@@ -12,7 +12,7 @@ export interface UseSocialProfileResult {
 
 export function useSocialProfile(): UseSocialProfileResult {
   const [profile, setProfile] = useState<SocialProfile>(DEFAULT_PROFILE);
-  const [template, setTemplate] = useState<TemplateId>("A");
+  const [template, setTemplate] = useState<TemplateId>("1");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,8 +31,9 @@ export function useSocialProfile(): UseSocialProfileResult {
             handle: data.handle || DEFAULT_PROFILE.handle,
             avatarUrl: data.avatar_url || DEFAULT_PROFILE.avatarUrl,
           });
-          if (data.template_padrao === "A" || data.template_padrao === "B" || data.template_padrao === "C") {
-            setTemplate(data.template_padrao);
+          const valid: TemplateId[] = ["1", "2A", "2B", "3", "4"];
+          if (valid.includes(data.template_padrao as TemplateId)) {
+            setTemplate(data.template_padrao as TemplateId);
           }
         }
       } finally {

@@ -252,6 +252,7 @@ export default function SocialMidiaStudioPage() {
             tema={pipeline.tema || ""}
             copy={pipeline.copy_aprovada}
             imagens={pipeline.imagens || []}
+            formato={pipeline.formato}
             onFinish={() => {
               toast({ title: "Carrossel finalizado!", description: "Pipeline completo." });
               setPipeline({
