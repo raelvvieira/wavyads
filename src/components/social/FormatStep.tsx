@@ -6,51 +6,42 @@ import { CopyEditor } from "./CopyEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { recordAiUsage } from "@/lib/aiUsageTracker";
-import type { Formato, CopyAprovada } from "@/types/social";
+import type { CopyPatternId, CopyAprovada } from "@/types/social";
 
 interface Props {
   tema: string;
   briefing: string;
-  onApprove: (formato: Formato, num_slides: number, copy: CopyAprovada) => void;
+  onApprove: (pattern_id: CopyPatternId, num_slides: number, copy: CopyAprovada) => void;
 }
 
 export function FormatStep({ tema, briefing, onApprove }: Props) {
-  const [formato, setFormato] = useState<Formato | null>(null);
+  const [pattern, setPattern] = useState<CopyPatternId | null>(null);
   const [numSlides, setNumSlides] = useState(7);
   const [loading, setLoading] = useState(false);
   const [copy, setCopy] = useState<CopyAprovada | null>(null);
 
-  const generate = async (fmt: Formato, n: number) => {
-    setFormato(fmt);
+  const generate = async (pat: CopyPatternId, n: number) => {
+    setPattern(pat);
     setNumSlides(n);
     setLoading(true);
     setCopy(null);
     try {
-      let mode = "";
-      const body: any = { tema, briefing };
-      if (fmt === "reel") mode = "reel";
-      else if (fmt === "post_unico") mode = "post_unico";
-      else {
-        mode = "carrossel";
-        body.formato = fmt;
-        body.num_slides = n;
-      }
-      body.mode = mode;
-
-      const { data, error } = await supabase.functions.invoke("social-copy", { body });
+      const { data, error } = await supabase.functions.invoke("social-copy", {
+        body: { mode: "pattern", pattern_id: pat, tema, briefing, num_slides: n },
+      });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       recordAiUsage("text-claude-sonnet", 1);
-      setCopy(data as CopyAprovada);
+      setCopy({ ...(data as CopyAprovada), pattern_id: pat });
     } catch (e: any) {
       toast({ title: "Falha ao gerar copy", description: e.message, variant: "destructive" });
-      setFormato(null);
+      setPattern(null);
     } finally {
       setLoading(false);
     }
   };
 
-  if (!formato) {
+  if (!pattern) {
     return <FormatPicker onConfirm={generate} />;
   }
 
@@ -60,7 +51,7 @@ export function FormatStep({ tema, briefing, onApprove }: Props) {
         <div className="text-center py-16">
           <Loader2 className="h-8 w-8 text-accent animate-spin mx-auto mb-4" />
           <p className="text-base text-white/80">✍️ Gerando copy estratégica…</p>
-          <p className="text-xs text-white/40 mt-2">Pode levar até 30 segundos</p>
+          <p className="text-xs text-white/40 mt-2">Padrão Wavy {pattern} · Pode levar até 30s</p>
           <div className="mt-6 w-full max-w-md mx-auto h-1 bg-white/5 rounded-full overflow-hidden">
             <div className="h-full bg-accent rounded-full animate-pulse" style={{ width: "60%" }} />
           </div>
@@ -72,11 +63,11 @@ export function FormatStep({ tema, briefing, onApprove }: Props) {
   if (copy) {
     return (
       <CopyEditor
-        formato={formato}
+        patternId={pattern}
         tema={tema}
         initial={copy}
-        onRegenAll={() => generate(formato, numSlides)}
-        onApprove={(c) => onApprove(formato, numSlides, c)}
+        onRegenAll={() => generate(pattern, numSlides)}
+        onApprove={(c) => onApprove(pattern, numSlides, c)}
       />
     );
   }
