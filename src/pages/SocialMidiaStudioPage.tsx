@@ -41,6 +41,49 @@ const SOURCE_CARDS: { id: ViralSource; emoji: string; icon: any; title: string; 
   { id: "top", emoji: "🔥", icon: Flame, title: "Top Viral Geral", desc: "Mais vistos da base" },
 ];
 
+// Preenche campos vazios com placeholders para permitir navegação livre entre etapas (modo configuração)
+function jumpTo(s: Pipeline, i: number): Pipeline {
+  const next: Pipeline = { ...s, etapa_atual: i };
+  if (i >= 1 && !next.post_copy) {
+    next.post_copy = {
+      tipo: "carrossel",
+      legenda: "",
+      hashtags: [],
+      copy_consolidada: "[placeholder de configuração]",
+      status: {},
+    } as PostCopy;
+  }
+  if (i >= 2) {
+    if (!next.tema) next.tema = "Tema de configuração";
+    if (!next.briefing_texto) next.briefing_texto = "[Briefing placeholder — modo configuração]";
+  }
+  if (i >= 3 && !next.copy_aprovada) {
+    next.formato = next.formato || "carrossel_texto";
+    next.num_slides = next.num_slides || 5;
+    next.copy_aprovada = {
+      slides: Array.from({ length: 5 }).map((_, k) => ({
+        tipo: (k === 0 ? "cover" : k === 4 ? "cta" : "solucao") as any,
+        titulo: `Slide ${k + 1}`,
+        corpo: "Conteúdo de exemplo para configuração visual deste slide.",
+        visual_prompt: "placeholder visual",
+      })),
+      legenda: "Legenda de exemplo para configuração.",
+      hashtags: ["#exemplo", "#config"],
+    };
+  }
+  if (i >= 4 && (!next.imagens || next.imagens.length === 0)) {
+    const slides = next.copy_aprovada?.slides || [];
+    next.imagens = slides.map((_, k) => ({
+      slide_index: k,
+      url: "/placeholder.svg",
+      source: "upload" as const,
+      prompt_usado: "placeholder",
+    }));
+  }
+  return next;
+}
+
+
 export default function SocialMidiaStudioPage() {
   const { isAdmin, isLoading } = useRole();
   const { profiles, add, remove } = useMyBase();
