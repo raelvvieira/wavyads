@@ -41,6 +41,8 @@ export interface SlideImagem {
   prompt_usado: string;
   fonte?: string;
   tipo_visual?: "pessoa" | "empresa" | "hardware" | "diagrama" | "ambiente";
+  /** Wavy skill: id do estilo visual escolhido (ceo_hiperreal, cinematico, ...). */
+  style_id?: string;
 }
 
 export interface PostCopy {
