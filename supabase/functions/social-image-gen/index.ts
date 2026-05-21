@@ -1,6 +1,7 @@
-// Direct Gemini image generation (same API as Criativo Studio) — no gateway.
+// Direct Gemini image generation com Wavy Image Skill (12 camadas + sufixos de template).
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
+import { buildWavyPrompt } from "./wavy-skill.ts";
 
 interface ReqBody {
   visual_prompt: string;
@@ -10,23 +11,21 @@ interface ReqBody {
   slide_index: number;
   slide_titulo?: string;
   slide_corpo?: string;
+  /** Wavy skill: id do estilo (ceo_hiperreal, cinematico, etc.). Default = gradiente_atmosferico. */
+  style_id?: string;
+  /** Sufixo de composição: template_1_cover, post_frase_a, template_4_virada, etc. */
+  template_id?: string;
+  /** Sujeito identificado (CEO name, pessoa, marca) — opcional, refina o prompt. */
+  sujeito?: string;
 }
 
 type GeminiModel = "gemini-3.1-flash-image-preview" | "gemini-3-pro-image-preview" | "gemini-2.5-flash-image";
 const DEFAULT_MODEL: GeminiModel = "gemini-3.1-flash-image-preview";
 
-function buildPrompt(b: ReqBody): string {
-  const base = `Tema: ${b.tema}. ${b.estilo_global ? `Estilo visual: ${b.estilo_global}.` : ""}`;
-  const formatHint = "OUTPUT FORMAT: perfect 1:1 square aspect ratio, 1080x1080px Instagram post format.";
-  let body: string;
-  if (b.formato === "carrossel_texto") {
-    body = `Instagram square 1:1. Solid color background, large bold typography. Featured text: "${b.slide_titulo || ""}". Minimal, editorial design. No photo. ${b.visual_prompt}`;
-  } else if (b.formato === "carrossel_lista") {
-    body = `Instagram square 1:1. Clean design with list/bullet visual structure. Headline: "${b.slide_titulo || ""}". Modern infographic style. ${b.visual_prompt}`;
-  } else {
-    body = `Instagram square 1:1. ${b.visual_prompt}. Photographic or illustrative, suitable as background for text overlay. Leave negative space at the top for headline.`;
-  }
-  return `${formatHint}\n\n${base} ${body}\n\nCinematic editorial photograph, dramatic lighting, ultra-sharp focus, professional composition, high contrast, magazine quality, visually striking for Instagram, 4k, award-winning photography.`;
+function defaultTemplateFromFormato(f: ReqBody["formato"]): string {
+  if (f === "carrossel_texto" || f === "post_unico") return "post_frase_a";
+  if (f === "carrossel_lista") return "template_1_content";
+  return "template_1_cover";
 }
 
 Deno.serve(async (req) => {
@@ -41,9 +40,29 @@ Deno.serve(async (req) => {
       });
     }
 
-    const prompt = buildPrompt(body);
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${DEFAULT_MODEL}:generateContent?key=${geminiKey}`;
+    const { prompt, style_id, caminho } = buildWavyPrompt({
+      style_id: body.style_id,
+      template_id: body.template_id || defaultTemplateFromFormato(body.formato),
+      visual_prompt: body.visual_prompt,
+      tema: body.tema,
+      slide_titulo: body.slide_titulo,
+      slide_corpo: body.slide_corpo,
+      sujeito: body.sujeito,
+      estilo_global: body.estilo_global,
+    });
 
+    if (caminho === "upload") {
+      return new Response(
+        JSON.stringify({
+          error: `Estilo "${style_id}" requer UPLOAD manual (foto real). Use o botão de upload.`,
+          requires_upload: true,
+          style_id,
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${DEFAULT_MODEL}:generateContent?key=${geminiKey}`;
     const resp = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -79,9 +98,10 @@ Deno.serve(async (req) => {
     }
     if (!b64) {
       const blockReason = data?.promptFeedback?.blockReason;
-      return new Response(JSON.stringify({ error: blockReason ? `Bloqueado pelo Gemini: ${blockReason}` : "Modelo não retornou imagem" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: blockReason ? `Bloqueado pelo Gemini: ${blockReason}` : "Modelo não retornou imagem" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
@@ -90,20 +110,22 @@ Deno.serve(async (req) => {
     const supaUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supa = createClient(supaUrl, serviceKey);
-    const path = `${Date.now()}-s${body.slide_index}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const path = `${Date.now()}-s${body.slide_index}-${style_id}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
     const { error: upErr } = await supa.storage.from("social-media").upload(path, bytes, { contentType: mime, upsert: false });
 
     if (upErr) {
       console.error("upload err", upErr);
-      return new Response(JSON.stringify({ url: `data:${mime};base64,${b64}`, prompt_usado: prompt }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ url: `data:${mime};base64,${b64}`, prompt_usado: prompt, style_id }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
     const { data: pub } = supa.storage.from("social-media").getPublicUrl(path);
 
-    return new Response(JSON.stringify({ url: pub.publicUrl, prompt_usado: prompt, model: DEFAULT_MODEL }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ url: pub.publicUrl, prompt_usado: prompt, model: DEFAULT_MODEL, style_id }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (e: any) {
     console.error("social-image-gen error", e);
     return new Response(JSON.stringify({ error: e?.message || "Erro inesperado" }), {
