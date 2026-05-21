@@ -16,7 +16,7 @@ import { DesignStep } from "@/components/social/design/DesignStep";
 import { useViralScraper, type ViralSource, type ViralPost } from "@/hooks/useViralScraper";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import type { Formato, CopyAprovada, SlideImagem, PostCopy } from "@/types/social";
+import type { CopyPatternId, CopyAprovada, SlideImagem, PostCopy } from "@/types/social";
 
 const STEPS = ["Scraper", "Pesquisa", "Formato", "Imagens", "Design"];
 const SHORT = ["1", "2", "3", "4", "5"];
@@ -27,7 +27,7 @@ interface Pipeline {
   post_copy: PostCopy | null;
   briefing_texto: string | null;
   tema: string | null;
-  formato: Formato | null;
+  pattern_id: CopyPatternId | null;
   num_slides: number;
   copy_aprovada: CopyAprovada | null;
   imagens: SlideImagem[] | null;
@@ -58,9 +58,10 @@ function jumpTo(s: Pipeline, i: number): Pipeline {
     if (!next.briefing_texto) next.briefing_texto = "[Briefing placeholder — modo configuração]";
   }
   if (i >= 3 && !next.copy_aprovada) {
-    next.formato = next.formato || "carrossel_texto";
+    next.pattern_id = next.pattern_id || "2A";
     next.num_slides = next.num_slides || 5;
     next.copy_aprovada = {
+      pattern_id: next.pattern_id,
       slides: Array.from({ length: 5 }).map((_, k) => ({
         tipo: (k === 0 ? "cover" : k === 4 ? "cta" : "solucao") as any,
         titulo: `Slide ${k + 1}`,
@@ -95,7 +96,7 @@ export default function SocialMidiaStudioPage() {
     post_copy: null,
     briefing_texto: null,
     tema: null,
-    formato: null,
+    pattern_id: null,
     num_slides: 0,
     copy_aprovada: null,
     imagens: null,
@@ -104,8 +105,7 @@ export default function SocialMidiaStudioPage() {
   const [theme, setTheme] = useState("");
   const [url, setUrl] = useState("");
 
-  const isReel = pipeline.formato === "reel";
-  // Estado intermediário entre Scraper (0) e Pesquisa (1): post selecionado mas copy ainda não aprovada
+  const isReel = pipeline.pattern_id === "3";
   const isExtractingCopy = pipeline.etapa_atual === 0 && !!pipeline.post_viral && !pipeline.post_copy;
 
   const completed = useMemo(
@@ -159,7 +159,7 @@ export default function SocialMidiaStudioPage() {
       </div>
 
 
-      {/* Etapa 1 — Scraper (lista) */}
+      {/* Etapa 1 — Scraper */}
       {pipeline.etapa_atual === 0 && !isExtractingCopy && (
         <div className="flex flex-col lg:flex-row gap-4">
           <MyBaseSidebar profiles={profiles} onAdd={add} onRemove={remove} />
@@ -252,13 +252,13 @@ export default function SocialMidiaStudioPage() {
           <FormatStep
             tema={pipeline.tema}
             briefing={pipeline.briefing_texto}
-            onApprove={(formato, num_slides, copy) => {
+            onApprove={(pattern_id, num_slides, copy) => {
               setPipeline((s) => ({
-                ...s, formato, num_slides, copy_aprovada: copy, etapa_atual: 3,
+                ...s, pattern_id, num_slides, copy_aprovada: copy, etapa_atual: 3,
               }));
               toast({
                 title: "Copy aprovada",
-                description: formato === "reel" ? "Reel finalizado" : "Avançando para Imagens",
+                description: pattern_id === "3" ? "Reel finalizado" : "Avançando para Imagens",
               });
             }}
           />
@@ -266,12 +266,12 @@ export default function SocialMidiaStudioPage() {
       )}
 
       {/* Etapa 4 — Imagens (ou final do Reel) */}
-      {pipeline.etapa_atual === 3 && pipeline.copy_aprovada && pipeline.formato && (
+      {pipeline.etapa_atual === 3 && pipeline.copy_aprovada && pipeline.pattern_id && (
         isReel ? (
           <ReelFinalStep tema={pipeline.tema || ""} copy={pipeline.copy_aprovada} />
         ) : (
           <ImageStep
-            formato={pipeline.formato as Exclude<Formato, "reel">}
+            patternId={pipeline.pattern_id}
             tema={pipeline.tema || ""}
             copy={pipeline.copy_aprovada}
             estiloGlobal={pipeline.post_viral?.caption?.slice(0, 200)}
@@ -297,12 +297,12 @@ export default function SocialMidiaStudioPage() {
             tema={pipeline.tema || ""}
             copy={pipeline.copy_aprovada}
             imagens={pipeline.imagens || []}
-            formato={pipeline.formato}
+            patternId={pipeline.pattern_id}
             onFinish={() => {
               toast({ title: "Carrossel finalizado!", description: "Pipeline completo." });
               setPipeline({
                 etapa_atual: 0, post_viral: null, post_copy: null, briefing_texto: null,
-                tema: null, formato: null, num_slides: 0, copy_aprovada: null, imagens: null,
+                tema: null, pattern_id: null, num_slides: 0, copy_aprovada: null, imagens: null,
               });
             }}
           />
