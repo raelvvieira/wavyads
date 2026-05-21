@@ -110,9 +110,11 @@ export default function SocialMidiaStudioPage() {
           shortSteps={SHORT}
           current={pipeline.etapa_atual}
           completed={completed}
-          onJump={(i) => setPipeline((s) => ({ ...s, etapa_atual: i }))}
+          allowJumpAny
+          onJump={(i) => setPipeline((s) => jumpTo(s, i))}
         />
       </div>
+
 
       {/* Etapa 1 — Scraper (lista) */}
       {pipeline.etapa_atual === 0 && !isExtractingCopy && (
