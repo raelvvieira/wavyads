@@ -1,128 +1,107 @@
-# Plano · Etapa 5 — Designer (templates + render no navegador)
-
 ## Objetivo
 
-Receber `CopyAprovada` (etapa 3) + `SlideImagem[]` (etapa 4) e montar os slides finais em **3 templates** (A/B/C), com preview ao vivo, troca de template em 1 clique, e exportação em **PNG 1080×1350** (download individual ou ZIP do carrossel). Sem Playwright/Telegram — tudo client-side.
+A Etapa 3 hoje oferece 5 opções genéricas baseadas só no visual (`carrossel_imagem`, `carrossel_texto`, `carrossel_lista`, `post_unico`, `reel`). A Wavy Copy Skill define 7 padrões com intenção narrativa específica (1A Tutorial, 1B Conflito, 2A Storytelling, 2B Editorial Dark, 3 Reel, 4 Post Frase, 5 Frase Mestre). O prompt do Claude não recebe essa intenção, então a voz Wavy fica diluída. Além disso, o Design usa IDs `1, 2A, 2B, 3, 4` com significado diferente do da Copy, gerando colisão.
 
-## Stack
+A solução é apresentar 5 famílias na UI (cada família agrupando suas variações), passar para a edge function um `pattern_id` igual ao ID da skill, e renomear os templates do Design para usar os mesmos IDs 1-pra-1.
 
-- **Renderização**: componentes React puros (1 por template), tamanho fixo 1080×1350 com `transform: scale()` no preview.
-- **Export PNG**: `html-to-image` (lib leve, sem dependências de servidor). Adiciona via `bun add html-to-image`.
-- **ZIP**: `jszip` para empacotar todos os slides do carrossel.
-- **Fonts**: Montserrat via Google Fonts (já carregada no template HTML original).
+---
 
-## Componentes novos
-
-```
-src/components/social/design/
-├── DesignStep.tsx           # orquestrador da etapa 5
-├── TemplatePicker.tsx       # toggle A/B/C com preview thumbnail
-├── ProfileEditor.tsx        # nome, @handle, avatar (upload p/ bucket)
-├── SlideCanvas.tsx          # wrapper 1080x1350 + scaling responsivo
-├── templates/
-│   ├── TemplateA.tsx        # dark cinematográfico
-│   ├── TemplateB.tsx        # light / twitter style
-│   ├── TemplateC.tsx        # editorial escuro
-│   └── shared.ts            # tipos + util determinarFormato()
-```
-
-Cada `TemplateX.tsx` exporta um componente que recebe:
-
-```ts
-interface TemplateSlideProps {
-  slideIndex: number;       // 0-based
-  total: number;
-  titulo: string;
-  corpo: string;
-  imgUrl?: string;
-  tipoSlide: SlideTipo;     // cover, problema, agitacao, solucao, lista, prova, cta
-  formato: "cover" | "light" | "text_only" | "dark" | "cta";
-  profile: { nome: string; handle: string; avatarUrl: string };
-}
-```
-
-E renderiza `<div style={{ width: 1080, height: 1350 }}>...</div>` com estilo fiel ao agente Python (cores, fontes, footer com pills WAVY+handle, copyright, gradient avatar ring para template B etc.).
-
-## Mapeamento formato por slide
-
-Igual ao agente v3 (`determinar_formato_slide`):
-
-| Condição | formato |
-|---|---|
-| `slideIndex === 0` ou `tipoSlide === "cover"` | `cover` |
-| `slideIndex === total - 1` ou `tipoSlide === "cta"` | `cta` |
-| `tipoSlide === "prova"` | `text_only` |
-| `tipoSlide === "problema"` ou `"agitacao"` | `dark` |
-| default | `light` |
-
-## Fluxo do `DesignStep`
+## 1. Novo modelo de formato (5 famílias, IDs unificados com a skill)
 
 ```text
-┌─────────────────────────────────────────────────────────┐
-│ Etapa 5 · Design                                        │
-├─────────────────────────────────────────────────────────┤
-│ [Template: ●A  ○B  ○C]    [Perfil: avatar + @handle]   │
-├─────────────────────────────────────────────────────────┤
-│ Grid de previews escalados (cada slide 270x337.5)       │
-│ ┌──┐ ┌──┐ ┌──┐ ┌──┐                                    │
-│ │01│ │02│ │03│ │04│  …                                  │
-│ └──┘ └──┘ └──┘ └──┘                                    │
-├─────────────────────────────────────────────────────────┤
-│ [Baixar slide atual]   [Baixar tudo (.zip)]            │
-│ [Aprovar e finalizar →]                                 │
-└─────────────────────────────────────────────────────────┘
+Família "Carrossel Direto"       → variações: 1A Tutorial, 1B Conflito
+Família "Carrossel Narrativo"    → variações: 2A Storytelling, 2B Editorial Dark
+Família "Reel"                   → 3 (sem variação)
+Família "Post Frase"             → 4 (sem variação)
+Família "Frase Mestre"           → 5 (sem variação)
 ```
 
-- Clicar num slide abre modal com preview 1:1 e botões "Baixar PNG" / "Trocar imagem (volta etapa 4)".
-- Export: `toPng(node, { width: 1080, height: 1350, pixelRatio: 1 })` → `Blob` → `JSZip` → `saveAs("carrossel-${tema}.zip")`.
+Cada card mostra título + descrição curta + emoji. Ao escolher uma família com variação, abre um seletor secundário (2 botões grandes). Sem variação, avança direto.
 
-## Perfil persistente
+Para carrosséis, mantém o slider de número de slides (Frase Mestre força entre 6-9, Direto 5-8, Narrativo 6-10).
 
-Tabela leve para guardar o perfil padrão do usuário (1 row por user):
+---
 
-```sql
-CREATE TABLE social_profiles (
-  user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  nome text NOT NULL DEFAULT 'WAVY',
-  handle text NOT NULL DEFAULT '@wavy.mkt',
-  avatar_url text,
-  template_padrao text NOT NULL DEFAULT 'A',
-  updated_at timestamptz DEFAULT now()
-);
-ALTER TABLE social_profiles ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "own_profile" ON social_profiles FOR ALL TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+## 2. Tipos e contrato
+
+**`src/types/social.ts`** — novo tipo:
+```ts
+export type CopyPatternId = "1A" | "1B" | "2A" | "2B" | "3" | "4" | "5";
+export type FormatoFamilia = "carrossel_direto" | "carrossel_narrativo" | "reel" | "post_frase" | "frase_mestre";
 ```
+Manter `Formato` antigo como deprecated alias por enquanto (compat com pipelines existentes), mas o código novo passa `pattern_id`.
 
-Avatar é upload normal para bucket `social-media` (já existe, público).
+---
 
-## Integração com `SocialMidiaStudioPage.tsx`
+## 3. Etapa 3 — UI
 
-- Após `ImageStep.onApprove(imagens)` → state vai para etapa 5 (`DesignStep`), recebendo `copy`, `imagens`, `tema`, `formato`.
-- `DesignStep.onFinish()` finaliza pipeline (pode disparar toast "Carrossel pronto!" e oferecer "Começar novo").
-- Para `Formato === "reel"`: pular a etapa 5 (o `ReelFinalStep` já entrega o roteiro). Mostrar mensagem "Reels não geram slides — use o roteiro da etapa 3".
+**`FormatPicker.tsx`**: refeito para mostrar 5 cards de família + sub-seletor de variação quando aplicável (1A/1B e 2A/2B). Cada variação ganha descrição vinda direto da skill ("BREAKING + passos executáveis" vs "Vilão + contraste numérico", etc.).
 
-## Tracking de custos
+**`FormatStep.tsx`**: passa a enviar `pattern_id` (e `num_slides` quando carrossel) para a edge function. Mantém estado da família selecionada para permitir voltar e trocar variação sem perder briefing.
 
-Etapa 5 é 100% client-side, **custo zero de API**. Não precisa `recordAiUsage`.
+---
 
-## Arquivos
+## 4. Edge function `social-copy`
 
-**Novos:**
-- `src/components/social/design/DesignStep.tsx`
-- `src/components/social/design/TemplatePicker.tsx`
-- `src/components/social/design/ProfileEditor.tsx`
-- `src/components/social/design/SlideCanvas.tsx`
-- `src/components/social/design/templates/{TemplateA,TemplateB,TemplateC,shared}.{tsx,ts}`
-- `src/hooks/useSocialProfile.ts`
-- `supabase/migrations/*_social_profiles.sql`
+**`index.ts`**:
+- Substituir os `mode: carrossel|post_unico|reel` por `mode: "pattern"` + `pattern_id: CopyPatternId`.
+- Criar um `buildPatternPrompt(pattern_id, tema, briefing, num_slides)` com 7 ramos, cada um citando explicitamente o trecho da skill correspondente e exigindo a estrutura exata (ex: 1A obriga "BREAKING:" no cover e "Passo X:" nos slides; 1B obriga slide de contraste numérico; 2B obriga cena de filme + analogia; 4 obriga legenda em 5 movimentos; 5 obriga cover duplo tese/antítese).
+- Reel mantém estrutura temporal obrigatória (0-3s / 3-15s / 15-35s / 35-50s / 50-60s).
+- Saída JSON permanece compatível com `CopyAprovada` (slides|roteiro + legenda + hashtags), mas adiciona `pattern_id` no retorno para o Design saber qual template aplicar.
+- Manter rota `mode: "rewrite"` inalterada.
 
-**Editados:**
-- `src/pages/SocialMidiaStudioPage.tsx` — wiring da etapa 5
-- `src/types/social.ts` — adicionar `Profile` e `Template = "A"|"B"|"C"`
-- `package.json` — `html-to-image`, `jszip`, `file-saver` (via `bun add`)
+Compat: aceitar `mode` antigo por 1 versão e mapear `carrossel_imagem→2A`, `carrossel_lista→1A`, `carrossel_texto→1B`, `post_unico→4`, `reel→3` (mapeamento provisório só para pipelines salvos).
 
-## Perguntas antes de implementar
+---
 
-1. **Avatar padrão**: a URL hardcoded no script (`PROFILE_IMAGE_FALLBACK = "https://i.ibb.co/bMtB5PZL/..."`) é da WAVY ou de teste? Quer manter como fallback global ou exigir upload na primeira vez?
-2. **Templates extras**: começo com os 3 (A/B/C) idênticos ao Python, ou já adapto cores ao tema WAVY Dash (preto + verde #1ACD8A) substituindo os gradientes laranja/rosa atuais?
-3. **Resolução de export**: 1080×1350 (4:5 Instagram, fiel ao original) ou também oferecer 1080×1080 (1:1) como opção?
+## 5. Etapa 5 — Design (unificação de IDs)
+
+**`templates/shared.ts`**:
+- `TemplateId` passa de `"1" | "2A" | "2B" | "3" | "4"` para `"1A" | "1B" | "2A" | "2B" | "3" | "4" | "5"`.
+- `templateFromFormato` vira `templateFromPattern(pattern_id)` — função identidade (1A→1A, ...). Mantém override manual.
+
+**Templates**: renomear/criar arquivos para casar 1-pra-1:
+- `Template1A.tsx` — Carrossel Tutorial (visual instrucional, cover BREAKING, numeração de passos)
+- `Template1B.tsx` — Carrossel Conflito (visual contraste, slide numérico com 2 colunas)
+- `Template2A.tsx` — Storytelling Editorial (já existe parcialmente, ajustar para foto editorial real + título conceitual curto)
+- `Template2B.tsx` — Editorial Dark Cinema (foto cotidiana + manchete filosófica)
+- `Template3.tsx` — Reel preview (storyboard de cenas com tempo)
+- `Template4.tsx` — Post Frase (frase forte + fundo)
+- `Template5.tsx` — Frase Mestre (cover duplo tese/antítese, ícone central, slide de prova com foto)
+
+Os atuais `Template1`, `Template2A`, `Template2B`, `Template3`, `Template4` serão **renomeados ou refatorados** para a nova grade. Nada de mudança visual gratuita: o que já estava bom é preservado, só vira o ID correto.
+
+**`TemplatePicker.tsx`**: 7 opções com preview. Override manual continua possível.
+
+**`DesignStep.tsx`** e **`SocialMidiaStudioPage.tsx`**: passam `pattern_id` (vindo da Etapa 3) em vez de `formato` para o `templateFromPattern`.
+
+---
+
+## 6. Etapa 4 — Imagens
+
+**`wavyImageStyles.ts` `templateSuffixFromFormato`**: vira `templateSuffixFromPattern(pattern_id)`. Mapeamento direto:
+- 1A → `template_1a_step`
+- 1B → `template_1b_contrast`
+- 2A → `template_2a_editorial`
+- 2B → `template_2b_dark`
+- 4  → `post_frase_a`
+- 5  → `template_5_master`
+- 3  → não gera (reel usa storyboard)
+
+`suggestStyle` ganha um segundo input opcional (`pattern_id`) para forçar `editorial_real` em 2A/2B, `objeto_premium` em 1A, `cinematico` em 2B/4, etc.
+
+---
+
+## 7. Compat / migração
+
+Pipelines salvos com `formato` antigo continuam abrindo: um helper `migrateFormatoToPattern` converte na leitura. Nada quebra retroativo.
+
+---
+
+## Arquivos a tocar
+
+Criar: `Template1A.tsx`, `Template1B.tsx`, `Template5.tsx`
+Editar: `FormatPicker.tsx`, `FormatStep.tsx`, `social-copy/index.ts`, `templates/shared.ts`, `TemplatePicker.tsx`, `DesignStep.tsx`, `SocialMidiaStudioPage.tsx`, `useSocialProfile.ts`, `wavyImageStyles.ts`, `ImageStep.tsx`, `social/types.ts`
+Refatorar (renomear interno): `Template1.tsx`→`Template2A.tsx` (já é editorial), reorganizar mapeamentos. O nome de arquivo final segue a grade da skill.
+
+Sem mudança em banco, sem novos secrets, sem custo extra de API (mesmo modelo Claude, prompt mais específico).

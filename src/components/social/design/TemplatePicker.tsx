@@ -9,15 +9,15 @@ interface Props {
 }
 
 const OPTIONS: { id: TemplateId; label: string; desc: string; preview: string; textColor: string }[] = [
-  { id: "1",  label: "1 · Editorial Dark/Light", desc: "Carrossel viral storytelling", preview: "linear-gradient(135deg,#0A0A0A 0%,#1A0A0A 60%,#FD4638 100%)", textColor: "#fff" },
-  { id: "2A", label: "2A · Twitter Elaborado",   desc: "Tutorial / Conflito",          preview: "linear-gradient(135deg,#F5F2EE 0%,#E8E5E0 100%)", textColor: "#0A0A0A" },
-  { id: "2B", label: "2B · Twitter Puro",        desc: "Tweet réplica fiel",           preview: "linear-gradient(135deg,#FFFFFF 0%,#F3F5F7 100%)", textColor: "#0F1419" },
-  { id: "3",  label: "3 · Post Frase",           desc: "1 imagem + frase mestre",      preview: "linear-gradient(160deg,#0D1B2A 0%,#1A2D40 50%,#FD4638 100%)", textColor: "#fff" },
-  { id: "4",  label: "4 · Frase Mestre",         desc: "5 slides interdependentes",    preview: "linear-gradient(160deg,#0D1B2A 0%,#1A2D40 45%,#0A0F14 100%)", textColor: "#fff" },
+  { id: "1A", label: "1A · Tutorial",        desc: "BREAKING + passos executáveis",  preview: "linear-gradient(135deg,#F5F2EE 0%,#E8E5E0 100%)",   textColor: "#0A0A0A" },
+  { id: "1B", label: "1B · Conflito",        desc: "Vilão + contraste numérico",     preview: "linear-gradient(135deg,#0A0A0A 0%,#1A0A0A 60%,#3D1414 100%)", textColor: "#fff" },
+  { id: "2A", label: "2A · Storytelling",    desc: "Caso real + editorial light",    preview: "linear-gradient(135deg,#F5F2EE 0%,#FD4638 100%)",   textColor: "#0A0A0A" },
+  { id: "2B", label: "2B · Editorial Dark",  desc: "Filosófico + cena de filme",     preview: "linear-gradient(135deg,#0A0A0A 0%,#1A0A0A 60%,#FD4638 100%)", textColor: "#fff" },
+  { id: "4",  label: "4 · Post Frase",       desc: "1 imagem + frase mestre",        preview: "linear-gradient(160deg,#0D1B2A 0%,#1A2D40 50%,#FD4638 100%)", textColor: "#fff" },
+  { id: "5",  label: "5 · Frase Mestre",     desc: "Slides interdependentes",        preview: "linear-gradient(160deg,#0D1B2A 0%,#1A2D40 45%,#0A0F14 100%)", textColor: "#fff" },
 ];
 
 export function TemplatePicker({ value, onChange }: Props) {
-  // Load Wavy fonts once
   useEffect(() => {
     FONT_LINKS.forEach((href) => {
       if (document.querySelector(`link[href="${href}"]`)) return;
@@ -28,7 +28,7 @@ export function TemplatePicker({ value, onChange }: Props) {
   }, []);
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
       {OPTIONS.map((o) => (
         <button
           key={o.id}

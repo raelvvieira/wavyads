@@ -3,26 +3,40 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 import { buildWavyPrompt } from "./wavy-skill.ts";
 
+type PatternId = "1A" | "1B" | "2A" | "2B" | "3" | "4" | "5";
+
 interface ReqBody {
   visual_prompt: string;
-  formato: "carrossel_imagem" | "carrossel_texto" | "carrossel_lista" | "post_unico";
+  /** Novo: pattern_id da Wavy Copy Skill. Tem precedência sobre `formato`. */
+  pattern_id?: PatternId;
+  /** Legacy: formato antigo. Mantido para compat. */
+  formato?: "carrossel_imagem" | "carrossel_texto" | "carrossel_lista" | "post_unico";
   tema: string;
   estilo_global?: string;
   slide_index: number;
   slide_titulo?: string;
   slide_corpo?: string;
-  /** Wavy skill: id do estilo (ceo_hiperreal, cinematico, etc.). Default = gradiente_atmosferico. */
   style_id?: string;
-  /** Sufixo de composição: template_1_cover, post_frase_a, template_4_virada, etc. */
+  /** Sufixo de composição (ex: template_1a_step, template_2b_dark). Override opcional. */
   template_id?: string;
-  /** Sujeito identificado (CEO name, pessoa, marca) — opcional, refina o prompt. */
   sujeito?: string;
 }
 
 type GeminiModel = "gemini-3.1-flash-image-preview" | "gemini-3-pro-image-preview" | "gemini-2.5-flash-image";
 const DEFAULT_MODEL: GeminiModel = "gemini-3.1-flash-image-preview";
 
-function defaultTemplateFromFormato(f: ReqBody["formato"]): string {
+function defaultTemplateFromPattern(p?: PatternId): string {
+  switch (p) {
+    case "1A": return "template_1a_step";
+    case "1B": return "template_1b_contrast";
+    case "2A": return "template_2a_editorial";
+    case "2B": return "template_2b_dark";
+    case "4":  return "post_frase_a";
+    case "5":  return "template_5_master";
+    default:   return "template_1_cover";
+  }
+}
+function defaultTemplateFromFormato(f?: ReqBody["formato"]): string {
   if (f === "carrossel_texto" || f === "post_unico") return "post_frase_a";
   if (f === "carrossel_lista") return "template_1_content";
   return "template_1_cover";
@@ -40,9 +54,12 @@ Deno.serve(async (req) => {
       });
     }
 
+    const templateSuffix = body.template_id
+      || (body.pattern_id ? defaultTemplateFromPattern(body.pattern_id) : defaultTemplateFromFormato(body.formato));
+
     const { prompt, style_id, caminho } = buildWavyPrompt({
       style_id: body.style_id,
-      template_id: body.template_id || defaultTemplateFromFormato(body.formato),
+      template_id: templateSuffix,
       visual_prompt: body.visual_prompt,
       tema: body.tema,
       slide_titulo: body.slide_titulo,

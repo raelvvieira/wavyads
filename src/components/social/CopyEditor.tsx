@@ -8,10 +8,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { recordAiUsage } from "@/lib/aiUsageTracker";
 import { cn } from "@/lib/utils";
-import type { CopyAprovada, Slide, ReelCena, Formato, SlideTipo } from "@/types/social";
+import type { CopyAprovada, Slide, ReelCena, CopyPatternId, SlideTipo } from "@/types/social";
 
 interface Props {
-  formato: Formato;
+  patternId: CopyPatternId;
   tema: string;
   initial: CopyAprovada;
   onApprove: (copy: CopyAprovada) => void;
@@ -28,14 +28,14 @@ const TIPO_BADGE: Record<SlideTipo, { label: string; cls: string }> = {
   cta: { label: "CTA", cls: "bg-blue-500/20 text-blue-300 border-blue-500/40" },
 };
 
-export function CopyEditor({ formato, tema, initial, onApprove, onRegenAll }: Props) {
+export function CopyEditor({ patternId, tema, initial, onApprove, onRegenAll }: Props) {
   const [copy, setCopy] = useState<CopyAprovada>(initial);
   const [rewriteOpen, setRewriteOpen] = useState<number | null>(null);
   const [rewriteText, setRewriteText] = useState("");
   const [rewriteLoading, setRewriteLoading] = useState(false);
   const [newHashtag, setNewHashtag] = useState("");
 
-  const isReel = formato === "reel";
+  const isReel = patternId === "3";
 
   const updateSlide = (i: number, patch: Partial<Slide>) => {
     setCopy((c) => ({
@@ -61,7 +61,7 @@ export function CopyEditor({ formato, tema, initial, onApprove, onRegenAll }: Pr
           mode: "rewrite",
           slide: target,
           instrucao: rewriteText.trim(),
-          contexto: { tema, formato },
+          contexto: { tema, pattern_id: patternId },
         },
       });
       if (error) throw error;
@@ -94,7 +94,7 @@ export function CopyEditor({ formato, tema, initial, onApprove, onRegenAll }: Pr
       <GlassCard>
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <div className="text-xs uppercase tracking-wider text-accent">Etapa 3 · Copy</div>
+            <div className="text-xs uppercase tracking-wider text-accent">Etapa 3 · Copy · Padrão {patternId}</div>
             <h2 className="text-lg font-semibold">Edite cada {isReel ? "cena" : "slide"} antes de aprovar</h2>
           </div>
           <button
@@ -106,7 +106,6 @@ export function CopyEditor({ formato, tema, initial, onApprove, onRegenAll }: Pr
         </div>
       </GlassCard>
 
-      {/* slides ou roteiro */}
       {!isReel &&
         copy.slides?.map((s, i) => (
           <GlassCard key={i}>
@@ -118,10 +117,7 @@ export function CopyEditor({ formato, tema, initial, onApprove, onRegenAll }: Pr
                 </Badge>
               </div>
               <button
-                onClick={() => {
-                  setRewriteOpen(i);
-                  setRewriteText("");
-                }}
+                onClick={() => { setRewriteOpen(i); setRewriteText(""); }}
                 className="glass rounded-md p-1.5 hover:bg-white/10"
                 title="Reescrever este slide"
               >
@@ -149,9 +145,7 @@ export function CopyEditor({ formato, tema, initial, onApprove, onRegenAll }: Pr
           <GlassCard key={i}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="border-accent/40 bg-accent/10 text-accent">
-                  CENA {i + 1}
-                </Badge>
+                <Badge variant="outline" className="border-accent/40 bg-accent/10 text-accent">CENA {i + 1}</Badge>
                 <input
                   value={c.tempo}
                   onChange={(e) => updateCena(i, { tempo: e.target.value })}
@@ -159,10 +153,7 @@ export function CopyEditor({ formato, tema, initial, onApprove, onRegenAll }: Pr
                 />
               </div>
               <button
-                onClick={() => {
-                  setRewriteOpen(i);
-                  setRewriteText("");
-                }}
+                onClick={() => { setRewriteOpen(i); setRewriteText(""); }}
                 className="glass rounded-md p-1.5 hover:bg-white/10"
               >
                 <RotateCw className="h-3.5 w-3.5" />
@@ -185,7 +176,6 @@ export function CopyEditor({ formato, tema, initial, onApprove, onRegenAll }: Pr
           </GlassCard>
         ))}
 
-      {/* Legenda */}
       <GlassCard>
         <h3 className="text-sm font-semibold mb-2">Legenda</h3>
         <Textarea
@@ -196,7 +186,6 @@ export function CopyEditor({ formato, tema, initial, onApprove, onRegenAll }: Pr
         />
       </GlassCard>
 
-      {/* Hashtags */}
       <GlassCard>
         <h3 className="text-sm font-semibold mb-3">Hashtags</h3>
         <div className="flex flex-wrap gap-2 mb-3">
@@ -206,9 +195,7 @@ export function CopyEditor({ formato, tema, initial, onApprove, onRegenAll }: Pr
               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-accent/10 border border-accent/30 text-xs text-accent"
             >
               {h}
-              <button onClick={() => removeHashtag(i)} className="hover:text-white">
-                <X className="h-3 w-3" />
-              </button>
+              <button onClick={() => removeHashtag(i)} className="hover:text-white"><X className="h-3 w-3" /></button>
             </span>
           ))}
         </div>
@@ -220,27 +207,19 @@ export function CopyEditor({ formato, tema, initial, onApprove, onRegenAll }: Pr
             placeholder="adicionar hashtag"
             className="glass-input flex-1 rounded-lg px-3 py-2 text-sm"
           />
-          <button onClick={addHashtag} className="glass rounded-lg px-3 hover:bg-white/5">
-            <Plus className="h-4 w-4" />
-          </button>
+          <button onClick={addHashtag} className="glass rounded-lg px-3 hover:bg-white/5"><Plus className="h-4 w-4" /></button>
         </div>
       </GlassCard>
 
       <div className="flex justify-end pt-2">
-        <button
-          onClick={() => onApprove(copy)}
-          className="btn-accent rounded-lg px-6 py-3 text-sm font-semibold inline-flex items-center gap-2"
-        >
+        <button onClick={() => onApprove(copy)} className="btn-accent rounded-lg px-6 py-3 text-sm font-semibold inline-flex items-center gap-2">
           <Check className="h-4 w-4" /> Aprovar Copy →
         </button>
       </div>
 
-      {/* dialog rewrite */}
       <Dialog open={rewriteOpen !== null} onOpenChange={(o) => !o && setRewriteOpen(null)}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reescrever {isReel ? "cena" : "slide"}</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Reescrever {isReel ? "cena" : "slide"}</DialogTitle></DialogHeader>
           <Textarea
             value={rewriteText}
             onChange={(e) => setRewriteText(e.target.value)}
@@ -248,12 +227,7 @@ export function CopyEditor({ formato, tema, initial, onApprove, onRegenAll }: Pr
             rows={4}
           />
           <DialogFooter>
-            <button
-              onClick={() => setRewriteOpen(null)}
-              className="glass rounded-lg px-4 py-2 text-sm"
-            >
-              Cancelar
-            </button>
+            <button onClick={() => setRewriteOpen(null)} className="glass rounded-lg px-4 py-2 text-sm">Cancelar</button>
             <button
               onClick={handleRewrite}
               disabled={rewriteLoading || !rewriteText.trim()}

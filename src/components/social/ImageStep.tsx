@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { GlassCard } from "@/components/GlassCard";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Check, Loader2, Upload, RotateCw, ImageIcon, ChevronDown } from "lucide-react";
+import { Sparkles, Check, Loader2, Upload, RotateCw, ImageIcon } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -10,12 +10,12 @@ import { toast } from "@/hooks/use-toast";
 import { recordAiUsage } from "@/lib/aiUsageTracker";
 import { cn } from "@/lib/utils";
 import {
-  WAVY_STYLES, suggestStyle, getStyle, templateSuffixFromFormato,
+  WAVY_STYLES, suggestStyle, getStyle, templateSuffixFromPattern,
 } from "@/lib/wavyImageStyles";
-import type { CopyAprovada, Formato, Slide, SlideImagem } from "@/types/social";
+import type { CopyAprovada, CopyPatternId, SlideImagem } from "@/types/social";
 
 interface Props {
-  formato: Exclude<Formato, "reel">;
+  patternId: CopyPatternId;
   tema: string;
   copy: CopyAprovada;
   estiloGlobal?: string;
@@ -23,16 +23,15 @@ interface Props {
   onApprove: (imagens: SlideImagem[]) => void;
 }
 
-export function ImageStep({ formato, tema, copy, estiloGlobal, initial, onApprove }: Props) {
+export function ImageStep({ patternId, tema, copy, estiloGlobal, initial, onApprove }: Props) {
   const slides = copy.slides || [];
-  const templateId = templateSuffixFromFormato(formato);
+  const templateId = templateSuffixFromPattern(patternId);
 
-  // Estado: imagem + estilo escolhido por slide (sugerido inicialmente).
   const [images, setImages] = useState<(SlideImagem | null)[]>(() =>
     slides.map((_, i) => initial?.find((x) => x.slide_index === i) || null),
   );
   const [styleByIdx, setStyleByIdx] = useState<string[]>(() =>
-    slides.map((s, i) => initial?.[i]?.style_id || suggestStyle(s, tema).id),
+    slides.map((s, i) => initial?.[i]?.style_id || suggestStyle(s, tema, patternId).id),
   );
   const [loadingIdx, setLoadingIdx] = useState<number | null>(null);
   const [batch, setBatch] = useState<{ done: number; total: number } | null>(null);
@@ -61,7 +60,8 @@ export function ImageStep({ formato, tema, copy, estiloGlobal, initial, onApprov
       const { data, error } = await supabase.functions.invoke("social-image-gen", {
         body: {
           visual_prompt: slide.visual_prompt,
-          formato, tema, estilo_global: estiloGlobal,
+          pattern_id: patternId,
+          tema, estilo_global: estiloGlobal,
           slide_index: i,
           slide_titulo: slide.titulo,
           slide_corpo: slide.corpo,
@@ -133,7 +133,7 @@ export function ImageStep({ formato, tema, copy, estiloGlobal, initial, onApprov
       <GlassCard>
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <div className="text-xs uppercase tracking-wider text-accent">Etapa 4 · Imagens</div>
+            <div className="text-xs uppercase tracking-wider text-accent">Etapa 4 · Imagens · Padrão {patternId}</div>
             <h2 className="text-lg font-semibold">Wavy Image Skill</h2>
             <p className="text-xs text-white/50 mt-1">
               Cada slide tem um estilo sugerido e um caminho (IA ou Upload). Você pode trocar antes de gerar.
@@ -165,7 +165,6 @@ export function ImageStep({ formato, tema, copy, estiloGlobal, initial, onApprov
                 </Badge>
               </div>
 
-              {/* Sugestão / seletor de estilo */}
               <Select value={style.id} onValueChange={(v) => setStyle(i, v)}>
                 <SelectTrigger className="glass-input h-9 text-xs">
                   <SelectValue>
@@ -191,7 +190,6 @@ export function ImageStep({ formato, tema, copy, estiloGlobal, initial, onApprov
               </Select>
               <p className="text-[11px] text-white/50 mt-2 leading-snug">{style.resumo}</p>
 
-              {/* Preview */}
               <div className="aspect-[3/4] mt-3 rounded-lg overflow-hidden bg-white/[0.03] border border-white/10 relative">
                 {img ? (
                   <img src={img.url} alt="" className="w-full h-full object-cover" />
@@ -219,7 +217,6 @@ export function ImageStep({ formato, tema, copy, estiloGlobal, initial, onApprov
               <p className="text-xs font-semibold text-white/80 mt-3 line-clamp-1">{slide.titulo}</p>
               <p className="text-[11px] text-white/40 line-clamp-2 mt-0.5">{slide.visual_prompt}</p>
 
-              {/* Ações: 2 caminhos */}
               <div className="grid grid-cols-2 gap-2 mt-3">
                 <button
                   onClick={() => generateOne(i)}
