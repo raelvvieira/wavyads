@@ -54,9 +54,12 @@ Deno.serve(async (req) => {
       });
     }
 
+    const templateSuffix = body.template_id
+      || (body.pattern_id ? defaultTemplateFromPattern(body.pattern_id) : defaultTemplateFromFormato(body.formato));
+
     const { prompt, style_id, caminho } = buildWavyPrompt({
       style_id: body.style_id,
-      template_id: body.template_id || defaultTemplateFromFormato(body.formato),
+      template_id: templateSuffix,
       visual_prompt: body.visual_prompt,
       tema: body.tema,
       slide_titulo: body.slide_titulo,
