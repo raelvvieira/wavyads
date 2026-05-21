@@ -167,6 +167,7 @@ Reference: Torkil Gudnason, Cartier macro advertising.
 };
 
 const TEMPLATE_SUFFIXES: Record<string, string> = {
+  // Legacy
   template_1_cover:
     "\n\nCOMPOSITION: Vertical 3:4 portrait 1080x1350px. Top 15% darker/less detail for title. Bottom 15% darker for navigation.",
   template_1_content:
@@ -179,6 +180,17 @@ const TEMPLATE_SUFFIXES: Record<string, string> = {
     "\n\nCOMPOSITION: Vertical 3:4. Person upper 60-65%. Lower 35-40% transitions to darker simpler area for text overlay.",
   template_4_virada:
     "\n\nCOMPOSITION: Vertical 3:4. Subject fills top 55%. Lower 40% darker simpler area for numerical data overlay.",
+  // Wavy pattern-aligned
+  template_1a_step:
+    "\n\nCOMPOSITION: Vertical 3:4 LIGHT background. Subject upper 60%; bottom 40% lighter/cleaner area for step instruction text. Bright and tutorial-friendly.",
+  template_1b_contrast:
+    "\n\nCOMPOSITION: Vertical 3:4 DARK background. Center vertical axis kept clean for split contrast text overlay. Heavy chiaroscuro, two-tone mood.",
+  template_2a_editorial:
+    "\n\nCOMPOSITION: Vertical 3:4 EDITORIAL light, Bloomberg/Wired magazine quality. Subject occupies upper 65%, lower 35% naturally darker for body text. Real photojournalism feel.",
+  template_2b_dark:
+    "\n\nCOMPOSITION: Vertical 3:4 EDITORIAL DARK with cinematic chiaroscuro. Subject in shadow with single key light. Bottom 35% deep black for long provocative headline.",
+  template_5_master:
+    "\n\nCOMPOSITION: Vertical 3:4. Centered minimal icon or abstract gradient. Top 25% AND bottom 35% kept dark/clean for tese/antítese text overlay. Symmetric and meditative.",
 };
 
 export function buildWavyPrompt(params: {
