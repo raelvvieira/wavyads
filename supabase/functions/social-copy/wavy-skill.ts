@@ -32,20 +32,26 @@ OBRIGATÓRIO:
 - Dado concreto ancora qualquer claim (número, %, exemplo real, comparação).
 - Termos do nicho com naturalidade: ROAS, CPA, CPL, CAC, LTV, pixel, evento de conversão, funil, criativo, gestor de tráfego, Meta Ads, Google Ads, rastreamento.
 - Progressão real entre slides. Se inverter a ordem ainda fizer sentido, está errado.
+- O padrão narrativo define COMO estruturar (sequência, tom, tipos de slide). O assunto, os dados, os exemplos e os personagens vêm SEMPRE do briefing e da copy de referência. Nunca invente veículos narrativos (empresas, casos, personagens, números) quando o assunto real está disponível.
 
 ## OS 5 FORMATOS
 
 ### 1A — Carrossel Tutorial (estilo Rony Meisler)
-Tema com passos executáveis. Cover: "BREAKING: [novidade]" + promessa + urgência ("Salva antes que todo concorrente seu use"). Slides 2..N-2: "Passo X: [verbo]" + instrução direta 2-4 linhas. Slide N-1: virada confessional. Slide N: palavra-chave + ancoragem de preço + urgência.
+Tema com passos executáveis. Cover: abre com a novidade ou dado central extraído do briefing. Pode usar prefixo "BREAKING:" quando o assunto é genuinamente novo ou revelador. Urgência deve derivar do assunto real ("Salva antes que" só se fizer sentido para o tema). Slides 2..N-2: "Passo X: [verbo]" + instrução direta 2-4 linhas. Slide N-1: virada confessional. Slide N: CTA com palavra-chave + elemento de urgência real extraído do briefing (preço, prazo, escassez — só inclua se estiver na copy de referência ou briefing, nunca invente).
 
 ### 1B — Carrossel Conflito de Dois Mundos (estilo Mazza Caio)
-Cover: afirmação provocadora + pergunta que divide + "Arrasta e aprenda →". Slides 2-3: nomeia o vilão (comportamento/sistema/crença, nunca pessoa) com metáfora. Slide de contraste numérico (dois personagens, mesma partida, resultados opostos com números). Slide de revelação ("O que separa..."). CTA com palavra-chave.
+Cover: afirmação provocadora + pergunta que divide + "Arrasta e aprenda →". Slides 2-3: nomeia o vilão (comportamento/sistema/crença, nunca pessoa) com metáfora. Slide de contraste numérico: usa os dados reais do briefing para mostrar dois cenários, comportamentos ou resultados opostos. Os números devem vir do briefing ou copy de referência. Se não houver dados numéricos disponíveis, use contraste qualitativo forte em vez de inventar números. Slide de revelação ("O que separa..."). CTA com palavra-chave.
 
-### 2A — Carrossel Storytelling Analítico (estilo Leo BRF caso Nestlé)
-Caso real de empresa como veículo para princípio. Cover: "Como [empresa] fez [resultado] e ninguém percebeu". Slides: título conceitual curto (máx 6 palavras, sem verbo às vezes) + 3-4 linhas encadeadas + foto editorial real. Slide de expansão: "O mesmo mecanismo aparece em...". Final: vira a câmera com pergunta que incomoda.
+### 2A — Carrossel Storytelling Analítico (tom jornalístico-analítico)
+Tom: jornalístico, analítico, baseado em dados. Cada slide expande o anterior com lógica encadeada.
+Cover: abre com o dado, revelação ou mecanismo central do assunto real do briefing. Estruturas possíveis: "Como [sujeito do briefing] [resultado concreto] e ninguém percebeu" OU "[Dado do briefing]: o que isso significa para quem trabalha com [nicho]".
+Slides intermediários: título conceitual curto (máx 6 palavras) + 3-4 linhas encadeadas e jornalísticas. Cada slide aprofunda um ângulo diferente do mesmo assunto central.
+Slide de expansão: mostra onde o mesmo mecanismo ou dado aparece em outro contexto do mesmo nicho.
+Final: pergunta que vira a câmera para o leitor e incomoda sua prática atual.
+REGRA CRÍTICA: o sujeito da narrativa é sempre o assunto real do briefing. Nunca substitua por empresa famosa externa quando o assunto real está disponível no briefing.
 
 ### 2B — Carrossel Editorial Dark com Cinema (estilo Marketing Insider)
-Tema filosófico/mentalidade. Cover: foto real cotidiana + título provocador longo no rodapé. Slides: manchete filosófica curta + 4-6 linhas com pelo menos uma analogia poderosa + cena de filme icônico (clima, não literal). Penúltimo: slide de escolha entre dois caminhos (ambos com custo). Final: palavra-chave.
+Tema filosófico/mentalidade. Cover: foto real cotidiana + título provocador longo no rodapé. Slides: manchete filosófica curta + 4-6 linhas com pelo menos uma analogia poderosa ancorada no assunto do briefing. Analogias devem iluminar o tema real, não substituí-lo. Penúltimo: slide de escolha entre dois caminhos (ambos com custo). Final: palavra-chave.
 Analogias modelo: "Gestor sem dado é arquiteto sem planta" / "Testar sem método é atirar no escuro".
 
 ### 3 — Reel
@@ -65,7 +71,7 @@ Três padrões de frase:
 Legenda em 5 movimentos: (1) observação do mundo, nunca "eu" / (2) aprofunda dor 3-5 linhas / (3) nomeia vilão 1-3 linhas / (4) virada 2-4 linhas / (5) CTA como consequência.
 
 ### 5 — Carrossel Frase Mestre Longa
-Argumento único desdobrado. Slides interdependentes. Cover duplo: tese topo + antítese embaixo. Slides intermediários: título bold no topo + ícone central minimalista + frase causa-efeito embaixo. Virada com foto editorial + prova social numérica. Final: conclusão + logo Wavy.
+Argumento único desdobrado. Slides interdependentes. Cover duplo: tese topo + antítese embaixo. Slides intermediários: título bold no topo + ícone central minimalista + frase causa-efeito embaixo. Virada com foto editorial + prova social numérica. Final: conclusão sintética que fecha o argumento. Mencione "Wavy Digital" no corpo apenas se o conteúdo for institucional ou o briefing indicar contexto de marca.
 
 ## PSICOLOGIA DE COPY
 

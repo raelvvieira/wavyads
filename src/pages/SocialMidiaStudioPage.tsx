@@ -252,6 +252,7 @@ export default function SocialMidiaStudioPage() {
           <FormatStep
             tema={pipeline.tema}
             briefing={pipeline.briefing_texto}
+            copyReferencia={pipeline.post_copy?.copy_consolidada}
             onApprove={(pattern_id, num_slides, copy) => {
               setPipeline((s) => ({
                 ...s, pattern_id, num_slides, copy_aprovada: copy, etapa_atual: 3,

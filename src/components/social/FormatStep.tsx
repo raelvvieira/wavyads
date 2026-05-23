@@ -11,10 +11,11 @@ import type { CopyPatternId, CopyAprovada } from "@/types/social";
 interface Props {
   tema: string;
   briefing: string;
+  copyReferencia?: string;
   onApprove: (pattern_id: CopyPatternId, num_slides: number, copy: CopyAprovada) => void;
 }
 
-export function FormatStep({ tema, briefing, onApprove }: Props) {
+export function FormatStep({ tema, briefing, copyReferencia, onApprove }: Props) {
   const [pattern, setPattern] = useState<CopyPatternId | null>(null);
   const [numSlides, setNumSlides] = useState(7);
   const [loading, setLoading] = useState(false);
@@ -27,7 +28,7 @@ export function FormatStep({ tema, briefing, onApprove }: Props) {
     setCopy(null);
     try {
       const { data, error } = await supabase.functions.invoke("social-copy", {
-        body: { mode: "pattern", pattern_id: pat, tema, briefing, num_slides: n },
+        body: { mode: "pattern", pattern_id: pat, tema, briefing, num_slides: n, copy_referencia: copyReferencia || "" },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Loader2, Search, RotateCw, Check, SkipForward } from "lucide-react";
+import { Loader2, Search, RotateCw, Check, SkipForward, Sparkles } from "lucide-react";
 import { GlassCard } from "@/components/GlassCard";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -14,27 +14,51 @@ interface Props {
   onApprove: (briefing: string, tema: string) => void;
 }
 
-
-function deriveTema(post: ViralPost | null, initialTema?: string): string {
-  if (initialTema) return initialTema;
+function captionFallback(post: ViralPost | null): string {
   if (!post) return "";
   const caption = (post.caption || "").replace(/\s+/g, " ").trim();
-  if (!caption) return `Conteúdo de @${post.username}`;
-  // primeiras 12 palavras como tema base
-  return caption.split(" ").slice(0, 12).join(" ");
+  return caption ? caption.split(" ").slice(0, 12).join(" ") : `Conteúdo de @${post.username}`;
 }
 
 export function ResearchStep({ post, initialTema, initialAngulo, copyReferencia, onApprove }: Props) {
-  const [tema, setTema] = useState(() => deriveTema(post, initialTema));
+  const [tema, setTema] = useState(initialTema || captionFallback(post));
+  const [generatingTema, setGeneratingTema] = useState(false);
   const [loading, setLoading] = useState(false);
   const [briefing, setBriefing] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setTema(deriveTema(post, initialTema));
     setBriefing("");
     setError(null);
-  }, [post, initialTema]);
+
+    // If initialTema is set (user returning to this step), use it as-is
+    if (initialTema) {
+      setTema(initialTema);
+      return;
+    }
+
+    const copy = copyReferencia?.trim() || "";
+    const isMeaningfulCopy = copy.length > 50 && !copy.startsWith("[");
+
+    if (post?.id && isMeaningfulCopy) {
+      setGeneratingTema(true);
+      setTema("");
+      supabase.functions
+        .invoke("social-tema-gen", { body: { copy_consolidada: copy } })
+        .then(({ data, error: fnErr }) => {
+          if (!fnErr && !data?.error && data?.tema) {
+            setTema(data.tema);
+          } else {
+            setTema(captionFallback(post));
+          }
+        })
+        .catch(() => setTema(captionFallback(post)))
+        .finally(() => setGeneratingTema(false));
+      return;
+    }
+
+    setTema(captionFallback(post));
+  }, [post, initialTema, copyReferencia]);
 
   const run = async () => {
     if (!tema.trim()) {
@@ -53,7 +77,6 @@ export function ResearchStep({ post, initialTema, initialAngulo, copyReferencia,
       setBriefing(data?.briefing || "");
       if (data?.briefing) recordAiUsage("text-claude-websearch", 1);
       if (!data?.briefing) setError("A pesquisa retornou vazia. Tente novamente.");
-
     } catch (e: any) {
       setError(e?.message || "Falha ao pesquisar");
     } finally {
@@ -72,20 +95,38 @@ export function ResearchStep({ post, initialTema, initialAngulo, copyReferencia,
     onApprove(fallback, tema.trim());
   };
 
+  // estado: gerando tema via IA
+  if (generatingTema) {
+    return (
+      <GlassCard className="max-w-2xl mx-auto">
+        <div className="text-center py-12">
+          <div className="inline-flex items-center gap-2 mb-4">
+            <Sparkles className="h-5 w-5 text-accent animate-pulse" />
+            <Loader2 className="h-5 w-5 text-accent animate-spin" />
+          </div>
+          <p className="text-base text-white/80">Analisando post viral e extraindo tema…</p>
+          <p className="text-xs text-white/40 mt-2">Identificando assunto com precisão técnica</p>
+        </div>
+      </GlassCard>
+    );
+  }
+
   // estado: pré-pesquisa
   if (!loading && !briefing) {
     return (
       <GlassCard className="max-w-2xl mx-auto">
         <div className="text-center py-6">
           <div className="text-xs uppercase tracking-wider text-accent mb-2">Etapa 2 · Pesquisa</div>
-          <h2 className="text-xl font-semibold mb-4">Tema detectado</h2>
+          <h2 className="text-xl font-semibold mb-1">Tema detectado</h2>
+          <p className="text-xs text-white/40 mb-4">
+            {copyReferencia ? "Gerado a partir da copy extraída — ajuste se necessário." : "Você pode ajustar o tema antes de pesquisar."}
+          </p>
           <input
             value={tema}
             onChange={(e) => setTema(e.target.value)}
-            className="glass-input w-full rounded-lg px-4 py-3 text-sm mb-2 text-center"
+            className="glass-input w-full rounded-lg px-4 py-3 text-sm mb-6 text-center"
             placeholder="Sobre o que pesquisar?"
           />
-          <p className="text-xs text-white/40 mb-6">Você pode ajustar o tema antes de pesquisar.</p>
           <div className="flex flex-col sm:flex-row gap-2 justify-center">
             <button
               onClick={run}
@@ -112,7 +153,7 @@ export function ResearchStep({ post, initialTema, initialAngulo, copyReferencia,
     );
   }
 
-  // estado: loading
+  // estado: loading pesquisa
   if (loading) {
     return (
       <GlassCard className="max-w-2xl mx-auto">

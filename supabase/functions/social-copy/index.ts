@@ -11,6 +11,7 @@ interface PatternReq {
   tema: string;
   briefing: string;
   num_slides?: number;
+  copy_referencia?: string;
 }
 interface RewriteReq {
   mode: "rewrite";
@@ -25,9 +26,10 @@ interface LegacyCarrosselReq {
   tema: string;
   briefing: string;
   num_slides: number;
+  copy_referencia?: string;
 }
-interface LegacyPostUnicoReq { mode: "post_unico"; tema: string; briefing: string }
-interface LegacyReelReq { mode: "reel"; tema: string; briefing: string }
+interface LegacyPostUnicoReq { mode: "post_unico"; tema: string; briefing: string; copy_referencia?: string }
+interface LegacyReelReq { mode: "reel"; tema: string; briefing: string; copy_referencia?: string }
 
 type Req = PatternReq | RewriteReq | LegacyCarrosselReq | LegacyPostUnicoReq | LegacyReelReq;
 
@@ -64,7 +66,12 @@ const JSON_REEL = `{
   "hashtags": ["#tag1"]
 }`;
 
-function build1A(tema: string, briefing: string, n: number) {
+function anchorBlock(copy_referencia?: string): string {
+  if (!copy_referencia?.trim()) return "";
+  return `\n\nÂNCORA OBRIGATÓRIA — Copy original do post viral de referência:\n"""\n${copy_referencia.trim().slice(0, 3000)}\n"""\nREGRAS DE USO DA ÂNCORA:\n- O conteúdo gerado DEVE ser sobre o mesmo assunto específico desta copy\n- Use os mesmos dados, estatísticas e argumentos centrais presentes nela\n- NÃO invente casos, empresas ou números que não estejam no briefing ou na âncora\n- Adapte o ângulo narrativo para o padrão solicitado, mas mantenha o assunto real`;
+}
+
+function build1A(tema: string, briefing: string, n: number, copy_referencia?: string) {
   return `PADRÃO 1A — CARROSSEL TUTORIAL (estilo Rony Meisler).
 Crie ${n} slides sobre "${tema}".
 
@@ -75,13 +82,13 @@ ESTRUTURA OBRIGATÓRIA:
 - Slide ${n} (cta): palavra-chave + ancoragem de preço + urgência. Ex: "Comenta MÉTODO. Próxima turma R$ 497, depois sobe."
 
 Briefing:
-${briefing}
+${briefing}${anchorBlock(copy_referencia)}
 
 Retorne JSON:
 ${JSON_CARROSSEL}`;
 }
 
-function build1B(tema: string, briefing: string, n: number) {
+function build1B(tema: string, briefing: string, n: number, copy_referencia?: string) {
   return `PADRÃO 1B — CARROSSEL CONFLITO DE DOIS MUNDOS (estilo Mazza Caio).
 Crie ${n} slides sobre "${tema}".
 
@@ -89,17 +96,17 @@ ESTRUTURA OBRIGATÓRIA:
 - Slide 1 (cover): afirmação provocadora + pergunta que divide os leitores + corpo "Arrasta e aprenda →".
 - Slides 2-3 (problema/agitacao): NOMEIA O VILÃO (comportamento, sistema ou crença, NUNCA pessoa) com metáfora forte. Use formato "O problema não é você. É [sistema/modelo/crença] que você foi ensinado a usar."
 - Slide ${Math.max(3, Math.floor(n / 2)) + 1} (prova, tipo="prova"): SLIDE DE CONTRASTE NUMÉRICO. Título curto. Corpo OBRIGATORIAMENTE com separador "|" entre os 2 lados (ex: "R$ 30k investido. R$ 12k retorno | R$ 30k investido. R$ 180k retorno"). Dois personagens, mesma partida, resultados opostos.
-- Slide ${n - 1} (solucao): REVELAÇÃO. "O que separa [A] de [B] não é [X], é [Y]." 
+- Slide ${n - 1} (solucao): REVELAÇÃO. "O que separa [A] de [B] não é [X], é [Y]."
 - Slide ${n} (cta): palavra-chave de comentário. Ex: "Comenta MÉTODO".
 
 Briefing:
-${briefing}
+${briefing}${anchorBlock(copy_referencia)}
 
 Retorne JSON:
 ${JSON_CARROSSEL}`;
 }
 
-function build2A(tema: string, briefing: string, n: number) {
+function build2A(tema: string, briefing: string, n: number, copy_referencia?: string) {
   return `PADRÃO 2A — CARROSSEL STORYTELLING ANALÍTICO (estilo Leo BRF / caso Nestlé).
 Crie ${n} slides sobre "${tema}". Use CASO REAL de empresa como veículo para o princípio.
 
@@ -112,13 +119,13 @@ ESTRUTURA OBRIGATÓRIA:
 Tom: jornalístico-analítico. Voz da Wavy (institucional, dados, ROAS/CAC quando couber).
 
 Briefing:
-${briefing}
+${briefing}${anchorBlock(copy_referencia)}
 
 Retorne JSON:
 ${JSON_CARROSSEL}`;
 }
 
-function build2B(tema: string, briefing: string, n: number) {
+function build2B(tema: string, briefing: string, n: number, copy_referencia?: string) {
   return `PADRÃO 2B — CARROSSEL EDITORIAL DARK COM CINEMA (estilo Marketing Insider).
 Crie ${n} slides sobre "${tema}". Tema filosófico ou de mentalidade.
 
@@ -131,13 +138,13 @@ ESTRUTURA OBRIGATÓRIA:
 Voz: do Rael (pessoal, "eu já vi", "sendo honesto") OU institucional Wavy. Detecte pelo briefing.
 
 Briefing:
-${briefing}
+${briefing}${anchorBlock(copy_referencia)}
 
 Retorne JSON:
 ${JSON_CARROSSEL}`;
 }
 
-function build3(tema: string, briefing: string) {
+function build3(tema: string, briefing: string, copy_referencia?: string) {
   return `PADRÃO 3 — REEL 15-60s.
 Tema: "${tema}".
 
@@ -149,13 +156,13 @@ ESTRUTURA TEMPORAL OBRIGATÓRIA (mínimo 5 cenas):
 - [50-60s] CTA específico (não "me segue"). Ex: "Salva porque você vai precisar quando escalar."
 
 Briefing:
-${briefing}
+${briefing}${anchorBlock(copy_referencia)}
 
 Retorne JSON:
 ${JSON_REEL}`;
 }
 
-function build4(tema: string, briefing: string) {
+function build4(tema: string, briefing: string, copy_referencia?: string) {
   return `PADRÃO 4 — POST FRASE.
 Tema: "${tema}". Uma imagem única com FRASE FORTE + legenda longa.
 
@@ -175,13 +182,13 @@ ESTRUTURA OBRIGATÓRIA:
   (5) CTA como consequência lógica.
 
 Briefing:
-${briefing}
+${briefing}${anchorBlock(copy_referencia)}
 
 Retorne JSON:
 ${JSON_CARROSSEL}`;
 }
 
-function build5(tema: string, briefing: string, n: number) {
+function build5(tema: string, briefing: string, n: number, copy_referencia?: string) {
   return `PADRÃO 5 — CARROSSEL FRASE MESTRE LONGA.
 Crie ${n} slides sobre "${tema}". Argumento ÚNICO desdobrado. Slides INTERDEPENDENTES (se inverter a ordem quebra).
 
@@ -192,7 +199,7 @@ ESTRUTURA OBRIGATÓRIA:
 - Slide ${n} (cta): CONCLUSÃO sintética + logo Wavy (mencione "Wavy Digital" no corpo).
 
 Briefing:
-${briefing}
+${briefing}${anchorBlock(copy_referencia)}
 
 Retorne JSON:
 ${JSON_CARROSSEL}`;
@@ -201,23 +208,23 @@ ${JSON_CARROSSEL}`;
 function buildPatternPrompt(p: PatternReq) {
   const n = p.num_slides || 7;
   switch (p.pattern_id) {
-    case "1A": return build1A(p.tema, p.briefing, n);
-    case "1B": return build1B(p.tema, p.briefing, n);
-    case "2A": return build2A(p.tema, p.briefing, n);
-    case "2B": return build2B(p.tema, p.briefing, n);
-    case "3":  return build3(p.tema, p.briefing);
-    case "4":  return build4(p.tema, p.briefing);
-    case "5":  return build5(p.tema, p.briefing, n);
+    case "1A": return build1A(p.tema, p.briefing, n, p.copy_referencia);
+    case "1B": return build1B(p.tema, p.briefing, n, p.copy_referencia);
+    case "2A": return build2A(p.tema, p.briefing, n, p.copy_referencia);
+    case "2B": return build2B(p.tema, p.briefing, n, p.copy_referencia);
+    case "3":  return build3(p.tema, p.briefing, p.copy_referencia);
+    case "4":  return build4(p.tema, p.briefing, p.copy_referencia);
+    case "5":  return build5(p.tema, p.briefing, n, p.copy_referencia);
   }
 }
 
 function legacyToPattern(req: LegacyCarrosselReq | LegacyPostUnicoReq | LegacyReelReq): PatternReq {
-  if (req.mode === "post_unico") return { mode: "pattern", pattern_id: "4", tema: req.tema, briefing: req.briefing };
-  if (req.mode === "reel") return { mode: "pattern", pattern_id: "3", tema: req.tema, briefing: req.briefing };
+  if (req.mode === "post_unico") return { mode: "pattern", pattern_id: "4", tema: req.tema, briefing: req.briefing, copy_referencia: req.copy_referencia };
+  if (req.mode === "reel") return { mode: "pattern", pattern_id: "3", tema: req.tema, briefing: req.briefing, copy_referencia: req.copy_referencia };
   const map: Record<string, PatternId> = {
     carrossel_imagem: "2A", carrossel_lista: "1A", carrossel_texto: "1B",
   };
-  return { mode: "pattern", pattern_id: map[req.formato] || "2A", tema: req.tema, briefing: req.briefing, num_slides: req.num_slides };
+  return { mode: "pattern", pattern_id: map[req.formato] || "2A", tema: req.tema, briefing: req.briefing, num_slides: req.num_slides, copy_referencia: req.copy_referencia };
 }
 
 function buildRewritePrompt(r: RewriteReq) {
