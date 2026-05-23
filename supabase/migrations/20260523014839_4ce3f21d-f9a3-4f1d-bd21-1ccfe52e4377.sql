@@ -1,0 +1,1 @@
+ALTER TABLE public.social_profiles ALTER COLUMN template_padrao SET DEFAULT '2A';
