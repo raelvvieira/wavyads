@@ -249,8 +249,8 @@ function DraftForm({
           className={inputCls}
           disabled={d.status === 'sending' || d.status === 'sent'}
         >
-          <option value="Purchase">Purchase (Compra)</option>
-          <option value="Lead">Lead</option>
+          <option value="Purchase" className="text-black bg-white">Purchase (Compra)</option>
+          <option value="Lead" className="text-black bg-white">Lead</option>
         </select>
       </div>
 
