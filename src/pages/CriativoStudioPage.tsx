@@ -484,7 +484,8 @@ A reference Story version of this same creative is attached as the FIRST image. 
         body: {
           prompt,
           aspectRatio: aspect,
-          model,
+          model: IMAGE_MODEL,
+          quality,
           productImages,
           logoImage: logoImage[0] || null,
           storyReference: null,
@@ -492,7 +493,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      const usageType = MODEL_OPTIONS.find((m) => m.id === model)?.usage || 'image-gemini-flash-2';
+      const usageType = MODEL_OPTIONS.find((m) => m.id === quality)?.usage || 'image-gemini-flash-2';
       recordAiUsage(usageType);
       setStoryImage((data as any).imageUrl);
       toast({ title: 'Imagem Story gerada' });
