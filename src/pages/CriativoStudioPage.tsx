@@ -521,7 +521,8 @@ A reference Story version of this same creative is attached as the FIRST image. 
         body: {
           prompt,
           aspectRatio: 'square',
-          model,
+          model: IMAGE_MODEL,
+          quality,
           isVariation: typeof target === 'number',
           productImages,
           logoImage: logoImage[0] || null,
@@ -530,7 +531,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      const usageType = MODEL_OPTIONS.find((m) => m.id === model)?.usage || 'image-gemini-flash-2';
+      const usageType = MODEL_OPTIONS.find((m) => m.id === quality)?.usage || 'image-gemini-flash-2';
       recordAiUsage(usageType);
       const url = (data as any).imageUrl as string;
       if (target === 'main') {
