@@ -59,11 +59,12 @@ interface CopyResult {
   justificativa: string;
 }
 
-type GeminiModel = 'gemini-2.5-flash-image' | 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview';
-const MODEL_OPTIONS: { id: GeminiModel; name: string; desc: string; usage: 'image-gemini-flash' | 'image-gemini-flash-2' | 'image-gemini-pro' }[] = [
-  { id: 'gemini-2.5-flash-image', name: 'Nano Banana', desc: 'Rápido e barato', usage: 'image-gemini-flash' },
-  { id: 'gemini-3.1-flash-image-preview', name: 'Nano Banana 2', desc: 'Rápido com qualidade Pro (recomendado)', usage: 'image-gemini-flash-2' },
-  { id: 'gemini-3-pro-image-preview', name: 'Nano Banana Pro', desc: 'Máxima qualidade, mais lento', usage: 'image-gemini-pro' },
+type ImageQuality = 'low' | 'medium' | 'high';
+const IMAGE_MODEL = 'gpt-image-2' as const;
+const MODEL_OPTIONS: { id: ImageQuality; name: string; desc: string; usage: 'image-gemini-flash' | 'image-gemini-flash-2' | 'image-gemini-pro' }[] = [
+  { id: 'low', name: 'Padrão', desc: 'Rápido e econômico', usage: 'image-gemini-flash' },
+  { id: 'medium', name: 'Recomendado', desc: 'Qualidade e velocidade', usage: 'image-gemini-flash-2' },
+  { id: 'high', name: 'Máxima qualidade', desc: 'Melhor resultado, mais lento', usage: 'image-gemini-pro' },
 ];
 
 const LANGUAGES = [
