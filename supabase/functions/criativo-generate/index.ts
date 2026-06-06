@@ -6,41 +6,38 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-type GeminiModel =
-  | "gemini-2.5-flash-image"
-  | "gemini-3-pro-image-preview"
-  | "gemini-3.1-flash-image-preview";
-
-const ALLOWED_MODELS: GeminiModel[] = [
-  "gemini-2.5-flash-image",
-  "gemini-3-pro-image-preview",
-  "gemini-3.1-flash-image-preview",
-];
-
-const DEFAULT_MODEL: GeminiModel = "gemini-3.1-flash-image-preview";
-
 interface GenerateBody {
   prompt: string;
   aspectRatio: "story" | "square";
-  model?: GeminiModel;
+  model?: string;
   isVariation?: boolean;
   productImages?: string[];
   logoImage?: string | null;
   storyReference?: string | null;
 }
 
-function parseDataUrl(dataUrl: string): { mime: string; data: string } | null {
+const EVOLINK_BASE_URL = "https://api.evolink.ai/v1";
+const MODEL_NAME = "gpt-image-2";
+
+function parseDataUrl(dataUrl: string): { mime: string; bytes: Uint8Array } | null {
   const m = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
   if (!m) return null;
-  return { mime: m[1], data: m[2] };
+  try {
+    const bin = atob(m[2]);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return { mime: m[1], bytes };
+  } catch {
+    return null;
+  }
 }
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY não configurada");
+    const EVOLINK_API_KEY = Deno.env.get("EVOLINK_API_KEY");
+    if (!EVOLINK_API_KEY) throw new Error("EVOLINK_API_KEY não configurada");
 
     const body = (await req.json()) as GenerateBody;
     const { prompt, aspectRatio } = body;
@@ -52,71 +49,66 @@ serve(async (req) => {
       });
     }
 
-    const model: GeminiModel = body.model && ALLOWED_MODELS.includes(body.model)
-      ? body.model
-      : DEFAULT_MODEL;
-
     const isStory = aspectRatio === "story";
     const aspectInstruction = isStory
-      ? "OUTPUT FORMAT: vertical 9:16 aspect ratio, 1080x1920px Instagram Story format."
-      : "OUTPUT FORMAT: perfect 1:1 square aspect ratio, 1080x1080px Instagram post format.";
+      ? "OUTPUT FORMAT: vertical 9:16 aspect ratio, 1080x1920px Instagram Story format. Render all text elements in Portuguese Brazil."
+      : "OUTPUT FORMAT: perfect 1:1 square aspect ratio, 1080x1080px Instagram post format. Render all text elements in Portuguese Brazil.";
+    const size = isStory ? "1024x1536" : "1024x1024";
 
-    // Build parts array: text + reference images (inline_data)
-    const parts: any[] = [];
-
+    // Collect reference images in required order
+    const refs: { mime: string; bytes: Uint8Array }[] = [];
     const productImages = Array.isArray(body.productImages) ? body.productImages : [];
-    const refBlobs: { mime: string; data: string }[] = [];
     for (const img of productImages.slice(0, 14)) {
       const p = parseDataUrl(img);
-      if (p) refBlobs.push(p);
+      if (p) refs.push(p);
     }
     if (body.logoImage) {
       const p = parseDataUrl(body.logoImage);
-      if (p) refBlobs.push(p);
+      if (p) refs.push(p);
     }
     if (!isStory && body.storyReference) {
       const p = parseDataUrl(body.storyReference);
-      if (p) refBlobs.push(p);
+      if (p) refs.push(p);
     }
 
-    const referenceHints = refBlobs.length > 0
-      ? `\n\n[REFERENCE IMAGES]\n${refBlobs.length} reference image(s) attached. Use them as the source of truth for the subject's appearance, brand logo and visual consistency. Do not invent new faces or alter the brand mark.`
+    const referenceHints = refs.length > 0
+      ? `\n\n[REFERENCE IMAGES]\n${refs.length} reference image(s) attached. Use them as the source of truth for the subject appearance, brand logo and visual style. Preserve faces exactly. Do not alter or recolor the brand logo.`
       : "";
 
     const fullPrompt = `${aspectInstruction}\n\n${prompt}${referenceHints}`;
 
-    parts.push({ text: fullPrompt });
-    for (const r of refBlobs) {
-      parts.push({ inline_data: { mime_type: r.mime, data: r.data } });
-    }
-    console.log("criativo-generate (gemini direct) →", {
-      model,
+    console.log("criativo-generate (evolink gpt-image-2) →", {
+      model: MODEL_NAME,
       aspectRatio,
       prompt_chars: fullPrompt.length,
-      refs: refBlobs.length,
+      refs: refs.length,
     });
 
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+    const form = new FormData();
+    form.append("model", MODEL_NAME);
+    form.append("prompt", fullPrompt);
+    form.append("n", "1");
+    form.append("size", size);
+    for (let i = 0; i < refs.length; i++) {
+      const r = refs[i];
+      const blob = new Blob([r.bytes], { type: r.mime || "image/png" });
+      const ext = (r.mime && r.mime.includes("jpeg")) ? "jpg" : (r.mime && r.mime.includes("webp")) ? "webp" : "png";
+      form.append("image[]", blob, `ref-${i}.${ext}`);
+    }
 
-    const resp = await fetch(endpoint, {
+    const resp = await fetch(`${EVOLINK_BASE_URL}/images/edits`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts }],
-        generationConfig: {
-          responseModalities: ["IMAGE"],
-        },
-      }),
+      headers: { Authorization: `Bearer ${EVOLINK_API_KEY}` },
+      body: form,
     });
 
     if (!resp.ok) {
       const t = await resp.text();
-      console.error("Gemini image error", resp.status, t);
+      console.error("EvoLink image error", resp.status, t.slice(0, 400));
       const status = resp.status;
-      let msg = `Gemini erro ${status}: ${t.slice(0, 400)}`;
-      if (status === 401 || status === 403) msg = "GEMINI_API_KEY inválida ou sem permissão para este modelo.";
-      else if (status === 429) msg = "Limite de uso da API Gemini atingido. Tente novamente em instantes.";
-      else if (status === 400 && /quota|billing/i.test(t)) msg = "Cota da API Gemini esgotada. Verifique sua chave no Google AI Studio.";
+      let msg = `EvoLink erro ${status}: ${t.slice(0, 400)}`;
+      if (status === 401 || status === 403) msg = "EVOLINK_API_KEY inválida ou sem permissão";
+      else if (status === 429) msg = "Limite de uso atingido. Tente novamente em instantes.";
       return new Response(JSON.stringify({ error: msg }), {
         status: status === 429 ? 429 : status === 401 || status === 403 ? 401 : 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -124,31 +116,15 @@ serve(async (req) => {
     }
 
     const data = await resp.json();
-    const candidateParts = data?.candidates?.[0]?.content?.parts ?? [];
-    let imageUrl: string | undefined;
-    for (const p of candidateParts) {
-      const inline = p.inline_data || p.inlineData;
-      if (inline?.data) {
-        const mime = inline.mime_type || inline.mimeType || "image/png";
-        imageUrl = `data:${mime};base64,${inline.data}`;
-        break;
-      }
+    const b64 = data?.data?.[0]?.b64_json;
+    if (!b64) {
+      console.error("Sem imagem na resposta EvoLink:", JSON.stringify(data).slice(0, 600));
+      throw new Error("EvoLink não retornou imagem");
     }
 
-    if (!imageUrl) {
-      console.error("Sem imagem na resposta Gemini:", JSON.stringify(data).slice(0, 600));
-      const blockReason = data?.promptFeedback?.blockReason;
-      const finishReason = data?.candidates?.[0]?.finishReason;
-      throw new Error(
-        blockReason
-          ? `Bloqueado pelo Gemini: ${blockReason}`
-          : finishReason && finishReason !== "STOP"
-          ? `Gemini parou: ${finishReason}`
-          : "Modelo não retornou imagem"
-      );
-    }
+    const imageUrl = `data:image/png;base64,${b64}`;
 
-    return new Response(JSON.stringify({ imageUrl, model }), {
+    return new Response(JSON.stringify({ imageUrl, model: MODEL_NAME }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
