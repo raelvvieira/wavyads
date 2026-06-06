@@ -324,84 +324,158 @@ export default function CriativoStudioPage() {
   };
 
   const buildFinalPrompt = (aspect: 'story' | 'square') => {
-    const dims = aspect === 'story'
-      ? '9:16 vertical Instagram Story, 1080x1920px'
-      : '1:1 perfect square Instagram post, 1080x1080px';
-    const safeZone = aspect === 'story'
-      ? 'Top safe zone: keep 280px from the very top edge completely free of any text, graphic or important element. Bottom safe zone: keep 280px from the very bottom edge completely free. This protects against Instagram UI overlays (profile, stickers, reply bar).'
-      : 'Top safe zone: keep 120px from the top edge clear of important text. Bottom safe zone: keep 120px from the bottom edge clear.';
+    const params = {
+      businessContext,
+      productImages,
+      logoImage: logoImage[0] || null,
+      designSystemDoc: editedDoc || analysis?.designSystemDoc || '',
+      aspectRatio: aspect,
+      selectedCopy,
+      rawCopy,
+      copySource,
+      mood: analysis?.mood || { adjetivos: [], referencias: [], evita: [] },
+      negativePrompt,
+      language,
+      storyReference: aspect === 'square' ? storyImage : null,
+    };
 
-    const intro = `[INTRODUCTION]
-Create a ${dims} advertisement image for ${businessContext.trim() || 'a professional brand'}.`;
+    const {
+      businessContext: businessContextP,
+      productImages: productImagesP,
+      logoImage: logoImageP,
+      designSystemDoc,
+      aspectRatio,
+      selectedCopy: selectedCopyP,
+      rawCopy: rawCopyP,
+      copySource: copySourceP,
+      mood,
+      negativePrompt: negativePromptP,
+      language: languageP,
+      storyReference,
+    } = params;
 
-    const photoBlock = productImages.length > 0
-      ? `[ATTACHED PHOTOS]
-${productImages.length} reference image(s) provided showing the product/person/scene that must appear in the composition.
-${preserveFaces ? 'Preserve their exact likeness. Do NOT alter faces, skin tone, body shape or appearance in any way. Treat the subject as a fixed reference.' : ''}
-Integrate the subject naturally into the composition described below.`
-      : '';
+    const lines: string[] = [];
 
-    const designSystem = editedDoc || analysis?.designSystemDoc || '';
-
-    const safe = `[SAFE ZONE]
-${safeZone}
-${aspect === 'square' ? 'Centered composition optimized for square 1:1 framing.' : ''}`;
-
-    // Text blocks from selected copy
-    let textBlocks = '';
-    if (copySource === 'ai' && selectedCopy) {
-      const parts: string[] = [];
-      if (selectedCopy.label) parts.push(`LABEL (top, small uppercase, wide tracking, secondary color): "${selectedCopy.label}"`);
-      if (selectedCopy.titulo) parts.push(`MAIN TITLE (dominant, large, primary typeface, high contrast): "${selectedCopy.titulo}"`);
-      if (selectedCopy.subtitulo) parts.push(`SUBTITLE (medium, secondary typeface, supports the title): "${selectedCopy.subtitulo}"`);
-      if (selectedCopy.dados) parts.push(`DATA LINE (small, factual: date/place/price/spots): "${selectedCopy.dados}"`);
-      if (selectedCopy.cta) parts.push(`CTA (pill or button, accent color, bold): "${selectedCopy.cta}"`);
-      textBlocks = `[TEXT BLOCKS]
-All text must be rendered exactly as written, in ${language === 'pt-BR' ? 'Portuguese (Brazil)' : language === 'es' ? 'Spanish' : 'English'}, with professional typography and perfect legibility.
-${parts.join('\n')}`;
-    } else if (copySource === 'original' && rawCopy.trim()) {
-      textBlocks = `[TEXT BLOCKS]
-Render the following exact text as overlay on the creative, in ${language === 'pt-BR' ? 'Portuguese (Brazil)' : language === 'es' ? 'Spanish' : 'English'}, professional typography, perfect legibility, do not paraphrase:
-"${rawCopy.trim()}"
-Distribute the text across the composition following the typography system and hierarchy from the design system above.`;
+    // [INTRODUCTION]
+    if (businessContextP?.trim()) {
+      lines.push(`[INTRODUCTION]\n${businessContextP.trim()}`);
     }
 
-    const logoBlock = logoImage.length > 0
-      ? `[BRAND LOGO]
-A brand logo is provided as a separate reference. Place it discreetly in a corner (top-left or bottom-right preferred), small, clean. Do NOT distort, recolor, recreate or redesign it — treat as a fixed brand asset.`
-      : '';
+    // [REFERENCE IMAGES]
+    const totalRefs = productImagesP.length + (logoImageP ? 1 : 0) + (!!(aspectRatio === 'square' && storyReference) ? 1 : 0);
+    if (totalRefs > 0) {
+      lines.push(
+        `[REFERENCE IMAGES]\n` +
+        `${productImagesP.length > 0 ? `- ${productImagesP.length} product/person image(s): use as the exact source of truth for faces, body, product appearance. Preserve every detail — do not alter faces, skin tone, hair, clothing or product shape.\n` : ''}` +
+        `${logoImageP ? `- 1 brand logo: place it discreetly in a corner. Do not distort, recolor or recreate the logo — use it exactly as provided.\n` : ''}` +
+        `${aspectRatio === 'square' && storyReference ? `- 1 story reference: maintain full visual consistency with this approved story version.\n` : ''}`
+      );
+    }
 
-    const moodBlock = analysis?.mood
-      ? `[MOOD]
-Feels like: ${analysis.mood.referencias.join(', ') || 'professional advertising'}.
-Tone: ${analysis.mood.adjetivos.join(', ')}.
-Not: ${analysis.mood.evita.join(', ')}.`
-      : '';
+    // [DESIGN SYSTEM]
+    if (designSystemDoc?.trim()) {
+      lines.push(`[DESIGN SYSTEM]\n${designSystemDoc.trim()}`);
+    }
 
-    const userNegatives = negativePrompt.trim()
-      ? negativePrompt.split('\n').map((l) => `- ${l.trim()}`).filter((l) => l.length > 2)
-      : [];
-    const evitaList = analysis?.mood.evita.map((e) => `- ${e}`) || [];
+    // [COMPOSITION]
+    lines.push(
+      `[COMPOSITION]\n` +
+      `Recreate the layout, proportions and element positioning exactly as defined in the Design System above.\n` +
+      `Maintain the same visual structure — do not invent new layouts.\n` +
+      `Every element must stay inside the safe zone: 60px margin on all sides.\n` +
+      `${aspectRatio === 'square' && storyReference ? 'Adapt the approved story composition to a perfect 1:1 square format while preserving all visual decisions.' : ''}`
+    );
 
-    const doNot = `[DO NOT INCLUDE]
-${[...evitaList, ...userNegatives].join('\n')}
-- Any element within the top or bottom safe zones
-- Any text in a language other than ${language === 'pt-BR' ? 'Portuguese (Brazil)' : language === 'es' ? 'Spanish' : 'English'}
-- Misspelled, garbled or fake-looking text
-- Watermarks, signatures, low-resolution artifacts
-- Generic stock-photo aesthetic`;
+    // [TEXT BLOCKS]
+    if (copySourceP === 'ai' && selectedCopyP) {
+      lines.push(
+        `[TEXT BLOCKS]\n` +
+        `Render the following text blocks exactly as written. Do not translate, paraphrase or alter any word.\n` +
+        `Use strong typographic hierarchy — each block must be visually distinct in size, weight and placement:\n\n` +
+        `LABEL: ${selectedCopyP.label}\n` +
+        `MAIN TITLE: ${selectedCopyP.titulo}\n` +
+        `SUBTITLE: ${selectedCopyP.subtitulo}\n` +
+        `${selectedCopyP.dados ? `DATA LINE: ${selectedCopyP.dados}\n` : ''}` +
+        `CTA: ${selectedCopyP.cta}`
+      );
+    } else if (rawCopyP?.trim()) {
+      lines.push(
+        `[TEXT BLOCKS]\n` +
+        `Render the following copy exactly as written. Do not translate, paraphrase or alter any word:\n\n` +
+        rawCopyP.trim()
+      );
+    }
 
-    const closing = `All text in the artwork MUST be written in ${language === 'pt-BR' ? 'Portuguese (Brazil)' : language === 'es' ? 'Spanish' : 'English'}. Final result: high quality, polished, professional advertising design, sharp typography, brand-grade composition.`;
+    // [PHOTOGRAPHY & LIGHTING]
+    const hasPersonOrProduct = productImagesP.length > 0;
+    if (hasPersonOrProduct) {
+      lines.push(
+        `[PHOTOGRAPHY & LIGHTING]\n` +
+        `Simulate professional advertising photography:\n` +
+        `- Soft frontal key light with gentle fill light balancing shadows\n` +
+        `- Subtle rim light to define subject contours\n` +
+        `- Natural cinematic lighting — no harsh shadows, no flat studio look\n` +
+        `- Realistic skin texture with natural pores and micro-details\n` +
+        `- No plastic skin, no artificial smoothing, no AI-generated appearance\n` +
+        `- Shallow depth of field to separate subject from background\n` +
+        `- Color grading consistent with the mood defined below`
+      );
+    }
 
-    const consistency = aspect === 'square' && storyImage
-      ? `[VISUAL CONSISTENCY — CRITICAL]
-A reference Story version of this same creative is attached as the FIRST image. The square version MUST replicate its EXACT color palette, lighting, color grading, photographic treatment, typography choices and overall mood. Only the framing/composition changes to fit a 1:1 square. Treat that Story as the visual ground truth — do NOT shift hues, saturation, contrast or styling.`
-      : '';
+    // [VISUAL QUALITY]
+    lines.push(
+      `[VISUAL QUALITY]\n` +
+      `The final result must look like a premium Brazilian advertising campaign created by a senior art director.\n` +
+      `- Agency-made appearance: polished, intentional, professional\n` +
+      `- Perfect typographic hierarchy: kerning balanced, tracking professional, no crowded text\n` +
+      `- Clean composition with generous negative space\n` +
+      `- Cinematic color grading: balanced contrast, refined sharpness, natural highlights\n` +
+      `- No visual pollution, no generic stock photo look, no clip-art elements\n` +
+      `- Luxury advertising finish: every detail considered`
+    );
 
-    return [intro, photoBlock, '[DESIGN SYSTEM]\n' + designSystem, safe, consistency, logoBlock, textBlocks, moodBlock, doNot, closing]
-      .filter(Boolean)
-      .join('\n\n');
+    // [MOOD]
+    if ((mood?.adjetivos?.length ?? 0) > 0 || (mood?.referencias?.length ?? 0) > 0) {
+      lines.push(
+        `[MOOD]\n` +
+        `${mood.adjetivos.length > 0 ? `Tone: ${mood.adjetivos.join(' · ')}\n` : ''}` +
+        `${mood.referencias.length > 0 ? `Visual references: ${mood.referencias.join(', ')}\n` : ''}`
+      );
+    }
+
+    // [DO NOT INCLUDE]
+    const doNotList: string[] = [];
+    if ((mood?.evita?.length ?? 0) > 0) doNotList.push(...mood.evita);
+    if (negativePromptP?.trim()) {
+      doNotList.push(...negativePromptP.trim().split('\n').map((l) => l.trim()).filter(Boolean));
+    }
+    doNotList.push(
+      'watermarks or signatures',
+      'text outside the defined safe zone',
+      'invented logos or brand marks',
+      'neon colors unless specified in the design system',
+      'heavy drop shadows unless specified',
+      'generic clip-art or stock illustration style',
+      'AI-generated appearance',
+    );
+    lines.push(`[DO NOT INCLUDE]\n${doNotList.map((i) => `- ${i}`).join('\n')}`);
+
+    // [LANGUAGE]
+    lines.push(
+      `[LANGUAGE]\n` +
+      `All text rendered inside the image must be in ${languageP || 'Português (BR)'}. ` +
+      `Do not use any other language for any text element inside the artwork.`
+    );
+
+    // Final instruction
+    lines.push(
+      `Generate a complete, polished professional advertising artwork. ` +
+      `Every decision — layout, typography, color, lighting, composition — must reflect the work of a senior art director at a top Brazilian advertising agency.`
+    );
+
+    return lines.join('\n\n');
   };
+
 
   const applyFatorCriativo = async () => {
     if (!storyImage && !squareImage) return;
