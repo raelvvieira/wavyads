@@ -988,16 +988,16 @@ A reference Story version of this same creative is attached as the FIRST image. 
 
           <div>
             <Label className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5 block">
-              Modelo de geração (Google Gemini)
+              Qualidade da geração (GPT Image 2)
             </Label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {MODEL_OPTIONS.map((m) => {
-                const active = model === m.id;
+                const active = quality === m.id;
                 return (
                   <button
                     key={m.id}
                     type="button"
-                    onClick={() => setModel(m.id)}
+                    onClick={() => setQuality(m.id)}
                     className={cn(
                       'glass rounded-lg px-3 py-2 text-left transition border',
                       active
@@ -1014,9 +1014,10 @@ A reference Story version of this same creative is attached as the FIRST image. 
               })}
             </div>
             <p className="text-[10px] text-white/40 mt-1.5">
-              As 5 variações do Fator Criativo usam <span className="text-white/70">o mesmo modelo selecionado acima</span>.
+              As 5 variações do Fator Criativo usam <span className="text-white/70">a mesma qualidade selecionada acima</span>.
             </p>
           </div>
+
 
           <div>
             <Label className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5 block">Idioma do texto na arte</Label>
