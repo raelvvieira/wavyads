@@ -437,7 +437,8 @@ A reference Story version of this same creative is attached as the FIRST image. 
               body: {
                 prompt: v.promptCompleto,
                 aspectRatio: aspect,
-                model,
+                model: IMAGE_MODEL,
+                quality,
                 isVariation: true,
                 productImages,
                 logoImage: logoImage[0] || null,
@@ -446,7 +447,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
             });
             if (ge) throw ge;
             if ((gd as any)?.error) throw new Error((gd as any).error);
-            recordAiUsage(MODEL_OPTIONS.find((m) => m.id === model)?.usage || 'image-gemini-flash-2');
+            recordAiUsage(MODEL_OPTIONS.find((m) => m.id === quality)?.usage || 'image-gemini-flash-2');
             setFactorImages((prev) => {
               const next = [...prev];
               next[i] = (gd as any).imageUrl;
