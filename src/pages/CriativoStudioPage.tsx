@@ -59,11 +59,12 @@ interface CopyResult {
   justificativa: string;
 }
 
-type GeminiModel = 'gemini-2.5-flash-image' | 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview';
-const MODEL_OPTIONS: { id: GeminiModel; name: string; desc: string; usage: 'image-gemini-flash' | 'image-gemini-flash-2' | 'image-gemini-pro' }[] = [
-  { id: 'gemini-2.5-flash-image', name: 'Nano Banana', desc: 'Rápido e barato', usage: 'image-gemini-flash' },
-  { id: 'gemini-3.1-flash-image-preview', name: 'Nano Banana 2', desc: 'Rápido com qualidade Pro (recomendado)', usage: 'image-gemini-flash-2' },
-  { id: 'gemini-3-pro-image-preview', name: 'Nano Banana Pro', desc: 'Máxima qualidade, mais lento', usage: 'image-gemini-pro' },
+type ImageQuality = 'low' | 'medium' | 'high';
+const IMAGE_MODEL = 'gpt-image-2' as const;
+const MODEL_OPTIONS: { id: ImageQuality; name: string; desc: string; usage: 'image-gemini-flash' | 'image-gemini-flash-2' | 'image-gemini-pro' }[] = [
+  { id: 'low', name: 'Padrão', desc: 'Rápido e econômico', usage: 'image-gemini-flash' },
+  { id: 'medium', name: 'Recomendado', desc: 'Qualidade e velocidade', usage: 'image-gemini-flash-2' },
+  { id: 'high', name: 'Máxima qualidade', desc: 'Melhor resultado, mais lento', usage: 'image-gemini-pro' },
 ];
 
 const LANGUAGES = [
@@ -105,7 +106,7 @@ export default function CriativoStudioPage() {
   const [preserveFaces, setPreserveFaces] = useState(true);
 
   // Step 4
-  const [model, setModel] = useState<GeminiModel>('gemini-3.1-flash-image-preview');
+  const [quality, setQuality] = useState<ImageQuality>('medium');
   const [language, setLanguage] = useState<string>('pt-BR');
   const [businessContext, setBusinessContext] = useState('');
   const [negativePrompt, setNegativePrompt] = useState('');
@@ -436,7 +437,8 @@ A reference Story version of this same creative is attached as the FIRST image. 
               body: {
                 prompt: v.promptCompleto,
                 aspectRatio: aspect,
-                model,
+                model: IMAGE_MODEL,
+                quality,
                 isVariation: true,
                 productImages,
                 logoImage: logoImage[0] || null,
@@ -445,7 +447,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
             });
             if (ge) throw ge;
             if ((gd as any)?.error) throw new Error((gd as any).error);
-            recordAiUsage(MODEL_OPTIONS.find((m) => m.id === model)?.usage || 'image-gemini-flash-2');
+            recordAiUsage(MODEL_OPTIONS.find((m) => m.id === quality)?.usage || 'image-gemini-flash-2');
             setFactorImages((prev) => {
               const next = [...prev];
               next[i] = (gd as any).imageUrl;
@@ -482,7 +484,8 @@ A reference Story version of this same creative is attached as the FIRST image. 
         body: {
           prompt,
           aspectRatio: aspect,
-          model,
+          model: IMAGE_MODEL,
+          quality,
           productImages,
           logoImage: logoImage[0] || null,
           storyReference: null,
@@ -490,7 +493,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      const usageType = MODEL_OPTIONS.find((m) => m.id === model)?.usage || 'image-gemini-flash-2';
+      const usageType = MODEL_OPTIONS.find((m) => m.id === quality)?.usage || 'image-gemini-flash-2';
       recordAiUsage(usageType);
       setStoryImage((data as any).imageUrl);
       toast({ title: 'Imagem Story gerada' });
@@ -518,7 +521,8 @@ A reference Story version of this same creative is attached as the FIRST image. 
         body: {
           prompt,
           aspectRatio: 'square',
-          model,
+          model: IMAGE_MODEL,
+          quality,
           isVariation: typeof target === 'number',
           productImages,
           logoImage: logoImage[0] || null,
@@ -527,7 +531,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      const usageType = MODEL_OPTIONS.find((m) => m.id === model)?.usage || 'image-gemini-flash-2';
+      const usageType = MODEL_OPTIONS.find((m) => m.id === quality)?.usage || 'image-gemini-flash-2';
       recordAiUsage(usageType);
       const url = (data as any).imageUrl as string;
       if (target === 'main') {
@@ -987,16 +991,16 @@ A reference Story version of this same creative is attached as the FIRST image. 
 
           <div>
             <Label className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5 block">
-              Modelo de geração (Google Gemini)
+              Qualidade da geração (GPT Image 2)
             </Label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {MODEL_OPTIONS.map((m) => {
-                const active = model === m.id;
+                const active = quality === m.id;
                 return (
                   <button
                     key={m.id}
                     type="button"
-                    onClick={() => setModel(m.id)}
+                    onClick={() => setQuality(m.id)}
                     className={cn(
                       'glass rounded-lg px-3 py-2 text-left transition border',
                       active
@@ -1013,9 +1017,10 @@ A reference Story version of this same creative is attached as the FIRST image. 
               })}
             </div>
             <p className="text-[10px] text-white/40 mt-1.5">
-              As 5 variações do Fator Criativo usam <span className="text-white/70">o mesmo modelo selecionado acima</span>.
+              As 5 variações do Fator Criativo usam <span className="text-white/70">a mesma qualidade selecionada acima</span>.
             </p>
           </div>
+
 
           <div>
             <Label className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5 block">Idioma do texto na arte</Label>
