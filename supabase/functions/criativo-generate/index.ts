@@ -10,6 +10,7 @@ interface GenerateBody {
   prompt: string;
   aspectRatio: "story" | "square";
   model?: string;
+  quality?: "low" | "medium" | "high";
   isVariation?: boolean;
   productImages?: string[];
   logoImage?: string | null;
@@ -84,11 +85,13 @@ serve(async (req) => {
       refs: refs.length,
     });
 
+    const quality = body.quality ?? "medium";
     const form = new FormData();
     form.append("model", MODEL_NAME);
     form.append("prompt", fullPrompt);
     form.append("n", "1");
     form.append("size", size);
+    form.append("quality", quality);
     for (let i = 0; i < refs.length; i++) {
       const r = refs[i];
       const blob = new Blob([r.bytes], { type: r.mime || "image/png" });
