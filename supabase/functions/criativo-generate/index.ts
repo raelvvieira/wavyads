@@ -117,8 +117,61 @@ serve(async (req) => {
       });
     }
 
-    const data = await resp.json();
-    const b64 = data?.data?.[0]?.b64_json;
+    let data = await resp.json();
+
+    // EvoLink returns an async task for gpt-image-2; poll until completed.
+    const taskId: string | undefined = data?.id;
+    const isTask = data?.object === "image.generation.task" || (taskId && !data?.data?.[0]?.b64_json);
+    if (isTask && taskId) {
+      const pollUrls = [
+        `${EVOLINK_BASE_URL}/images/generations/${taskId}`,
+        `${EVOLINK_BASE_URL}/tasks/${taskId}`,
+      ];
+      const deadline = Date.now() + 110_000; // 110s max
+      let delay = 2000;
+      let finished = false;
+      while (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, delay));
+        delay = Math.min(delay + 1000, 5000);
+        let pollResp: Response | null = null;
+        for (const url of pollUrls) {
+          const r = await fetch(url, {
+            headers: { Authorization: `Bearer ${EVOLINK_API_KEY}` },
+          });
+          if (r.ok) {
+            pollResp = r;
+            break;
+          }
+          await r.text();
+        }
+        if (!pollResp) continue;
+        data = await pollResp.json();
+        const status = data?.status;
+        if (status === "succeeded" || status === "completed" || status === "success" || data?.data?.[0]?.b64_json || data?.data?.[0]?.url) {
+          finished = true;
+          break;
+        }
+        if (status === "failed" || status === "error" || status === "canceled") {
+          console.error("EvoLink task falhou:", JSON.stringify(data).slice(0, 600));
+          throw new Error(`EvoLink task ${status}: ${data?.error?.message ?? "sem detalhes"}`);
+        }
+      }
+      if (!finished) throw new Error("EvoLink task timeout");
+    }
+
+    let b64 = data?.data?.[0]?.b64_json;
+    const url = data?.data?.[0]?.url;
+    if (!b64 && url) {
+      const imgResp = await fetch(url);
+      if (!imgResp.ok) {
+        await imgResp.text();
+        throw new Error("Falha ao baixar imagem do EvoLink");
+      }
+      const buf = new Uint8Array(await imgResp.arrayBuffer());
+      let bin = "";
+      for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+      b64 = btoa(bin);
+    }
     if (!b64) {
       console.error("Sem imagem na resposta EvoLink:", JSON.stringify(data).slice(0, 600));
       throw new Error("EvoLink não retornou imagem");
