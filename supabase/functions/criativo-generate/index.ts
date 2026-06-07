@@ -148,7 +148,16 @@ serve(async (req) => {
         if (!pollResp) continue;
         data = await pollResp.json();
         const status = data?.status;
-        if (status === "succeeded" || status === "completed" || status === "success" || data?.data?.[0]?.b64_json || data?.data?.[0]?.url) {
+        if (
+          status === "succeeded" ||
+          status === "completed" ||
+          status === "success" ||
+          data?.data?.[0]?.b64_json ||
+          data?.data?.[0]?.url ||
+          data?.result_data?.[0]?.b64_json ||
+          data?.result_data?.[0]?.url ||
+          data?.results?.[0]
+        ) {
           finished = true;
           break;
         }
@@ -160,8 +169,8 @@ serve(async (req) => {
       if (!finished) throw new Error("EvoLink task timeout");
     }
 
-    let b64 = data?.data?.[0]?.b64_json;
-    const url = data?.data?.[0]?.url;
+    let b64 = data?.data?.[0]?.b64_json ?? data?.result_data?.[0]?.b64_json;
+    const url = data?.data?.[0]?.url ?? data?.result_data?.[0]?.url ?? data?.results?.[0];
     if (!b64 && url) {
       const imgResp = await fetch(url);
       if (!imgResp.ok) {
