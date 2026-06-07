@@ -86,23 +86,22 @@ serve(async (req) => {
     });
 
     const quality = body.quality ?? "medium";
-    const form = new FormData();
-    form.append("model", MODEL_NAME);
-    form.append("prompt", fullPrompt);
-    form.append("n", "1");
-    form.append("size", size);
-    form.append("quality", quality);
-    for (let i = 0; i < refs.length; i++) {
-      const r = refs[i];
-      const blob = new Blob([r.bytes], { type: r.mime || "image/png" });
-      const ext = (r.mime && r.mime.includes("jpeg")) ? "jpg" : (r.mime && r.mime.includes("webp")) ? "webp" : "png";
-      form.append("image[]", blob, `ref-${i}.${ext}`);
-    }
+    const requestBody = {
+      model: MODEL_NAME,
+      prompt: fullPrompt,
+      n: 1,
+      size,
+      quality,
+      response_format: "b64_json",
+    };
 
-    const resp = await fetch(`${EVOLINK_BASE_URL}/images/edits`, {
+    const resp = await fetch(`${EVOLINK_BASE_URL}/images/generations`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${EVOLINK_API_KEY}` },
-      body: form,
+      headers: {
+        Authorization: `Bearer ${EVOLINK_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
     });
 
     if (!resp.ok) {
