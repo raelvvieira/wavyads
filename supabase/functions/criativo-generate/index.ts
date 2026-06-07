@@ -104,20 +104,21 @@ serve(async (req) => {
       body: JSON.stringify(requestBody),
     });
 
+    const respText = await resp.text();
+    console.log("EvoLink status:", resp.status);
+    console.log("EvoLink raw response:", respText.slice(0, 1000));
+
+    // Retorna o erro com o body completo para debug
     if (!resp.ok) {
-      const t = await resp.text();
-      console.error("EvoLink image error", resp.status, t.slice(0, 400));
-      const status = resp.status;
-      let msg = `EvoLink erro ${status}: ${t.slice(0, 400)}`;
-      if (status === 401 || status === 403) msg = "EVOLINK_API_KEY inválida ou sem permissão";
-      else if (status === 429) msg = "Limite de uso atingido. Tente novamente em instantes.";
-      return new Response(JSON.stringify({ error: msg }), {
-        status: status === 429 ? 429 : status === 401 || status === 403 ? 401 : 502,
+      return new Response(JSON.stringify({
+        error: `EvoLink erro ${resp.status}: ${respText.slice(0, 500)}`,
+      }), {
+        status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    let data = await resp.json();
+    let data = JSON.parse(respText);
 
     // EvoLink returns an async task for gpt-image-2; poll until completed.
     const taskId: string | undefined = data?.id;
