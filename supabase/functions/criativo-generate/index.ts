@@ -18,7 +18,21 @@ interface GenerateBody {
 }
 
 const EVOLINK_BASE_URL = "https://api.evolink.ai/v1";
+const EVOLINK_FILES_BASE_URL = "https://files-api.evolink.ai/api/v1";
 const MODEL_NAME = "gpt-image-2";
+const MAX_POLL_ATTEMPTS = 40;
+const POLL_INTERVAL_MS = 1500;
+
+class ProviderHttpError extends Error {
+  status: number;
+  body: string;
+
+  constructor(status: number, body: string) {
+    super(`EvoLink erro ${status}`);
+    this.status = status;
+    this.body = body;
+  }
+}
 
 function parseDataUrl(dataUrl: string): { mime: string; bytes: Uint8Array } | null {
   const m = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
@@ -33,18 +47,55 @@ function parseDataUrl(dataUrl: string): { mime: string; bytes: Uint8Array } | nu
   }
 }
 
+function safeJsonParse(text: string): any | null {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+async function readLoggedText(label: string, resp: Response): Promise<string> {
+  const respText = await resp.text();
+  console.log(`${label} status:`, resp.status);
+  console.log(`${label} raw response:`, respText.slice(0, 800));
+  return respText;
+}
+
+function buildProviderErrorMessage(status: number, body: string): string {
+  if (status === 401 || status === 403) {
+    return "Chave da API EvoLink inválida ou sem permissão.";
+  }
+  if (status === 429) {
+    return "Limite de requisições EvoLink atingido. Tente novamente em instantes.";
+  }
+  return `EvoLink erro ${status}: ${body}`;
+}
+
+function buildProviderErrorResponse(status: number, body: string): Response {
+  return new Response(JSON.stringify({
+    error: buildProviderErrorMessage(status, body),
+    status,
+    body,
+  }), {
+    status: 502,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 async function fetchUrlToBase64DataUrl(url: string): Promise<string> {
   const r = await fetch(url);
   if (!r.ok) {
     throw new Error(`Falha ao baixar imagem do EvoLink (${r.status})`);
   }
+  const mime = r.headers.get("content-type")?.split(";")[0] || "image/png";
   const buf = new Uint8Array(await r.arrayBuffer());
   let bin = "";
   const chunk = 0x8000;
   for (let i = 0; i < buf.length; i += chunk) {
     bin += String.fromCharCode(...buf.subarray(i, i + chunk));
   }
-  return `data:image/png;base64,${btoa(bin)}`;
+  return `data:${mime};base64,${btoa(bin)}`;
 }
 
 function mapResolution(quality: "low" | "medium" | "high"): string {
@@ -53,10 +104,77 @@ function mapResolution(quality: "low" | "medium" | "high"): string {
   return "1K";
 }
 
-function extExt(mime: string): string {
-  if (mime.includes("jpeg") || mime.includes("jpg")) return "jpg";
-  if (mime.includes("webp")) return "webp";
-  return "png";
+async function uploadReferenceImage(ref: string, apiKey: string): Promise<string> {
+  if (/^https?:\/\//i.test(ref)) return ref;
+  if (!parseDataUrl(ref)) throw new Error("Imagem de referência inválida");
+
+  const resp = await fetch(`${EVOLINK_FILES_BASE_URL}/files/upload/base64`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ base64_data: ref }),
+  });
+
+  const respText = await readLoggedText("EvoLink upload", resp);
+  if (!resp.ok) throw new ProviderHttpError(resp.status, respText);
+
+  const data = safeJsonParse(respText);
+  const fileUrl = data?.data?.file_url ?? data?.data?.fileUrl;
+  if (!fileUrl || typeof fileUrl !== "string") {
+    throw new Error("EvoLink não retornou URL da imagem de referência");
+  }
+  return fileUrl;
+}
+
+async function resolveImageFromPayload(data: any): Promise<string | null> {
+  const b64 = data?.data?.[0]?.b64_json;
+  if (typeof b64 === "string" && b64) {
+    return `data:image/png;base64,${b64}`;
+  }
+
+  const maybeUrl = data?.data?.[0]?.url ?? data?.results?.[0];
+  if (typeof maybeUrl === "string" && maybeUrl) {
+    return await fetchUrlToBase64DataUrl(maybeUrl);
+  }
+
+  return null;
+}
+
+async function waitForTaskImage(taskId: string, apiKey: string): Promise<string> {
+  for (let attempt = 1; attempt <= MAX_POLL_ATTEMPTS; attempt++) {
+    const resp = await fetch(`${EVOLINK_BASE_URL}/tasks/${taskId}`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+
+    const respText = await readLoggedText(`EvoLink task ${attempt}/${MAX_POLL_ATTEMPTS}`, resp);
+    if (!resp.ok) throw new ProviderHttpError(resp.status, respText);
+
+    const data = safeJsonParse(respText);
+    if (!data) {
+      throw new Error("Resposta inválida ao consultar tarefa do EvoLink");
+    }
+
+    const imageUrl = await resolveImageFromPayload(data);
+    if (imageUrl) return imageUrl;
+
+    if (data.status === "failed") {
+      throw new Error(data?.error?.message || "EvoLink falhou ao gerar a imagem");
+    }
+
+    if (data.status === "completed") {
+      console.error("Sem imagem na tarefa concluída do EvoLink:", JSON.stringify(data).slice(0, 600));
+      throw new Error("EvoLink não retornou imagem");
+    }
+
+    if (attempt < MAX_POLL_ATTEMPTS) {
+      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+    }
+  }
+
+  throw new Error("Tempo limite ao aguardar imagem do EvoLink");
 }
 
 serve(async (req) => {
@@ -84,25 +202,15 @@ serve(async (req) => {
     const quality = body.quality ?? "low";
     const resolution = mapResolution(quality);
 
-    // Collect reference images
-    const refs: { mime: string; bytes: Uint8Array }[] = [];
+    const rawRefs: string[] = [];
     const productImages = Array.isArray(body.productImages) ? body.productImages : [];
-    for (const img of productImages.slice(0, 14)) {
-      const p = parseDataUrl(img);
-      if (p) refs.push(p);
-    }
-    if (body.logoImage) {
-      const p = parseDataUrl(body.logoImage);
-      if (p) refs.push(p);
-    }
-    if (!isStory && body.storyReference) {
-      const p = parseDataUrl(body.storyReference);
-      if (p) refs.push(p);
-    }
+    rawRefs.push(...productImages.slice(0, 14));
+    if (body.logoImage) rawRefs.push(body.logoImage);
+    if (!isStory && body.storyReference) rawRefs.push(body.storyReference);
 
-    const hasRefs = refs.length > 0;
+    const hasRefs = rawRefs.length > 0;
     const referenceHints = hasRefs
-      ? `[REFERENCE IMAGES]\n${refs.length} reference image(s) attached. Use them as the exact source of truth for faces, product appearance and brand logo. Preserve every detail — do not alter faces, skin tone, hair, clothing, product shape or brand mark.`
+      ? `[REFERENCE IMAGES]\n${rawRefs.length} reference image(s) attached. Use them as the exact source of truth for faces, product appearance and brand logo. Preserve every detail — do not alter faces, skin tone, hair, clothing, product shape or brand mark.`
       : "";
 
     const fullPrompt = [aspectInstruction, prompt, referenceHints]
@@ -110,89 +218,71 @@ serve(async (req) => {
       .join("\n\n");
 
     console.log("criativo-generate (evolink gpt-image-2) →", {
-      route: hasRefs ? "edits" : "generations",
+      route: "generations",
       aspectRatio,
       size,
       resolution,
       quality,
       prompt_chars: fullPrompt.length,
-      refs: refs.length,
+      refs: rawRefs.length,
     });
 
-    let resp: Response;
+    const imageUrls = hasRefs
+      ? await Promise.all(rawRefs.map((ref) => uploadReferenceImage(ref, EVOLINK_API_KEY)))
+      : [];
 
-    if (hasRefs) {
-      const formData = new FormData();
-      formData.append("model", MODEL_NAME);
-      formData.append("prompt", fullPrompt);
-      formData.append("n", "1");
-      formData.append("size", size);
-      formData.append("resolution", resolution);
-      formData.append("quality", quality);
+    const requestBody: Record<string, unknown> = {
+      model: MODEL_NAME,
+      prompt: fullPrompt,
+      n: 1,
+      size,
+      resolution,
+      quality,
+    };
 
-      refs.forEach((r, idx) => {
-        const blob = new Blob([r.bytes], { type: r.mime });
-        formData.append("image[]", blob, `ref_${idx}.${extExt(r.mime)}`);
-      });
-
-      resp = await fetch(`${EVOLINK_BASE_URL}/images/edits`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${EVOLINK_API_KEY}` },
-        body: formData,
-      });
-    } else {
-      const requestBody = {
-        model: MODEL_NAME,
-        prompt: fullPrompt,
-        n: 1,
-        size,
-        resolution,
-        quality,
-        response_format: "b64_json",
-      };
-      resp = await fetch(`${EVOLINK_BASE_URL}/images/generations`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${EVOLINK_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      });
+    if (imageUrls.length > 0) {
+      requestBody.image_urls = imageUrls;
     }
 
-    const respText = await resp.text();
-    console.log("EvoLink status:", resp.status);
-    console.log("EvoLink raw response:", respText.slice(0, 800));
+    const createResp = await fetch(`${EVOLINK_BASE_URL}/images/generations`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${EVOLINK_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+    });
 
-    if (!resp.ok) {
-      let msg = `EvoLink erro ${resp.status}: ${respText.slice(0, 500)}`;
-      if (resp.status === 401) msg = "Chave da API EvoLink inválida ou expirada.";
-      else if (resp.status === 403) msg = "Permissão negada na API EvoLink.";
-      else if (resp.status === 429) msg = "Limite de requisições EvoLink atingido. Tente novamente em instantes.";
-      return new Response(JSON.stringify({ error: msg, status: resp.status, body: respText.slice(0, 500) }), {
-        status: 502,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const createRespText = await readLoggedText("EvoLink create", createResp);
+    if (!createResp.ok) {
+      return buildProviderErrorResponse(createResp.status, createRespText);
     }
 
-    const data = JSON.parse(respText);
-    const b64 = data?.data?.[0]?.b64_json;
-    const url = data?.data?.[0]?.url;
+    const createData = safeJsonParse(createRespText);
+    if (!createData) {
+      throw new Error("Resposta inválida do EvoLink");
+    }
 
-    let imageUrl: string;
-    if (b64) {
-      imageUrl = `data:image/png;base64,${b64}`;
-    } else if (url) {
-      imageUrl = await fetchUrlToBase64DataUrl(url);
-    } else {
-      console.error("Sem imagem na resposta EvoLink:", JSON.stringify(data).slice(0, 600));
-      throw new Error("EvoLink não retornou imagem");
+    const immediateImage = await resolveImageFromPayload(createData);
+    const taskId = createData?.id;
+
+    let imageUrl = immediateImage;
+    if (!imageUrl) {
+      if (!taskId || typeof taskId !== "string") {
+        console.error("Sem imagem e sem task id na resposta EvoLink:", JSON.stringify(createData).slice(0, 600));
+        throw new Error("EvoLink não retornou imagem");
+      }
+      imageUrl = await waitForTaskImage(taskId, EVOLINK_API_KEY);
     }
 
     return new Response(JSON.stringify({ imageUrl, model: MODEL_NAME }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
+    if (e instanceof ProviderHttpError) {
+      return buildProviderErrorResponse(e.status, e.body);
+    }
+
     console.error("criativo-generate error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro" }), {
       status: 500,
