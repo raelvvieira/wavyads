@@ -192,7 +192,7 @@ Deno.test("edits: productImages → multipart on /images/edits, square 1:1 low",
   assertEquals(r.status, 200);
   assert(calls[0].url.endsWith("/images/edits"));
   assertEquals(calls[0].method, "POST");
-  assert(calls[0].contentType?.startsWith("multipart/form-data"));
+  assert(calls[0].formBody instanceof FormData, "expected multipart FormData body");
   const fd = calls[0].formBody!;
   assertEquals(fd.get("model"), "gpt-image-2");
   assertEquals(fd.get("size"), "1:1");
