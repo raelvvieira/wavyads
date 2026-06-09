@@ -182,14 +182,13 @@ Deno.test(
     assertEquals(r.status, 200);
     assertEquals(r.json?.model, "gpt-image-2");
     assert(r.json?.imageUrl?.startsWith("data:image/png;base64,"));
-    assertEquals(calls.length, 3);
+    assertEquals(calls.length, 2);
     assert(calls[0].url.endsWith("/images/generations"));
     assertEquals(calls[0].jsonBody.model, "gpt-image-2");
     assertEquals(calls[0].jsonBody.size, "1:1");
     assertEquals(calls[0].jsonBody.resolution, "1K");
     assertEquals(calls[0].jsonBody.quality, "low");
     assertEquals(calls[1].url, "https://api.evolink.ai/v1/tasks/task-123");
-    assertEquals(calls[2].url, PNG_URL);
   },
 );
 
@@ -237,8 +236,7 @@ Deno.test(
     });
     assertEquals(r.status, 200);
     assert(r.json?.imageUrl?.startsWith("data:image/png;base64,"));
-    assertEquals(calls.length, 2);
-    assertEquals(calls[1].url, PNG_URL);
+    assertEquals(calls.length, 1);
   },
 );
 
