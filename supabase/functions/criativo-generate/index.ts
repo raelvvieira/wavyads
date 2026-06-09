@@ -34,7 +34,9 @@ class ProviderHttpError extends Error {
   }
 }
 
-function parseDataUrl(dataUrl: string): { mime: string; bytes: Uint8Array } | null {
+function parseDataUrl(
+  dataUrl: string,
+): { mime: string; bytes: Uint8Array } | null {
   const m = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
   if (!m) return null;
   try {
@@ -73,14 +75,17 @@ function buildProviderErrorMessage(status: number, body: string): string {
 }
 
 function buildProviderErrorResponse(status: number, body: string): Response {
-  return new Response(JSON.stringify({
-    error: buildProviderErrorMessage(status, body),
-    status,
-    body,
-  }), {
-    status: 502,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+  return new Response(
+    JSON.stringify({
+      error: buildProviderErrorMessage(status, body),
+      status,
+      body,
+    }),
+    {
+      status: 502,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    },
+  );
 }
 
 async function fetchUrlToBase64DataUrl(url: string): Promise<string> {
@@ -104,7 +109,10 @@ function mapResolution(quality: "low" | "medium" | "high"): string {
   return "1K";
 }
 
-async function uploadReferenceImage(ref: string, apiKey: string): Promise<string> {
+async function uploadReferenceImage(
+  ref: string,
+  apiKey: string,
+): Promise<string> {
   if (/^https?:\/\//i.test(ref)) return ref;
   if (!parseDataUrl(ref)) throw new Error("Imagem de referência inválida");
 
@@ -142,14 +150,20 @@ async function resolveImageFromPayload(data: any): Promise<string | null> {
   return null;
 }
 
-async function waitForTaskImage(taskId: string, apiKey: string): Promise<string> {
+async function waitForTaskImage(
+  taskId: string,
+  apiKey: string,
+): Promise<string> {
   for (let attempt = 1; attempt <= MAX_POLL_ATTEMPTS; attempt++) {
     const resp = await fetch(`${EVOLINK_BASE_URL}/tasks/${taskId}`, {
       method: "GET",
       headers: { Authorization: `Bearer ${apiKey}` },
     });
 
-    const respText = await readLoggedText(`EvoLink task ${attempt}/${MAX_POLL_ATTEMPTS}`, resp);
+    const respText = await readLoggedText(
+      `EvoLink task ${attempt}/${MAX_POLL_ATTEMPTS}`,
+      resp,
+    );
     if (!resp.ok) throw new ProviderHttpError(resp.status, respText);
 
     const data = safeJsonParse(respText);
@@ -161,11 +175,16 @@ async function waitForTaskImage(taskId: string, apiKey: string): Promise<string>
     if (imageUrl) return imageUrl;
 
     if (data.status === "failed") {
-      throw new Error(data?.error?.message || "EvoLink falhou ao gerar a imagem");
+      throw new Error(
+        data?.error?.message || "EvoLink falhou ao gerar a imagem",
+      );
     }
 
     if (data.status === "completed") {
-      console.error("Sem imagem na tarefa concluída do EvoLink:", JSON.stringify(data).slice(0, 600));
+      console.error(
+        "Sem imagem na tarefa concluída do EvoLink:",
+        JSON.stringify(data).slice(0, 600),
+      );
       throw new Error("EvoLink não retornou imagem");
     }
 
@@ -178,7 +197,8 @@ async function waitForTaskImage(taskId: string, apiKey: string): Promise<string>
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS")
+    return new Response(null, { headers: corsHeaders });
 
   try {
     const EVOLINK_API_KEY = Deno.env.get("EVOLINK_API_KEY");
@@ -188,10 +208,13 @@ serve(async (req) => {
     const { prompt, aspectRatio } = body;
 
     if (!prompt || !aspectRatio) {
-      return new Response(JSON.stringify({ error: "prompt e aspectRatio são obrigatórios" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: "prompt e aspectRatio são obrigatórios" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
     const isStory = aspectRatio === "story";
@@ -203,7 +226,9 @@ serve(async (req) => {
     const resolution = mapResolution(quality);
 
     const rawRefs: string[] = [];
-    const productImages = Array.isArray(body.productImages) ? body.productImages : [];
+    const productImages = Array.isArray(body.productImages)
+      ? body.productImages
+      : [];
     rawRefs.push(...productImages.slice(0, 14));
     if (body.logoImage) rawRefs.push(body.logoImage);
     if (!isStory && body.storyReference) rawRefs.push(body.storyReference);
@@ -228,7 +253,9 @@ serve(async (req) => {
     });
 
     const imageUrls = hasRefs
-      ? await Promise.all(rawRefs.map((ref) => uploadReferenceImage(ref, EVOLINK_API_KEY)))
+      ? await Promise.all(
+          rawRefs.map((ref) => uploadReferenceImage(ref, EVOLINK_API_KEY)),
+        )
       : [];
 
     const requestBody: Record<string, unknown> = {
@@ -269,7 +296,10 @@ serve(async (req) => {
     let imageUrl = immediateImage;
     if (!imageUrl) {
       if (!taskId || typeof taskId !== "string") {
-        console.error("Sem imagem e sem task id na resposta EvoLink:", JSON.stringify(createData).slice(0, 600));
+        console.error(
+          "Sem imagem e sem task id na resposta EvoLink:",
+          JSON.stringify(createData).slice(0, 600),
+        );
         throw new Error("EvoLink não retornou imagem");
       }
       imageUrl = await waitForTaskImage(taskId, EVOLINK_API_KEY);
@@ -284,9 +314,12 @@ serve(async (req) => {
     }
 
     console.error("criativo-generate error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: e instanceof Error ? e.message : "Erro" }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   }
 });
