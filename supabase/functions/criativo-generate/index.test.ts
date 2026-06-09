@@ -4,33 +4,37 @@
 
 import { assertEquals, assert } from "https://deno.land/std@0.224.0/assert/mod.ts";
 
-// ---------- Env required by index.ts ----------
 Deno.env.set("EVOLINK_API_KEY", "test-key");
 
-// ---------- 1x1 PNG fixture ----------
 const TINY_PNG_B64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
 const TINY_DATA_URL = `data:image/png;base64,${TINY_PNG_B64}`;
+const PNG_URL = "https://api.evolink.ai/fake-image.png";
+const FILE_URL = "https://files.evolink.ai/ref.png";
 
-// ---------- fetch stub ----------
 type CapturedCall = {
   url: string;
   method: string;
   contentType: string | null;
   authorization: string | null;
   jsonBody?: any;
-  formBody?: FormData;
+};
+
+type StubOpts = {
+  createStatus?: number;
+  createRawText?: string;
+  createResponseBody?: unknown;
+  taskStatus?: number;
+  taskRawText?: string;
+  taskResponseBody?: unknown;
+  uploadStatus?: number;
+  uploadRawText?: string;
+  uploadResponseBody?: unknown;
+  pngUrl?: string;
 };
 
 const calls: CapturedCall[] = [];
 const originalFetch = globalThis.fetch;
-
-type StubOpts = {
-  status?: number;
-  responseBody?: unknown;
-  rawText?: string;
-  pngUrl?: string; // when set, function should fetch this URL; we return the PNG bytes
-};
 let currentStub: StubOpts = {};
 
 globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -41,8 +45,7 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       ? input.toString()
       : input.url;
 
-  // Serve the fake EvoLink-hosted PNG URL when requested
-  if (currentStub.pngUrl && url === currentStub.pngUrl) {
+  if ((currentStub.pngUrl ?? PNG_URL) === url) {
     const bin = atob(TINY_PNG_B64);
     const bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
@@ -52,52 +55,60 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     });
   }
 
-  if (url.startsWith("https://api.evolink.ai/")) {
-    const headers = new Headers(init?.headers ?? {});
-    const captured: CapturedCall = {
+  const headers = new Headers(init?.headers ?? {});
+
+  if (url.startsWith("https://files-api.evolink.ai/")) {
+    calls.push({
       url,
       method: init?.method ?? "GET",
       contentType: headers.get("content-type"),
       authorization: headers.get("authorization"),
-    };
-    if (init?.body instanceof FormData) {
-      captured.formBody = init.body;
-    } else if (typeof init?.body === "string") {
-      try { captured.jsonBody = JSON.parse(init.body); } catch { /* ignore */ }
-    }
-    calls.push(captured);
-
-    const status = currentStub.status ?? 200;
-    const body =
-      currentStub.rawText ??
-      JSON.stringify(
-        currentStub.responseBody ?? { data: [{ b64_json: TINY_PNG_B64 }] },
-      );
-    return new Response(body, {
-      status,
-      headers: { "Content-Type": "application/json" },
+      jsonBody: typeof init?.body === "string" ? JSON.parse(init.body) : undefined,
     });
+    return new Response(
+      currentStub.uploadRawText ?? JSON.stringify(
+        currentStub.uploadResponseBody ?? { success: true, data: { file_url: FILE_URL } },
+      ),
+      { status: currentStub.uploadStatus ?? 200, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  if (url.startsWith("https://api.evolink.ai/")) {
+    calls.push({
+      url,
+      method: init?.method ?? "GET",
+      contentType: headers.get("content-type"),
+      authorization: headers.get("authorization"),
+      jsonBody: typeof init?.body === "string" ? JSON.parse(init.body) : undefined,
+    });
+
+    if (url.includes("/tasks/")) {
+      return new Response(
+        currentStub.taskRawText ?? JSON.stringify(
+          currentStub.taskResponseBody ?? { status: "completed", results: [currentStub.pngUrl ?? PNG_URL] },
+        ),
+        { status: currentStub.taskStatus ?? 200, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    return new Response(
+      currentStub.createRawText ?? JSON.stringify(
+        currentStub.createResponseBody ?? { id: "task-123", status: "pending", model: "gpt-image-2" },
+      ),
+      { status: currentStub.createStatus ?? 200, headers: { "Content-Type": "application/json" } },
+    );
   }
 
   return originalFetch(input as any, init);
 }) as typeof fetch;
 
-// ---------- Stub std `serve` so importing index.ts does NOT start a listener ----------
-// We re-export a tiny shim that captures the handler.
 let capturedHandler: ((req: Request) => Promise<Response> | Response) | null = null;
-const serveModUrl = "https://deno.land/std@0.168.0/http/server.ts";
-// Monkey-patch by pre-populating the module cache via dynamic import + override is not
-// trivial, so instead we run index.ts inside a Worker-like wrapper: just call its
-// `serve` by importing it and intercepting via a global. The simplest approach:
-// we replace the std `serve` export with our shim using an import map at runtime.
-//
-// Easiest robust approach: read the source and eval it with our own `serve`.
 const indexUrl = new URL("./index.ts", import.meta.url);
 const src = await Deno.readTextFile(indexUrl);
 const patched = src.replace(
   /import\s*\{\s*serve\s*\}\s*from\s*"https:\/\/deno\.land\/std@0\.168\.0\/http\/server\.ts";?/,
   "const serve = (h) => { globalThis.__captured_handler__ = h; };",
-);
+).replaceAll("await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));", "await Promise.resolve();");
 const blob = new Blob([patched], { type: "application/typescript" });
 const blobUrl = URL.createObjectURL(blob);
 await import(blobUrl);
@@ -122,25 +133,20 @@ async function invoke(body: Record<string, unknown>) {
   return { status: res.status, json, text };
 }
 
-// ---------- /images/generations (no refs) ----------
-
-Deno.test("generations: square + low → JSON, size 1:1, resolution 1K", async () => {
+Deno.test("generations: square + low → create task and resolve image, size 1:1, resolution 1K", async () => {
   reset();
   const r = await invoke({ prompt: "test", aspectRatio: "square", quality: "low" });
   assertEquals(r.status, 200);
   assertEquals(r.json?.model, "gpt-image-2");
   assert(r.json?.imageUrl?.startsWith("data:image/png;base64,"));
-  assertEquals(calls.length, 1);
+  assertEquals(calls.length, 3);
   assert(calls[0].url.endsWith("/images/generations"));
-  assertEquals(calls[0].method, "POST");
-  assert(calls[0].contentType?.includes("application/json"));
   assertEquals(calls[0].jsonBody.model, "gpt-image-2");
   assertEquals(calls[0].jsonBody.size, "1:1");
   assertEquals(calls[0].jsonBody.resolution, "1K");
   assertEquals(calls[0].jsonBody.quality, "low");
-  assertEquals(calls[0].jsonBody.n, 1);
-  assertEquals(calls[0].jsonBody.response_format, "b64_json");
-  assertEquals(calls[0].authorization, "Bearer test-key");
+  assertEquals(calls[1].url, "https://api.evolink.ai/v1/tasks/task-123");
+  assertEquals(calls[2].url, PNG_URL);
 });
 
 Deno.test("generations: story + medium → size 2:3, resolution 2K", async () => {
@@ -168,20 +174,16 @@ Deno.test("generations: default quality is low when omitted", async () => {
   assertEquals(calls[0].jsonBody.resolution, "1K");
 });
 
-Deno.test("generations: url-only response is fetched and converted to data URL", async () => {
-  const PNG_URL = "https://api.evolink.ai/fake-image.png";
-  reset({
-    pngUrl: PNG_URL,
-    responseBody: { data: [{ url: PNG_URL }] },
-  });
+Deno.test("generations: immediate URL response is fetched and converted to data URL", async () => {
+  reset({ createResponseBody: { data: [{ url: PNG_URL }] } });
   const r = await invoke({ prompt: "x", aspectRatio: "square", quality: "low" });
   assertEquals(r.status, 200);
   assert(r.json?.imageUrl?.startsWith("data:image/png;base64,"));
+  assertEquals(calls.length, 2);
+  assertEquals(calls[1].url, PNG_URL);
 });
 
-// ---------- /images/edits (with refs) ----------
-
-Deno.test("edits: productImages → multipart on /images/edits, square 1:1 low", async () => {
+Deno.test("edits: productImages upload refs and call generations with image_urls", async () => {
   reset();
   const r = await invoke({
     prompt: "edit",
@@ -190,19 +192,15 @@ Deno.test("edits: productImages → multipart on /images/edits, square 1:1 low",
     productImages: [TINY_DATA_URL, TINY_DATA_URL],
   });
   assertEquals(r.status, 200);
-  assert(calls[0].url.endsWith("/images/edits"));
-  assertEquals(calls[0].method, "POST");
-  assert(calls[0].formBody instanceof FormData, "expected multipart FormData body");
-  const fd = calls[0].formBody!;
-  assertEquals(fd.get("model"), "gpt-image-2");
-  assertEquals(fd.get("size"), "1:1");
-  assertEquals(fd.get("resolution"), "1K");
-  assertEquals(fd.get("quality"), "low");
-  assertEquals(fd.get("n"), "1");
-  assertEquals(fd.getAll("image[]").length, 2);
+  assert(calls[0].url.endsWith("/files/upload/base64"));
+  assert(calls[1].url.endsWith("/files/upload/base64"));
+  assert(calls[2].url.endsWith("/images/generations"));
+  assertEquals(calls[2].jsonBody.image_urls.length, 2);
+  assertEquals(calls[2].jsonBody.size, "1:1");
+  assertEquals(calls[2].jsonBody.resolution, "1K");
 });
 
-Deno.test("edits: story + high + logoImage → 2:3, 4K, 1 image attached", async () => {
+Deno.test("edits: story + high + logoImage → 2:3, 4K, 1 uploaded ref", async () => {
   reset();
   const r = await invoke({
     prompt: "edit",
@@ -211,15 +209,13 @@ Deno.test("edits: story + high + logoImage → 2:3, 4K, 1 image attached", async
     logoImage: TINY_DATA_URL,
   });
   assertEquals(r.status, 200);
-  assert(calls[0].url.endsWith("/images/edits"));
-  const fd = calls[0].formBody!;
-  assertEquals(fd.get("size"), "2:3");
-  assertEquals(fd.get("resolution"), "4K");
-  assertEquals(fd.get("quality"), "high");
-  assertEquals(fd.getAll("image[]").length, 1);
+  assert(calls[0].url.endsWith("/files/upload/base64"));
+  assertEquals(calls[1].jsonBody.size, "2:3");
+  assertEquals(calls[1].jsonBody.resolution, "4K");
+  assertEquals(calls[1].jsonBody.image_urls.length, 1);
 });
 
-Deno.test("edits: square + medium + storyReference is attached", async () => {
+Deno.test("edits: square + medium + storyReference is uploaded", async () => {
   reset();
   const r = await invoke({
     prompt: "edit",
@@ -228,13 +224,12 @@ Deno.test("edits: square + medium + storyReference is attached", async () => {
     storyReference: TINY_DATA_URL,
   });
   assertEquals(r.status, 200);
-  assert(calls[0].url.endsWith("/images/edits"));
-  const fd = calls[0].formBody!;
-  assertEquals(fd.get("resolution"), "2K");
-  assertEquals(fd.getAll("image[]").length, 1);
+  assert(calls[0].url.endsWith("/files/upload/base64"));
+  assertEquals(calls[1].jsonBody.resolution, "2K");
+  assertEquals(calls[1].jsonBody.image_urls.length, 1);
 });
 
-Deno.test("edits: story does NOT attach storyReference (square-only rule)", async () => {
+Deno.test("edits: story does NOT upload storyReference (square-only rule)", async () => {
   reset();
   const r = await invoke({
     prompt: "edit",
@@ -242,12 +237,10 @@ Deno.test("edits: story does NOT attach storyReference (square-only rule)", asyn
     quality: "low",
     storyReference: TINY_DATA_URL,
   });
-  // Only storyReference provided + story aspect → no refs attached, so route is generations
   assertEquals(r.status, 200);
   assert(calls[0].url.endsWith("/images/generations"));
+  assertEquals(calls[0].jsonBody.image_urls, undefined);
 });
-
-// ---------- validation & error mapping ----------
 
 Deno.test("validation: missing prompt → 400, no EvoLink call", async () => {
   reset();
@@ -256,22 +249,29 @@ Deno.test("validation: missing prompt → 400, no EvoLink call", async () => {
   assertEquals(calls.length, 0);
 });
 
-Deno.test("error: EvoLink 401 → 502 with 'Chave inválida'", async () => {
-  reset({ status: 401, rawText: '{"error":"unauthorized"}' });
+Deno.test("error: EvoLink 401 on create → 502 with 'Chave inválida'", async () => {
+  reset({ createStatus: 401, createRawText: '{"error":"unauthorized"}' });
   const r = await invoke({ prompt: "x", aspectRatio: "square", quality: "low" });
   assertEquals(r.status, 502);
   assert(String(r.json?.error ?? "").toLowerCase().includes("chave"));
 });
 
-Deno.test("error: EvoLink 429 → 502 with 'limite'", async () => {
-  reset({ status: 429, rawText: '{"error":"rate"}' });
+Deno.test("error: EvoLink 429 on create → 502 with 'limite'", async () => {
+  reset({ createStatus: 429, createRawText: '{"error":"rate"}' });
   const r = await invoke({ prompt: "x", aspectRatio: "square", quality: "low" });
   assertEquals(r.status, 502);
   assert(String(r.json?.error ?? "").toLowerCase().includes("limite"));
 });
 
-Deno.test("error: EvoLink 200 but no image → 500", async () => {
-  reset({ responseBody: { data: [{}] } });
+Deno.test("error: upload failure bubbles as 502", async () => {
+  reset({ uploadStatus: 403, uploadRawText: '{"error":"forbidden"}' });
+  const r = await invoke({ prompt: "x", aspectRatio: "square", quality: "low", logoImage: TINY_DATA_URL });
+  assertEquals(r.status, 502);
+  assert(String(r.json?.error ?? "").toLowerCase().includes("chave"));
+});
+
+Deno.test("error: completed task without image → 500", async () => {
+  reset({ taskResponseBody: { status: "completed", results: [] } });
   const r = await invoke({ prompt: "x", aspectRatio: "square", quality: "low" });
   assertEquals(r.status, 500);
   assert(String(r.json?.error ?? "").includes("não retornou imagem"));
