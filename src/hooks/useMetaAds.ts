@@ -10,6 +10,9 @@ export interface MetaAd {
   campaign_name: string;
   thumbnail_url?: string | null;
   image_url?: string | null;
+  image_url_hd?: string | null;
+  video_id?: string | null;
+  video_source_url?: string | null;
   spend: number;
   impressions: number;
   reach: number;
