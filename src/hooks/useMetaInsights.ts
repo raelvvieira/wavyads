@@ -77,9 +77,22 @@ async function fetchInsights(action: string, clientId: string, timeRange: TimeRa
   const { data, error } = await supabase.functions.invoke('meta-fetch-insights', {
     body: { action, client_id: clientId, time_range: timeRange },
   });
+  // supabase-js returns the body in `data` even on non-2xx; check for our structured token error
+  if (data?.code === 'META_TOKEN_INVALID') {
+    const e = new Error(data.error || 'Conexão com Meta expirou');
+    e.name = 'MetaTokenInvalid';
+    throw e;
+  }
   if (error) throw error;
   return data;
 }
+
+const metaQueryOptions = {
+  retry: (failureCount: number, err: any) => {
+    if (err?.name === 'MetaTokenInvalid') return false;
+    return failureCount < 1;
+  },
+};
 
 export function useMetaCampaigns(clientId: string | undefined, enabled: boolean, timeRange: TimeRange | undefined) {
   return useQuery({
