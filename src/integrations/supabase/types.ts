@@ -53,6 +53,7 @@ export type Database = {
           client_id: string
           created_at: string
           id: string
+          offline_event_set_id: string | null
           pixel_id: string
         }
         Insert: {
@@ -60,6 +61,7 @@ export type Database = {
           client_id: string
           created_at?: string
           id?: string
+          offline_event_set_id?: string | null
           pixel_id: string
         }
         Update: {
@@ -67,6 +69,7 @@ export type Database = {
           client_id?: string
           created_at?: string
           id?: string
+          offline_event_set_id?: string | null
           pixel_id?: string
         }
         Relationships: [

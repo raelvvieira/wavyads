@@ -1,64 +1,41 @@
-## Objetivo
 
-Reescrever completamente `supabase/functions/criativo-generate/index.ts` para usar GPT Image 2 via EvoLink com roteamento condicional entre dois endpoints, mantendo a interface de entrada/saída atual.
+## Diagnóstico (Nubeauty)
 
-## Mudanças
+Configuração técnica está OK:
+- `client_pixels.pixel_id = 2285595601971046` ✅
+- `access_token` salvo (199 chars) ✅
+- Últimos 7 eventos: `send_status = 'sent'`, sem erro, `meta_event_id` salvo ✅
 
-### 1. Interface `GenerateBody`
-Mantém todos os campos atuais e garante `quality?: "low" | "medium" | "high"`.
+A Meta está **recebendo**, mas **não atribui** porque hoje a edge function `send-offline-conversion` envia para `/{pixel_id}/events` com `action_source: "other"`. Para vendas vindas de CRM, a Meta espera o **Offline Conversions dataset** (`/{offline_event_set_id}/events`) com `action_source: "system_generated"` — só assim entra como conversão offline atribuída na campanha.
 
-### 2. Helpers
-- Manter `parseDataUrl` igual.
-- Adicionar `fetchUrlToBase64` que faz fetch da URL retornada pelo EvoLink e converte para data URL `data:image/png;base64,...`.
+Você pediu para resolver **apenas para a Nubeauty**, mantendo só telefone como match key.
 
-### 3. Mapeamento de parâmetros
-- `size`: `story` → `"2:3"`, `square` → `"1:1"`
-- `resolution`: `low` → `"1K"`, `medium` → `"2K"`, `high` → `"4K"`
-- `quality`: do body, default `"low"`
-- `model`: sempre `"gpt-image-2"`
-- `n`: 1
+## Mudanças (escopo: somente Nubeauty)
 
-### 4. Montagem do prompt
-```
-{aspectInstruction}
+### 1. Cadastrar o Offline Event Set ID da Nubeauty
+Adicionar uma coluna `offline_event_set_id` (nullable) em `client_pixels` e preenchê-la **só para a Nubeauty**. Demais clientes ficam com `NULL` e seguem no fluxo atual sem qualquer mudança de comportamento.
 
-{prompt}
+Você vai precisar pegar esse ID no Gerenciador de Eventos da Meta da Nubeauty:
+**Gerenciador de Eventos → Fontes de Dados → Conjunto de Eventos Offline → copiar o ID numérico.**
 
-{referenceHints?}
-```
-- `aspectInstruction` story/square conforme spec.
-- `referenceHints` apenas se houver imagens de referência, com contagem total (`productImages` + `logoImage` + `storyReference`).
+### 2. Edge function `send-offline-conversion`: roteamento condicional
+Lógica nova, sem afetar outros clientes:
+- Buscar `offline_event_set_id` junto com `pixel_id`/`access_token`.
+- **Se existir** (caso Nubeauty): POST em `https://graph.facebook.com/v24.0/{offline_event_set_id}/events`, `action_source: "system_generated"`, `upload_tag: "wavy_dash_crm"`.
+- **Se não existir** (todos os outros): mantém exatamente o comportamento atual (`/{pixel_id}/events`, `action_source: "other"`).
+- `user_data` continua só com `ph` hasheado.
+- `event_id` continua sendo o `id` da linha em `offline_conversions` (dedupe garantido).
 
-### 5. Roteamento
-**Com imagens de referência** (`productImages.length > 0 || logoImage || storyReference`):
-- `POST {BASE}/images/edits` com `multipart/form-data`
-- FormData: `model`, `prompt`, `n`, `size`, `resolution`, `quality`
-- Anexar imagens em `image[]` na ordem: productImages (até 14) → logoImage → storyReference (apenas no square)
-- Cada imagem convertida via `parseDataUrl` → `Blob`
+### 3. Reenviar histórico da Nubeauty
+Depois que o ID for cadastrado, reenviar as 7 conversões já marcadas como `sent` chamando a edge function para cada uma. A Meta deduplica pelo `event_id`, então é seguro — o efeito é transferir o histórico para o dataset offline e permitir atribuição retroativa dentro da janela (7 dias clique / 1 dia view por padrão).
 
-**Sem imagens**:
-- `POST {BASE}/images/generations` com JSON
-- Body: `{ model, prompt, n, size, resolution, quality, response_format: "b64_json" }`
+## O que NÃO muda
 
-### 6. Tratamento da resposta
-- Ler `respText = await resp.text()` e logar `status` + primeiros 800 chars.
-- Se `!resp.ok`: retornar erro 502 com `EvoLink erro {status}: {body}` (401 → "Chave inválida", 403 → "Permissão negada", 429 → "Limite atingido").
-- Parsear JSON. Extrair `data[0].b64_json` ou `data[0].url`:
-  - `b64_json` → `data:image/png;base64,{b64}`
-  - `url` → fetch + converter para base64 data URL
-  - Nenhum dos dois → erro "EvoLink não retornou imagem".
-- Retornar `{ imageUrl, model: "gpt-image-2" }`.
+- Schema de `offline_conversions`.
+- UI de cadastro de Pixel + Token (nenhum campo novo na interface — o `offline_event_set_id` da Nubeauty é gravado direto no banco).
+- Comportamento para qualquer outro cliente.
+- Hash SHA-256, normalizações, CORS, auth.
 
-### 7. Remoções
-- Remover toda a lógica de polling assíncrono (tasks) — não é necessária com a estratégia correta de endpoints.
-- Remover `MODEL_NAME` constante (usar literal).
+## Próximo passo seu
 
-### 8. Preservar
-- CORS headers exatos.
-- Validação `prompt && aspectRatio` obrigatórios.
-- Estrutura de `try/catch` com retorno 500 genérico no catch final.
-
-## Arquivo afetado
-- `supabase/functions/criativo-generate/index.ts` (rewrite completo)
-
-Nenhuma outra mudança no projeto (sem alterações no frontend ou outras edge functions).
+Me envie o **ID do Conjunto de Eventos Offline da Nubeauty** (número que aparece no Gerenciador de Eventos da Meta) para eu gravar no banco junto com a migration.
