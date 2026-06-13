@@ -1748,8 +1748,8 @@ export default function CriativoStudioPage() {
 
                   return [
                     column,
-                    ...renderEditedColumns(stKey, 'story', `#${i + 1}`),
-                    ...(sqImg ? renderEditedColumns(sqKey, 'square', `#${i + 1} 1:1`) : []),
+                    ...renderEditedColumns(stKey, 'story', `#${i + 1}`, stPrompt),
+                    ...(sqImg ? renderEditedColumns(sqKey, 'square', `#${i + 1} 1:1`, stPrompt) : []),
                   ];
                 })}
               </div>
