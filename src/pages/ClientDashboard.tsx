@@ -666,6 +666,34 @@ export default function ClientDashboard() {
       ) : (
         /* Dashboard content */
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+          {metaTokenInvalid && (
+            <GlassCard className="border border-destructive/40 bg-destructive/5 p-4 sm:p-5 animate-fade-in">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                <div className="flex-1">
+                  <h3 className="text-sm sm:text-base font-semibold text-foreground">
+                    Conexão com Meta expirou
+                  </h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                    O Facebook invalidou o token de acesso (por mudança de senha ou alerta de segurança).
+                    {isAdmin
+                      ? ' Reconecte a conta para voltar a ver os dados.'
+                      : ' Avise o gestor para reconectar a conta.'}
+                  </p>
+                </div>
+                {isAdmin && (
+                  <button
+                    onClick={handleSync}
+                    disabled={getAuthUrl.isPending}
+                    className="btn-accent rounded-xl px-4 py-2.5 text-xs sm:text-sm font-semibold flex items-center gap-2 self-start sm:self-auto"
+                  >
+                    <RefreshCw className={cn('h-4 w-4', getAuthUrl.isPending && 'animate-spin')} />
+                    Reconectar Meta
+                  </button>
+                )}
+              </div>
+            </GlassCard>
+          )}
+
           {/* Gap Alert */}
           <GapAlert leads={metricValues.leads} purchases={metricValues.purchases} />
 
