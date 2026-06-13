@@ -136,10 +136,10 @@ export default function ClientDashboard() {
   }, [selectedPreset, customDateRange]);
 
   // Meta hooks
-  const { data: metaCampaigns, isLoading: metaCampaignsLoading } = useMetaCampaigns(clientId, platform === 'meta' && isMetaSynced, timeRange);
-  const { data: metaInsights, isLoading: metaInsightsLoading } = useMetaInsights(clientId, platform === 'meta' && isMetaSynced, timeRange);
+  const { data: metaCampaigns, isLoading: metaCampaignsLoading, error: metaCampaignsError } = useMetaCampaigns(clientId, platform === 'meta' && isMetaSynced, timeRange);
+  const { data: metaInsights, isLoading: metaInsightsLoading, error: metaInsightsError } = useMetaInsights(clientId, platform === 'meta' && isMetaSynced, timeRange);
   const { data: metaPreviousInsights } = useMetaInsightsPrevious(clientId, platform === 'meta' && isMetaSynced, timeRange);
-  const { data: metaAds, isLoading: metaAdsLoading } = useMetaAds(clientId, platform === 'meta' && isMetaSynced, timeRange);
+  const { data: metaAds, isLoading: metaAdsLoading, error: metaAdsError } = useMetaAds(clientId, platform === 'meta' && isMetaSynced, timeRange);
   // Google Ads hooks
   const { data: googleCampaigns, isLoading: googleCampaignsLoading } = useGoogleAdsCampaigns(clientId, platform === 'google' && isGoogleSynced, timeRange);
   const { data: googleInsights, isLoading: googleInsightsLoading } = useGoogleAdsInsights(clientId, platform === 'google' && isGoogleSynced, timeRange);
