@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
     const event: Record<string, unknown> = {
       event_name: conv.event_name || "Purchase",
       event_time: eventTime,
-      action_source: "other",
+      action_source: useOfflineDataset ? "system_generated" : "other",
       event_id: eventId,
       user_data,
     };
@@ -167,12 +167,22 @@ Deno.serve(async (req) => {
       };
     }
 
-    const payload = { data: [event] };
+    const payload: Record<string, unknown> = { data: [event] };
+    if (useOfflineDataset) {
+      payload.upload_tag = "wavy_dash_crm";
+    }
 
-    // 5) POST to Meta CAPI
-    const url = `https://graph.facebook.com/v24.0/${pixelRow.pixel_id}/events?access_token=${encodeURIComponent(
+    // 5) POST to Meta CAPI (Offline Conversions dataset when configured, pixel events otherwise)
+    const targetId = useOfflineDataset ? offlineEventSetId : pixelRow.pixel_id;
+    const url = `https://graph.facebook.com/v24.0/${targetId}/events?access_token=${encodeURIComponent(
       pixelRow.access_token,
     )}`;
+
+    console.log("send-offline-conversion", {
+      conversion_id: conversionId,
+      mode: useOfflineDataset ? "offline_dataset" : "pixel_events",
+      target_id: targetId,
+    });
 
     const fbResp = await fetch(url, {
       method: "POST",
