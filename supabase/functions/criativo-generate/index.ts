@@ -15,6 +15,7 @@ interface GenerateBody {
   productImages?: string[];
   logoImage?: string | null;
   storyReference?: string | null;
+  aspectReference?: string | null;
 }
 
 const EVOLINK_BASE_URL = "https://api.evolink.ai/v1";
