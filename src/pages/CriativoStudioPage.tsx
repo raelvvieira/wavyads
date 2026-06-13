@@ -1621,6 +1621,8 @@ export default function CriativoStudioPage() {
                           </Button>
                           {renderEditButton(mainSquareKey)}
                           {renderEditPanel(mainSquareKey, squareImage, 'square', mainSquarePrompt)}
+                          {renderAspectButton(mainSquareKey, squareImage, 'square', mainSquarePrompt)}
+                          {renderCrossAspectColumnsInline(mainSquareKey, 'square')}
                         </>
                       )}
                     </>
