@@ -445,7 +445,7 @@ export default function GoogleAdsAIPage() {
                 />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Cidade desta campanha <span className="text-destructive">*</span></label>
+                <label className="text-xs text-muted-foreground mb-1 block">Cidade desta campanha (opcional)</label>
                 <Input
                   value={cidadeCampanha}
                   onChange={e => setCidadeCampanha(e.target.value)}
