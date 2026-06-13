@@ -264,6 +264,52 @@ export default function CriativoStudioPage() {
     }));
   };
 
+  const discardAspect = (key: string, idx: number) => {
+    setCrossAspectVersions((prev) => ({
+      ...prev,
+      [key]: (prev[key] || []).filter((_, i) => i !== idx),
+    }));
+  };
+
+  const recreateAspect = async (
+    sourceKey: string,
+    sourceUrl: string,
+    sourceAspect: 'story' | 'square',
+    sourcePrompt: string,
+  ) => {
+    const target: 'story' | 'square' = sourceAspect === 'story' ? 'square' : 'story';
+    setAspectLoadingKey(sourceKey);
+    try {
+      const { data, error } = await supabase.functions.invoke('criativo-generate', {
+        body: {
+          prompt: sourcePrompt || buildFinalPrompt(target),
+          aspectRatio: target,
+          model: IMAGE_MODEL,
+          quality,
+          isVariation: true,
+          productImages,
+          logoImage: logoImage[0] || null,
+          aspectReference: sourceUrl,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const usageType = MODEL_OPTIONS.find((m) => m.id === quality)?.usage || 'image-gemini-flash-2';
+      recordAiUsage(usageType);
+      const url = (data as any).imageUrl as string;
+      const label = target === 'square' ? '→ 1:1' : '→ Story 9:16';
+      setCrossAspectVersions((prev) => ({
+        ...prev,
+        [sourceKey]: [...(prev[sourceKey] || []), { url, feedback: label }],
+      }));
+      toast({ title: target === 'square' ? 'Versão 1080×1080 gerada' : 'Versão Story 9:16 gerada' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao recriar', description: e?.message || 'Erro', variant: 'destructive' });
+    } finally {
+      setAspectLoadingKey(null);
+    }
+  };
+
   const analyzeRefs = async () => {
     if (refImages.length === 0) {
       toast({ title: 'Adicione ao menos uma imagem', variant: 'destructive' });
