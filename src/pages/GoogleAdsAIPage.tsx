@@ -479,7 +479,7 @@ export default function GoogleAdsAIPage() {
               {step === 1 && (
                 <Button
                   onClick={handleAnalyze}
-                  disabled={analyzing || (!site && !descricao) || !cidadeCampanha.trim()}
+                  disabled={analyzing || (!site && !descricao)}
                   className="w-full btn-accent gap-2"
                 >
                   {analyzing ? (
