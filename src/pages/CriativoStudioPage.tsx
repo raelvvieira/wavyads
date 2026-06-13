@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useRole } from '@/hooks/useRole';
+import { useClients } from '@/hooks/useClients';
+import { useClientEditorial, useSaveClientEditorial } from '@/hooks/useClientEditorial';
 import { GlassCard } from '@/components/GlassCard';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,8 +17,10 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { ImageDropzone } from '@/components/criativo/ImageDropzone';
 import { StepIndicator } from '@/components/criativo/StepIndicator';
+import { EditorialDrawer } from '@/components/criativo/EditorialDrawer';
 import { cn } from '@/lib/utils';
 import { recordAiUsage } from '@/lib/aiUsageTracker';
+import type { VisualAnalysis, CopyResult } from '@/types/criativo';
 import {
   Sparkles,
   Wand2,
@@ -34,30 +38,10 @@ import {
   Globe,
   Pencil,
   Trash2,
+  BookOpen,
+  Save,
 } from 'lucide-react';
 
-interface VisualAnalysis {
-  composicao: { formato: string; estrutura: string; hierarquia: string; silencio: string };
-  fotografia: { tipo: string; luz: string; tratamento: string; integracao: string };
-  paleta: { dominante: string; secundaria: string; acento: string; saturacao: string; hexes: string[] };
-  tipografia: { familiaA: string; familiaB: string; contraste: string; alinhamento: string };
-  camadas: string[];
-  hierarquiaVisual: string;
-  espaco: string;
-  mood: { adjetivos: string[]; referencias: string[]; evita: string[] };
-  designSystemDoc: string;
-}
-
-interface CopyResult {
-  angulo?: string;
-  label: string;
-  titulo: string;
-  subtitulo: string;
-  dados: string;
-  cta: string;
-  avaliacao: { clareza: string; hierarquia: string; brevidade: string; gatilho: string; tom: string };
-  justificativa: string;
-}
 
 type ImageQuality = 'low' | 'medium' | 'high';
 const IMAGE_MODEL = 'gpt-image-2' as const;
@@ -141,6 +125,14 @@ export default function CriativoStudioPage() {
   const [editPanelKey, setEditPanelKey] = useState<string | null>(null);
   const [editFeedback, setEditFeedback] = useState('');
   const [editLoadingKey, setEditLoadingKey] = useState<string | null>(null);
+
+  // Editorial Criativo por cliente
+  const { data: clients } = useClients();
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [editorialDrawerOpen, setEditorialDrawerOpen] = useState(false);
+  const [showSavePrompt, setShowSavePrompt] = useState(false);
+  const { data: clientEditorial } = useClientEditorial(selectedClientId);
+  const saveEditorial = useSaveClientEditorial();
 
   useEffect(() => {
     if (!roleLoading && !isAdmin) navigate('/dashboard');
@@ -286,6 +278,7 @@ export default function CriativoStudioPage() {
       const a = data as VisualAnalysis;
       setAnalysis(a);
       setEditedDoc(a.designSystemDoc);
+      setShowSavePrompt(true);
       toast({ title: 'Análise concluída' });
     } catch (e: any) {
       toast({ title: 'Erro ao analisar', description: e.message, variant: 'destructive' });
@@ -661,6 +654,8 @@ export default function CriativoStudioPage() {
     setEditedVersions({});
     setEditPanelKey(null);
     setEditFeedback('');
+    setSelectedClientId(null);
+    setShowSavePrompt(false);
   };
 
   if (roleLoading) {
@@ -701,6 +696,97 @@ export default function CriativoStudioPage() {
       {/* STEP 1 */}
       {step === 0 && (
         <GlassCard className="space-y-4">
+          {/* Seletor de cliente + Editorial Criativo */}
+          <div className="space-y-3 pb-3 border-b border-white/10">
+            <div className="flex items-center gap-2">
+              <Label className="text-[10px] uppercase tracking-wider text-white/40 shrink-0">
+                Cliente (opcional)
+              </Label>
+            </div>
+            <div className="flex gap-2">
+              <Select
+                value={selectedClientId || ''}
+                onValueChange={(v) => {
+                  setSelectedClientId(v || null);
+                  setShowSavePrompt(false);
+                }}
+              >
+                <SelectTrigger className="text-sm">
+                  <SelectValue placeholder="Selecionar cliente..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(clients || []).map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedClientId && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setEditorialDrawerOpen(true)}
+                  className="shrink-0 gap-1.5"
+                >
+                  <BookOpen className="h-3.5 w-3.5" />
+                  Editorial Criativo
+                </Button>
+              )}
+            </div>
+
+            {selectedClientId && clientEditorial && (
+              <div className="rounded-lg border border-accent/30 bg-accent/5 p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Check className="h-3.5 w-3.5 text-accent shrink-0" />
+                  <span className="text-xs font-medium text-accent">
+                    Editorial Criativo carregado —{' '}
+                    {(clients || []).find((c) => c.id === selectedClientId)?.name}
+                  </span>
+                  <span className="text-[10px] text-white/40 ml-auto">
+                    {new Date(clientEditorial.updated_at).toLocaleDateString('pt-BR')}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {clientEditorial.visual_analysis?.paleta?.hexes?.slice(0, 5).map((c) => (
+                    <div key={c} className="flex items-center gap-1 glass px-1.5 py-0.5 rounded">
+                      <div className="w-3 h-3 rounded border border-white/10 shrink-0" style={{ background: c }} />
+                      <span className="text-[10px] font-mono">{c}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[11px] text-white/60">
+                  {clientEditorial.visual_analysis?.mood?.adjetivos?.join(' · ')}
+                </p>
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setAnalysis(clientEditorial.visual_analysis);
+                      setEditedDoc(clientEditorial.design_system_doc);
+                      setShowSavePrompt(false);
+                      setStep(1);
+                    }}
+                    className="flex-1"
+                  >
+                    Usar este Editorial e avançar →
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setEditorialDrawerOpen(true)}
+                  >
+                    <BookOpen className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {selectedClientId && clientEditorial === null && (
+              <p className="text-[11px] text-white/40 flex items-center gap-1.5">
+                ⚠ Este cliente ainda não tem Editorial Criativo. Faça a análise abaixo para criar o primeiro.
+              </p>
+            )}
+          </div>
+
           <div>
             <h2 className="text-base font-semibold flex items-center gap-2">
               <Palette className="h-4 w-4 text-accent" />
@@ -799,6 +885,63 @@ export default function CriativoStudioPage() {
                   className="font-mono text-[11px]"
                 />
               </div>
+
+              {/* Save prompt */}
+              {showSavePrompt && (
+                <div className="rounded-lg border border-white/15 bg-white/[0.03] p-3 space-y-2.5">
+                  <p className="text-xs font-medium text-white/80 flex items-center gap-1.5">
+                    <Save className="h-3.5 w-3.5 text-accent" />
+                    Salvar como Editorial Criativo?
+                  </p>
+                  <div className="flex gap-2">
+                    <Select
+                      value={selectedClientId || ''}
+                      onValueChange={(v) => setSelectedClientId(v || null)}
+                    >
+                      <SelectTrigger className="text-xs flex-1">
+                        <SelectValue placeholder="Selecionar cliente..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(clients || []).map((c) => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      size="sm"
+                      disabled={!selectedClientId || saveEditorial.isPending}
+                      onClick={async () => {
+                        if (!selectedClientId || !analysis) return;
+                        try {
+                          await saveEditorial.mutateAsync({
+                            clientId: selectedClientId,
+                            designSystemDoc: editedDoc,
+                            visualAnalysis: analysis,
+                          });
+                          setShowSavePrompt(false);
+                          toast({ title: 'Editorial Criativo salvo' });
+                        } catch (e: any) {
+                          toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' });
+                        }
+                      }}
+                      className="shrink-0"
+                    >
+                      {saveEditorial.isPending
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <Save className="h-3.5 w-3.5 mr-1" />}
+                      Salvar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setShowSavePrompt(false)}
+                      className="shrink-0 text-white/40"
+                    >
+                      Pular
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </GlassCard>
@@ -1491,6 +1634,19 @@ export default function CriativoStudioPage() {
           })()}
         </GlassCard>
       )}
+
+      <EditorialDrawer
+        open={editorialDrawerOpen}
+        onOpenChange={setEditorialDrawerOpen}
+        editorial={clientEditorial ?? null}
+        clientName={(clients || []).find((c) => c.id === selectedClientId)?.name || ''}
+        onRequestUpdate={() => {
+          setAnalysis(null);
+          setEditedDoc('');
+          setShowSavePrompt(false);
+          setRefImages([]);
+        }}
+      />
 
       <Dialog open={!!lightboxUrl} onOpenChange={(o) => !o && setLightboxUrl(null)}>
         <DialogContent className="max-w-[95vw] sm:max-w-[90vw] max-h-[95vh] p-0 bg-black/95 border-white/10 overflow-hidden">
