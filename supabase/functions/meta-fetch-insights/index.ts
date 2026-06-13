@@ -96,6 +96,30 @@ function timeRangeParam(tr: { since: string; until: string }): string {
   return `time_range={"since":"${tr.since}","until":"${tr.until}"}`;
 }
 
+const TOKEN_INVALID_SUBCODES = new Set([458, 459, 460, 463, 464, 467, 492]);
+
+function isTokenInvalidError(err: any): boolean {
+  if (!err) return false;
+  if (err.code === 190) return true;
+  if (err.error_subcode && TOKEN_INVALID_SUBCODES.has(err.error_subcode)) return true;
+  const msg = (err.message || "").toLowerCase();
+  return msg.includes("access token") || msg.includes("session has been invalidated") || msg.includes("session has expired");
+}
+
+function graphErrorResponse(err: any) {
+  const tokenInvalid = isTokenInvalidError(err);
+  return new Response(
+    JSON.stringify({
+      error: err?.message || "Erro Meta Graph API",
+      code: tokenInvalid ? "META_TOKEN_INVALID" : "META_API_ERROR",
+    }),
+    {
+      status: tokenInvalid ? 401 : 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    },
+  );
+}
+
 async function authenticateRequest(req: Request, supabase: any) {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
@@ -266,8 +290,7 @@ Deno.serve(async (req) => {
       const data = await res.json();
 
       if (data.error) {
-        return new Response(JSON.stringify({ error: data.error.message }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return graphErrorResponse(data.error);
       }
 
       const campaigns = (data.data || []).map((c: any) => {
@@ -292,8 +315,7 @@ Deno.serve(async (req) => {
       const data = await res.json();
 
       if (data.error) {
-        return new Response(JSON.stringify({ error: data.error.message }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return graphErrorResponse(data.error);
       }
 
       const rawAds = data.data || [];
@@ -383,8 +405,7 @@ Deno.serve(async (req) => {
       const data = await res.json();
 
       if (data.error) {
-        return new Response(JSON.stringify({ error: data.error.message }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return graphErrorResponse(data.error);
       }
 
       const ins = data.data?.[0] || {};
@@ -557,8 +578,7 @@ Deno.serve(async (req) => {
       const data = await res.json();
 
       if (data.error) {
-        return new Response(JSON.stringify({ error: data.error.message }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return graphErrorResponse(data.error);
       }
 
       const ins = data.data?.[0] || {};
