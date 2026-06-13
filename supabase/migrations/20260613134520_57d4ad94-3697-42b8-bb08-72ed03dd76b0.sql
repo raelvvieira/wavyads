@@ -1,0 +1,1 @@
+ALTER TABLE public.client_pixels ADD COLUMN IF NOT EXISTS offline_event_set_id text;
