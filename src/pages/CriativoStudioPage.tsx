@@ -122,6 +122,8 @@ export default function CriativoStudioPage() {
   // Edições por imagem
   type EditedVersion = { url: string; feedback: string };
   const [editedVersions, setEditedVersions] = useState<Record<string, EditedVersion[]>>({});
+  const [crossAspectVersions, setCrossAspectVersions] = useState<Record<string, EditedVersion[]>>({});
+  const [aspectLoadingKey, setAspectLoadingKey] = useState<string | null>(null);
   const [editPanelKey, setEditPanelKey] = useState<string | null>(null);
   const [editFeedback, setEditFeedback] = useState('');
   const [editLoadingKey, setEditLoadingKey] = useState<string | null>(null);
