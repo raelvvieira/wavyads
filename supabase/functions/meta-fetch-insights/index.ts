@@ -290,7 +290,7 @@ Deno.serve(async (req) => {
       const data = await res.json();
 
       if (data.error) {
-        return new Response(JSON.stringify({ error: data.error.message }),
+        return graphErrorResponse(data.error);
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -316,7 +316,7 @@ Deno.serve(async (req) => {
       const data = await res.json();
 
       if (data.error) {
-        return new Response(JSON.stringify({ error: data.error.message }),
+        return graphErrorResponse(data.error);
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -407,7 +407,7 @@ Deno.serve(async (req) => {
       const data = await res.json();
 
       if (data.error) {
-        return new Response(JSON.stringify({ error: data.error.message }),
+        return graphErrorResponse(data.error);
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -581,7 +581,7 @@ Deno.serve(async (req) => {
       const data = await res.json();
 
       if (data.error) {
-        return new Response(JSON.stringify({ error: data.error.message }),
+        return graphErrorResponse(data.error);
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
