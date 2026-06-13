@@ -291,7 +291,6 @@ Deno.serve(async (req) => {
 
       if (data.error) {
         return graphErrorResponse(data.error);
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       const campaigns = (data.data || []).map((c: any) => {
@@ -317,7 +316,6 @@ Deno.serve(async (req) => {
 
       if (data.error) {
         return graphErrorResponse(data.error);
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       const rawAds = data.data || [];
@@ -408,7 +406,6 @@ Deno.serve(async (req) => {
 
       if (data.error) {
         return graphErrorResponse(data.error);
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       const ins = data.data?.[0] || {};
@@ -582,7 +579,6 @@ Deno.serve(async (req) => {
 
       if (data.error) {
         return graphErrorResponse(data.error);
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       const ins = data.data?.[0] || {};
