@@ -1626,9 +1626,9 @@ export default function CriativoStudioPage() {
                 </div>
 
                 {/* Edições da principal (story) */}
-                {renderEditedColumns(mainStoryKey, 'story', 'Principal')}
+                {renderEditedColumns(mainStoryKey, 'story', 'Principal', mainStoryPrompt)}
                 {/* Edições da principal (square) */}
-                {squareImage && renderEditedColumns(mainSquareKey, 'square', 'Principal 1:1')}
+                {squareImage && renderEditedColumns(mainSquareKey, 'square', 'Principal 1:1', mainSquarePrompt)}
 
                 {/* Fator Criativo columns */}
                 {(factorVariations || factorLoading) && Array.from({ length: 5 }).flatMap((_, i) => {
