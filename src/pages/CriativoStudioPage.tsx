@@ -122,6 +122,8 @@ export default function CriativoStudioPage() {
   // Edições por imagem
   type EditedVersion = { url: string; feedback: string };
   const [editedVersions, setEditedVersions] = useState<Record<string, EditedVersion[]>>({});
+  const [crossAspectVersions, setCrossAspectVersions] = useState<Record<string, EditedVersion[]>>({});
+  const [aspectLoadingKey, setAspectLoadingKey] = useState<string | null>(null);
   const [editPanelKey, setEditPanelKey] = useState<string | null>(null);
   const [editFeedback, setEditFeedback] = useState('');
   const [editLoadingKey, setEditLoadingKey] = useState<string | null>(null);
@@ -260,6 +262,52 @@ export default function CriativoStudioPage() {
       ...prev,
       [key]: (prev[key] || []).filter((_, i) => i !== idx),
     }));
+  };
+
+  const discardAspect = (key: string, idx: number) => {
+    setCrossAspectVersions((prev) => ({
+      ...prev,
+      [key]: (prev[key] || []).filter((_, i) => i !== idx),
+    }));
+  };
+
+  const recreateAspect = async (
+    sourceKey: string,
+    sourceUrl: string,
+    sourceAspect: 'story' | 'square',
+    sourcePrompt: string,
+  ) => {
+    const target: 'story' | 'square' = sourceAspect === 'story' ? 'square' : 'story';
+    setAspectLoadingKey(sourceKey);
+    try {
+      const { data, error } = await supabase.functions.invoke('criativo-generate', {
+        body: {
+          prompt: sourcePrompt || buildFinalPrompt(target),
+          aspectRatio: target,
+          model: IMAGE_MODEL,
+          quality,
+          isVariation: true,
+          productImages,
+          logoImage: logoImage[0] || null,
+          aspectReference: sourceUrl,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const usageType = MODEL_OPTIONS.find((m) => m.id === quality)?.usage || 'image-gemini-flash-2';
+      recordAiUsage(usageType);
+      const url = (data as any).imageUrl as string;
+      const label = target === 'square' ? '→ 1:1' : '→ Story 9:16';
+      setCrossAspectVersions((prev) => ({
+        ...prev,
+        [sourceKey]: [...(prev[sourceKey] || []), { url, feedback: label }],
+      }));
+      toast({ title: target === 'square' ? 'Versão 1080×1080 gerada' : 'Versão Story 9:16 gerada' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao recriar', description: e?.message || 'Erro', variant: 'destructive' });
+    } finally {
+      setAspectLoadingKey(null);
+    }
   };
 
   const analyzeRefs = async () => {
@@ -652,6 +700,8 @@ export default function CriativoStudioPage() {
     setUrlContext(null);
     setUrlError(null);
     setEditedVersions({});
+    setCrossAspectVersions({});
+    setAspectLoadingKey(null);
     setEditPanelKey(null);
     setEditFeedback('');
     setSelectedClientId(null);
@@ -1377,7 +1427,37 @@ export default function CriativoStudioPage() {
               </Button>
             );
 
-            const renderEditedColumns = (sourceKey: string, aspect: 'story' | 'square', srcLabel: string) =>
+            const renderAspectButton = (
+              sourceKey: string,
+              sourceUrl: string,
+              sourceAspect: 'story' | 'square',
+              sourcePrompt: string,
+            ) => {
+              const target = sourceAspect === 'story' ? 'square' : 'story';
+              const label = target === 'square' ? 'Recriar em 1:1 (1080)' : 'Recriar em Story 9:16';
+              const loading = aspectLoadingKey === sourceKey;
+              return (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => recreateAspect(sourceKey, sourceUrl, sourceAspect, sourcePrompt)}
+                  disabled={loading || aspectLoadingKey !== null}
+                  className="w-full h-7 text-[10px]"
+                >
+                  {loading
+                    ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    : <RefreshCw className="h-3 w-3 mr-1" />}
+                  {label}
+                </Button>
+              );
+            };
+
+            const renderEditedColumns = (
+              sourceKey: string,
+              aspect: 'story' | 'square',
+              srcLabel: string,
+              sourcePrompt: string,
+            ) =>
               (editedVersions[sourceKey] || []).map((ed, idx) => (
                 <div key={`${sourceKey}-edit-${idx}`} className="space-y-2 min-w-0">
                   <p className="text-[9px] uppercase tracking-wider text-accent/80 font-semibold truncate">
@@ -1407,6 +1487,7 @@ export default function CriativoStudioPage() {
                   >
                     <Download className="h-3 w-3 mr-1" /> Baixar editada
                   </Button>
+                  {renderAspectButton(`${sourceKey}-edit-${idx}`, ed.url, aspect, sourcePrompt)}
                   <Button
                     size="sm"
                     variant="ghost"
@@ -1415,8 +1496,50 @@ export default function CriativoStudioPage() {
                   >
                     <Trash2 className="h-3 w-3 mr-1" /> Descartar
                   </Button>
+                  {renderCrossAspectColumnsInline(`${sourceKey}-edit-${idx}`, aspect)}
                 </div>
               ));
+
+            const renderCrossAspectColumnsInline = (sourceKey: string, sourceAspect: 'story' | 'square') => {
+              const target = sourceAspect === 'story' ? 'square' : 'story';
+              return (crossAspectVersions[sourceKey] || []).map((v, idx) => (
+                <div key={`${sourceKey}-cross-${idx}`} className="space-y-1.5 pt-2 border-t border-white/10">
+                  <p className="text-[9px] uppercase tracking-wider text-accent/80 font-semibold truncate">
+                    {v.feedback}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setLightboxUrl(v.url)}
+                    className={cn(
+                      'group relative block w-full rounded-lg overflow-hidden glass cursor-zoom-in',
+                      target === 'story' ? 'aspect-[9/16]' : 'aspect-square',
+                    )}
+                  >
+                    <img src={v.url} alt="versão" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <ZoomIn className="h-5 w-5 text-white drop-shadow" />
+                    </div>
+                  </button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => download(v.url, `criativo-${target}-${Date.now()}.png`)}
+                    className="w-full h-7 text-[10px]"
+                  >
+                    <Download className="h-3 w-3 mr-1" /> Baixar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => discardAspect(sourceKey, idx)}
+                    className="w-full h-7 text-[10px] text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-3 w-3 mr-1" /> Descartar
+                  </Button>
+                </div>
+              ));
+            };
+
 
             return (
               <div className={cn(
@@ -1462,6 +1585,8 @@ export default function CriativoStudioPage() {
                   )}
                   {renderEditButton(mainStoryKey)}
                   {renderEditPanel(mainStoryKey, storyImage, 'story', mainStoryPrompt)}
+                  {renderAspectButton(mainStoryKey, storyImage, 'story', mainStoryPrompt)}
+                  {renderCrossAspectColumnsInline(mainStoryKey, 'story')}
                   {(squareImage || mainSquareLoading) && (
                     <>
                       <button
@@ -1496,6 +1621,8 @@ export default function CriativoStudioPage() {
                           </Button>
                           {renderEditButton(mainSquareKey)}
                           {renderEditPanel(mainSquareKey, squareImage, 'square', mainSquarePrompt)}
+                          {renderAspectButton(mainSquareKey, squareImage, 'square', mainSquarePrompt)}
+                          {renderCrossAspectColumnsInline(mainSquareKey, 'square')}
                         </>
                       )}
                     </>
@@ -1503,9 +1630,9 @@ export default function CriativoStudioPage() {
                 </div>
 
                 {/* Edições da principal (story) */}
-                {renderEditedColumns(mainStoryKey, 'story', 'Principal')}
+                {renderEditedColumns(mainStoryKey, 'story', 'Principal', mainStoryPrompt)}
                 {/* Edições da principal (square) */}
-                {squareImage && renderEditedColumns(mainSquareKey, 'square', 'Principal 1:1')}
+                {squareImage && renderEditedColumns(mainSquareKey, 'square', 'Principal 1:1', mainSquarePrompt)}
 
                 {/* Fator Criativo columns */}
                 {(factorVariations || factorLoading) && Array.from({ length: 5 }).flatMap((_, i) => {
@@ -1580,6 +1707,8 @@ export default function CriativoStudioPage() {
                         <>
                           {renderEditButton(stKey)}
                           {renderEditPanel(stKey, img, 'story', stPrompt)}
+                          {sqImg ? null : renderAspectButton(stKey, img, 'story', stPrompt)}
+                          {renderCrossAspectColumnsInline(stKey, 'story')}
                         </>
                       )}
                       {(sqImg || sqLoading) && (
@@ -1616,6 +1745,8 @@ export default function CriativoStudioPage() {
                               </Button>
                               {renderEditButton(sqKey)}
                               {renderEditPanel(sqKey, sqImg, 'square', stPrompt)}
+                              {renderAspectButton(sqKey, sqImg, 'square', stPrompt)}
+                              {renderCrossAspectColumnsInline(sqKey, 'square')}
                             </>
                           )}
                         </>
@@ -1625,8 +1756,8 @@ export default function CriativoStudioPage() {
 
                   return [
                     column,
-                    ...renderEditedColumns(stKey, 'story', `#${i + 1}`),
-                    ...(sqImg ? renderEditedColumns(sqKey, 'square', `#${i + 1} 1:1`) : []),
+                    ...renderEditedColumns(stKey, 'story', `#${i + 1}`, stPrompt),
+                    ...(sqImg ? renderEditedColumns(sqKey, 'square', `#${i + 1} 1:1`, stPrompt) : []),
                   ];
                 })}
               </div>

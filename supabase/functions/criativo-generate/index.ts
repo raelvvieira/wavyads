@@ -15,6 +15,7 @@ interface GenerateBody {
   productImages?: string[];
   logoImage?: string | null;
   storyReference?: string | null;
+  aspectReference?: string | null;
 }
 
 const EVOLINK_BASE_URL = "https://api.evolink.ai/v1";
@@ -231,7 +232,8 @@ serve(async (req) => {
       : [];
     rawRefs.push(...productImages.slice(0, 14));
     if (body.logoImage) rawRefs.push(body.logoImage);
-    if (!isStory && body.storyReference) rawRefs.push(body.storyReference);
+    const aspectRef = body.aspectReference ?? (!isStory ? body.storyReference : null);
+    if (aspectRef) rawRefs.push(aspectRef);
 
     const hasRefs = rawRefs.length > 0;
     const referenceHints = hasRefs
