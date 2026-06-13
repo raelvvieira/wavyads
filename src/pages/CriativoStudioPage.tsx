@@ -700,6 +700,8 @@ export default function CriativoStudioPage() {
     setUrlContext(null);
     setUrlError(null);
     setEditedVersions({});
+    setCrossAspectVersions({});
+    setAspectLoadingKey(null);
     setEditPanelKey(null);
     setEditFeedback('');
     setSelectedClientId(null);
