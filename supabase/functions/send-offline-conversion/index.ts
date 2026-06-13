@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
     // 2) Fetch the pixel
     const { data: pixelRow, error: pixelErr } = await adminClient
       .from("client_pixels")
-      .select("pixel_id, access_token")
+      .select("pixel_id, access_token, offline_event_set_id")
       .eq("client_id", conv.client_id)
       .maybeSingle();
     if (pixelErr || !pixelRow) {
@@ -106,6 +106,9 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const offlineEventSetId = (pixelRow as any).offline_event_set_id as string | null;
+    const useOfflineDataset = !!offlineEventSetId && String(offlineEventSetId).trim().length > 0;
 
     // 3) Build hashed user_data — only include fields that are present.
     //    Per spec: em/ph as arrays; others as scalar strings.
