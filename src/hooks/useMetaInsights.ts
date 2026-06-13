@@ -103,6 +103,7 @@ export function useMetaCampaigns(clientId: string | undefined, enabled: boolean,
     },
     enabled: enabled && !!clientId && !!timeRange,
     staleTime: 5 * 60 * 1000,
+    ...metaQueryOptions,
   });
 }
 
@@ -139,6 +140,7 @@ export function useMetaInsights(clientId: string | undefined, enabled: boolean, 
     },
     enabled: enabled && !!clientId && !!timeRange,
     staleTime: 5 * 60 * 1000,
+    ...metaQueryOptions,
   });
 }
 
@@ -152,5 +154,6 @@ export function useMetaInsightsPrevious(clientId: string | undefined, enabled: b
     },
     enabled: enabled && !!clientId && !!timeRange,
     staleTime: 5 * 60 * 1000,
+    ...metaQueryOptions,
   });
 }
