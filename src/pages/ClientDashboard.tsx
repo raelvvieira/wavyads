@@ -168,7 +168,10 @@ export default function ClientDashboard() {
     });
   };
 
-  const isLoading = clientLoading || (isSynced && (campaignsLoading || insightsLoading));
+  const metaTokenInvalid = platform === 'meta' && [metaCampaignsError, metaInsightsError, metaAdsError].some(
+    (e: any) => e?.name === 'MetaTokenInvalid'
+  );
+  const isLoading = clientLoading || (isSynced && !metaTokenInvalid && (campaignsLoading || insightsLoading));
 
   // Listen for popup message
   useEffect(() => {
