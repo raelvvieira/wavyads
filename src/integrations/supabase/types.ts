@@ -47,6 +47,41 @@ export type Database = {
         }
         Relationships: []
       }
+      client_editorials: {
+        Row: {
+          client_id: string
+          created_at: string
+          design_system_doc: string
+          id: string
+          updated_at: string
+          visual_analysis: Json
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          design_system_doc?: string
+          id?: string
+          updated_at?: string
+          visual_analysis?: Json
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          design_system_doc?: string
+          id?: string
+          updated_at?: string
+          visual_analysis?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_editorials_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_pixels: {
         Row: {
           access_token: string
