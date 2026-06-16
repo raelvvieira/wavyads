@@ -137,16 +137,16 @@ export function ConversionFunnel({
   });
 
   const handleSetStage = (pos: 4 | 5 | 6, val: BottomStageOption) => {
-    if (pos === 4) {
-      setStage4(val);
-      localStorage.setItem('funnel_stage4', val);
-    } else if (pos === 5) {
-      setStage5(val);
-      localStorage.setItem('funnel_stage5', val);
-    } else {
-      setStage6(val);
-      localStorage.setItem('funnel_stage6', val);
-    }
+    const nextStages = {
+      s4: pos === 4 ? val : stage4,
+      s5: pos === 5 ? val : stage5,
+      s6: pos === 6 ? val : stage6,
+    };
+    if (pos === 4) setLocalStage4(val);
+    else if (pos === 5) setLocalStage5(val);
+    else setLocalStage6(val);
+    try { localStorage.setItem(`funnel_stage${pos}`, val); } catch {}
+    onChangeStages?.(nextStages);
   };
 
   const renderStageSelector = (pos: 4 | 5 | 6, current: BottomStageOption) => (
