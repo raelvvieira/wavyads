@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { TrendingUp, RefreshCw, ArrowLeft, CalendarIcon, Send, SlidersHorizontal } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths, subDays, startOfDay } from 'date-fns';
