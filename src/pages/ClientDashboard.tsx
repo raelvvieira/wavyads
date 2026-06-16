@@ -112,12 +112,12 @@ export default function ClientDashboard() {
     s4: 'view_content', s5: 'leads', s6: 'purchases',
   });
 
-  // Hydrate state from saved prefs once they load (and whenever prefs/clientId change)
+  // Hydrate state from saved prefs once they actually load
   const hydratedFor = useRef<string | null>(null);
   useEffect(() => {
     if (!clientId) return;
-    if (hydratedFor.current === clientId && Object.keys(prefs).length === 0) return;
     if (hydratedFor.current === clientId) return;
+    if (Object.keys(prefs).length === 0) return; // wait for real prefs to arrive
     hydratedFor.current = clientId;
     if (prefs.preset) setSelectedPreset(prefs.preset as PresetKey);
     if (prefs.customRange?.from && prefs.customRange?.to) {
