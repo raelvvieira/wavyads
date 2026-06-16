@@ -176,6 +176,42 @@ export default function ClientDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPreset, platform, customDateRange.from?.getTime(), customDateRange.to?.getTime(), clientId]);
 
+  const isSynced = platform === 'meta' ? isMetaSynced : isGoogleSynced;
+
+  // Compute the time range based on preset or custom
+  const timeRange: TimeRange | undefined = useMemo(() => {
+    if (selectedPreset === 'custom') {
+      if (customDateRange.from && customDateRange.to) {
+        return {
+          since: format(customDateRange.from, 'yyyy-MM-dd'),
+          until: format(customDateRange.to, 'yyyy-MM-dd'),
+        };
+      }
+      return undefined;
+    }
+    return computeTimeRange(selectedPreset);
+  }, [selectedPreset, customDateRange]);
+
+  // Meta hooks
+  const { data: metaCampaigns, isLoading: metaCampaignsLoading, error: metaCampaignsError } = useMetaCampaigns(clientId, platform === 'meta' && isMetaSynced, timeRange);
+  const { data: metaInsights, isLoading: metaInsightsLoading, error: metaInsightsError } = useMetaInsights(clientId, platform === 'meta' && isMetaSynced, timeRange);
+  const { data: metaPreviousInsights } = useMetaInsightsPrevious(clientId, platform === 'meta' && isMetaSynced, timeRange);
+  const { data: metaAds, isLoading: metaAdsLoading, error: metaAdsError } = useMetaAds(clientId, platform === 'meta' && isMetaSynced, timeRange);
+  // Google Ads hooks
+  const { data: googleCampaigns, isLoading: googleCampaignsLoading } = useGoogleAdsCampaigns(clientId, platform === 'google' && isGoogleSynced, timeRange);
+  const { data: googleInsights, isLoading: googleInsightsLoading } = useGoogleAdsInsights(clientId, platform === 'google' && isGoogleSynced, timeRange);
+  const { data: googlePreviousInsights } = useGoogleAdsInsightsPrevious(clientId, platform === 'google' && isGoogleSynced, timeRange);
+
+  // Active data based on platform
+  const campaigns = platform === 'meta' ? metaCampaigns : googleCampaigns;
+  const campaignsLoading = platform === 'meta' ? metaCampaignsLoading : googleCampaignsLoading;
+  const insights = platform === 'meta' ? metaInsights : googleInsights;
+  const insightsLoading = platform === 'meta' ? metaInsightsLoading : googleInsightsLoading;
+  const previousInsights = platform === 'meta' ? metaPreviousInsights : googlePreviousInsights;
+
+  const getAuthUrl = useGetMetaAuthUrl();
+  const selectAccount = useSelectMetaAccount();
+  const [pendingAccounts, setPendingAccounts] = useState<any[] | null>(null);
 
   const metaTokenInvalid = platform === 'meta' && [metaCampaignsError, metaInsightsError, metaAdsError].some(
     (e: any) => e?.name === 'MetaTokenInvalid'
