@@ -17,7 +17,7 @@ interface FunnelStage {
   costValue?: number;
 }
 
-type BottomStageOption =
+export type BottomStageOption =
   | 'leads'
   | 'results'
   | 'purchases'
