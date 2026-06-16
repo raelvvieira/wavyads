@@ -42,30 +42,17 @@ export const METRIC_DEFS: Record<MetricKey, MetricDef> = {
 
 const ALL_KEYS = Object.keys(METRIC_DEFS) as MetricKey[];
 
-function storageKey(clientId?: string) {
-  return clientId ? `wavy-kpi-cards-${clientId}` : 'wavy-kpi-cards';
-}
+export const DEFAULT_CARDS: MetricKey[] = ['spend', 'impressions', 'clicks', 'results', 'cost_per_result', 'purchases', 'purchase_value'];
 
-const DEFAULT_CARDS: MetricKey[] = ['spend', 'impressions', 'clicks', 'results', 'cost_per_result', 'purchases', 'purchase_value'];
-
-export function getDefaultCards(clientId?: string): MetricKey[] {
-  try {
-    const saved = localStorage.getItem(storageKey(clientId));
-    if (saved) {
-      const arr = JSON.parse(saved) as MetricKey[];
-      // Backfill to 7 cards for users with older saved layouts
-      if (Array.isArray(arr) && arr.length < 7) {
-        const missing = DEFAULT_CARDS.filter(k => !arr.includes(k));
-        return [...arr, ...missing].slice(0, 7);
-      }
-      return arr.slice(0, 7);
-    }
-  } catch {}
-  return DEFAULT_CARDS;
-}
-
-export function saveCards(cards: MetricKey[], clientId?: string) {
-  localStorage.setItem(storageKey(clientId), JSON.stringify(cards));
+export function normalizeCards(input: unknown): MetricKey[] {
+  if (!Array.isArray(input)) return DEFAULT_CARDS;
+  const valid = input.filter((k): k is MetricKey => typeof k === 'string' && k in METRIC_DEFS);
+  if (valid.length === 0) return DEFAULT_CARDS;
+  if (valid.length < 7) {
+    const missing = DEFAULT_CARDS.filter(k => !valid.includes(k));
+    return [...valid, ...missing].slice(0, 7);
+  }
+  return valid.slice(0, 7);
 }
 
 interface KpiCardProps {
