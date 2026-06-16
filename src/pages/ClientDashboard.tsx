@@ -5,7 +5,9 @@ import { format, startOfMonth, endOfMonth, subMonths, subDays, startOfDay } from
 import { ptBR } from 'date-fns/locale';
 import { GlassCard } from '@/components/GlassCard';
 import { Skeleton } from '@/components/ui/skeleton';
-import { KpiCard, getDefaultCards, saveCards, type MetricKey } from '@/components/KpiCard';
+import { KpiCard, normalizeCards, DEFAULT_CARDS, type MetricKey } from '@/components/KpiCard';
+import { useDashboardPrefs } from '@/hooks/useDashboardPrefs';
+import type { BottomStageOption } from '@/components/ConversionFunnel';
 import { DailyChart } from '@/components/DailyChart';
 import { CampaignsTable } from '@/components/CampaignsTable';
 import { CreativesGallery } from '@/components/CreativesGallery';
