@@ -1,4 +1,5 @@
 import { useState } from 'react';
+export type { BottomStageOption };
 import { GlassCard } from './GlassCard';
 import { cn } from '@/lib/utils';
 import { formatNumber, formatCurrency } from '@/data/mock';
