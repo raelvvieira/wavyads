@@ -52,6 +52,8 @@ interface ConversionFunnelProps {
   costPerAddToCart?: number;
   costPerInitiateCheckout?: number;
   costPerViewContent?: number;
+  stages?: { s4?: BottomStageOption; s5?: BottomStageOption; s6?: BottomStageOption };
+  onChangeStages?: (next: { s4: BottomStageOption; s5: BottomStageOption; s6: BottomStageOption }) => void;
 }
 
 // Green gradient from dark (top) to light (bottom) — 6 stages
