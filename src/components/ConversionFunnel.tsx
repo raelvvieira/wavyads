@@ -92,10 +92,17 @@ export function ConversionFunnel({
   costPerAddToCart = 0,
   costPerInitiateCheckout = 0,
   costPerViewContent = 0,
+  stages: controlledStages,
+  onChangeStages,
 }: ConversionFunnelProps) {
-  const [stage4, setStage4] = useState<BottomStageOption>(() => getStoredStage('funnel_stage4', 'view_content'));
-  const [stage5, setStage5] = useState<BottomStageOption>(() => getStoredStage('funnel_stage5', 'leads'));
-  const [stage6, setStage6] = useState<BottomStageOption>(() => getStoredStage('funnel_stage6', 'purchases'));
+  const isValid = (v: any): v is BottomStageOption => STAGE_OPTIONS.some(o => o.value === v);
+  const [localStage4, setLocalStage4] = useState<BottomStageOption>(() => getStoredStage('funnel_stage4', 'view_content'));
+  const [localStage5, setLocalStage5] = useState<BottomStageOption>(() => getStoredStage('funnel_stage5', 'leads'));
+  const [localStage6, setLocalStage6] = useState<BottomStageOption>(() => getStoredStage('funnel_stage6', 'purchases'));
+
+  const stage4: BottomStageOption = isValid(controlledStages?.s4) ? (controlledStages!.s4 as BottomStageOption) : localStage4;
+  const stage5: BottomStageOption = isValid(controlledStages?.s5) ? (controlledStages!.s5 as BottomStageOption) : localStage5;
+  const stage6: BottomStageOption = isValid(controlledStages?.s6) ? (controlledStages!.s6 as BottomStageOption) : localStage6;
 
   const stageData: Record<BottomStageOption, { label: string; value: number; costLabel: string; costValue: number }> = {
     leads: { label: 'Leads', value: leads, costLabel: 'CPL', costValue: cpl },
