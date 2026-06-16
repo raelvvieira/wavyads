@@ -797,6 +797,8 @@ export default function ClientDashboard() {
               costPerAddToCart={(insights as any)?.cost_per_add_to_cart ?? 0}
               costPerInitiateCheckout={(insights as any)?.cost_per_initiate_checkout ?? 0}
               costPerViewContent={(insights as any)?.cost_per_view_content ?? 0}
+              stages={funnelStages}
+              onChangeStages={handleChangeFunnelStages}
             />
           )}
 
