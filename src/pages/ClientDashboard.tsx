@@ -90,14 +90,10 @@ export default function ClientDashboard() {
   const { data: client, isLoading: clientLoading } = useClient(clientId);
   const { data: pixelMap } = useAllClientPixels();
   const hasPixel = !!(clientId && pixelMap?.has(clientId));
-  // Preferences persistence
-  const prefsKey = clientId ? `wavy-dash-prefs-${clientId}` : null;
-  const savedPrefs = useMemo(() => {
-    if (!prefsKey) return {};
-    try { return JSON.parse(localStorage.getItem(prefsKey) || '{}'); } catch { return {}; }
-  }, [prefsKey]);
+  // Preferences persistence (per user + per client, persisted in DB)
+  const { prefs, update: updatePrefs } = useDashboardPrefs(clientId);
 
-  const [selectedPreset, setSelectedPreset] = useState<PresetKey>(savedPrefs.preset || 'this_month');
+  const [selectedPreset, setSelectedPreset] = useState<PresetKey>('this_month');
   const [customDateRange, setCustomDateRange] = useState<{ from?: Date; to?: Date }>({});
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [conversionDialogOpen, setConversionDialogOpen] = useState(false);
@@ -106,69 +102,80 @@ export default function ClientDashboard() {
   const isGoogleSynced = (client as any)?.google_ads_synced ?? false;
 
   // Platform toggle — default to whichever is synced
-  const [platform, setPlatform] = useState<Platform>(savedPrefs.platform || 'meta');
+  const [platform, setPlatform] = useState<Platform>('meta');
+
+  // KPI card customization
+  const [kpiCards, setKpiCards] = useState<MetricKey[]>(DEFAULT_CARDS);
+
+  // Funnel stages
+  const [funnelStages, setFunnelStages] = useState<{ s4: BottomStageOption; s5: BottomStageOption; s6: BottomStageOption }>({
+    s4: 'view_content', s5: 'leads', s6: 'purchases',
+  });
+
+  // Hydrate state from saved prefs once they load (and whenever prefs/clientId change)
+  const hydratedFor = useRef<string | null>(null);
   useEffect(() => {
-    if (!savedPrefs.platform) {
+    if (!clientId) return;
+    if (hydratedFor.current === clientId && Object.keys(prefs).length === 0) return;
+    if (hydratedFor.current === clientId) return;
+    hydratedFor.current = clientId;
+    if (prefs.preset) setSelectedPreset(prefs.preset as PresetKey);
+    if (prefs.customRange?.from && prefs.customRange?.to) {
+      setCustomDateRange({
+        from: new Date(prefs.customRange.from),
+        to: new Date(prefs.customRange.to),
+      });
+    }
+    if (prefs.platform) setPlatform(prefs.platform);
+    if (prefs.kpiCards) setKpiCards(normalizeCards(prefs.kpiCards));
+    if (prefs.funnelStages) {
+      setFunnelStages({
+        s4: (prefs.funnelStages.s4 as BottomStageOption) || 'view_content',
+        s5: (prefs.funnelStages.s5 as BottomStageOption) || 'leads',
+        s6: (prefs.funnelStages.s6 as BottomStageOption) || 'purchases',
+      });
+    }
+  }, [clientId, prefs]);
+
+  // Reset hydration flag when client changes
+  useEffect(() => { hydratedFor.current = null; }, [clientId]);
+
+  // If no saved platform preference, auto-select the synced platform
+  useEffect(() => {
+    if (!prefs.platform) {
       if (isMetaSynced && !isGoogleSynced) setPlatform('meta');
       else if (!isMetaSynced && isGoogleSynced) setPlatform('google');
     }
-  }, [isMetaSynced, isGoogleSynced, savedPrefs.platform]);
-
-  // Save prefs on change
-  useEffect(() => {
-    if (!prefsKey) return;
-    const data = JSON.stringify({ preset: selectedPreset, platform });
-    localStorage.setItem(prefsKey, data);
-  }, [prefsKey, selectedPreset, platform]);
-
-  const isSynced = platform === 'meta' ? isMetaSynced : isGoogleSynced;
-
-  // Compute the time range based on preset or custom
-  const timeRange: TimeRange | undefined = useMemo(() => {
-    if (selectedPreset === 'custom') {
-      if (customDateRange.from && customDateRange.to) {
-        return {
-          since: format(customDateRange.from, 'yyyy-MM-dd'),
-          until: format(customDateRange.to, 'yyyy-MM-dd'),
-        };
-      }
-      return undefined;
-    }
-    return computeTimeRange(selectedPreset);
-  }, [selectedPreset, customDateRange]);
-
-  // Meta hooks
-  const { data: metaCampaigns, isLoading: metaCampaignsLoading, error: metaCampaignsError } = useMetaCampaigns(clientId, platform === 'meta' && isMetaSynced, timeRange);
-  const { data: metaInsights, isLoading: metaInsightsLoading, error: metaInsightsError } = useMetaInsights(clientId, platform === 'meta' && isMetaSynced, timeRange);
-  const { data: metaPreviousInsights } = useMetaInsightsPrevious(clientId, platform === 'meta' && isMetaSynced, timeRange);
-  const { data: metaAds, isLoading: metaAdsLoading, error: metaAdsError } = useMetaAds(clientId, platform === 'meta' && isMetaSynced, timeRange);
-  // Google Ads hooks
-  const { data: googleCampaigns, isLoading: googleCampaignsLoading } = useGoogleAdsCampaigns(clientId, platform === 'google' && isGoogleSynced, timeRange);
-  const { data: googleInsights, isLoading: googleInsightsLoading } = useGoogleAdsInsights(clientId, platform === 'google' && isGoogleSynced, timeRange);
-  const { data: googlePreviousInsights } = useGoogleAdsInsightsPrevious(clientId, platform === 'google' && isGoogleSynced, timeRange);
-
-  // Active data based on platform
-  const campaigns = platform === 'meta' ? metaCampaigns : googleCampaigns;
-  const campaignsLoading = platform === 'meta' ? metaCampaignsLoading : googleCampaignsLoading;
-  const insights = platform === 'meta' ? metaInsights : googleInsights;
-  const insightsLoading = platform === 'meta' ? metaInsightsLoading : googleInsightsLoading;
-  const previousInsights = platform === 'meta' ? metaPreviousInsights : googlePreviousInsights;
-
-  const getAuthUrl = useGetMetaAuthUrl();
-  const selectAccount = useSelectMetaAccount();
-  const [pendingAccounts, setPendingAccounts] = useState<any[] | null>(null);
-
-  // KPI card customization
-  const [kpiCards, setKpiCards] = useState<MetricKey[]>(() => getDefaultCards(clientId));
+  }, [isMetaSynced, isGoogleSynced, prefs.platform]);
 
   const handleChangeMetric = (index: number, newKey: MetricKey) => {
     setKpiCards(prev => {
       const next = [...prev];
       next[index] = newKey;
-      saveCards(next, clientId);
+      updatePrefs({ kpiCards: next });
       return next;
     });
   };
+
+  const handleChangeFunnelStages = (next: { s4: BottomStageOption; s5: BottomStageOption; s6: BottomStageOption }) => {
+    setFunnelStages(next);
+    updatePrefs({ funnelStages: next });
+  };
+
+  // Persist preset / platform / custom range on change
+  useEffect(() => {
+    if (!clientId) return;
+    const patch: any = { preset: selectedPreset, platform };
+    if (selectedPreset === 'custom' && customDateRange.from && customDateRange.to) {
+      patch.customRange = {
+        from: format(customDateRange.from, 'yyyy-MM-dd'),
+        to: format(customDateRange.to, 'yyyy-MM-dd'),
+      };
+    }
+    updatePrefs(patch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPreset, platform, customDateRange.from?.getTime(), customDateRange.to?.getTime(), clientId]);
+
 
   const metaTokenInvalid = platform === 'meta' && [metaCampaignsError, metaInsightsError, metaAdsError].some(
     (e: any) => e?.name === 'MetaTokenInvalid'
