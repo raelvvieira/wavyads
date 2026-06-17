@@ -76,9 +76,21 @@ const newDraft = (): ConversionDraft => ({
   status: 'idle',
 });
 
+function hasCompoundName(value: string): boolean {
+  return (
+    value
+      .trim()
+      .split(/\s+/)
+      .filter((p) => /\p{L}/u.test(p)).length > 1
+  );
+}
+
 function validateDraft(d: ConversionDraft): string | null {
   if (!d.email.trim() && !d.phone.trim()) {
     return 'Informe ao menos e-mail ou telefone.';
+  }
+  if (hasCompoundName(d.fn)) {
+    return 'O sobrenome deve ser colocado no campo Sobrenome. Use apenas o primeiro nome em Nome.';
   }
   if (d.eventName === 'Purchase') {
     const valueNum = d.valueStr ? Number(d.valueStr.replace(',', '.')) : null;
