@@ -237,9 +237,14 @@ function DraftForm({
             type="text"
             value={d.fn}
             onChange={(e) => onChange({ fn: e.target.value })}
-            className={inputCls}
+            className={cn(inputCls, hasCompoundName(d.fn) && 'border-destructive')}
             disabled={d.status === 'sending' || d.status === 'sent'}
           />
+          {hasCompoundName(d.fn) && (
+            <p className="text-[11px] text-destructive">
+              Coloque apenas o primeiro nome aqui. O sobrenome vai no campo Sobrenome.
+            </p>
+          )}
         </div>
         <div className="space-y-1.5">
           <label className={labelCls}>Sobrenome</label>
