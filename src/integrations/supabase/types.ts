@@ -47,12 +47,48 @@ export type Database = {
         }
         Relationships: []
       }
+      client_editorials: {
+        Row: {
+          client_id: string
+          created_at: string
+          design_system_doc: string
+          id: string
+          updated_at: string
+          visual_analysis: Json
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          design_system_doc?: string
+          id?: string
+          updated_at?: string
+          visual_analysis?: Json
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          design_system_doc?: string
+          id?: string
+          updated_at?: string
+          visual_analysis?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_editorials_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_pixels: {
         Row: {
           access_token: string
           client_id: string
           created_at: string
           id: string
+          offline_event_set_id: string | null
           pixel_id: string
         }
         Insert: {
@@ -60,6 +96,7 @@ export type Database = {
           client_id: string
           created_at?: string
           id?: string
+          offline_event_set_id?: string | null
           pixel_id: string
         }
         Update: {
@@ -67,6 +104,7 @@ export type Database = {
           client_id?: string
           created_at?: string
           id?: string
+          offline_event_set_id?: string | null
           pixel_id?: string
         }
         Relationships: [
@@ -301,6 +339,41 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_dashboard_prefs: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          prefs: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          prefs?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          prefs?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_dashboard_prefs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
