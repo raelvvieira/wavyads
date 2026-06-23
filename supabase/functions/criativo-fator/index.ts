@@ -199,8 +199,18 @@ Aplique a skill FATOR CRIATIVO. Gere EXATAMENTE 5 variações na ordem dos 5 eix
 
     const data = await resp.json();
     const call = data?.choices?.[0]?.message?.tool_calls?.[0];
-    if (!call) throw new Error("Modelo não chamou a tool");
-    const args = JSON.parse(call.function.arguments);
+    let args: { variations: unknown[] };
+
+    if (call?.function?.arguments) {
+      args = JSON.parse(call.function.arguments);
+    } else {
+      // Fallback: extrai JSON do conteúdo de texto caso o modelo não use tool_call
+      const text = (data?.choices?.[0]?.message?.content || '') as string;
+      const match = text.match(/\{[\s\S]*"variations"[\s\S]*\}/);
+      if (!match) throw new Error("Modelo não retornou variações estruturadas");
+      args = JSON.parse(match[0]);
+    }
+
     if (!Array.isArray(args.variations) || args.variations.length !== 5) {
       throw new Error("Esperado exatamente 5 variations");
     }
