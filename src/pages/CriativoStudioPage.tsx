@@ -1830,7 +1830,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
     ]);
   };
 
-  const approveOriginalCopy = () => {
+  const approveOriginalCopy = async () => {
     if (!rawCopy.trim()) {
       toast({ title: 'Escreva sua copy primeiro', variant: 'destructive' });
       return;
@@ -1841,6 +1841,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
     await saveCopyVariationRecord({ rawCopy }, 'original', true);
     askAssetsStep();
   };
+
 
   const approveAiCopy = (idx: number) => {
     setCopySource('ai');
@@ -2841,7 +2842,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#EC4899]/15 text-[#F9A8D4]">
               <Wand2 className="h-5 w-5" />
             </div>
-            {[
+            {([
               [MessageSquare, 'Chat', true],
               [Box, 'Produtos', false],
               [User, 'Avatares', false],
@@ -2849,24 +2850,25 @@ A reference Story version of this same creative is attached as the FIRST image. 
               [Users, 'Clientes', false],
               [History, 'Histórico', false],
               [Settings, 'Configurações', false],
-            ].map(([Icon, label, active]) => (
+            ] as Array<[React.ComponentType<{ className?: string }>, string, boolean]>).map(([Icon, label, active]) => (
               <button
-                key={String(label)}
+                key={label}
                 type="button"
-                disabled={!active && label !== 'HistÃ³rico' && label !== 'Templates'}
-                title={String(label)}
+                disabled={!active && label !== 'Histórico' && label !== 'Templates'}
+                title={label}
                 onClick={() => {
-                  if (label === 'HistÃ³rico') handleQuickAction('open-project-history');
+                  if (label === 'Histórico') handleQuickAction('open-project-history');
                   if (label === 'Templates') handleQuickAction('open-template');
                 }}
                 className={cn(
                   'flex h-10 w-10 items-center justify-center rounded-2xl transition',
-                  active || label === 'HistÃ³rico' || label === 'Templates' ? 'bg-white/10 text-white' : 'text-white/28',
+                  active || label === 'Histórico' || label === 'Templates' ? 'bg-white/10 text-white' : 'text-white/28',
                 )}
               >
                 <Icon className="h-4 w-4" />
               </button>
             ))}
+
           </div>
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-xs">RV</div>
         </aside>
