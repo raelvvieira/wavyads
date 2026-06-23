@@ -327,6 +327,9 @@ export default function CriativoStudioPage() {
   const [referenceAssets, setReferenceAssets] = useState<CreativeAssetSummary[]>([]);
   const [selectedReferenceAssetIds, setSelectedReferenceAssetIds] = useState<string[]>([]);
   const [referenceLibraryLoading, setReferenceLibraryLoading] = useState(false);
+  const [referenceClientFilter, setReferenceClientFilter] = useState('all');
+  const [referenceClients, setReferenceClients] = useState<{id: string; name: string}[]>([]);
+  const [uploadClientId, setUploadClientId] = useState('all');
   const [templates, setTemplates] = useState<CreativeTemplate[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [templateSearch, setTemplateSearch] = useState('');
@@ -718,15 +721,17 @@ export default function CriativoStudioPage() {
     }
   };
 
-  const fetchReferenceLibrary = async () => {
+  const fetchReferenceLibrary = async (clientId?: string) => {
     setReferenceLibraryLoading(true);
     try {
-      const { data, error } = await db
+      let query = db
         .from('creative_assets')
-        .select('id,url,thumbnail_url,type,filename,created_at')
+        .select('id,url,thumbnail_url,type,filename,created_at,client_id')
         .eq('type', 'reference')
         .order('created_at', { ascending: false })
         .limit(60);
+      if (clientId && clientId !== 'all') query = query.eq('client_id', clientId);
+      const { data, error } = await query;
       if (error) throw error;
       setReferenceAssets(data || []);
     } catch (e: any) {
@@ -736,16 +741,37 @@ export default function CriativoStudioPage() {
     }
   };
 
+  const fetchClientsForFilter = async () => {
+    try {
+      const { data, error } = await db.from('clients').select('id,name').order('name', { ascending: true });
+      if (error) throw error;
+      setReferenceClients(data || []);
+    } catch { /* silently ignore — filter just won't have client options */ }
+  };
+
+  const deleteReferenceAsset = async (assetId: string) => {
+    setReferenceAssets((prev) => prev.filter((a) => a.id !== assetId));
+    try {
+      const { error } = await db.from('creative_assets').delete().eq('id', assetId);
+      if (error) throw error;
+    } catch (e: any) {
+      toast({ title: 'Erro ao excluir referência', description: e?.message, variant: 'destructive' });
+      fetchReferenceLibrary(referenceClientFilter);
+    }
+  };
+
   const saveAssetRecord = async ({
     type,
     url,
     metadata = {},
     filename,
+    clientId,
   }: {
     type: string;
     url: string;
     metadata?: Record<string, any>;
     filename?: string;
+    clientId?: string;
   }) => {
     const projectId = currentProjectId || await createCreativeProject();
     const userId = await getCurrentUserId();
@@ -759,6 +785,7 @@ export default function CriativoStudioPage() {
         filename,
         metadata,
         created_by: userId,
+        client_id: clientId || null,
       })
       .select('id')
       .single();
@@ -772,19 +799,21 @@ export default function CriativoStudioPage() {
     type,
     metadata = {},
     filename,
+    clientId,
   }: {
     imageUrl: string;
     folder: string;
     type: string;
     metadata?: Record<string, any>;
     filename: string;
+    clientId?: string;
   }) => {
     try {
       const projectId = currentProjectId || await createCreativeProject();
       const userId = await getCurrentUserId();
       const path = `${userId || 'admin'}/${projectId}/${folder}/${filename}`;
       const url = await uploadDataUrlToStorage({ dataUrl: imageUrl, path });
-      const assetId = await saveAssetRecord({ type, url, metadata, filename });
+      const assetId = await saveAssetRecord({ type, url, metadata, filename, clientId });
       return { url, assetId };
     } catch (e: any) {
       toast({ title: 'Aviso: imagem não foi salva no Storage', description: e?.message || 'O fluxo continua normalmente.' });
@@ -849,7 +878,7 @@ export default function CriativoStudioPage() {
     }
   };
 
-  const persistUploadedImages = async (images: string[], folder: string, type: 'reference' | 'logo' | 'product') => {
+  const persistUploadedImages = async (images: string[], folder: string, type: 'reference' | 'logo' | 'product', clientId?: string) => {
     await Promise.all(
       images.map(async (image, index) => {
         if (!image.startsWith('data:')) return;
@@ -859,6 +888,7 @@ export default function CriativoStudioPage() {
           type,
           filename: imageFileName(`${type}-${index + 1}`),
           metadata: { source: 'upload', index },
+          clientId,
         });
         const replaceUrl = persisted.url;
         if (type === 'reference') setRefImages((prev) => prev.map((item) => (item === image ? replaceUrl : item)));
@@ -1149,7 +1179,7 @@ export default function CriativoStudioPage() {
 
   useEffect(() => {
     if (rightPanelMode === 'project-history') fetchProjectHistory();
-    if (rightPanelMode === 'reference-library') fetchReferenceLibrary();
+    if (rightPanelMode === 'reference-library') { fetchClientsForFilter(); fetchReferenceLibrary(referenceClientFilter); }
     if (rightPanelMode === 'template-library') fetchTemplates();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rightPanelMode]);
@@ -1310,7 +1340,7 @@ export default function CriativoStudioPage() {
       const a = data as VisualAnalysis;
       setAnalysis(a);
       setEditedDoc(a.designSystemDoc);
-      await persistUploadedImages(refImages, 'references', 'reference');
+      await persistUploadedImages(refImages, 'references', 'reference', uploadClientId !== 'all' ? uploadClientId : undefined);
       setCurrentStage('reference-review');
       setRightPanelMode('design-system');
       addAssistantMessage('Referências analisadas. Extraí um sistema visual com composição, fotografia, paleta, tipografia, camadas, hierarquia, espaço e mood.', [
@@ -2411,6 +2441,18 @@ A reference Story version of this same creative is attached as the FIRST image. 
               </p>
               <ImageDropzone images={refImages} onChange={setRefImages} label="Solte, clique ou cole imagens de referência" maxImages={6} />
               <p className="text-xs text-white/38">{refImages.length}/6 imagens</p>
+              {referenceClients.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-xs text-white/45">Associar ao cliente (opcional)</p>
+                  <Select value={uploadClientId} onValueChange={setUploadClientId}>
+                    <SelectTrigger className="rounded-full"><SelectValue placeholder="Nenhum cliente" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Nenhum cliente</SelectItem>
+                      {referenceClients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <Button onClick={analyzeRefs} disabled={analyzing || refImages.length === 0} className="w-full rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777]">
                 {analyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
                 Analisar referências
@@ -2426,13 +2468,13 @@ A reference Story version of this same creative is attached as the FIRST image. 
 
           {rightPanelMode === 'reference-library' && (
             <div className="space-y-3">
-              <div className="flex gap-2">
-                <Select value="all">
-                  <SelectTrigger className="rounded-full"><SelectValue placeholder="Todas" /></SelectTrigger>
-                  <SelectContent><SelectItem value="all">Todas</SelectItem></SelectContent>
-                </Select>
-                <Button variant="outline" className="rounded-full" disabled>Cliente</Button>
-              </div>
+              <Select value={referenceClientFilter} onValueChange={(v) => { setReferenceClientFilter(v); fetchReferenceLibrary(v); }}>
+                <SelectTrigger className="rounded-full"><SelectValue placeholder="Todas" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {referenceClients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
               {referenceLibraryLoading ? (
                 <div className="grid grid-cols-2 gap-2">
                   {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="aspect-square rounded-2xl" />)}
@@ -2447,14 +2489,22 @@ A reference Story version of this same creative is attached as the FIRST image. 
                   {referenceAssets.map((asset) => {
                     const selected = selectedReferenceAssetIds.includes(asset.id);
                     return (
-                      <button
-                        key={asset.id}
-                        type="button"
-                        onClick={() => setSelectedReferenceAssetIds((prev) => selected ? prev.filter((id) => id !== asset.id) : [...prev, asset.id])}
-                        className={cn('overflow-hidden rounded-2xl border bg-white/[0.035]', selected ? 'border-[#EC4899] ring-1 ring-[#EC4899]' : 'border-white/10')}
-                      >
-                        <img src={asset.thumbnail_url || asset.url} alt={asset.filename || 'Referência'} className="aspect-square w-full object-cover" />
-                      </button>
+                      <div key={asset.id} className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedReferenceAssetIds((prev) => selected ? prev.filter((id) => id !== asset.id) : [...prev, asset.id])}
+                          className={cn('w-full overflow-hidden rounded-2xl border bg-white/[0.035]', selected ? 'border-[#EC4899] ring-1 ring-[#EC4899]' : 'border-white/10')}
+                        >
+                          <img src={asset.thumbnail_url || asset.url} alt={asset.filename || 'Referência'} className="aspect-square w-full object-cover" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); deleteReferenceAsset(asset.id); }}
+                          className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white/80 hover:bg-black/90 hover:text-white"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
