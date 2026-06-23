@@ -1185,19 +1185,21 @@ export default function CriativoStudioPage() {
     projectTitle,
   ]);
 
-  const generateSuggestedCopy = async (ctx: typeof urlContext) => {
-    if (!analysis) return;
+  const generateSuggestedCopy = async (ctx: typeof urlContext, autoFill = false) => {
     setSuggestingCopy(true);
     setSuggestedRawCopy('');
     try {
       const { data, error } = await supabase.functions.invoke('criativo-suggest-copy', {
-        body: { analysis, language, urlContext: ctx || undefined },
+        body: { analysis: analysis || null, initialPrompt, additionalInstructions, language, urlContext: ctx || undefined },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
       recordAiUsage('text-flash');
       const s = ((data as any)?.suggestion || '').trim();
-      if (s) setSuggestedRawCopy(s);
+      if (s) {
+        setSuggestedRawCopy(s);
+        if (autoFill && !rawCopy.trim()) setRawCopy(s);
+      }
     } catch (e) {
       console.warn('suggest-copy', e);
     } finally {
@@ -1207,7 +1209,7 @@ export default function CriativoStudioPage() {
 
   // Auto-suggest a draft copy when entering Step 2 with refs analyzed
   useEffect(() => {
-    if (step !== 1 || !analysis || suggestedRawCopy || suggestingCopy) return;
+    if (step !== 1 || suggestedRawCopy || suggestingCopy) return;
     generateSuggestedCopy(urlContext);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, analysis]);
@@ -1786,13 +1788,60 @@ A reference Story version of this same creative is attached as the FIRST image. 
     ]);
   };
 
+  const getNextStepSuggestions = (): ConversationAction[] => {
+    if (!analysis) return [
+      { label: 'Adicionar referências', action: 'open-upload-references', variant: 'secondary' },
+      { label: 'Gerar copy com IA', action: 'generate-copy-now', variant: 'ghost' },
+    ];
+    if (!copyApproved) return [
+      { label: 'Gerar copy com IA', action: 'generate-copy-now', variant: 'primary' },
+      { label: 'Escrever copy', action: 'open-paste-copy', variant: 'secondary' },
+    ];
+    if (!logoImage.length && !productImages.length) return [
+      { label: 'Adicionar assets', action: 'open-assets', variant: 'secondary' },
+      { label: 'Ir para geração', action: 'open-generation-summary', variant: 'ghost' },
+    ];
+    return [{ label: 'Revisar e gerar', action: 'open-generation-summary', variant: 'primary' }];
+  };
+
   const sendAdditionalInstruction = () => {
     const instruction = compactComposerText.trim();
     if (!instruction) return;
     setAdditionalInstructions((prev) => [...prev, instruction]);
     addUserMessage(instruction);
-    addAssistantMessage('Entendi. Vou considerar isso como orientação adicional para este criativo.');
     setCompactComposerText('');
+
+    const lower = instruction.toLowerCase();
+
+    if (/referência|referencia|imagem|visual|foto|ref\b/.test(lower)) {
+      addAssistantMessage('Quer adicionar referências visuais?', [
+        { label: 'Enviar imagem', action: 'open-upload-references', variant: 'primary' },
+        { label: 'Da biblioteca', action: 'open-reference-library', variant: 'secondary' },
+      ]);
+    } else if (/copy|texto|frase|mensagem|escrever|slogan|headline/.test(lower)) {
+      addAssistantMessage('Quer criar ou editar a copy agora?', [
+        { label: 'Gerar copy com IA', action: 'generate-copy-now', variant: 'primary' },
+        { label: 'Escrever minha copy', action: 'open-paste-copy', variant: 'secondary' },
+        { label: 'Ler site', action: 'open-read-url', variant: 'ghost' },
+      ]);
+    } else if (/logo|produto|pessoa|asset|modelo/.test(lower)) {
+      addAssistantMessage('Quer adicionar assets visuais ao criativo?', [
+        { label: 'Logo da marca', action: 'open-assets-logo', variant: 'primary' },
+        { label: 'Produto / pessoa', action: 'open-assets-product', variant: 'secondary' },
+        { label: 'Escolher avatar', action: 'open-avatar-library', variant: 'ghost' },
+      ]);
+    } else if (/gerar|criar arte|design|pronto|pode gerar|vamos gerar/.test(lower)) {
+      addAssistantMessage('Quer revisar o resumo antes de gerar a arte?', [
+        { label: 'Revisar e gerar', action: 'open-generation-summary', variant: 'primary' },
+      ]);
+    } else if (/design system|editorial|paleta|tipografia|cores/.test(lower)) {
+      addAssistantMessage('Quer ver ou editar o design system das referências?', [
+        { label: 'Ver design system', action: 'open-design-system', variant: 'primary' },
+      ]);
+    } else {
+      const suggestions = getNextStepSuggestions();
+      addAssistantMessage('Entendido. O que quer fazer agora?', suggestions.length ? suggestions : undefined);
+    }
   };
 
   const askCopyStep = () => {
@@ -1800,7 +1849,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
     setRightPanelMode('none');
     addAssistantMessage('Sobre o texto da arte: você já tem uma copy pronta?', [
       { label: 'Já tenho copy', action: 'open-paste-copy', variant: 'primary' },
-      { label: 'Criar copy agora', action: 'open-paste-copy', variant: 'secondary' },
+      { label: 'Gerar com IA', action: 'generate-copy-now', variant: 'secondary' },
       { label: 'Ver sugestões', action: 'open-copy-suggestions', variant: 'secondary' },
       { label: 'Ler site/produto', action: 'open-read-url', variant: 'ghost' },
     ]);
@@ -1902,6 +1951,11 @@ A reference Story version of this same creative is attached as the FIRST image. 
       case 'open-read-url':
         setCurrentStage('copy');
         setRightPanelMode('read-url');
+        break;
+      case 'generate-copy-now':
+        setCurrentStage('copy');
+        setRightPanelMode('paste-copy');
+        generateSuggestedCopy(urlContext, true);
         break;
       case 'open-copy-suggestions':
         setCurrentStage('copy');
@@ -2909,26 +2963,6 @@ A reference Story version of this same creative is attached as the FIRST image. 
               </Button>
             </div>
           </header>
-
-          <div className="mt-5 flex flex-wrap gap-2 rounded-full border border-white/10 bg-white/[0.035] p-1.5">
-            {progressItems.map((item) => (
-              <button
-                key={item.label}
-                type="button"
-                className={cn(
-                  'flex items-center gap-2 rounded-full px-3 py-1.5 text-xs transition',
-                  item.current ? 'bg-[#EC4899]/20 text-white ring-1 ring-[#EC4899]/50' : 'text-white/55',
-                  item.done && !item.current && 'bg-white/8 text-white/80',
-                )}
-              >
-                <span className={cn('flex h-4 w-4 items-center justify-center rounded-full text-[9px]', item.done ? 'bg-[#EC4899] text-white' : 'bg-white/10')}>
-                  {item.done ? <Check className="h-2.5 w-2.5" /> : null}
-                </span>
-                {item.label}
-                <span className="hidden text-white/35 sm:inline">{item.note}</span>
-              </button>
-            ))}
-          </div>
 
           <section className={cn('flex flex-1 flex-col', currentStage === 'initial' ? 'justify-center py-12' : 'py-6')}>
             {currentStage === 'initial' && (
