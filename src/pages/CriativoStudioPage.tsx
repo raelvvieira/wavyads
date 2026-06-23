@@ -1996,6 +1996,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
       case 'open-creative-factor':
         setCurrentStage('factor');
         setRightPanelMode('creative-factor');
+        applyFatorCriativo();
         break;
       case 'open-project-history':
         setRightPanelMode('project-history');
@@ -2725,10 +2726,12 @@ A reference Story version of this same creative is attached as the FIRST image. 
           {rightPanelMode === 'creative-factor' && (
             <div className="space-y-3">
               <p className="text-sm text-white/62">Gere 5 variações estratégicas para testar ângulos diferentes no Meta Ads.</p>
-              <Button onClick={applyFatorCriativo} disabled={factorLoading || (!storyImage && !squareImage)} className="w-full rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777]">
-                {factorLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                {factorLoading ? `Gerando ${factorProgress}/5...` : 'Aplicar Fator Criativo'}
-              </Button>
+              {(!factorVariations || factorLoading) && (
+                <Button onClick={applyFatorCriativo} disabled={factorLoading || (!storyImage && !squareImage)} className="w-full rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777]">
+                  {factorLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                  {factorLoading ? `Gerando ${factorProgress}/5...` : 'Aplicar Fator Criativo'}
+                </Button>
+              )}
               {!factorVariations && !factorLoading && (
                 <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3 text-xs text-white/62">
                   <p className="mb-2 font-medium text-white">Eixos que serão explorados:</p>
