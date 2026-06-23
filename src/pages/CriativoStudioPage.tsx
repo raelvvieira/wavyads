@@ -312,8 +312,6 @@ export default function CriativoStudioPage() {
   const [rightPanelMode, setRightPanelMode] = useState<RightPanelMode>('none');
   const [conversationMessages, setConversationMessages] = useState<ConversationMessage[]>([]);
   const [initialPrompt, setInitialPrompt] = useState('');
-  const [compactComposerText, setCompactComposerText] = useState('');
-  const [additionalInstructions, setAdditionalInstructions] = useState<string[]>([]);
   const [selectedResolution, setSelectedResolution] = useState<CreativeResolution>('4K');
   const [selectedAspectRatio, setSelectedAspectRatio] = useState<CreativeAspectRatio>('4:5');
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
@@ -529,7 +527,6 @@ export default function CriativoStudioPage() {
     rightPanelMode,
     conversationMessages,
     initialPrompt,
-    additionalInstructions,
     selectedAspectRatio,
     selectedResolution,
     step,
@@ -608,7 +605,6 @@ export default function CriativoStudioPage() {
     setRightPanelMode(state.rightPanelMode || 'none');
     setConversationMessages(state.conversationMessages || []);
     setInitialPrompt(state.initialPrompt || '');
-    setAdditionalInstructions(state.additionalInstructions || []);
     setSelectedAspectRatio((state.selectedAspectRatio || '4:5') as CreativeAspectRatio);
     setSelectedResolution((state.selectedResolution || '4K') as CreativeResolution);
     setRefImages(state.refImages || []);
@@ -1211,7 +1207,6 @@ export default function CriativoStudioPage() {
     editedVersions,
     selectedAspectRatio,
     selectedResolution,
-    additionalInstructions,
     projectTitle,
   ]);
 
@@ -1220,7 +1215,7 @@ export default function CriativoStudioPage() {
     setSuggestedRawCopy('');
     try {
       const { data, error } = await supabase.functions.invoke('criativo-suggest-copy', {
-        body: { analysis: analysis || null, initialPrompt, additionalInstructions, language, urlContext: ctx || undefined },
+        body: { analysis: analysis || null, initialPrompt, language, urlContext: ctx || undefined },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
@@ -1480,11 +1475,7 @@ ${[...evitaList, ...userNegatives].join('\n')}
 A reference Story version of this same creative is attached as the FIRST image. The square version MUST replicate its EXACT color palette, lighting, color grading, photographic treatment, typography choices and overall mood. Only the framing/composition changes to fit a 1:1 square. Treat that Story as the visual ground truth — do NOT shift hues, saturation, contrast or styling.`
       : '';
 
-    const additionalBlock = additionalInstructions.length > 0
-      ? `[ADDITIONAL USER INSTRUCTIONS]\n${additionalInstructions.map((instruction) => `- ${instruction}`).join('\n')}`
-      : '';
-
-    return [intro, photoBlock, '[DESIGN SYSTEM]\n' + designSystem, templateBlock, safe, consistency, logoBlock, textBlocks, additionalBlock, moodBlock, doNot, closing]
+    return [intro, photoBlock, '[DESIGN SYSTEM]\n' + designSystem, templateBlock, safe, consistency, logoBlock, textBlocks, moodBlock, doNot, closing]
       .filter(Boolean)
       .join('\n\n');
   };
@@ -1834,46 +1825,6 @@ A reference Story version of this same creative is attached as the FIRST image. 
     return [{ label: 'Revisar e gerar', action: 'open-generation-summary', variant: 'primary' }];
   };
 
-  const sendAdditionalInstruction = () => {
-    const instruction = compactComposerText.trim();
-    if (!instruction) return;
-    setAdditionalInstructions((prev) => [...prev, instruction]);
-    addUserMessage(instruction);
-    setCompactComposerText('');
-
-    const lower = instruction.toLowerCase();
-
-    if (/referência|referencia|imagem|visual|foto|ref\b/.test(lower)) {
-      addAssistantMessage('Quer adicionar referências visuais?', [
-        { label: 'Enviar imagem', action: 'open-upload-references', variant: 'primary' },
-        { label: 'Da biblioteca', action: 'open-reference-library', variant: 'secondary' },
-      ]);
-    } else if (/copy|texto|frase|mensagem|escrever|slogan|headline/.test(lower)) {
-      addAssistantMessage('Quer criar ou editar a copy agora?', [
-        { label: 'Gerar copy com IA', action: 'generate-copy-now', variant: 'primary' },
-        { label: 'Escrever minha copy', action: 'open-paste-copy', variant: 'secondary' },
-        { label: 'Ler site', action: 'open-read-url', variant: 'ghost' },
-      ]);
-    } else if (/logo|produto|pessoa|asset|modelo/.test(lower)) {
-      addAssistantMessage('Quer adicionar assets visuais ao criativo?', [
-        { label: 'Logo da marca', action: 'open-assets-logo', variant: 'primary' },
-        { label: 'Produto / pessoa', action: 'open-assets-product', variant: 'secondary' },
-        { label: 'Escolher avatar', action: 'open-avatar-library', variant: 'ghost' },
-      ]);
-    } else if (/gerar|criar arte|design|pronto|pode gerar|vamos gerar/.test(lower)) {
-      addAssistantMessage('Quer revisar o resumo antes de gerar a arte?', [
-        { label: 'Revisar e gerar', action: 'open-generation-summary', variant: 'primary' },
-      ]);
-    } else if (/design system|editorial|paleta|tipografia|cores/.test(lower)) {
-      addAssistantMessage('Quer ver ou editar o design system das referências?', [
-        { label: 'Ver design system', action: 'open-design-system', variant: 'primary' },
-      ]);
-    } else {
-      const suggestions = getNextStepSuggestions();
-      addAssistantMessage('Entendido. O que quer fazer agora?', suggestions.length ? suggestions : undefined);
-    }
-  };
-
   const askCopyStep = () => {
     setCurrentStage('copy');
     setRightPanelMode('none');
@@ -2070,8 +2021,6 @@ A reference Story version of this same creative is attached as the FIRST image. 
     setProjectTitle('');
     setLastSavedAt(null);
     setAutoSaveEnabled(true);
-    setCompactComposerText('');
-    setAdditionalInstructions([]);
     setSelectedResolution('4K');
     setSelectedAspectRatio('4:5');
     setRefImages([]);
@@ -2687,7 +2636,6 @@ A reference Story version of this same creative is attached as the FIRST image. 
             <div className="space-y-4">
               <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3 text-xs text-white/65 space-y-2">
                 <Info k="Prompt inicial" v={initialPrompt || 'Não informado'} />
-                <Info k="Instruções adicionais" v={additionalInstructions.length ? `${additionalInstructions.length} orientação(ões)` : 'nenhuma'} />
                 <Info k="Referências" v={`${refImages.length} imagem(ns)`} />
                 <Info k="Direção visual" v={analysis ? 'pronta' : 'sem análise'} />
                 <Info k="Copy" v={copySource === 'ai' && selectedCopy ? selectedCopy.titulo : rawCopy || 'pendente'} />
@@ -3129,27 +3077,6 @@ A reference Story version of this same creative is attached as the FIRST image. 
                     </div>
                   </div>
                 ))}
-                <div className="rounded-[24px] border border-white/10 bg-[#111113] p-2 focus-within:border-[#EC4899]/60">
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <Textarea
-                      value={compactComposerText}
-                      onChange={(e) => setCompactComposerText(e.target.value)}
-                      rows={2}
-                      placeholder="Adicione uma orientação extra para este criativo..."
-                      className="min-h-[58px] resize-none border-0 bg-transparent text-sm shadow-none focus-visible:ring-0"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) sendAdditionalInstruction();
-                      }}
-                    />
-                    <Button
-                      onClick={sendAdditionalInstruction}
-                      disabled={!compactComposerText.trim()}
-                      className="rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777] sm:self-end"
-                    >
-                      <Send className="mr-2 h-4 w-4" /> Enviar
-                    </Button>
-                  </div>
-                </div>
                 {(analyzing || improving || urlReading || contextLoading || generating || factorLoading || !!editLoadingKey) && (
                   <div className="flex gap-3 text-sm text-white/60">
                     <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#EC4899]/15 text-[#F9A8D4]">
