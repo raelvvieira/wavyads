@@ -10,6 +10,9 @@ export interface MetaAd {
   campaign_name: string;
   thumbnail_url?: string | null;
   image_url?: string | null;
+  image_url_hd?: string | null;
+  video_id?: string | null;
+  video_source_url?: string | null;
   spend: number;
   impressions: number;
   reach: number;
@@ -37,10 +40,16 @@ export function useMetaAds(clientId: string | undefined, enabled: boolean, timeR
       const { data, error } = await supabase.functions.invoke('meta-fetch-insights', {
         body: { action: 'ads', client_id: clientId!, time_range: timeRange },
       });
+      if (data?.code === 'META_TOKEN_INVALID') {
+        const e = new Error(data.error || 'Conexão com Meta expirou');
+        e.name = 'MetaTokenInvalid';
+        throw e;
+      }
       if (error) throw error;
       return data.ads as MetaAd[];
     },
     enabled: enabled && !!clientId && !!timeRange,
     staleTime: 5 * 60 * 1000,
+    retry: (failureCount, err: any) => err?.name !== 'MetaTokenInvalid' && failureCount < 1,
   });
 }

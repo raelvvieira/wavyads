@@ -96,6 +96,30 @@ function timeRangeParam(tr: { since: string; until: string }): string {
   return `time_range={"since":"${tr.since}","until":"${tr.until}"}`;
 }
 
+const TOKEN_INVALID_SUBCODES = new Set([458, 459, 460, 463, 464, 467, 492]);
+
+function isTokenInvalidError(err: any): boolean {
+  if (!err) return false;
+  if (err.code === 190) return true;
+  if (err.error_subcode && TOKEN_INVALID_SUBCODES.has(err.error_subcode)) return true;
+  const msg = (err.message || "").toLowerCase();
+  return msg.includes("access token") || msg.includes("session has been invalidated") || msg.includes("session has expired");
+}
+
+function graphErrorResponse(err: any) {
+  const tokenInvalid = isTokenInvalidError(err);
+  return new Response(
+    JSON.stringify({
+      error: err?.message || "Erro Meta Graph API",
+      code: tokenInvalid ? "META_TOKEN_INVALID" : "META_API_ERROR",
+    }),
+    {
+      status: tokenInvalid ? 401 : 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    },
+  );
+}
+
 async function authenticateRequest(req: Request, supabase: any) {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
@@ -266,8 +290,7 @@ Deno.serve(async (req) => {
       const data = await res.json();
 
       if (data.error) {
-        return new Response(JSON.stringify({ error: data.error.message }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return graphErrorResponse(data.error);
       }
 
       const campaigns = (data.data || []).map((c: any) => {
@@ -285,18 +308,32 @@ Deno.serve(async (req) => {
         ? `time_range({"since":"${timeRange.since}","until":"${timeRange.until}"})`
         : `date_preset(${datePreset})`;
 
-      const fields = `name,status,campaign_id,campaign{name},creative{thumbnail_url,image_url},insights.${insightsDateParam}{spend,impressions,reach,clicks,actions,action_values,cost_per_action_type,ctr,cpc,cpm,frequency}`;
+      const fields = `name,status,campaign_id,campaign{name},creative{thumbnail_url,image_url,object_type,video_id,image_hash,object_story_spec},insights.${insightsDateParam}{spend,impressions,reach,clicks,actions,action_values,cost_per_action_type,ctr,cpc,cpm,frequency}`;
       const res = await fetch(
         `${GRAPH_API}/${adAccountId}/ads?fields=${fields}&limit=200&access_token=${accessToken}`
       );
       const data = await res.json();
 
       if (data.error) {
-        return new Response(JSON.stringify({ error: data.error.message }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return graphErrorResponse(data.error);
       }
 
-      const ads = (data.data || []).map((ad: any) => {
+      const rawAds = data.data || [];
+
+      // Fetch video sources in parallel for ads that have a video_id
+      const videoIds = Array.from(new Set(
+        rawAds.map((ad: any) => ad.creative?.video_id).filter(Boolean)
+      )) as string[];
+      const videoMeta = new Map<string, { source?: string; picture?: string }>();
+      await Promise.all(videoIds.map(async (vid) => {
+        try {
+          const r = await fetch(`${GRAPH_API}/${vid}?fields=source,picture&access_token=${accessToken}`);
+          const j = await r.json();
+          if (!j.error) videoMeta.set(vid, { source: j.source, picture: j.picture });
+        } catch (_) { /* ignore */ }
+      }));
+
+      const ads = rawAds.map((ad: any) => {
         const ins = ad.insights?.data?.[0] || {};
         const spend = parseFloat(ins.spend || "0");
         const impressions = parseInt(ins.impressions || "0");
@@ -304,13 +341,25 @@ Deno.serve(async (req) => {
         const results = extractResults(ins.actions);
         const cost_per_result = extractCostPerResult(ins.cost_per_action_type);
         const result_type = extractResultType(ins.actions);
-        // Extract video metrics from actions array (video_view = 3s views)
         const video3s = extractAction(ins.actions, ["video_view"]);
         const thruplay = extractAction(ins.actions, ["video_thruplay"]);
-        // Purchases & value
         const purchases = extractAction(ins.actions, PURCHASE_TYPES);
         const purchase_value = extractActionValue(ins.action_values, PURCHASE_TYPES);
         const purchase_roas = spend > 0 ? purchase_value / spend : 0;
+
+        const creative = ad.creative || {};
+        const oss = creative.object_story_spec || {};
+        const videoId = creative.video_id || oss.video_data?.video_id || null;
+        const vMeta = videoId ? videoMeta.get(videoId) : undefined;
+
+        const image_url_hd =
+          oss.link_data?.child_attachments?.[0]?.picture ||
+          oss.link_data?.picture ||
+          oss.video_data?.image_url ||
+          vMeta?.picture ||
+          creative.image_url ||
+          creative.thumbnail_url ||
+          null;
 
         return {
           id: ad.id,
@@ -318,8 +367,11 @@ Deno.serve(async (req) => {
           status: ad.status === "ACTIVE" ? "active" : "paused",
           campaign_id: ad.campaign_id,
           campaign_name: ad.campaign?.name || "",
-          thumbnail_url: ad.creative?.thumbnail_url || null,
-          image_url: ad.creative?.image_url || null,
+          thumbnail_url: creative.thumbnail_url || null,
+          image_url: creative.image_url || null,
+          image_url_hd,
+          video_id: videoId,
+          video_source_url: vMeta?.source || null,
           spend,
           impressions,
           reach: parseInt(ins.reach || "0"),
@@ -353,8 +405,7 @@ Deno.serve(async (req) => {
       const data = await res.json();
 
       if (data.error) {
-        return new Response(JSON.stringify({ error: data.error.message }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return graphErrorResponse(data.error);
       }
 
       const ins = data.data?.[0] || {};
@@ -527,8 +578,7 @@ Deno.serve(async (req) => {
       const data = await res.json();
 
       if (data.error) {
-        return new Response(JSON.stringify({ error: data.error.message }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return graphErrorResponse(data.error);
       }
 
       const ins = data.data?.[0] || {};

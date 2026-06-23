@@ -17,13 +17,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
 
-    const { analysis, language, urlContext } = await req.json();
-    if (!analysis) {
-      return new Response(JSON.stringify({ error: "analysis obrigatório" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const { analysis, language, urlContext, initialPrompt, additionalInstructions } = await req.json();
 
     const lang = language === "en" ? "English" : language === "es" ? "Spanish" : "Portuguese (Brazil)";
 
@@ -34,14 +28,25 @@ Descrição: ${urlContext.description || "(sem descrição)"}
 Trecho: ${(urlContext.text || "").slice(0, 3500)}`
       : "";
 
-    const userPrompt = `Idioma: ${lang}
-Mood adjetivos: ${(analysis?.mood?.adjetivos || []).join(", ")}
-Referências visuais: ${(analysis?.mood?.referencias || []).join(", ")}
-Evita: ${(analysis?.mood?.evita || []).join(", ")}
-Design system resumido:
-${(analysis?.designSystemDoc || "").slice(0, 800)}${urlBlock}
+    const promptBlock = initialPrompt
+      ? `\nPrompt do criativo: ${initialPrompt.slice(0, 800)}`
+      : "";
+    const instructionsBlock = additionalInstructions?.length
+      ? `\nOrientações adicionais: ${(additionalInstructions as string[]).join("; ")}`
+      : "";
 
-Escreva um rascunho curto (2-4 linhas) descrevendo a oferta provável que combinaria com essas referências${urlContext ? " e, principalmente, com o conteúdo do site acima" : ""}. Apenas o texto, sem prefixos.`;
+    const userPrompt = analysis
+      ? `Idioma: ${lang}
+Mood adjetivos: ${(analysis.mood?.adjetivos || []).join(", ")}
+Referências visuais: ${(analysis.mood?.referencias || []).join(", ")}
+Evita: ${(analysis.mood?.evita || []).join(", ")}
+Design system resumido:
+${(analysis.designSystemDoc || "").slice(0, 800)}${promptBlock}${instructionsBlock}${urlBlock}
+
+Escreva um rascunho curto (2-4 linhas) descrevendo a oferta provável que combinaria com essas referências${urlContext ? " e, principalmente, com o conteúdo do site acima" : ""}. Apenas o texto, sem prefixos.`
+      : `Idioma: ${lang}${promptBlock}${instructionsBlock}${urlBlock}
+
+Com base apenas no prompt e nas orientações acima, escreva um rascunho curto de copy (2-4 linhas) para o criativo. Apenas o texto corrido, sem prefixos, sem listas.`;
 
     const response = await fetch(AI_URL, {
       method: "POST",

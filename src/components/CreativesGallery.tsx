@@ -224,21 +224,29 @@ export function CreativesGallery({ ads }: CreativesGalleryProps) {
 
       {/* Preview Dialog */}
       <Dialog open={!!selectedAd} onOpenChange={(open) => !open && setSelectedAd(null)}>
-        <DialogContent className="max-w-2xl p-0 overflow-hidden bg-background/95 backdrop-blur-xl border-white/10">
+        <DialogContent className="max-w-4xl p-0 overflow-hidden bg-background/95 backdrop-blur-xl border-white/10">
           <DialogHeader className="px-6 pt-6 pb-2">
             <DialogTitle className="text-base font-semibold truncate">
               {selectedAd?.name}
             </DialogTitle>
             <p className="text-xs text-muted-foreground truncate">{selectedAd?.campaign_name}</p>
           </DialogHeader>
-          <div className="px-6 pb-6">
-            {selectedAd && (selectedAd.image_url || selectedAd.thumbnail_url) && (
-              <img
-                src={selectedAd.image_url || selectedAd.thumbnail_url || ''}
-                alt={selectedAd.name}
-                className="w-full rounded-lg object-contain max-h-[70vh]"
+          <div className="px-6 pb-6 flex items-center justify-center">
+            {selectedAd?.video_source_url ? (
+              <video
+                src={selectedAd.video_source_url}
+                poster={selectedAd.image_url_hd || selectedAd.image_url || selectedAd.thumbnail_url || undefined}
+                controls
+                autoPlay
+                className="w-full rounded-lg max-h-[75vh] bg-black"
               />
-            )}
+            ) : selectedAd && (selectedAd.image_url_hd || selectedAd.image_url || selectedAd.thumbnail_url) ? (
+              <img
+                src={selectedAd.image_url_hd || selectedAd.image_url || selectedAd.thumbnail_url || ''}
+                alt={selectedAd.name}
+                className="w-full rounded-lg object-contain max-h-[75vh]"
+              />
+            ) : null}
           </div>
         </DialogContent>
       </Dialog>

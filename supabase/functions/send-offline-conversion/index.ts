@@ -14,27 +14,127 @@ async function hashSHA256(value: string): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-const isPresent = (v: unknown): v is string | number => {
-  if (v === null || v === undefined) return false;
-  if (typeof v === "string") return v.trim().length > 0;
-  if (typeof v === "number") return !Number.isNaN(v);
-  return false;
+// Remove diacríticos (acentos): "góllo" -> "gollo", "são" -> "sao"
+const stripDiacritics = (s: string) =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+// ============================================================================
+// Normalizers — cada um retorna string normalizada OU null se inválido.
+// Quando null, o campo é OMITIDO do user_data (melhor não enviar do que
+// enviar dado errado que polui o hash e quebra o match no Meta).
+// Padrões: https://developers.facebook.com/docs/marketing-api/conversions-api/parameters/customer-information-parameters
+// ============================================================================
+
+// Meta CAPI em: lowercase, trim, formato válido de email
+const normEmail = (s: string): string | null => {
+  const v = s.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return null;
+  return v;
 };
 
-// Per-field normalizers per spec
-const normEmail = (s: string) => s.trim().toLowerCase();
-const normPhone = (s: string) => {
-  const trimmed = s.trim();
-  const lead = trimmed.startsWith("+") ? "+" : "";
-  return lead + trimmed.replace(/\D/g, "");
+// Meta CAPI ph: E.164 só dígitos (com country code, sem "+", sem espaços/símbolos).
+// Para Brasil: garantir prefixo 55. Telefones nacionais 10–11 dígitos viram 55XXXXXXXXXX.
+const normPhone = (s: string): string | null => {
+  let digits = s.replace(/\D/g, "");
+  // remove zeros à esquerda (ex.: tronco "0" antigo no Brasil)
+  digits = digits.replace(/^0+/, "");
+  if (!digits) return null;
+  // BR sem DDI: 10 (fixo DDD+8) ou 11 (celular DDD+9) → prefixar 55
+  if (digits.length === 10 || digits.length === 11) digits = "55" + digits;
+  // E.164 aceita 8 a 15 dígitos no total; exigimos pelo menos 10
+  if (digits.length < 10 || digits.length > 15) return null;
+  return digits;
 };
-const normName = (s: string) => s.trim().toLowerCase();
-const normZip = (s: string) => s.replace(/[\s-]/g, "");
-const normCt = (s: string) => s.trim().toLowerCase();
-const normCountry = (s: string) => s.toLowerCase();
-const normDob = (s: string) => s.replace(/\D/g, "");
-const normDoby = (s: string) => s.trim();
-const normGen = (s: string) => s.toLowerCase();
+
+// Meta CAPI fn/ln: lowercase, sem acentos, somente letras a–z
+const normName = (s: string): string | null => {
+  const v = stripDiacritics(s.trim().toLowerCase()).replace(/[^a-z]/g, "");
+  return v || null;
+};
+
+// Meta CAPI zp: só dígitos. BR exige 8 dígitos (CEP).
+const normZip = (s: string, country: string | null): string | null => {
+  const v = s.replace(/\D/g, "");
+  if (!v) return null;
+  if (country === "br" && v.length !== 8) return null;
+  if (v.length < 3 || v.length > 10) return null;
+  return v;
+};
+
+// Meta CAPI ct: lowercase, sem acentos, sem números/símbolos/espaços
+const normCt = (s: string): string | null => {
+  const v = stripDiacritics(s.trim().toLowerCase()).replace(/[^a-z]/g, "");
+  return v || null;
+};
+
+// Meta CAPI country: ISO-2 lowercase ("br", "us", "mx"...)
+const COUNTRY_MAP: Record<string, string> = {
+  brasil: "br",
+  brazil: "br",
+  eua: "us",
+  usa: "us",
+  estadosunidos: "us",
+  mexico: "mx",
+  portugal: "pt",
+  argentina: "ar",
+  chile: "cl",
+  colombia: "co",
+  espanha: "es",
+  spain: "es",
+};
+const normCountry = (s: string): string | null => {
+  const cleaned = stripDiacritics(s.trim().toLowerCase()).replace(/[^a-z]/g, "");
+  if (cleaned.length === 2) return cleaned;
+  return COUNTRY_MAP[cleaned] ?? null;
+};
+
+// Meta CAPI db (date of birth): YYYYMMDD (8 dígitos)
+const normDob = (s: string): string | null => {
+  const v = s.replace(/\D/g, "");
+  if (v.length !== 8) return null;
+  const year = parseInt(v.slice(0, 4), 10);
+  const month = parseInt(v.slice(4, 6), 10);
+  const day = parseInt(v.slice(6, 8), 10);
+  const nowYear = new Date().getUTCFullYear();
+  if (year < 1900 || year > nowYear) return null;
+  if (month < 1 || month > 12) return null;
+  if (day < 1 || day > 31) return null;
+  return v;
+};
+
+// Meta CAPI doby: YYYY (4 dígitos)
+const normDoby = (s: string): string | null => {
+  const v = s.replace(/\D/g, "");
+  if (v.length !== 4) return null;
+  const y = parseInt(v, 10);
+  const nowYear = new Date().getUTCFullYear();
+  if (y < 1900 || y > nowYear) return null;
+  return v;
+};
+
+// Meta CAPI ge (gender): "m" ou "f"
+const GENDER_MAP: Record<string, "m" | "f"> = {
+  m: "m",
+  male: "m",
+  masculino: "m",
+  homem: "m",
+  h: "m",
+  f: "f",
+  female: "f",
+  feminino: "f",
+  mulher: "f",
+};
+const normGen = (s: string): string | null => {
+  const cleaned = stripDiacritics(s.trim().toLowerCase()).replace(/[^a-z]/g, "");
+  return GENDER_MAP[cleaned] ?? null;
+};
+
+// Meta CAPI age: inteiro positivo 1–120 (enviado como string antes do hash)
+const normAge = (s: string): string | null => {
+  const n = parseInt(s.replace(/\D/g, ""), 10);
+  if (!Number.isFinite(n) || n < 1 || n > 120) return null;
+  return String(n);
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -92,7 +192,7 @@ Deno.serve(async (req) => {
     // 2) Fetch the pixel
     const { data: pixelRow, error: pixelErr } = await adminClient
       .from("client_pixels")
-      .select("pixel_id, access_token")
+      .select("pixel_id, access_token, offline_event_set_id")
       .eq("client_id", conv.client_id)
       .maybeSingle();
     if (pixelErr || !pixelRow) {
@@ -107,43 +207,53 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 3) Build hashed user_data — only include fields that are present.
-    //    Per spec: em/ph as arrays; others as scalar strings.
-    const user_data: Record<string, string | string[]> = {};
+    const offlineEventSetId = (pixelRow as any).offline_event_set_id as string | null;
+    const useOfflineDataset = !!offlineEventSetId && String(offlineEventSetId).trim().length > 0;
 
-    if (isPresent(conv.email)) {
-      user_data.em = [await hashSHA256(normEmail(String(conv.email)))];
+    // 3) Build hashed user_data. Cada campo passa pelo normalizer; se retornar
+    //    null, é descartado (não enviar dado errado é melhor que enviar errado).
+    const user_data: Record<string, string | string[]> = {};
+    const droppedKeys: string[] = [];
+
+    const addHashed = async (
+      key: string,
+      raw: unknown,
+      normalizer: (s: string) => string | null,
+      asArray = false,
+    ) => {
+      if (raw === null || raw === undefined) return;
+      const s = String(raw);
+      if (!s.trim()) return;
+      const n = normalizer(s);
+      if (!n) {
+        droppedKeys.push(key);
+        return;
+      }
+      const h = await hashSHA256(n);
+      user_data[key] = asArray ? [h] : h;
+    };
+
+    // country precisa ser normalizado primeiro pois zip depende dele
+    let countryIso: string | null = null;
+    if (conv.country !== null && conv.country !== undefined && String(conv.country).trim()) {
+      countryIso = normCountry(String(conv.country));
+      if (countryIso) {
+        user_data.country = await hashSHA256(countryIso);
+      } else {
+        droppedKeys.push("country");
+      }
     }
-    if (isPresent(conv.phone)) {
-      user_data.ph = [await hashSHA256(normPhone(String(conv.phone)))];
-    }
-    if (isPresent(conv.fn)) {
-      user_data.fn = await hashSHA256(normName(String(conv.fn)));
-    }
-    if (isPresent(conv.ln)) {
-      user_data.ln = await hashSHA256(normName(String(conv.ln)));
-    }
-    if (isPresent(conv.zip)) {
-      user_data.zp = await hashSHA256(normZip(String(conv.zip)));
-    }
-    if (isPresent(conv.ct)) {
-      user_data.ct = await hashSHA256(normCt(String(conv.ct)));
-    }
-    if (isPresent(conv.country)) {
-      user_data.country = await hashSHA256(normCountry(String(conv.country)));
-    }
-    if (isPresent(conv.dob)) {
-      user_data.db = await hashSHA256(normDob(String(conv.dob)));
-    }
-    if (isPresent(conv.doby)) {
-      user_data.doby = await hashSHA256(normDoby(String(conv.doby)));
-    }
-    if (isPresent(conv.gen)) {
-      user_data.ge = await hashSHA256(normGen(String(conv.gen)));
-    }
-    if (isPresent(conv.age)) {
-      user_data.age = await hashSHA256(String(conv.age));
-    }
+
+    await addHashed("em", conv.email, normEmail, true);
+    await addHashed("ph", conv.phone, normPhone, true);
+    await addHashed("fn", conv.fn, normName);
+    await addHashed("ln", conv.ln, normName);
+    await addHashed("zp", conv.zip, (s) => normZip(s, countryIso));
+    await addHashed("ct", conv.ct, normCt);
+    await addHashed("db", conv.dob, normDob);
+    await addHashed("doby", conv.doby, normDoby);
+    await addHashed("ge", conv.gen, normGen);
+    await addHashed("age", conv.age, normAge);
 
     // 4) Build payload
     const eventTime = Math.floor(new Date(conv.conversion_date).getTime() / 1000);
@@ -152,24 +262,36 @@ Deno.serve(async (req) => {
     const event: Record<string, unknown> = {
       event_name: conv.event_name || "Purchase",
       event_time: eventTime,
-      action_source: "other",
+      action_source: useOfflineDataset ? "system_generated" : "other",
       event_id: eventId,
       user_data,
     };
 
-    if (isPresent(conv.value)) {
+    if (conv.value !== null && conv.value !== undefined && String(conv.value).trim()) {
       event.custom_data = {
         value: parseFloat(String(conv.value)),
         currency: conv.currency || "BRL",
       };
     }
 
-    const payload = { data: [event] };
+    const payload: Record<string, unknown> = { data: [event] };
+    if (useOfflineDataset) {
+      payload.upload_tag = "wavy_dash_crm";
+    }
 
     // 5) POST to Meta CAPI
-    const url = `https://graph.facebook.com/v24.0/${pixelRow.pixel_id}/events?access_token=${encodeURIComponent(
+    const targetId = useOfflineDataset ? offlineEventSetId : pixelRow.pixel_id;
+    const url = `https://graph.facebook.com/v24.0/${targetId}/events?access_token=${encodeURIComponent(
       pixelRow.access_token,
     )}`;
+
+    console.log("send-offline-conversion", {
+      conversion_id: conversionId,
+      mode: useOfflineDataset ? "offline_dataset" : "pixel_events",
+      target_id: targetId,
+      included_keys: Object.keys(user_data),
+      dropped_keys: droppedKeys,
+    });
 
     const fbResp = await fetch(url, {
       method: "POST",
@@ -190,7 +312,13 @@ Deno.serve(async (req) => {
         .eq("id", conversionId);
 
       return new Response(
-        JSON.stringify({ ok: true, event_id: eventId, meta: fbJson }),
+        JSON.stringify({
+          ok: true,
+          event_id: eventId,
+          meta: fbJson,
+          included_keys: Object.keys(user_data),
+          dropped_keys: droppedKeys,
+        }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -206,10 +334,10 @@ Deno.serve(async (req) => {
       })
       .eq("id", conversionId);
 
-    return new Response(JSON.stringify({ error: errMsg, meta: fbJson }), {
-      status: 502,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: errMsg, meta: fbJson, dropped_keys: droppedKeys }),
+      { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("send-offline-conversion error:", msg);
