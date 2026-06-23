@@ -1777,7 +1777,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
       return;
     }
     if (!projectTitle.trim()) setProjectTitle(prompt.slice(0, 60));
-    await createCreativeProject();
+    try { await createCreativeProject(); } catch (e) { console.warn('createCreativeProject failed:', e); }
     addUserMessage(prompt);
     setCurrentStage('references');
     setRightPanelMode('none');
@@ -2234,25 +2234,30 @@ A reference Story version of this same creative is attached as the FIRST image. 
                   Nenhum projeto salvo ainda.
                 </div>
               ) : (
-                projectHistory.map((project) => (
-                  <div key={project.id} className="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
-                    <div className="flex gap-3">
-                      <div className="h-16 w-16 overflow-hidden rounded-xl bg-white/10">
-                        {project.thumbnail_url ? <img src={project.thumbnail_url} alt={project.title} className="h-full w-full object-cover" /> : null}
+                <div className="grid grid-cols-2 gap-2">
+                  {projectHistory.map((project) => (
+                    <div key={project.id} className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035]">
+                      <div className="aspect-[4/5] w-full overflow-hidden bg-white/5">
+                        {project.thumbnail_url ? (
+                          <img src={project.thumbnail_url} alt={project.title} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-white/20 text-xs">Sem preview</div>
+                        )}
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-white">{project.title}</p>
-                        <p className="text-xs text-white/45">{project.status} · {project.selected_aspect_ratio} · {project.selected_resolution}</p>
-                        <p className="text-xs text-white/35">{new Date(project.updated_at).toLocaleString('pt-BR')}</p>
+                      <div className="absolute inset-0 flex flex-col justify-end gap-1 bg-black/65 p-2 opacity-0 transition-opacity group-hover:opacity-100">
+                        <Button size="sm" className="h-7 w-full rounded-full text-xs" onClick={() => loadCreativeProject(project.id)}>Abrir</Button>
+                        <div className="grid grid-cols-2 gap-1">
+                          <Button size="sm" variant="outline" className="h-7 rounded-full text-xs" onClick={() => duplicateCreativeProject(project.id)}>Duplicar</Button>
+                          <Button size="sm" variant="ghost" className="h-7 rounded-full text-xs text-destructive hover:text-destructive" onClick={() => archiveCreativeProject(project.id)}>Arquivar</Button>
+                        </div>
+                      </div>
+                      <div className="p-2">
+                        <p className="truncate text-xs font-medium text-white">{project.title}</p>
+                        <p className="text-[10px] text-white/40">{new Date(project.updated_at).toLocaleDateString('pt-BR')}</p>
                       </div>
                     </div>
-                    <div className="mt-3 grid grid-cols-3 gap-2">
-                      <Button size="sm" variant="outline" className="rounded-full" onClick={() => loadCreativeProject(project.id)}>Abrir</Button>
-                      <Button size="sm" variant="outline" className="rounded-full" onClick={() => duplicateCreativeProject(project.id)}>Duplicar</Button>
-                      <Button size="sm" variant="ghost" className="rounded-full text-destructive hover:text-destructive" onClick={() => archiveCreativeProject(project.id)}>Arquivar</Button>
-                    </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </div>
           )}
