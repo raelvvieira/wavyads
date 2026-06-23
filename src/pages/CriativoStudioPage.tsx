@@ -2089,15 +2089,16 @@ A reference Story version of this same creative is attached as the FIRST image. 
   };
 
   const progressItems = [
-    { label: 'Referências', done: !!analysis, current: ['references', 'reference-review'].includes(currentStage), note: analysis ? 'pronta' : 'opcional' },
-    { label: 'Copy', done: copyApproved, current: currentStage === 'copy', note: copyApproved ? 'aprovada' : 'pendente' },
+    { label: 'Referências', done: !!analysis, current: ['references', 'reference-review'].includes(currentStage), note: analysis ? 'pronta' : 'opcional', action: analysis ? 'open-design-system' : 'open-upload-references' },
+    { label: 'Copy', done: copyApproved, current: currentStage === 'copy', note: copyApproved ? 'aprovada' : 'pendente', action: copyApproved ? 'open-paste-copy' : 'generate-copy-now' },
     {
       label: 'Produto',
       done: logoImage.length > 0 || productImages.length > 0,
       current: currentStage === 'assets',
       note: logoImage.length > 0 || productImages.length > 0 ? 'com assets' : 'opcional',
+      action: 'open-assets',
     },
-    { label: 'Arte', done: !!storyImage || !!squareImage, current: ['generation-summary', 'result', 'factor', 'editing'].includes(currentStage), note: storyImage || squareImage ? 'gerada' : 'pendente' },
+    { label: 'Arte', done: !!storyImage || !!squareImage, current: ['generation-summary', 'result', 'factor', 'editing'].includes(currentStage), note: storyImage || squareImage ? 'gerada' : 'pendente', action: 'open-generation-summary' },
   ];
 
   const renderActionButton = (action: ConversationAction) => (
@@ -2890,42 +2891,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
 
   const conversationalLayout = (
     <div className="min-h-screen bg-[#050507] text-white">
-      <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[80px_minmax(0,1fr)_420px] xl:grid-cols-[80px_minmax(0,1fr)_460px]">
-        <aside className="hidden lg:flex flex-col items-center justify-between border-r border-white/10 bg-white/[0.025] py-4">
-          <div className="space-y-4">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#EC4899]/15 text-[#F9A8D4]">
-              <Wand2 className="h-5 w-5" />
-            </div>
-            {([
-              [MessageSquare, 'Chat', true],
-              [Box, 'Produtos', false],
-              [User, 'Avatares', false],
-              [Layers, 'Templates', false],
-              [Users, 'Clientes', false],
-              [History, 'Histórico', false],
-              [Settings, 'Configurações', false],
-            ] as Array<[React.ComponentType<{ className?: string }>, string, boolean]>).map(([Icon, label, active]) => (
-              <button
-                key={label}
-                type="button"
-                disabled={!active && label !== 'Histórico' && label !== 'Templates'}
-                title={label}
-                onClick={() => {
-                  if (label === 'Histórico') handleQuickAction('open-project-history');
-                  if (label === 'Templates') handleQuickAction('open-template');
-                }}
-                className={cn(
-                  'flex h-10 w-10 items-center justify-center rounded-2xl transition',
-                  active || label === 'Histórico' || label === 'Templates' ? 'bg-white/10 text-white' : 'text-white/28',
-                )}
-              >
-                <Icon className="h-4 w-4" />
-              </button>
-            ))}
-
-          </div>
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-xs">RV</div>
-        </aside>
+      <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] xl:grid-cols-[minmax(0,1fr)_460px]">
 
         <main className="mx-auto flex w-full max-w-4xl flex-col px-4 py-5 sm:px-6 lg:px-8">
           <header className="flex flex-wrap items-start justify-between gap-4">
@@ -2963,6 +2929,29 @@ A reference Story version of this same creative is attached as the FIRST image. 
               </Button>
             </div>
           </header>
+
+          {currentStage !== 'initial' && (
+            <div className="mt-5 flex flex-wrap gap-2 rounded-full border border-white/10 bg-white/[0.035] p-1.5">
+              {progressItems.map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => handleQuickAction(item.action)}
+                  className={cn(
+                    'flex items-center gap-2 rounded-full px-3 py-1.5 text-xs transition hover:bg-white/10',
+                    item.current ? 'bg-[#EC4899]/20 text-white ring-1 ring-[#EC4899]/50' : 'text-white/55',
+                    item.done && !item.current && 'bg-white/8 text-white/80',
+                  )}
+                >
+                  <span className={cn('flex h-4 w-4 items-center justify-center rounded-full text-[9px]', item.done ? 'bg-[#EC4899] text-white' : 'bg-white/10')}>
+                    {item.done ? <Check className="h-2.5 w-2.5" /> : null}
+                  </span>
+                  {item.label}
+                  <span className="hidden text-white/35 sm:inline">{item.note}</span>
+                </button>
+              ))}
+            </div>
+          )}
 
           <section className={cn('flex flex-1 flex-col', currentStage === 'initial' ? 'justify-center py-12' : 'py-6')}>
             {currentStage === 'initial' && (
