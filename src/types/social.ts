@@ -20,6 +20,24 @@ export type FormatoFamilia =
   | "post_frase"            // 4
   | "frase_mestre";         // 5
 
+export interface CopyIntensificacao {
+  tema: string;
+  angulo: string;
+  voz: "Rael" | "Wavy";
+  referencia_resumo: string;
+  tese_central: string;
+  gancho: string;
+  dor_principal: string;
+  conflito_principal: string;
+  promessa: string;
+  preservar: string[];
+  ampliar: string[];
+  evitar: string[];
+  provas_e_dados: string[];
+  palavras_chave: string[];
+  briefing_texto: string;
+}
+
 export const PATTERN_TO_FAMILIA: Record<CopyPatternId, FormatoFamilia> = {
   "1A": "carrossel_direto",
   "1B": "carrossel_direto",

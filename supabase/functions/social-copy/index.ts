@@ -9,7 +9,7 @@ interface PatternReq {
   mode: "pattern";
   pattern_id: PatternId;
   tema: string;
-  briefing: string;
+  briefing: string | IntensificacaoBrief;
   num_slides?: number;
   copy_referencia?: string;
 }
@@ -32,6 +32,24 @@ interface LegacyPostUnicoReq { mode: "post_unico"; tema: string; briefing: strin
 interface LegacyReelReq { mode: "reel"; tema: string; briefing: string; copy_referencia?: string }
 
 type Req = PatternReq | RewriteReq | LegacyCarrosselReq | LegacyPostUnicoReq | LegacyReelReq;
+
+interface IntensificacaoBrief {
+  tema: string;
+  angulo: string;
+  voz: "Rael" | "Wavy";
+  referencia_resumo: string;
+  tese_central: string;
+  gancho: string;
+  dor_principal: string;
+  conflito_principal: string;
+  promessa: string;
+  preservar: string[];
+  ampliar: string[];
+  evitar: string[];
+  provas_e_dados: string[];
+  palavras_chave: string[];
+  briefing_texto: string;
+}
 
 const SYSTEM_RULES = `Você é o copywriter sênior da Wavy (IA-Driven Agency) para Instagram em PT-BR.
 Siga RIGOROSAMENTE o guia Wavy abaixo. Voz, regras absolutas, formatos, psicologia e vocabulário são obrigatórios.
@@ -69,6 +87,52 @@ const JSON_REEL = `{
 function anchorBlock(copy_referencia?: string): string {
   if (!copy_referencia?.trim()) return "";
   return `\n\nÂNCORA OBRIGATÓRIA — Copy original do post viral de referência:\n"""\n${copy_referencia.trim().slice(0, 3000)}\n"""\nREGRAS DE USO DA ÂNCORA:\n- O conteúdo gerado DEVE ser sobre o mesmo assunto específico desta copy\n- Use os mesmos dados, estatísticas e argumentos centrais presentes nela\n- NÃO invente casos, empresas ou números que não estejam no briefing ou na âncora\n- Adapte o ângulo narrativo para o padrão solicitado, mas mantenha o assunto real`;
+}
+
+function formatBriefing(briefing: string | IntensificacaoBrief): string {
+  if (typeof briefing === "string") return briefing.trim();
+
+  const pick = (value?: string) => (value && value.trim() ? value.trim() : "");
+  const list = (items?: string[]) => (items || []).map((item) => `- ${item}`).join("\n");
+
+  return `INTENSIFICAÇÃO DA ETAPA 2
+Tema refinado: ${pick(briefing.tema)}
+Ângulo: ${pick(briefing.angulo)}
+Voz sugerida: ${briefing.voz}
+Resumo da referência: ${pick(briefing.referencia_resumo)}
+
+Tese central:
+${pick(briefing.tese_central)}
+
+Gancho:
+${pick(briefing.gancho)}
+
+Dor principal:
+${pick(briefing.dor_principal)}
+
+Conflito principal:
+${pick(briefing.conflito_principal)}
+
+Promessa:
+${pick(briefing.promessa)}
+
+Preservar da referência:
+${list(briefing.preservar)}
+
+Ampliar na recriação:
+${list(briefing.ampliar)}
+
+Evitar na copy final:
+${list(briefing.evitar)}
+
+Provas e dados úteis:
+${list(briefing.provas_e_dados)}
+
+Palavras-chave:
+${list(briefing.palavras_chave)}
+
+Síntese para a Etapa 3:
+${pick(briefing.briefing_texto)}`;
 }
 
 function build1A(tema: string, briefing: string, n: number, copy_referencia?: string) {
@@ -207,14 +271,15 @@ ${JSON_CARROSSEL}`;
 
 function buildPatternPrompt(p: PatternReq) {
   const n = p.num_slides || 7;
+  const briefing = formatBriefing(p.briefing);
   switch (p.pattern_id) {
-    case "1A": return build1A(p.tema, p.briefing, n, p.copy_referencia);
-    case "1B": return build1B(p.tema, p.briefing, n, p.copy_referencia);
-    case "2A": return build2A(p.tema, p.briefing, n, p.copy_referencia);
-    case "2B": return build2B(p.tema, p.briefing, n, p.copy_referencia);
-    case "3":  return build3(p.tema, p.briefing, p.copy_referencia);
-    case "4":  return build4(p.tema, p.briefing, p.copy_referencia);
-    case "5":  return build5(p.tema, p.briefing, n, p.copy_referencia);
+    case "1A": return build1A(p.tema, briefing, n, p.copy_referencia);
+    case "1B": return build1B(p.tema, briefing, n, p.copy_referencia);
+    case "2A": return build2A(p.tema, briefing, n, p.copy_referencia);
+    case "2B": return build2B(p.tema, briefing, n, p.copy_referencia);
+    case "3":  return build3(p.tema, briefing, p.copy_referencia);
+    case "4":  return build4(p.tema, briefing, p.copy_referencia);
+    case "5":  return build5(p.tema, briefing, n, p.copy_referencia);
   }
 }
 

@@ -16,16 +16,16 @@ import { DesignStep } from "@/components/social/design/DesignStep";
 import { useViralScraper, type ViralSource, type ViralPost } from "@/hooks/useViralScraper";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import type { CopyPatternId, CopyAprovada, SlideImagem, PostCopy } from "@/types/social";
+import type { CopyPatternId, CopyAprovada, SlideImagem, PostCopy, CopyIntensificacao } from "@/types/social";
 
-const STEPS = ["Scraper", "Pesquisa", "Formato", "Imagens", "Design"];
+const STEPS = ["Scraper", "Intensificar", "Template + Copy", "Imagens", "Design"];
 const SHORT = ["1", "2", "3", "4", "5"];
 
 interface Pipeline {
   etapa_atual: number;
   post_viral: ViralPost | null;
   post_copy: PostCopy | null;
-  briefing_texto: string | null;
+  intensificacao: CopyIntensificacao | null;
   tema: string | null;
   pattern_id: CopyPatternId | null;
   num_slides: number;
@@ -55,7 +55,25 @@ function jumpTo(s: Pipeline, i: number): Pipeline {
   }
   if (i >= 2) {
     if (!next.tema) next.tema = "Tema de configuração";
-    if (!next.briefing_texto) next.briefing_texto = "[Briefing placeholder — modo configuração]";
+    if (!next.intensificacao) {
+      next.intensificacao = {
+        tema: "Tema de configuração",
+        angulo: "Ângulo de configuração",
+        voz: "Wavy",
+        referencia_resumo: "Resumo de configuração",
+        tese_central: "Tese de configuração",
+        gancho: "Gancho de configuração",
+        dor_principal: "Dor de configuração",
+        conflito_principal: "Conflito de configuração",
+        promessa: "Promessa de configuração",
+        preservar: ["Ponto de referência 1"],
+        ampliar: ["Ponto de referência 2"],
+        evitar: ["Ponto de referência 3"],
+        provas_e_dados: ["Dado de configuração"],
+        palavras_chave: ["config", "template"],
+        briefing_texto: "[Brief placeholder — modo configuração]",
+      };
+    }
   }
   if (i >= 3 && !next.copy_aprovada) {
     next.pattern_id = next.pattern_id || "2A";
@@ -94,7 +112,7 @@ export default function SocialMidiaStudioPage() {
     etapa_atual: 0,
     post_viral: null,
     post_copy: null,
-    briefing_texto: null,
+    intensificacao: null,
     tema: null,
     pattern_id: null,
     num_slides: 0,
@@ -221,37 +239,32 @@ export default function SocialMidiaStudioPage() {
           onBack={() => setPipeline((s) => ({ ...s, post_viral: null, post_copy: null }))}
           onApprove={(copy) => {
             setPipeline((s) => ({ ...s, post_copy: copy, etapa_atual: 1 }));
-            toast({ title: "Copy do post salva", description: "Avançando para a Pesquisa" });
+            toast({ title: "Copy do post salva", description: "Avançando para a Intensificação" });
           }}
         />
       )}
 
-      {/* Etapa 2 — Pesquisa */}
+      {/* Etapa 2 — Intensificação */}
       {pipeline.etapa_atual === 1 && (
         <ResearchStep
           post={pipeline.post_viral}
           initialTema={pipeline.tema || undefined}
           copyReferencia={pipeline.post_copy?.copy_consolidada}
           onApprove={(briefing, tema) => {
-            setPipeline((s) => ({ ...s, briefing_texto: briefing, tema, etapa_atual: 2 }));
-            toast({ title: "Briefing salvo", description: "Avançando para Formato" });
+            setPipeline((s) => ({ ...s, intensificacao: briefing, tema, etapa_atual: 2 }));
+            toast({ title: "Brief intensificado salvo", description: "Avançando para Template + Copy" });
           }}
         />
       )}
 
 
 
-      {/* Etapa 3 — Formato + Copy */}
-      {pipeline.etapa_atual === 2 && pipeline.tema && pipeline.briefing_texto && (
+      {/* Etapa 3 — Template + Copy final */}
+      {pipeline.etapa_atual === 2 && pipeline.tema && pipeline.intensificacao && (
         <>
-          {pipeline.briefing_texto.startsWith("[Pesquisa pulada") && (
-            <div className="max-w-2xl mx-auto mb-4 glass rounded-lg px-4 py-3 text-xs text-white/70 border-accent/30">
-              ⚡ Pesquisa pulada — gerando copy apenas com a referência do post viral.
-            </div>
-          )}
           <FormatStep
             tema={pipeline.tema}
-            briefing={pipeline.briefing_texto}
+            briefing={pipeline.intensificacao}
             copyReferencia={pipeline.post_copy?.copy_consolidada}
             onApprove={(pattern_id, num_slides, copy) => {
               setPipeline((s) => ({
@@ -302,7 +315,7 @@ export default function SocialMidiaStudioPage() {
             onFinish={() => {
               toast({ title: "Carrossel finalizado!", description: "Pipeline completo." });
               setPipeline({
-                etapa_atual: 0, post_viral: null, post_copy: null, briefing_texto: null,
+                etapa_atual: 0, post_viral: null, post_copy: null, intensificacao: null,
                 tema: null, pattern_id: null, num_slides: 0, copy_aprovada: null, imagens: null,
               });
             }}

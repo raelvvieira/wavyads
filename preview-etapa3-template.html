@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Prévia Etapa 3 · Template + Copy</title>
+  <style>
+    :root {
+      --bg: #0b0b0f;
+      --card: rgba(255,255,255,.03);
+      --line: rgba(255,255,255,.1);
+      --accent: #fd4638;
+      --text: #fff;
+      --muted: rgba(255,255,255,.58);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: radial-gradient(circle at top left, rgba(253,70,56,.10), transparent 35%), var(--bg);
+      color: var(--text);
+    }
+    .wrap { max-width: 1280px; margin: 0 auto; padding: 24px; }
+    .top { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; margin-bottom: 18px; }
+    .eyebrow { color: var(--accent); text-transform: uppercase; letter-spacing: .14em; font-size: 11px; font-weight: 700; }
+    h1 { margin: 8px 0 8px; font-size: 28px; line-height: 1.05; }
+    p.lead { margin: 0; color: var(--muted); max-width: 70ch; line-height: 1.6; font-size: 14px; }
+    .layout { display: grid; grid-template-columns: minmax(0,1.45fr) minmax(320px,.9fr); gap: 24px; }
+    .cards { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 16px;
+      min-height: 178px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .card.selected { border-color: rgba(253,70,56,.6); background: rgba(253,70,56,.10); box-shadow: 0 0 0 1px rgba(253,70,56,.20); }
+    .emoji { font-size: 28px; }
+    .name { margin-top: 10px; font-size: 15px; font-weight: 700; }
+    .desc { margin-top: 6px; font-size: 12px; line-height: 1.5; color: var(--muted); }
+    .mini {
+      height: 64px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      margin-top: 14px;
+      padding: 12px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+    }
+    .mini span { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; opacity: .72; }
+    .mini strong { font-size: 13px; line-height: 1.2; max-width: 11rem; text-align: right; }
+    .panel {
+      background: rgba(255,255,255,.025);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 18px;
+      position: sticky;
+      top: 24px;
+    }
+    .panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .panel-title { margin: 4px 0 0; font-size: 16px; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--line);
+      background: rgba(0,0,0,.2);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 10px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: rgba(255,255,255,.75);
+    }
+    .hero {
+      margin-top: 16px;
+      border-radius: 18px;
+      padding: 16px;
+      height: 120px;
+      background: linear-gradient(135deg,#0A0A0A 0%,#1A0A0A 55%,#FD4638 100%);
+      border: 1px solid rgba(255,255,255,.1);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .hero strong { font-size: 16px; line-height: 1.25; max-width: 18rem; }
+    .section { margin-top: 14px; }
+    .section h3 { font-size: 11px; margin: 0 0 8px; color: rgba(255,255,255,.4); text-transform: uppercase; letter-spacing: .12em; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.04);
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-size: 11px;
+      color: rgba(255,255,255,.76);
+    }
+    .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }
+    .box {
+      border: 1px solid var(--line);
+      background: rgba(0,0,0,.12);
+      border-radius: 16px;
+      padding: 12px;
+    }
+    .box ul { margin: 8px 0 0; padding: 0 0 0 18px; color: rgba(255,255,255,.7); font-size: 13px; line-height: 1.5; }
+    .cta {
+      margin-top: 14px;
+      width: 100%;
+      border: none;
+      border-radius: 14px;
+      background: linear-gradient(135deg,#fd4638,#e8102a);
+      color: #fff;
+      font-weight: 700;
+      padding: 14px 16px;
+      font-size: 14px;
+    }
+    .slider {
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      background: rgba(0,0,0,.12);
+      border-radius: 16px;
+      padding: 14px;
+    }
+    .bar { height: 4px; border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden; }
+    .bar > div { width: 62%; height: 100%; background: var(--accent); border-radius: 999px; }
+    .mobile-note { margin-top: 18px; color: rgba(255,255,255,.42); font-size: 12px; }
+    @media (max-width: 1100px) {
+      .layout { grid-template-columns: 1fr; }
+      .panel { position: static; }
+    }
+    @media (max-width: 900px) {
+      .cards { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    }
+    @media (max-width: 640px) {
+      .wrap { padding: 16px; }
+      h1 { font-size: 24px; }
+      .top { flex-direction: column; }
+      .cards { grid-template-columns: 1fr; }
+      .grid2 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <div class="eyebrow">Etapa 3 · Template + Copy</div>
+        <h1>Escolha a base visual que vai guiar a copy</h1>
+        <p class="lead">A etapa agora deixa claro qual template está sendo usado e mostra, ao lado, o que muda na copy antes da geração. No mobile o painel desce para baixo para continuar confortável de usar.</p>
+      </div>
+      <div class="badge">Template selecionado · 2B</div>
+    </div>
+
+    <div class="layout">
+      <section>
+        <div class="cards">
+          <div class="card">
+            <div><div class="emoji">⚡</div><div class="name">Carrossel Direto</div><div class="desc">Hook BREAKING ou conflito de mundos. Alta conversão.</div></div>
+            <div class="mini" style="background: linear-gradient(135deg,#0A0A0A 0%,#1A0A0A 55%,#FD4638 100%)"><span>Template direto</span><strong>Base agressiva e curta</strong></div>
+          </div>
+          <div class="card selected">
+            <div><div class="emoji">📖</div><div class="name">Carrossel Narrativo</div><div class="desc">Caso real ou tese filosófica desdobrada em slides editoriais.</div></div>
+            <div class="mini" style="background: linear-gradient(135deg,#F5F2EE 0%,#E8E5E0 48%,#0D1B2A 100%); color:#fff"><span>Template narrativo</span><strong>Base editorial e analítica</strong></div>
+          </div>
+          <div class="card">
+            <div><div class="emoji">🎬</div><div class="name">Reel</div><div class="desc">Vídeo 15-60s com ritmo de fala e corte.</div></div>
+            <div class="mini" style="background: linear-gradient(135deg,#0D1B2A 0%,#1A2D40 50%,#FD4638 100%)"><span>Template video</span><strong>Roteiro falado e enxuto</strong></div>
+          </div>
+          <div class="card">
+            <div><div class="emoji">🎯</div><div class="name">Post Frase</div><div class="desc">Imagem única + frase forte. Legenda longa.</div></div>
+            <div class="mini" style="background: linear-gradient(160deg,#0A0A0A 0%,#1A2D40 55%,#FD4638 100%)"><span>Post unico</span><strong>Uma frase central domina</strong></div>
+          </div>
+          <div class="card">
+            <div><div class="emoji">🧠</div><div class="name">Frase Mestre</div><div class="desc">Argumento único desdobrado em slides interdependentes.</div></div>
+            <div class="mini" style="background: linear-gradient(135deg,#0D1520 0%,#1A2535 45%,#F5F2EE 100%)"><span>Template manifesto</span><strong>Argumento em camadas</strong></div>
+          </div>
+          <div class="card selected">
+            <div><div class="emoji">✦</div><div class="name">2B · Editorial Dark</div><div class="desc">Manchete longa, tensão e clima de cinema.</div></div>
+            <div class="mini" style="background: linear-gradient(160deg,#0D1B2A 0%,#1A2D40 45%,#0A0F14 100%)"><span>Copy style</span><strong>Editorial dark com cinema</strong></div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="eyebrow">O que muda na copy</div>
+            <div class="panel-title">2B · Editorial Dark com Cinema</div>
+          </div>
+          <div class="badge">Trocar</div>
+        </div>
+        <div class="hero">
+          <span class="badge" style="width: fit-content;">2B · Editorial Dark com Cinema</span>
+          <strong>Tema filosófico, manchete longa e analogias fortes com clima de cinema.</strong>
+        </div>
+        <div class="section">
+          <h3>Copy precisa ter</h3>
+          <div class="chips">
+            <span class="chip">Tese dramática</span>
+            <span class="chip">Frase editorial longa</span>
+            <span class="chip">Atmosfera densa</span>
+          </div>
+        </div>
+        <div class="grid2 section">
+          <div class="box">
+            <h3>Funciona melhor em</h3>
+            <ul><li>Contraste</li><li>Anúncio editorial</li><li>Narrativa com peso</li></ul>
+          </div>
+          <div class="box">
+            <h3>Evitar quando</h3>
+            <ul><li>Tom leve demais</li><li>Texto sem profundidade</li></ul>
+          </div>
+        </div>
+        <div class="slider">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span>Numero de slides</span><strong style="color:var(--accent)">7</strong></div>
+          <div class="bar"><div></div></div>
+          <div style="display:flex;justify-content:space-between;color:rgba(255,255,255,.42);font-size:10px;margin-top:6px"><span>6</span><span>10</span></div>
+        </div>
+        <button class="cta">Gerar copy para 2B</button>
+      </aside>
+    </div>
+
+    <div class="mobile-note">No celular, o painel de orientação fica abaixo da seleção dos templates.</div>
+  </div>
+</body>
+</html>

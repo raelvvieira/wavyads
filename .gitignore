@@ -12,6 +12,7 @@ node_modules
 dist
 dist-check
 dist-check-tagger
+dist-lab
 dist-ssr
 *.local
 

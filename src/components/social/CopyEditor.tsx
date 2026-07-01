@@ -94,7 +94,7 @@ export function CopyEditor({ patternId, tema, initial, onApprove, onRegenAll }: 
       <GlassCard>
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <div className="text-xs uppercase tracking-wider text-accent">Etapa 3 · Copy · Padrão {patternId}</div>
+            <div className="text-xs uppercase tracking-wider text-accent">Etapa 3 · Copy final · Template {patternId}</div>
             <h2 className="text-lg font-semibold">Edite cada {isReel ? "cena" : "slide"} antes de aprovar</h2>
           </div>
           <button
