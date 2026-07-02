@@ -40,35 +40,83 @@ async function ocrImage(url: string, visionKey: string): Promise<string> {
   }
 }
 
-async function transcribeReel(item: any, apifyToken: string): Promise<string> {
-  const shortCode = item?.shortCode || item?.code || "";
-  const url = shortCode ? `https://www.instagram.com/p/${shortCode}/` : (item?.url || "");
-  if (!url) return "";
+function getReelCandidates(item: any): string[] {
+  const candidates = new Set<string>();
+  const rawType = ((item?.type || item?.productType || "") as string).toLowerCase();
+  const isReel = rawType.includes("video") || rawType.includes("reel") || rawType.includes("clip");
+  const shortCode = (item?.shortCode || item?.code || "").toString().trim();
+  const itemUrl = (item?.url || item?.permalink || "").toString().trim();
+
+  if (itemUrl) {
+    candidates.add(itemUrl);
+    const match = itemUrl.match(/instagram\.com\/(p|reel|tv)\/([^/?#]+)/i);
+    if (match?.[2]) {
+      const code = match[2];
+      candidates.add(`https://www.instagram.com/reel/${code}/`);
+      candidates.add(`https://www.instagram.com/p/${code}/`);
+      candidates.add(`https://www.instagram.com/tv/${code}/`);
+    }
+  }
+
+  if (shortCode) {
+    candidates.add(`https://www.instagram.com/${isReel ? "reel" : "p"}/${shortCode}/`);
+    candidates.add(`https://www.instagram.com/reel/${shortCode}/`);
+    candidates.add(`https://www.instagram.com/p/${shortCode}/`);
+  }
+
+  return [...candidates].filter(Boolean);
+}
+
+function extractTranscript(result: any): string {
+  const possible = [
+    result?.transcript,
+    result?.data?.transcript,
+    result?.output?.transcript,
+    result?.output?.data?.transcript,
+    result?.result?.transcript,
+    result?.data?.output?.transcript,
+  ];
+
+  for (const segs of possible) {
+    if (Array.isArray(segs)) {
+      const txt = segs.map((s: any) => s?.text || s?.transcript || "").filter(Boolean).join(" ").trim();
+      if (txt) return txt;
+    }
+    if (typeof segs === "string" && segs.trim()) return segs.trim();
+  }
+
+  if (typeof result?.text === "string" && result.text.trim()) return result.text.trim();
+  if (typeof result?.transcript === "string" && result.transcript.trim()) return result.transcript.trim();
+  return "";
+}
+
+async function transcribeReel(item: any, apifyToken: string): Promise<{ transcript: string; attempts: number }> {
+  const urls = getReelCandidates(item);
+  if (!urls.length) return { transcript: "", attempts: 0 };
   try {
     const actor = "invideoiq~video-transcriber";
     const endpoint = `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${apifyToken}&timeout=300`;
-    const resp = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ video_urls: [url] }),
-    });
-    if (!resp.ok) {
-      console.error("[Transcribe] http", resp.status, await resp.text());
-      return "";
+    let attempts = 0;
+    for (const url of urls) {
+      attempts += 1;
+      const resp = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ video_urls: [url] }),
+      });
+      if (!resp.ok) {
+        console.error("[Transcribe] http", resp.status, await resp.text());
+        continue;
+      }
+      const results = await resp.json();
+      if (!Array.isArray(results) || results.length === 0) continue;
+      const txt = extractTranscript(results[0] || {});
+      if (txt) return { transcript: txt, attempts };
     }
-    const results = await resp.json();
-    if (!Array.isArray(results) || results.length === 0) return "";
-    const r0 = results[0] || {};
-    const segs = r0.transcript || r0?.data?.transcript || [];
-    if (Array.isArray(segs)) {
-      const txt = segs.map((s: any) => s?.text || "").filter(Boolean).join(" ").trim();
-      return txt;
-    }
-    if (typeof r0.text === "string") return r0.text.trim();
-    return "";
+    return { transcript: "", attempts };
   } catch (e) {
     console.error("[Transcribe] erro:", e);
-    return "";
+    return { transcript: "", attempts: urls.length };
   }
 }
 
@@ -105,8 +153,9 @@ Deno.serve(async (req) => {
       if (!APIFY_TOKEN) {
         status.transcricao = "erro_config";
       } else {
-        transcribe_calls = 1;
-        transcricao = await transcribeReel(item, APIFY_TOKEN);
+        const res = await transcribeReel(item, APIFY_TOKEN);
+        transcricao = res.transcript;
+        transcribe_calls = res.attempts;
         status.transcricao = transcricao ? "ok" : "sem_fala_detectada";
       }
     } else if (tipo === "carrossel") {
