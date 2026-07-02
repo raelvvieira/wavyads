@@ -20,6 +20,19 @@ function cleanHandle(h: string) {
   return h.replace(/^@/, "").trim();
 }
 
+function getItemKeys(it: any): string[] {
+  return [
+    it?.id,
+    it?.shortCode,
+    it?.code,
+    it?.url,
+    it?.permalink,
+    it?.inputUrl,
+  ]
+    .map((v) => (v ?? "").toString().trim())
+    .filter(Boolean);
+}
+
 function detectType(item: any): "Reel" | "Carrossel" | "Post" {
   const t = (item.type || item.productType || "").toString().toLowerCase();
   if (t.includes("video") || t.includes("reel") || t.includes("clip")) return "Reel";
@@ -38,6 +51,9 @@ function normalize(items: any[]) {
       caption: (it.caption || it.text || "").slice(0, 240),
       url: it.url || (it.shortCode ? `https://www.instagram.com/p/${it.shortCode}/` : ""),
       thumbnail: it.displayUrl || it.thumbnailUrl || it.images?.[0] || null,
+      shortCode: it.shortCode || it.code || "",
+      videoUrl: it.videoUrl || it.video_url || it.videoSrc || it.downloadUrl || "",
+      rawType: it.type || it.productType || "",
     }))
     .filter((x) => x.username);
 }
@@ -98,7 +114,7 @@ Deno.serve(async (req) => {
     // Map normalized.id -> raw item for the front to reuse on extract-copy
     const rawById: Record<string, any> = {};
     for (let i = 0; i < normalized.length; i++) {
-      const rawItem = items[i] ?? items.find((it: any) => (it.id || it.shortCode || it.url) === normalized[i].id);
+      const rawItem = items.find((it: any) => getItemKeys(it).includes(normalized[i].id));
       if (rawItem) rawById[normalized[i].id] = rawItem;
     }
     if (source === "top") normalized = normalized.sort((a, b) => b.views - a.views).slice(0, 12);

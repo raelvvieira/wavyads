@@ -13,6 +13,9 @@ export interface ViralPost {
   caption: string;
   url: string;
   thumbnail: string | null;
+  shortCode?: string;
+  videoUrl?: string;
+  rawType?: string;
 }
 
 export function useViralScraper() {
