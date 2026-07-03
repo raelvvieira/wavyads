@@ -97,33 +97,50 @@ function extractTranscript(result: any): string {
   return "";
 }
 
-async function transcribeReel(item: any, apifyToken: string): Promise<{ transcript: string; attempts: number }> {
+async function transcribeReel(item: any, apifyToken: string): Promise<{ transcript: string; attempts: number; actorError: boolean }> {
   const urls = getReelCandidates(item);
-  if (!urls.length) return { transcript: "", attempts: 0 };
+  if (!urls.length) return { transcript: "", attempts: 0, actorError: false };
+  let actorError = false;
   try {
     const actor = "invideoiq~video-transcriber";
     const endpoint = `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${apifyToken}&timeout=300`;
     let attempts = 0;
+    let allFailed = true;
     for (const url of urls) {
       attempts += 1;
+      console.log("[Transcribe] attempt", attempts, "url:", url);
       const resp = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ video_urls: [url] }),
       });
       if (!resp.ok) {
-        console.error("[Transcribe] http", resp.status, await resp.text());
+        console.error("[Transcribe] http", resp.status, (await resp.text()).slice(0, 500));
+        actorError = true;
         continue;
       }
       const results = await resp.json();
-      if (!Array.isArray(results) || results.length === 0) continue;
-      const txt = extractTranscript(results[0] || {});
-      if (txt) return { transcript: txt, attempts };
+      console.log("[Transcribe] results length:", Array.isArray(results) ? results.length : "not-array");
+      if (!Array.isArray(results) || results.length === 0) {
+        actorError = true;
+        continue;
+      }
+      const first = results[0] || {};
+      console.log("[Transcribe] item keys:", Object.keys(first), "status:", first?.status, "data keys:", first?.data ? Object.keys(first.data) : null);
+      if (first?.status === "error" || first?.error) {
+        console.error("[Transcribe] actor returned error:", first?.error || first?.message || first?.data);
+        actorError = true;
+        continue;
+      }
+      allFailed = false;
+      const txt = extractTranscript(first);
+      if (txt) return { transcript: txt, attempts, actorError: false };
     }
-    return { transcript: "", attempts };
+    if (!allFailed) actorError = false;
+    return { transcript: "", attempts, actorError };
   } catch (e) {
     console.error("[Transcribe] erro:", e);
-    return { transcript: "", attempts: urls.length };
+    return { transcript: "", attempts: urls.length, actorError: true };
   }
 }
 
