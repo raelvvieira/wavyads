@@ -68,15 +68,23 @@ function getReelCandidates(item: any): string[] {
 }
 
 function extractTranscript(result: any): string {
+  // Novo formato oficial invideoiq (build 0.0.24+):
+  // { status, data: { video_info, transcript: [{text,start,end}] } }
+  const nested = result?.data?.transcript;
+  if (Array.isArray(nested)) {
+    const txt = nested.map((s: any) => (s?.text || "").toString()).filter(Boolean).join(" ").trim();
+    if (txt) return txt;
+  }
+  if (typeof nested === "string" && nested.trim()) return nested.trim();
+
+  // Fallbacks legados / variantes
   const possible = [
     result?.transcript,
-    result?.data?.transcript,
     result?.output?.transcript,
     result?.output?.data?.transcript,
     result?.result?.transcript,
     result?.data?.output?.transcript,
   ];
-
   for (const segs of possible) {
     if (Array.isArray(segs)) {
       const txt = segs.map((s: any) => s?.text || s?.transcript || "").filter(Boolean).join(" ").trim();
@@ -86,7 +94,6 @@ function extractTranscript(result: any): string {
   }
 
   if (typeof result?.text === "string" && result.text.trim()) return result.text.trim();
-  if (typeof result?.transcript === "string" && result.transcript.trim()) return result.transcript.trim();
   return "";
 }
 
