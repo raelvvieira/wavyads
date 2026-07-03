@@ -40,28 +40,58 @@ async function ocrImage(url: string, visionKey: string): Promise<string> {
   }
 }
 
+function getStringValue(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
 function getReelCandidates(item: any): string[] {
   const candidates = new Set<string>();
   const rawType = ((item?.type || item?.productType || "") as string).toLowerCase();
   const isReel = rawType.includes("video") || rawType.includes("reel") || rawType.includes("clip");
-  const shortCode = (item?.shortCode || item?.code || "").toString().trim();
-  const itemUrl = (item?.url || item?.permalink || "").toString().trim();
+  const shortCode = getStringValue(item?.shortCode || item?.code);
+  const itemUrl = getStringValue(item?.url || item?.permalink || item?.inputUrl);
+  const directVideoUrls = [
+    item?.videoUrl,
+    item?.video_url,
+    item?.videoSrc,
+    item?.downloadUrl,
+    item?.videoDownloadUrl,
+  ]
+    .map(getStringValue)
+    .filter(Boolean);
+
+  for (const direct of directVideoUrls) candidates.add(direct);
 
   if (itemUrl) {
-    candidates.add(itemUrl);
     const match = itemUrl.match(/instagram\.com\/(p|reel|tv)\/([^/?#]+)/i);
     if (match?.[2]) {
       const code = match[2];
-      candidates.add(`https://www.instagram.com/reel/${code}/`);
-      candidates.add(`https://www.instagram.com/p/${code}/`);
-      candidates.add(`https://www.instagram.com/tv/${code}/`);
+      if (isReel) {
+        candidates.add(`https://www.instagram.com/reel/${code}/`);
+        candidates.add(itemUrl);
+        candidates.add(`https://www.instagram.com/tv/${code}/`);
+        candidates.add(`https://www.instagram.com/p/${code}/`);
+      } else {
+        candidates.add(itemUrl);
+        candidates.add(`https://www.instagram.com/reel/${code}/`);
+        candidates.add(`https://www.instagram.com/p/${code}/`);
+        candidates.add(`https://www.instagram.com/tv/${code}/`);
+      }
+    } else {
+      candidates.add(itemUrl);
     }
   }
 
   if (shortCode) {
-    candidates.add(`https://www.instagram.com/${isReel ? "reel" : "p"}/${shortCode}/`);
-    candidates.add(`https://www.instagram.com/reel/${shortCode}/`);
-    candidates.add(`https://www.instagram.com/p/${shortCode}/`);
+    if (isReel) {
+      candidates.add(`https://www.instagram.com/reel/${shortCode}/`);
+      candidates.add(`https://www.instagram.com/tv/${shortCode}/`);
+      candidates.add(`https://www.instagram.com/p/${shortCode}/`);
+    } else {
+      candidates.add(`https://www.instagram.com/p/${shortCode}/`);
+      candidates.add(`https://www.instagram.com/reel/${shortCode}/`);
+      candidates.add(`https://www.instagram.com/tv/${shortCode}/`);
+    }
   }
 
   return [...candidates].filter(Boolean);
@@ -103,23 +133,12 @@ async function transcribeReel(item: any, apifyToken: string): Promise<{ transcri
   let actorError = false;
   try {
     const actor = "invideoiq~video-transcriber";
-    const endpoint = `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${apifyToken}&timeout=300`;
     let attempts = 0;
     let allFailed = true;
     for (const url of urls) {
       attempts += 1;
       console.log("[Transcribe] attempt", attempts, "url:", url);
-      const resp = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ video_urls: [url] }),
-      });
-      if (!resp.ok) {
-        console.error("[Transcribe] http", resp.status, (await resp.text()).slice(0, 500));
-        actorError = true;
-        continue;
-      }
-      const results = await resp.json();
+      const results = await runTranscriber(actor, apifyToken, url);
       console.log("[Transcribe] results length:", Array.isArray(results) ? results.length : "not-array");
       if (!Array.isArray(results) || results.length === 0) {
         actorError = true;
@@ -142,6 +161,63 @@ async function transcribeReel(item: any, apifyToken: string): Promise<{ transcri
     console.error("[Transcribe] erro:", e);
     return { transcript: "", attempts: urls.length, actorError: true };
   }
+}
+
+async function runTranscriber(actor: string, apifyToken: string, url: string): Promise<any[]> {
+  const runEndpoint = `https://api.apify.com/v2/acts/${actor}/run-sync?token=${apifyToken}&timeout=300`;
+  const datasetEndpoint = `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${apifyToken}&timeout=300`;
+
+  try {
+    const runResp = await fetch(runEndpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ video_urls: [url] }),
+    });
+
+    if (!runResp.ok) {
+      console.error("[Transcribe] run-sync http", runResp.status, (await runResp.text()).slice(0, 500));
+      return await runTranscriberDatasetFallback(datasetEndpoint, url);
+    }
+
+    const runPayload = await runResp.json();
+    const runData = runPayload?.data || runPayload;
+    const runStatus = runData?.status;
+    const datasetId = runData?.defaultDatasetId;
+    console.log("[Transcribe] run-sync status:", runStatus || "unknown", "dataset:", datasetId || "none");
+
+    if (!datasetId) {
+      return await runTranscriberDatasetFallback(datasetEndpoint, url);
+    }
+
+    const itemsResp = await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?token=${apifyToken}&clean=true&format=json`);
+    if (!itemsResp.ok) {
+      console.error("[Transcribe] dataset http", itemsResp.status, (await itemsResp.text()).slice(0, 500));
+      return await runTranscriberDatasetFallback(datasetEndpoint, url);
+    }
+
+    const items = await itemsResp.json();
+    if (Array.isArray(items) && items.length > 0) return items;
+
+    console.warn("[Transcribe] run-sync dataset empty; trying legacy dataset endpoint");
+    return await runTranscriberDatasetFallback(datasetEndpoint, url);
+  } catch (e) {
+    console.error("[Transcribe] run-sync erro:", e);
+    return await runTranscriberDatasetFallback(datasetEndpoint, url);
+  }
+}
+
+async function runTranscriberDatasetFallback(endpoint: string, url: string): Promise<any[]> {
+  const resp = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ video_urls: [url] }),
+      });
+      if (!resp.ok) {
+    console.error("[Transcribe] legacy http", resp.status, (await resp.text()).slice(0, 500));
+    return [];
+      }
+      const results = await resp.json();
+  return Array.isArray(results) ? results : [];
 }
 
 Deno.serve(async (req) => {
