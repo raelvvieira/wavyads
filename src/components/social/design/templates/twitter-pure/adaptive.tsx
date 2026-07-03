@@ -361,17 +361,17 @@ export function MediaSlot({
     }
 
     let cancelled = false;
-    const image = new Image();
+    const image: HTMLImageElement = new Image();
     image.src = src;
 
     const markReady = async () => {
       try {
-        if ("decode" in image) {
+        if (typeof image.decode === "function") {
           await image.decode();
         } else {
           await new Promise<void>((resolve, reject) => {
-            image.onload = () => resolve();
-            image.onerror = () => reject(new Error("image load failed"));
+            (image as HTMLImageElement).onload = () => resolve();
+            (image as HTMLImageElement).onerror = () => reject(new Error("image load failed"));
           });
         }
       } catch {

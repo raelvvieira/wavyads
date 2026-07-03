@@ -68,15 +68,23 @@ function getReelCandidates(item: any): string[] {
 }
 
 function extractTranscript(result: any): string {
+  // Novo formato oficial invideoiq (build 0.0.24+):
+  // { status, data: { video_info, transcript: [{text,start,end}] } }
+  const nested = result?.data?.transcript;
+  if (Array.isArray(nested)) {
+    const txt = nested.map((s: any) => (s?.text || "").toString()).filter(Boolean).join(" ").trim();
+    if (txt) return txt;
+  }
+  if (typeof nested === "string" && nested.trim()) return nested.trim();
+
+  // Fallbacks legados / variantes
   const possible = [
     result?.transcript,
-    result?.data?.transcript,
     result?.output?.transcript,
     result?.output?.data?.transcript,
     result?.result?.transcript,
     result?.data?.output?.transcript,
   ];
-
   for (const segs of possible) {
     if (Array.isArray(segs)) {
       const txt = segs.map((s: any) => s?.text || s?.transcript || "").filter(Boolean).join(" ").trim();
@@ -86,37 +94,53 @@ function extractTranscript(result: any): string {
   }
 
   if (typeof result?.text === "string" && result.text.trim()) return result.text.trim();
-  if (typeof result?.transcript === "string" && result.transcript.trim()) return result.transcript.trim();
   return "";
 }
 
-async function transcribeReel(item: any, apifyToken: string): Promise<{ transcript: string; attempts: number }> {
+async function transcribeReel(item: any, apifyToken: string): Promise<{ transcript: string; attempts: number; actorError: boolean }> {
   const urls = getReelCandidates(item);
-  if (!urls.length) return { transcript: "", attempts: 0 };
+  if (!urls.length) return { transcript: "", attempts: 0, actorError: false };
+  let actorError = false;
   try {
     const actor = "invideoiq~video-transcriber";
     const endpoint = `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${apifyToken}&timeout=300`;
     let attempts = 0;
+    let allFailed = true;
     for (const url of urls) {
       attempts += 1;
+      console.log("[Transcribe] attempt", attempts, "url:", url);
       const resp = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ video_urls: [url] }),
       });
       if (!resp.ok) {
-        console.error("[Transcribe] http", resp.status, await resp.text());
+        console.error("[Transcribe] http", resp.status, (await resp.text()).slice(0, 500));
+        actorError = true;
         continue;
       }
       const results = await resp.json();
-      if (!Array.isArray(results) || results.length === 0) continue;
-      const txt = extractTranscript(results[0] || {});
-      if (txt) return { transcript: txt, attempts };
+      console.log("[Transcribe] results length:", Array.isArray(results) ? results.length : "not-array");
+      if (!Array.isArray(results) || results.length === 0) {
+        actorError = true;
+        continue;
+      }
+      const first = results[0] || {};
+      console.log("[Transcribe] item keys:", Object.keys(first), "status:", first?.status, "data keys:", first?.data ? Object.keys(first.data) : null);
+      if (first?.status === "error" || first?.error) {
+        console.error("[Transcribe] actor returned error:", first?.error || first?.message || first?.data);
+        actorError = true;
+        continue;
+      }
+      allFailed = false;
+      const txt = extractTranscript(first);
+      if (txt) return { transcript: txt, attempts, actorError: false };
     }
-    return { transcript: "", attempts };
+    if (!allFailed) actorError = false;
+    return { transcript: "", attempts, actorError };
   } catch (e) {
     console.error("[Transcribe] erro:", e);
-    return { transcript: "", attempts: urls.length };
+    return { transcript: "", attempts: urls.length, actorError: true };
   }
 }
 
@@ -156,7 +180,7 @@ Deno.serve(async (req) => {
         const res = await transcribeReel(item, APIFY_TOKEN);
         transcricao = res.transcript;
         transcribe_calls = res.attempts;
-        status.transcricao = transcricao ? "ok" : "sem_fala_detectada";
+        status.transcricao = transcricao ? "ok" : res.actorError ? "erro_actor" : "sem_fala_detectada";
       }
     } else if (tipo === "carrossel") {
       const children: any[] = item.childPosts || item.sidecarChildren || [];
