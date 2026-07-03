@@ -361,7 +361,7 @@ export function MediaSlot({
     }
 
     let cancelled = false;
-    const image = new Image();
+    const image: HTMLImageElement = new Image();
     image.src = src;
 
     const markReady = async () => {
