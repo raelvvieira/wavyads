@@ -180,7 +180,7 @@ Deno.serve(async (req) => {
         const res = await transcribeReel(item, APIFY_TOKEN);
         transcricao = res.transcript;
         transcribe_calls = res.attempts;
-        status.transcricao = transcricao ? "ok" : "sem_fala_detectada";
+        status.transcricao = transcricao ? "ok" : res.actorError ? "erro_actor" : "sem_fala_detectada";
       }
     } else if (tipo === "carrossel") {
       const children: any[] = item.childPosts || item.sidecarChildren || [];
