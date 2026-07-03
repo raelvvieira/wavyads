@@ -23,6 +23,7 @@ const STATUS_LABEL: Record<string, { label: string; tone: "ok" | "warn" | "err" 
   ausente: { label: "— ausente", tone: "warn" },
   ocr_desabilitado: { label: "⚠️ OCR indisponível", tone: "warn" },
   erro_api: { label: "❌ erro", tone: "err" },
+  erro_actor: { label: "❌ erro na transcrição", tone: "err" },
   erro_config: { label: "❌ não configurado", tone: "err" },
 };
 
