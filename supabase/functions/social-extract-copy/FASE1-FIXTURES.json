@@ -1,0 +1,179 @@
+{
+  "descripcion": "Fixtures para validar Fase 1 - Extração de Copy. Rodar estes testes garante que transcrição e OCR não foram quebrados.",
+
+  "test_cases": [
+    {
+      "id": "reel_com_audio",
+      "nome": "Reel com áudio detectado",
+      "tipo_esperado": "reel",
+      "input": {
+        "type": "VIDEO",
+        "caption": "Confira esse reel incrível! #viral",
+        "hashtags": ["viral", "reels"],
+        "url": "https://instagram.com/reel/ABC123/",
+        "shortCode": "ABC123",
+        "videoUrl": "https://example.com/video.mp4"
+      },
+      "validacoes": [
+        {
+          "campo": "tipo",
+          "esperado": "reel",
+          "descricao": "Deve detectar como reel"
+        },
+        {
+          "campo": "transcricao",
+          "nao_deve_ser": "",
+          "descricao": "Transcrição não deve estar vazia"
+        },
+        {
+          "campo": "status.transcricao",
+          "esperado": "ok",
+          "descricao": "Status deve ser 'ok' quando há áudio"
+        },
+        {
+          "campo": "copy_consolidada",
+          "nao_deve_ser": "",
+          "descricao": "Copy consolidada deve conter transcrição + legenda"
+        }
+      ]
+    },
+
+    {
+      "id": "carrossel_3_slides",
+      "nome": "Carrossel com 3 slides com texto",
+      "tipo_esperado": "carrossel",
+      "input": {
+        "type": "SIDECAR",
+        "caption": "Tutorial em 3 passos",
+        "hashtags": ["tutorial"],
+        "childPosts": [
+          { "displayUrl": "https://example.com/slide1.jpg" },
+          { "displayUrl": "https://example.com/slide2.jpg" },
+          { "displayUrl": "https://example.com/slide3.jpg" }
+        ]
+      },
+      "validacoes": [
+        {
+          "campo": "tipo",
+          "esperado": "carrossel",
+          "descricao": "Deve detectar como carrossel"
+        },
+        {
+          "campo": "slides.length",
+          "esperado": 3,
+          "descricao": "Deve ter exatamente 3 slides"
+        },
+        {
+          "campo": "slides[*].slide",
+          "esperado": [1, 2, 3],
+          "descricao": "Numeração de slides deve ser 1, 2, 3"
+        },
+        {
+          "campo": "status.ocr",
+          "esperado": "ok",
+          "descricao": "Status OCR deve ser 'ok' quando detecta texto"
+        }
+      ]
+    },
+
+    {
+      "id": "post_unico_com_imagem",
+      "nome": "Post único com imagem e legenda",
+      "tipo_esperado": "post_estatico",
+      "input": {
+        "type": "IMAGE",
+        "caption": "Essa é a minha foto favorita!",
+        "hashtags": ["fotografia"],
+        "displayUrl": "https://example.com/photo.jpg",
+        "url": "https://instagram.com/p/XYZ789/"
+      },
+      "validacoes": [
+        {
+          "campo": "tipo",
+          "esperado": "post_estatico",
+          "descricao": "Deve detectar como post estático"
+        },
+        {
+          "campo": "legenda",
+          "nao_deve_ser": "",
+          "descricao": "Legenda deve estar presente"
+        },
+        {
+          "campo": "hashtags",
+          "esperado": ["fotografia"],
+          "descricao": "Hashtags devem ser capturadas"
+        }
+      ]
+    },
+
+    {
+      "id": "post_sem_legenda",
+      "nome": "Post sem legenda (apenas imagem)",
+      "tipo_esperado": "post_estatico",
+      "input": {
+        "type": "IMAGE",
+        "caption": "",
+        "hashtags": [],
+        "displayUrl": "https://example.com/image.jpg"
+      },
+      "validacoes": [
+        {
+          "campo": "status.legenda",
+          "esperado": "ausente",
+          "descricao": "Status deve mostrar legenda ausente"
+        },
+        {
+          "campo": "legenda",
+          "esperado": "",
+          "descricao": "Campo legenda deve estar vazio"
+        }
+      ]
+    },
+
+    {
+      "id": "reel_sem_audio",
+      "nome": "Reel sem áudio detectado (ou muito curto)",
+      "tipo_esperado": "reel",
+      "input": {
+        "type": "VIDEO",
+        "caption": "Apenas uma transição rápida",
+        "hashtags": [],
+        "url": "https://instagram.com/reel/MUDO123/",
+        "videoUrl": "https://example.com/silent.mp4"
+      },
+      "validacoes": [
+        {
+          "campo": "tipo",
+          "esperado": "reel",
+          "descricao": "Ainda assim deve ser detectado como reel"
+        },
+        {
+          "campo": "status.transcricao",
+          "esperado_um_de": ["sem_fala_detectada", "erro_actor"],
+          "descricao": "Status deve indicar falta de áudio ou erro"
+        },
+        {
+          "campo": "transcricao",
+          "esperado": "",
+          "descricao": "Transcrição vazia é válido"
+        }
+      ]
+    }
+  ],
+
+  "regras_de_validacao": {
+    "estrutura": "Resposta SEMPRE deve ter: tipo, status, copy_consolidada, usage",
+    "consolidacao_order": "Ordem é crítica: [transcrição] → [OCR/slides] → [legenda] → resultado final",
+    "status": "Cada fonte (legenda, transcricao, ocr) DEVE ter status explícito",
+    "copy_vazia": "copy_consolidada pode estar vazia se todas as fontes falharem, mas status.* deve indicar por quê",
+    "usage": "Sempre retornar { transcribe_calls: N, ocr_calls: N }"
+  },
+
+  "como_rodar": {
+    "passo1": "Salve este arquivo como referência",
+    "passo2": "Crie um script que faz chamadas HTTP para social-extract-copy com cada input",
+    "passo3": "Valide cada resposta contra as validacoes esperadas",
+    "passo4": "Se algum teste falhar, o código foi quebrado — NÃO enviar para produção",
+    "comando": "npm run test:fase1-extract (será implementado no package.json)"
+  }
+}
