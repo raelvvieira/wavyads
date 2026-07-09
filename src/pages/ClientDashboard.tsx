@@ -13,7 +13,6 @@ import { CampaignsTable } from '@/components/CampaignsTable';
 import { CreativesGallery } from '@/components/CreativesGallery';
 
 import { ConversionFunnel } from '@/components/ConversionFunnel';
-import { InsightsCards } from '@/components/InsightsCards';
 import { StrategicSummary } from '@/components/StrategicSummary';
 import { GapAlert } from '@/components/GapAlert';
 import { Calendar } from '@/components/ui/calendar';
@@ -819,19 +818,6 @@ export default function ClientDashboard() {
               costPerViewContent={(insights as any)?.cost_per_view_content ?? 0}
               stages={funnelStages}
               onChangeStages={handleChangeFunnelStages}
-            />
-          )}
-
-          {/* Insights & Recommendations */}
-          {!isLoading && campaignList.length > 0 && (
-            <InsightsCards
-              campaigns={campaignList}
-              totalSpend={metricValues.spend}
-              totalLeads={metricValues.leads}
-              totalResults={metricValues.results}
-              avgCpl={metricValues.cpl}
-              avgCpm={metricValues.cpm}
-              avgCtr={metricValues.ctr}
             />
           )}
 

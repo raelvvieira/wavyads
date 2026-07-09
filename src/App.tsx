@@ -10,7 +10,6 @@ import LoginPage from "@/pages/LoginPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import DashboardPage from "@/pages/DashboardPage";
 import SettingsPage from "@/pages/SettingsPage";
-import InsightsPage from "@/pages/InsightsPage";
 import ComercialPage from "@/pages/ComercialPage";
 import ComercialIndexPage from "@/pages/ComercialIndexPage";
 import GoogleAdsAIPage from "@/pages/GoogleAdsAIPage";
@@ -39,7 +38,6 @@ const App = () => (
             <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/dashboard/:clientId" element={<DashboardPage />} />
-              <Route path="/insights" element={<InsightsPage />} />
               <Route path="/comercial" element={<ComercialIndexPage />} />
               <Route path="/comercial/:clientId" element={<ComercialPage />} />
               <Route path="/google-ads-ai" element={<GoogleAdsAIPage />} />
