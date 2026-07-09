@@ -49,7 +49,10 @@ export function useMetaAds(clientId: string | undefined, enabled: boolean, timeR
       return data.ads as MetaAd[];
     },
     enabled: enabled && !!clientId && !!timeRange,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 15 * 60 * 1000, // 15 minutos (antes: 5)
+    gcTime: 30 * 60 * 1000, // 30 minutos
     retry: (failureCount, err: any) => err?.name !== 'MetaTokenInvalid' && failureCount < 1,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 }

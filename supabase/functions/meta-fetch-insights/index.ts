@@ -393,7 +393,12 @@ Deno.serve(async (req) => {
         };
       });
 
-      return new Response(JSON.stringify({ ads }),
+      // Sort by ROAS (descending) and limit to top 50
+      const topAds = ads.sort((a: any, b: any) => b.purchase_roas - a.purchase_roas).slice(0, 50);
+      const totalCount = ads.length;
+      const metadata = totalCount > 50 ? { showing: 50, total: totalCount } : undefined;
+
+      return new Response(JSON.stringify({ ads: topAds, metadata }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
