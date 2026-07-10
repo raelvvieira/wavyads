@@ -3,7 +3,7 @@ import { GlassCard } from "@/components/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { RotateCw, Check, X, Plus } from "lucide-react";
+import { RotateCw, Check, X, Plus, Copy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { recordAiUsage } from "@/lib/aiUsageTracker";
@@ -89,6 +89,42 @@ export function CopyEditor({ patternId, tema, initial, onApprove, onRegenAll }: 
     setNewHashtag("");
   };
 
+  const copyAll = async () => {
+    const lines: string[] = [];
+    lines.push(`📋 TEMPLATE [${patternId}] — Tema: ${tema}\n`);
+
+    if (!isReel) {
+      copy.slides?.forEach((s, i) => {
+        lines.push(`\n#${i + 1} ${TIPO_BADGE[s.tipo]?.label || s.tipo.toUpperCase()}`);
+        lines.push(`Título: ${s.titulo}`);
+        lines.push(`Corpo: ${s.corpo}`);
+      });
+    } else {
+      copy.roteiro?.forEach((c, i) => {
+        lines.push(`\nCena ${i + 1} (${c.tempo})`);
+        lines.push(`Visual: ${c.cena}`);
+        lines.push(`Fala: ${c.fala}`);
+      });
+    }
+
+    if (copy.legenda) {
+      lines.push(`\n📝 LEGENDA:`);
+      lines.push(copy.legenda);
+    }
+
+    if (copy.hashtags.length > 0) {
+      lines.push(`\n${copy.hashtags.join(" ")}`);
+    }
+
+    const text = lines.join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({ title: "Copy completa copiada!" });
+    } catch (e) {
+      toast({ title: "Erro ao copiar", variant: "destructive" });
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-4">
       <GlassCard>
@@ -97,12 +133,21 @@ export function CopyEditor({ patternId, tema, initial, onApprove, onRegenAll }: 
             <div className="text-xs uppercase tracking-wider text-accent">Etapa 3 · Copy · Padrão {patternId}</div>
             <h2 className="text-lg font-semibold">Edite cada {isReel ? "cena" : "slide"} antes de aprovar</h2>
           </div>
-          <button
-            onClick={onRegenAll}
-            className="glass rounded-lg px-3 py-2 text-xs inline-flex items-center gap-2 hover:bg-white/5"
-          >
-            <RotateCw className="h-3.5 w-3.5" /> Refazer tudo
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={copyAll}
+              className="glass rounded-lg px-3 py-2 text-xs inline-flex items-center gap-2 hover:bg-white/5"
+              title="Copiar copy completa"
+            >
+              <Copy className="h-3.5 w-3.5" /> Copiar tudo
+            </button>
+            <button
+              onClick={onRegenAll}
+              className="glass rounded-lg px-3 py-2 text-xs inline-flex items-center gap-2 hover:bg-white/5"
+            >
+              <RotateCw className="h-3.5 w-3.5" /> Refazer tudo
+            </button>
+          </div>
         </div>
       </GlassCard>
 
