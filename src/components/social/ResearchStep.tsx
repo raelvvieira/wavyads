@@ -235,113 +235,122 @@ export function ResearchStep({ post, initialTema, initialAngulo, copyReferencia,
   }
 
   return (
-    <GlassCard className="max-w-4xl mx-auto">
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <div className="text-xs uppercase tracking-wider text-accent mb-1">Etapa 2 · Intensificação</div>
-          <h2 className="text-lg font-semibold">Brief estruturado da referência — {tema}</h2>
-          <p className="text-xs text-white/45 mt-1">
-            Este é o material que vai entrar na Etapa 3 junto com o template escolhido.
+    <GlassCard className="max-w-3xl mx-auto">
+      <div className="mb-6">
+        <div className="text-xs uppercase tracking-wider text-accent mb-1">Etapa 2 · Intensificação</div>
+        <h2 className="text-lg font-semibold">Brief estruturado — {tema}</h2>
+        <p className="text-xs text-white/45 mt-2">
+          Edite o briefing abaixo. Este é o material que vai entrar na Etapa 3 junto com o template escolhido.
+        </p>
+      </div>
+
+      <div className="space-y-6">
+        {/* Contexto rápido */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+            <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1">Tema</div>
+            <div className="text-xs font-medium text-white/90 line-clamp-2">{briefing.tema}</div>
+          </div>
+          <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+            <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1">Ângulo</div>
+            <div className="text-xs font-medium text-white/90 line-clamp-2">{briefing.angulo}</div>
+          </div>
+          <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+            <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1">Voz</div>
+            <div className="text-xs font-medium text-accent">{briefing.voz}</div>
+          </div>
+        </div>
+
+        {/* Campo crítico: Briefing */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-semibold text-white">Síntese para a Etapa 3</label>
+            <span className="text-[11px] text-white/40">Campo editável</span>
+          </div>
+          <textarea
+            value={briefing.briefing_texto}
+            onChange={(e) => setBriefing((current) => current ? { ...current, briefing_texto: e.target.value } : current)}
+            className="w-full min-h-[200px] rounded-lg bg-white/[0.03] border border-white/10 px-4 py-3 text-sm leading-relaxed text-white/90 focus:outline-none focus:border-accent/50 transition-colors resize-y"
+            placeholder="Briefing será gerado aqui..."
+          />
+          <p className="text-[11px] text-white/40">
+            💡 Dica: Edite este texto livremente. Ele é enviado para a Etapa 3 como contexto para a IA gerar a copy final.
           </p>
         </div>
-        <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] text-white/70">
-          Voz sugerida: <span className="text-white">{briefing.voz}</span>
-        </div>
-      </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl border border-white/10 bg-black/10 p-3">
-                <div className="text-[11px] uppercase tracking-wider text-white/40">Tema refinado</div>
-                <div className="mt-1 text-sm text-white/90">{briefing.tema}</div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-black/10 p-3">
-                <div className="text-[11px] uppercase tracking-wider text-white/40">Ângulo</div>
-                <div className="mt-1 text-sm text-white/90">{briefing.angulo}</div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-black/10 p-3">
-                <div className="text-[11px] uppercase tracking-wider text-white/40">Gancho</div>
-                <div className="mt-1 text-sm text-white/90">{briefing.gancho}</div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-black/10 p-3">
-                <div className="text-[11px] uppercase tracking-wider text-white/40">Promessa</div>
-                <div className="mt-1 text-sm text-white/90">{briefing.promessa}</div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-black/10 p-3 sm:col-span-2">
-                <div className="text-[11px] uppercase tracking-wider text-white/40">Conflito principal</div>
-                <div className="mt-1 text-sm text-white/90">{briefing.conflito_principal}</div>
-              </div>
+        {/* Expandível: Contexto adicional */}
+        <details className="group cursor-pointer">
+          <summary className="text-sm font-medium text-white/70 hover:text-white transition-colors flex items-center gap-2">
+            <span className="inline-block w-4 h-4 rounded border border-white/20 group-open:bg-accent/20 transition-colors" />
+            Ver contexto completo (Tese, Dor, Estratégia)
+          </summary>
+          <div className="mt-4 space-y-3 pl-6 border-l border-white/10">
+            <div>
+              <div className="text-[11px] uppercase tracking-wider text-white/40 mb-1">Tese central</div>
+              <p className="text-sm text-white/80">{briefing.tese_central}</p>
+            </div>
+            <div>
+              <div className="text-[11px] uppercase tracking-wider text-white/40 mb-1">Dor principal</div>
+              <p className="text-sm text-white/80">{briefing.dor_principal}</p>
+            </div>
+            <div>
+              <div className="text-[11px] uppercase tracking-wider text-white/40 mb-1">Gancho</div>
+              <p className="text-sm text-white/80">{briefing.gancho}</p>
+            </div>
+            <div>
+              <div className="text-[11px] uppercase tracking-wider text-white/40 mb-1">Promessa</div>
+              <p className="text-sm text-white/80">{briefing.promessa}</p>
+            </div>
+            <div>
+              <div className="text-[11px] uppercase tracking-wider text-white/40 mb-1">Conflito principal</div>
+              <p className="text-sm text-white/80">{briefing.conflito_principal}</p>
+            </div>
+            <div className="space-y-2 pt-2">
+              <ChipList title="Preservar" items={briefing.preservar} />
+              <ChipList title="Ampliar" items={briefing.ampliar} />
+              <ChipList title="Evitar" items={briefing.evitar} />
+              <ChipList title="Palavras-chave" items={briefing.palavras_chave} />
             </div>
           </div>
+        </details>
 
-          <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
-            <div className="text-[11px] font-medium uppercase tracking-wider text-accent mb-2">Síntese para a Etapa 3</div>
-            <textarea
-              value={briefing.briefing_texto}
-              onChange={(e) => setBriefing((current) => current ? { ...current, briefing_texto: e.target.value } : current)}
-              className="w-full min-h-[160px] rounded-lg bg-white/[0.03] border border-white/10 px-4 py-3 text-sm leading-relaxed text-white/90 focus:outline-none focus:border-accent/40 transition-colors resize-y"
-            />
+        {/* Provas (se existirem) */}
+        {briefing.provas_e_dados.length > 0 && (
+          <div className="rounded-lg border border-white/10 bg-white/[0.02] p-3">
+            <div className="text-[11px] font-medium uppercase tracking-wider text-white/40 mb-2">Provas e dados</div>
+            <ul className="space-y-1 text-sm text-white/70">
+              {briefing.provas_e_dados.slice(0, 3).map((item) => (
+                <li key={item} className="flex gap-2 text-xs">
+                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-accent/60" />
+                  <span className="line-clamp-1">{item}</span>
+                </li>
+              ))}
+              {briefing.provas_e_dados.length > 3 && (
+                <li className="text-xs text-white/40">+{briefing.provas_e_dados.length - 3} mais</li>
+              )}
+            </ul>
           </div>
+        )}
 
-          {briefing.referencia_resumo && (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
-              <div className="text-[11px] font-medium uppercase tracking-wider text-white/40 mb-2">Resumo da referência</div>
-              <p className="text-sm leading-relaxed text-white/75">{briefing.referencia_resumo}</p>
-            </div>
-          )}
+        {error && <p className="text-sm text-destructive">{error}</p>}
+
+        {/* Actions */}
+        <div className="flex flex-col sm:flex-row gap-3 justify-between pt-2 border-t border-white/10">
+          <button
+            onClick={run}
+            disabled={loading}
+            className="glass rounded-lg px-4 py-2.5 text-sm font-medium inline-flex items-center justify-center sm:justify-start gap-2 hover:bg-white/5 disabled:opacity-50"
+          >
+            <RotateCw className="h-4 w-4" /> Intensificar novamente
+          </button>
+          <button
+            onClick={approve}
+            disabled={!briefing.briefing_texto.trim()}
+            className="btn-accent rounded-lg px-5 py-2.5 text-sm font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            <Check className="h-4 w-4" /> Ir para Template
+          </button>
         </div>
-
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
-            <div className="text-[11px] font-medium uppercase tracking-wider text-white/40 mb-2">Tese central</div>
-            <p className="text-sm leading-relaxed text-white/80">{briefing.tese_central}</p>
-          </div>
-
-          <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
-            <div className="text-[11px] font-medium uppercase tracking-wider text-white/40 mb-2">Dor principal</div>
-            <p className="text-sm leading-relaxed text-white/80">{briefing.dor_principal}</p>
-          </div>
-
-          <ChipList title="Preservar" items={briefing.preservar} />
-          <ChipList title="Ampliar" items={briefing.ampliar} />
-          <ChipList title="Evitar" items={briefing.evitar} />
-          <ChipList title="Palavras-chave" items={briefing.palavras_chave} />
-        </div>
-      </div>
-
-      {briefing.provas_e_dados.length > 0 && (
-        <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.025] p-4">
-          <div className="text-[11px] font-medium uppercase tracking-wider text-white/40 mb-2">Provas e dados úteis</div>
-          <ul className="space-y-2 text-sm text-white/75">
-            {briefing.provas_e_dados.map((item) => (
-              <li key={item} className="flex gap-2">
-                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
-
-      <div className="flex flex-col sm:flex-row gap-3 justify-between mt-5">
-        <button
-          onClick={run}
-          disabled={loading}
-          className="glass rounded-lg px-4 py-2.5 text-sm font-medium inline-flex items-center gap-2 hover:bg-white/5 disabled:opacity-50"
-        >
-          <RotateCw className="h-4 w-4" /> Intensificar novamente
-        </button>
-        <button
-          onClick={approve}
-          disabled={!briefing.briefing_texto.trim()}
-          className="btn-accent rounded-lg px-5 py-2.5 text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-50"
-        >
-          <Check className="h-4 w-4" /> Ir para Template
-        </button>
       </div>
     </GlassCard>
   );
