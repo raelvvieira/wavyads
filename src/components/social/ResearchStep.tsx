@@ -226,7 +226,7 @@ export function ResearchStep({ copyConsolidada, tema, onApprove }: Props) {
         )}
       >
         <Check className="h-4 w-4" />
-        {canApprove ? "Próximo → Copy Final" : "Escolha template e copy"}
+        {canApprove ? "Próximo → Copy Final" : "Escolha template"}
       </button>
     </div>
   );
@@ -236,14 +236,14 @@ export function ResearchStep({ copyConsolidada, tema, onApprove }: Props) {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.9fr)]">
         <div className="space-y-5">
           <div className="space-y-2">
-            <div className="text-xs uppercase tracking-wider text-accent">Etapa 2 · Consolidação + Template</div>
-            <h2 className="text-xl font-semibold text-white sm:text-2xl">Copy consolidada e estrutura</h2>
+            <div className="text-xs uppercase tracking-wider text-accent">Etapa 2 · Resumo</div>
+            <h2 className="text-xl font-semibold text-white sm:text-2xl">Leia a copy e escolha o template</h2>
             <p className="max-w-2xl text-sm leading-relaxed text-white/55">
-              Revise a copy extraída e escolha o template que vai guiar a estrutura da sua mensagem.
+              Revise a copy extraída, confirme o tema e escolha o template que vai estruturar sua mensagem.
             </p>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div>
               <label className="text-xs font-semibold uppercase tracking-wider text-white/70 block mb-2">
                 📝 Tema
@@ -258,14 +258,11 @@ export function ResearchStep({ copyConsolidada, tema, onApprove }: Props) {
 
             <div>
               <label className="text-xs font-semibold uppercase tracking-wider text-white/70 block mb-2">
-                📋 Copy Consolidada
+                📋 Copy Extraída
               </label>
-              <textarea
-                value={copyEditada}
-                onChange={(e) => setCopyEditada(e.target.value)}
-                className="w-full min-h-[200px] rounded-lg bg-white/[0.03] border border-white/10 px-4 py-3 text-sm leading-relaxed text-white/90 focus:outline-none focus:border-accent/40 transition-colors resize-y"
-                placeholder="Copy consolidada do post..."
-              />
+              <div className="w-full min-h-[200px] rounded-lg bg-white/[0.03] border border-white/10 px-4 py-3 text-sm leading-relaxed text-white/90 overflow-y-auto">
+                {copyEditada || <span className="text-white/30">Nenhuma copy disponível</span>}
+              </div>
             </div>
           </div>
 
