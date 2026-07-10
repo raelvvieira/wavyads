@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { Check } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Check, Loader2 } from "lucide-react";
 import { GlassCard } from "@/components/GlassCard";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   copyConsolidada: string;
@@ -8,10 +9,51 @@ interface Props {
   onApprove: (tema: string) => void;
 }
 
+interface AnalisisTema {
+  tom: string;
+  tema_central: string;
+  evitar: string;
+  estrategia: string;
+}
+
 export function ResearchStep({ copyConsolidada, tema, onApprove }: Props) {
   const [temaEditado, setTemaEditado] = useState(tema);
+  const [analise, setAnalise] = useState<AnalisisTema | null>(null);
+  const [loadingAnalise, setLoadingAnalise] = useState(false);
 
   const canApprove = copyConsolidada.trim() && temaEditado.trim();
+
+  useEffect(() => {
+    if (!temaEditado.trim() || !copyConsolidada.trim()) {
+      setAnalise(null);
+      return;
+    }
+
+    const analisarTema = async () => {
+      setLoadingAnalise(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("social-tema-analise", {
+          body: {
+            tema: temaEditado.trim(),
+            copy_consolidada: copyConsolidada.trim(),
+          },
+        });
+
+        if (error) throw error;
+        if (data?.analise) {
+          setAnalise(data.analise);
+        }
+      } catch (e) {
+        console.error("Erro ao analisar tema:", e);
+        setAnalise(null);
+      } finally {
+        setLoadingAnalise(false);
+      }
+    };
+
+    const timeout = setTimeout(analisarTema, 800);
+    return () => clearTimeout(timeout);
+  }, [temaEditado, copyConsolidada]);
 
   return (
     <GlassCard className="mx-auto max-w-2xl overflow-hidden">
@@ -45,6 +87,31 @@ export function ResearchStep({ copyConsolidada, tema, onApprove }: Props) {
               placeholder="Qual é o tema central?"
             />
           </div>
+
+          {loadingAnalise && (
+            <div className="flex items-center gap-2 text-xs text-white/50">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Analisando tema...
+            </div>
+          )}
+
+          {analise && !loadingAnalise && (
+            <div className="rounded-lg bg-accent/5 border border-accent/20 p-3 space-y-2">
+              <p className="text-xs leading-relaxed text-white/80">
+                <span className="font-semibold text-accent">Análise:</span> {analise.estrategia}
+              </p>
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div>
+                  <span className="text-white/50">Tom:</span>
+                  <p className="text-white/80">{analise.tom}</p>
+                </div>
+                <div>
+                  <span className="text-white/50">Evitar:</span>
+                  <p className="text-white/80">{analise.evitar}</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <button
