@@ -18,8 +18,8 @@ import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { CopyPatternId, CopyAprovada, SlideImagem, PostCopy } from "@/types/social";
 
-const STEPS = ["Scraper", "Pesquisa", "Formato", "Imagens", "Design"];
-const SHORT = ["1", "2", "3", "4", "5"];
+const STEPS = ["Scraper", "Resumo", "Template", "Copy Final", "Imagens", "Design"];
+const SHORT = ["1", "2", "3", "4", "5", "6"];
 
 interface Pipeline {
   etapa_atual: number;
@@ -52,12 +52,14 @@ function jumpTo(s: Pipeline, i: number): Pipeline {
       status: {},
     } as PostCopy;
   }
-  if (i >= 2) {
-    if (!next.tema) next.tema = "Tema de configuração";
-    if (!next.pattern_id) next.pattern_id = "2A";
-    if (!next.num_slides) next.num_slides = 7;
+  if (i >= 2 && !next.tema) {
+    next.tema = "Tema de configuração";
   }
-  if (i >= 3 && !next.copy_aprovada) {
+  if (i >= 3 && !next.pattern_id) {
+    next.pattern_id = "2A";
+    next.num_slides = 7;
+  }
+  if (i >= 4 && !next.copy_aprovada) {
     next.pattern_id = next.pattern_id || "2A";
     next.num_slides = next.num_slides || 7;
     next.copy_aprovada = {
@@ -72,7 +74,7 @@ function jumpTo(s: Pipeline, i: number): Pipeline {
       hashtags: ["#exemplo", "#config"],
     };
   }
-  if (i >= 4 && (!next.imagens || next.imagens.length === 0)) {
+  if (i >= 5 && (!next.imagens || next.imagens.length === 0)) {
     const slides = next.copy_aprovada?.slides || [];
     next.imagens = slides.map((_, k) => ({
       slide_index: k,
@@ -225,29 +227,32 @@ export default function SocialMidiaStudioPage() {
         />
       )}
 
-      {/* Etapa 2 — Consolidação + Template */}
+      {/* Etapa 2 — Resumo */}
       {pipeline.etapa_atual === 1 && pipeline.post_copy && (
         <ResearchStep
           copyConsolidada={pipeline.post_copy.copy_consolidada}
           tema={pipeline.tema || ""}
-          onApprove={(copyEditada, tema, pattern_id, num_slides) => {
-            setPipeline((s) => ({
-              ...s,
-              tema,
-              pattern_id,
-              num_slides,
-              post_copy: s.post_copy ? { ...s.post_copy, copy_consolidada: copyEditada } : null,
-              etapa_atual: 2
-            }));
-            toast({ title: "Template e copy consolidada", description: "Avançando para Formato" });
+          onApprove={(tema) => {
+            setPipeline((s) => ({ ...s, tema, etapa_atual: 2 }));
+            toast({ title: "Tema confirmado", description: "Avançando para Template" });
+          }}
+        />
+      )}
+
+      {/* Etapa 3 — Template */}
+      {pipeline.etapa_atual === 2 && pipeline.tema && (
+        <FormatPicker
+          onConfirm={(pattern_id, num_slides) => {
+            setPipeline((s) => ({ ...s, pattern_id, num_slides, etapa_atual: 3 }));
+            toast({ title: "Template selecionado", description: "Avançando para Copy Final" });
           }}
         />
       )}
 
 
 
-      {/* Etapa 3 — Copy Final */}
-      {pipeline.etapa_atual === 2 && pipeline.tema && pipeline.pattern_id && pipeline.post_copy && (
+      {/* Etapa 4 — Copy Final */}
+      {pipeline.etapa_atual === 3 && pipeline.tema && pipeline.pattern_id && pipeline.post_copy && (
         <FormatStep
           tema={pipeline.tema}
           briefing={pipeline.post_copy.copy_consolidada}
@@ -256,7 +261,7 @@ export default function SocialMidiaStudioPage() {
           num_slides={pipeline.num_slides}
           onApprove={(pattern_id, num_slides, copy) => {
             setPipeline((s) => ({
-              ...s, pattern_id, num_slides, copy_aprovada: copy, etapa_atual: 3,
+              ...s, pattern_id, num_slides, copy_aprovada: copy, etapa_atual: 4,
             }));
             toast({
               title: "Copy aprovada",
@@ -266,8 +271,8 @@ export default function SocialMidiaStudioPage() {
         />
       )}
 
-      {/* Etapa 4 — Imagens (ou final do Reel) */}
-      {pipeline.etapa_atual === 3 && pipeline.copy_aprovada && pipeline.pattern_id && (
+      {/* Etapa 5 — Imagens (ou final do Reel) */}
+      {pipeline.etapa_atual === 4 && pipeline.copy_aprovada && pipeline.pattern_id && (
         isReel ? (
           <ReelFinalStep tema={pipeline.tema || ""} copy={pipeline.copy_aprovada} />
         ) : (
@@ -278,18 +283,18 @@ export default function SocialMidiaStudioPage() {
             estiloGlobal={pipeline.post_viral?.caption?.slice(0, 200)}
             initial={pipeline.imagens || undefined}
             onApprove={(imagens) => {
-              setPipeline((s) => ({ ...s, imagens, etapa_atual: 4 }));
+              setPipeline((s) => ({ ...s, imagens, etapa_atual: 5 }));
               toast({ title: "Imagens aprovadas", description: "Avançando para Design" });
             }}
           />
         )
       )}
 
-      {/* Etapa 5 — Design */}
-      {pipeline.etapa_atual === 4 && pipeline.copy_aprovada && (
+      {/* Etapa 6 — Design */}
+      {pipeline.etapa_atual === 5 && pipeline.copy_aprovada && (
         isReel ? (
           <GlassCard className="text-center py-16">
-            <div className="text-xs uppercase tracking-wider text-accent mb-2">Etapa 5 · Design</div>
+            <div className="text-xs uppercase tracking-wider text-accent mb-2">Etapa 6 · Design</div>
             <h2 className="text-xl font-semibold mb-2">Reels não geram slides</h2>
             <p className="text-sm text-white/50">Use o roteiro entregue na etapa anterior.</p>
           </GlassCard>
