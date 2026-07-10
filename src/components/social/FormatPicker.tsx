@@ -270,9 +270,9 @@ export function FormatPicker({ onConfirm }: Props) {
 
   const summaryPanel = (
     <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4 sm:p-5">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3 mb-4">
         <div>
-          <div className="text-[11px] font-medium uppercase tracking-wider text-accent">O que muda na copy</div>
+          <div className="text-[11px] font-medium uppercase tracking-wider text-accent">Template selecionado</div>
           <h3 className="mt-1 text-base font-semibold text-white">
             {copyPanelTitle(activePattern, familia)}
           </h3>
@@ -290,66 +290,21 @@ export function FormatPicker({ onConfirm }: Props) {
       </div>
 
       {activeMeta ? (
-        <div className="mt-4 space-y-4">
-          <div className="h-24 rounded-2xl border border-white/10 p-3" style={{ background: activeMeta.preview }}>
+        <div className="space-y-4">
+          <div className="h-20 rounded-xl border border-white/10 p-3" style={{ background: activeMeta.preview }}>
             <div className="flex h-full flex-col justify-between">
-              <span className="inline-flex w-fit rounded-full bg-black/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/80 backdrop-blur">
+              <span className="inline-flex w-fit rounded-full bg-black/30 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/75 backdrop-blur">
                 {pattern ? PATTERN_META[pattern].title : FAMILY_META[familia!.id].badge}
               </span>
-              <div className="max-w-[15rem] text-sm font-semibold leading-tight text-white drop-shadow">
+              <div className="max-w-[12rem] text-xs font-semibold leading-tight text-white drop-shadow">
                 {activeMeta.summary}
               </div>
             </div>
           </div>
-
-          <div>
-            <p className="text-xs leading-relaxed text-white/60">
-              {activeMeta.summary}
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <div className="text-[11px] font-medium uppercase tracking-wider text-white/40">Copy precisa ter</div>
-            <div className="flex flex-wrap gap-2">
-              {activeMeta.copySignals.map((item) => (
-                <span
-                  key={item}
-                  className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] text-white/75"
-                >
-                  {item}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-white/10 bg-black/10 p-3">
-              <div className="text-[11px] font-medium uppercase tracking-wider text-white/40">Funciona melhor em</div>
-              <ul className="mt-2 space-y-1.5 text-sm text-white/75">
-                {activeMeta.bestFor.map((item) => (
-                  <li key={item} className="flex gap-2">
-                    <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-300" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-black/10 p-3">
-              <div className="text-[11px] font-medium uppercase tracking-wider text-white/40">Evitar quando</div>
-              <ul className="mt-2 space-y-1.5 text-sm text-white/65">
-                {activeMeta.avoid.map((item) => (
-                  <li key={item} className="flex gap-2">
-                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-white/35" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
         </div>
       ) : (
-        <div className="mt-4 rounded-xl border border-dashed border-white/10 bg-black/10 p-4 text-sm text-white/55">
-          Selecione um template acima para ver como a copy muda e qual estrutura vai guiar a geracao.
+        <div className="rounded-xl border border-dashed border-white/10 bg-black/10 p-3 text-xs text-white/55">
+          Selecione um template acima para configurar.
         </div>
       )}
 
