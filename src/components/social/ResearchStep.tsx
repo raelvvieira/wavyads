@@ -20,8 +20,34 @@ export function ResearchStep({ copyConsolidada, tema, onApprove }: Props) {
   const [temaEditado, setTemaEditado] = useState(tema);
   const [analise, setAnalise] = useState<AnalisisTema | null>(null);
   const [loadingAnalise, setLoadingAnalise] = useState(false);
+  const [loadingTema, setLoadingTema] = useState(false);
 
   const canApprove = copyConsolidada.trim() && temaEditado.trim();
+
+  useEffect(() => {
+    if (temaEditado.trim() || !copyConsolidada.trim()) return;
+
+    const gerarTema = async () => {
+      setLoadingTema(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("social-tema-gen", {
+          body: { copy_consolidada: copyConsolidada.trim() },
+        });
+
+        if (error) throw error;
+        if (data?.tema) {
+          setTemaEditado(data.tema);
+        }
+      } catch (e) {
+        console.error("Erro ao gerar tema:", e);
+      } finally {
+        setLoadingTema(false);
+      }
+    };
+
+    gerarTema();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [copyConsolidada]);
 
   useEffect(() => {
     if (!temaEditado.trim() || !copyConsolidada.trim()) {
@@ -77,14 +103,16 @@ export function ResearchStep({ copyConsolidada, tema, onApprove }: Props) {
           </div>
 
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider text-white/70 block mb-2">
+            <label className="text-xs font-semibold uppercase tracking-wider text-white/70 flex items-center gap-2 mb-2">
               📝 Tema
+              {loadingTema && <Loader2 className="h-3 w-3 animate-spin text-accent" />}
             </label>
             <input
               value={temaEditado}
               onChange={(e) => setTemaEditado(e.target.value)}
               className="glass-input w-full rounded-lg px-4 py-3 text-sm text-white placeholder-white/30 border border-white/10 focus:border-accent/50 focus:outline-none transition-colors"
-              placeholder="Qual é o tema central?"
+              placeholder={loadingTema ? "Gerando tema automaticamente..." : "Qual é o tema central?"}
+              disabled={loadingTema}
             />
           </div>
 
