@@ -89,35 +89,40 @@ export function CopyEditor({ patternId, tema, initial, onApprove, onRegenAll }: 
     setNewHashtag("");
   };
 
-  const copyAll = () => {
+  const copyAll = async () => {
     const lines: string[] = [];
-    lines.push(`📋 TEMPLATE ${patternId} — Tema: ${tema}`);
-    lines.push("");
+    lines.push(`📋 TEMPLATE [${patternId}] — Tema: ${tema}\n`);
 
-    if (isReel) {
-      copy.roteiro?.forEach((cena, i) => {
-        lines.push(`Cena ${i + 1} (${cena.tempo})`);
-        lines.push(`Visual: ${cena.cena}`);
-        lines.push(`Fala: ${cena.fala}`);
-        lines.push("");
+    if (!isReel) {
+      copy.slides?.forEach((s, i) => {
+        lines.push(`\n#${i + 1} ${TIPO_BADGE[s.tipo]?.label || s.tipo.toUpperCase()}`);
+        lines.push(`Título: ${s.titulo}`);
+        lines.push(`Corpo: ${s.corpo}`);
       });
     } else {
-      copy.slides?.forEach((slide, i) => {
-        lines.push(`#${i + 1} ${TIPO_BADGE[slide.tipo]?.label || slide.tipo.toUpperCase()}`);
-        lines.push(`Título: ${slide.titulo}`);
-        lines.push(`Corpo: ${slide.corpo}`);
-        lines.push("");
+      copy.roteiro?.forEach((c, i) => {
+        lines.push(`\nCena ${i + 1} (${c.tempo})`);
+        lines.push(`Visual: ${c.cena}`);
+        lines.push(`Fala: ${c.fala}`);
       });
     }
 
-    lines.push("📝 LEGENDA:");
-    lines.push(copy.legenda);
-    lines.push("");
-    lines.push(copy.hashtags.join(" "));
+    if (copy.legenda) {
+      lines.push(`\n📝 LEGENDA:`);
+      lines.push(copy.legenda);
+    }
 
-    const fullText = lines.join("\n");
-    navigator.clipboard.writeText(fullText);
-    toast({ title: "✅ Copy completa copiada!" });
+    if (copy.hashtags.length > 0) {
+      lines.push(`\n${copy.hashtags.join(" ")}`);
+    }
+
+    const text = lines.join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({ title: "Copy completa copiada!" });
+    } catch (e) {
+      toast({ title: "Erro ao copiar", variant: "destructive" });
+    }
   };
 
   return (
@@ -125,14 +130,14 @@ export function CopyEditor({ patternId, tema, initial, onApprove, onRegenAll }: 
       <GlassCard>
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <div className="text-xs uppercase tracking-wider text-accent">Etapa 3 · Copy final · Template {patternId}</div>
+            <div className="text-xs uppercase tracking-wider text-accent">Etapa 3 · Copy · Padrão {patternId}</div>
             <h2 className="text-lg font-semibold">Edite cada {isReel ? "cena" : "slide"} antes de aprovar</h2>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <button
               onClick={copyAll}
               className="glass rounded-lg px-3 py-2 text-xs inline-flex items-center gap-2 hover:bg-white/5"
-              title="Copiar copy completa para clipboard"
+              title="Copiar copy completa"
             >
               <Copy className="h-3.5 w-3.5" /> Copiar tudo
             </button>

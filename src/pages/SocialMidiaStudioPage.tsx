@@ -8,6 +8,7 @@ import { MyBaseSidebar, useMyBase } from "@/components/social/MyBaseSidebar";
 import { ViralResultsList } from "@/components/social/ViralResultsList";
 import { CopyExtractionStep } from "@/components/social/CopyExtractionStep";
 import { ResearchStep } from "@/components/social/ResearchStep";
+import { FormatPicker } from "@/components/social/FormatPicker";
 import { FormatStep } from "@/components/social/FormatStep";
 import { ImageStep } from "@/components/social/ImageStep";
 import { ReelFinalStep } from "@/components/social/ReelFinalStep";
@@ -240,7 +241,7 @@ export default function SocialMidiaStudioPage() {
       )}
 
       {/* Etapa 3 — Template */}
-      {pipeline.etapa_atual === 2 && pipeline.tema && (
+      {pipeline.etapa_atual === 2 && pipeline.tema?.trim() && (
         <FormatPicker
           onConfirm={(pattern_id, num_slides) => {
             setPipeline((s) => ({ ...s, pattern_id, num_slides, etapa_atual: 3 }));
@@ -252,7 +253,7 @@ export default function SocialMidiaStudioPage() {
 
 
       {/* Etapa 4 — Copy Final */}
-      {pipeline.etapa_atual === 3 && pipeline.tema && pipeline.pattern_id && pipeline.post_copy && (
+      {pipeline.etapa_atual === 3 && pipeline.tema?.trim() && pipeline.pattern_id && pipeline.post_copy && (
         <FormatStep
           tema={pipeline.tema}
           briefing={pipeline.post_copy.copy_consolidada}
