@@ -36,7 +36,20 @@ export function useViralScraper() {
     setRaw({});
     try {
       const { data, error: fnErr } = await supabase.functions.invoke("apify-scrape", { body: params });
-      if (fnErr) throw fnErr;
+      if (fnErr) {
+        // FunctionsHttpError só expõe uma mensagem genérica; o corpo real do
+        // erro (com o motivo específico) vem em error.context (a Response).
+        const context = (fnErr as any)?.context;
+        if (context && typeof context.json === "function") {
+          try {
+            const body = await context.json();
+            throw new Error(body?.detail || body?.error || fnErr.message);
+          } catch {
+            throw fnErr;
+          }
+        }
+        throw fnErr;
+      }
       if (data?.error) throw new Error(data.error);
       recordAiUsage("apify-scrape", 1);
       setResults(data?.items || []);

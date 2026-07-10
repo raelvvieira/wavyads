@@ -20,6 +20,18 @@ function cleanHandle(h: string) {
   return h.replace(/^@/, "").trim();
 }
 
+function cleanUrl(u: string) {
+  const trimmed = (u || "").trim();
+  try {
+    const parsed = new URL(trimmed);
+    parsed.search = "";
+    parsed.hash = "";
+    return parsed.toString();
+  } catch {
+    return trimmed;
+  }
+}
+
 function getItemKeys(it: any): string[] {
   return [
     it?.id,
@@ -90,7 +102,13 @@ Deno.serve(async (req) => {
         resultsLimit: 10,
       };
     } else if (source === "url") {
-      input = { directUrls: [url], resultsLimit: 10 };
+      if (!url || !url.trim()) {
+        return new Response(JSON.stringify({ error: "URL não informada" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      input = { directUrls: [cleanUrl(url)], resultsLimit: 10 };
     }
 
     const endpoint = `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${token}`;
