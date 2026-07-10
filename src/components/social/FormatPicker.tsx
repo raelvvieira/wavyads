@@ -155,16 +155,6 @@ const PATTERN_META: Record<CopyPatternId, PatternMeta> = {
   },
 };
 
-function selectTemplateStyle(selected: boolean) {
-  return cn(
-    "group rounded-2xl border p-4 text-left transition-all duration-200",
-    "min-h-[176px] flex flex-col justify-between",
-    selected
-      ? "border-accent/60 bg-accent/10 shadow-[0_0_0_1px_rgba(253,70,56,0.2)]"
-      : "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.05]",
-  );
-}
-
 export function FormatPicker({ onConfirm }: Props) {
   const [selectedPattern, setSelectedPattern] = useState<CopyPatternId | null>(null);
   const [numSlides, setNumSlides] = useState(7);
@@ -174,141 +164,80 @@ export function FormatPicker({ onConfirm }: Props) {
     [selectedPattern],
   );
 
-  const activeMeta = useMemo(() => {
-    if (selectedPattern) return PATTERN_META[selectedPattern];
-    return null;
-  }, [selectedPattern]);
-
   const selectTemplate = (t: Template) => {
     setSelectedPattern(t.id);
     setNumSlides(t.slidesDefault || 7);
   };
 
-  const canGenerate = !!selectedPattern;
+  const canApprove = !!selectedPattern;
 
-  const summaryPanel = (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4 sm:p-5">
-      <div className="flex items-start justify-between gap-3 mb-4">
-        <div>
-          <div className="text-[11px] font-medium uppercase tracking-wider text-accent">Template selecionado</div>
-          <h3 className="mt-1 text-base font-semibold text-white">
-            {activeMeta?.title || "Escolha um template"}
-          </h3>
-        </div>
+  return (
+    <div className="mx-auto max-w-5xl space-y-4">
+      <div className="space-y-2">
+        <div className="text-xs uppercase tracking-wider text-accent">Etapa 3 · Template</div>
+        <h2 className="text-xl font-semibold text-white">Escolha o template</h2>
       </div>
 
-      {activeMeta ? (
-        <div className="space-y-4">
-          <div className="h-20 rounded-xl border border-white/10 p-3" style={{ background: activeMeta.preview }}>
-            <div className="flex h-full flex-col justify-between">
-              <span className="inline-flex w-fit rounded-full bg-black/30 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/75 backdrop-blur">
-                {selectedPattern}
-              </span>
-              <div className="max-w-[12rem] text-xs font-semibold leading-tight text-white drop-shadow">
-                {activeMeta.summary}
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="rounded-xl border border-dashed border-white/10 bg-black/10 p-3 text-xs text-white/55">
-          Selecione um template acima para configurar.
-        </div>
-      )}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+        {TEMPLATES.map((t) => {
+          const meta = PATTERN_META[t.id];
+          const selected = selectedPattern === t.id;
 
-      {selectedTemplate?.carrossel ? (
-        <div className="mt-4 rounded-xl border border-white/10 bg-black/10 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-sm text-white/80">Numero de slides</span>
-            <span className="text-sm font-semibold text-accent">{numSlides}</span>
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => selectTemplate(t)}
+              className={cn(
+                "rounded-xl border p-3 text-left transition-all duration-200 flex flex-col items-start gap-2",
+                selected
+                  ? "border-accent/60 bg-accent/10 shadow-[0_0_0_1px_rgba(253,70,56,0.2)]"
+                  : "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.05]",
+              )}
+            >
+              <div className="text-2xl">{t.emoji}</div>
+              <div className="text-sm font-semibold text-white leading-tight">{t.nome}</div>
+              <div className="h-12 w-full rounded-lg border border-white/10" style={{ background: meta.preview }} />
+            </button>
+          );
+        })}
+      </div>
+
+      {selectedTemplate?.carrossel && (
+        <GlassCard>
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <span className="text-sm font-semibold text-white">Número de slides</span>
+            <span className="text-sm font-bold text-accent">{numSlides}</span>
           </div>
-          <div className="mt-3">
-            <Slider
-              value={[numSlides]}
-              onValueChange={(v) => setNumSlides(v[0])}
-              min={selectedTemplate.slidesMin || 5}
-              max={selectedTemplate.slidesMax || 10}
-              step={1}
-            />
-          </div>
-          <div className="mt-1 flex justify-between text-[10px] text-white/40">
+          <Slider
+            value={[numSlides]}
+            onValueChange={(v) => setNumSlides(v[0])}
+            min={selectedTemplate.slidesMin || 5}
+            max={selectedTemplate.slidesMax || 10}
+            step={1}
+          />
+          <div className="flex justify-between text-[10px] text-white/40 mt-2">
             <span>{selectedTemplate.slidesMin}</span>
             <span>{selectedTemplate.slidesMax}</span>
           </div>
-        </div>
-      ) : null}
+        </GlassCard>
+      )}
 
-      <button
-        type="button"
-        onClick={() => selectedPattern && onConfirm(selectedPattern, selectedTemplate?.carrossel ? numSlides : 1)}
-        disabled={!canGenerate}
-        className={cn(
-          "mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition-colors",
-          canGenerate ? "btn-accent" : "cursor-not-allowed border border-white/10 bg-white/[0.04] text-white/35",
-        )}
-      >
-        <Sparkles className="h-4 w-4" />
-        {selectedPattern ? `Gerar copy para ${selectedPattern}` : "Escolha um template"}
-      </button>
-    </div>
-  );
-
-  return (
-    <GlassCard className="mx-auto max-w-6xl overflow-hidden">
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.9fr)]">
-        <div className="space-y-5">
-          <div className="space-y-2">
-            <div className="text-xs uppercase tracking-wider text-accent">Etapa 3 · Template + Copy</div>
-            <h2 className="text-xl font-semibold text-white sm:text-2xl">Escolha a base visual que vai guiar a copy</h2>
-            <p className="max-w-2xl text-sm leading-relaxed text-white/55">
-              Os templates abaixo sao a linguagem da etapa. A copy muda junto com a estrutura escolhida, para ficar
-              coerente com o tipo de slide que sera gerado na etapa seguinte.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {TEMPLATES.map((t) => {
-              const meta = PATTERN_META[t.id];
-              const selected = selectedPattern === t.id;
-
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => selectTemplate(t)}
-                  className={selectTemplateStyle(selected)}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="text-3xl">{t.emoji}</div>
-                      <div className="mt-2 text-sm font-semibold text-white">{t.nome}</div>
-                      <p className="mt-1 text-xs leading-relaxed text-white/55">{t.desc}</p>
-                    </div>
-                    <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/70">
-                      {t.id}
-                    </span>
-                  </div>
-
-                  <div className="mt-4 h-16 rounded-xl border border-white/10 p-3" style={{ background: meta.preview }}>
-                    <div className="flex h-full items-end justify-between">
-                      <div className="text-left text-[10px] uppercase tracking-[0.15em] text-white/70">
-                        Template
-                      </div>
-                      <div className="max-w-[10rem] text-right text-sm font-semibold leading-tight text-white">
-                        {meta.title}
-                      </div>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="xl:hidden">{summaryPanel}</div>
-        </div>
-
-        <aside className="hidden xl:block xl:sticky xl:top-6 xl:self-start">{summaryPanel}</aside>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => canApprove && onConfirm(selectedPattern!, selectedTemplate?.carrossel ? numSlides : 1)}
+          disabled={!canApprove}
+          className={cn(
+            "flex-1 rounded-lg px-4 py-3 text-sm font-semibold transition-colors",
+            canApprove
+              ? "btn-accent"
+              : "cursor-not-allowed border border-white/10 bg-white/[0.04] text-white/35",
+          )}
+        >
+          Próximo
+        </button>
       </div>
-    </GlassCard>
+    </div>
   );
 }
