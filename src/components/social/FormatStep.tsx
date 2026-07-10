@@ -22,6 +22,25 @@ export function FormatStep({ tema, briefing, copyReferencia, onApprove }: Props)
   const [copy, setCopy] = useState<CopyAprovada | null>(null);
 
   const generate = async (pat: CopyPatternId, n: number) => {
+    // Validação client-side antes de chamar
+    if (!tema || tema.trim().length === 0) {
+      toast({
+        title: "Tema vazio",
+        description: "O tema não pode estar vazio. Volte para a etapa anterior e complete o briefing.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!briefing?.briefing_texto || briefing.briefing_texto.trim().length === 0) {
+      toast({
+        title: "Briefing incompleto",
+        description: "O briefing não foi completado. Volte para a etapa anterior e execute 'Intensificar copy'.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setPattern(pat);
     setNumSlides(n);
     setLoading(true);
@@ -30,12 +49,31 @@ export function FormatStep({ tema, briefing, copyReferencia, onApprove }: Props)
       const { data, error } = await supabase.functions.invoke("social-copy", {
         body: { mode: "pattern", pattern_id: pat, tema, briefing, num_slides: n, copy_referencia: copyReferencia || "" },
       });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+
+      if (error) {
+        console.error("Edge function error:", error);
+        throw new Error(`Erro ao chamar edge function: ${error.message}`);
+      }
+
+      if (data?.error) {
+        console.error("API error response:", data.error);
+        // Diferencia erro de configuração de erro de API
+        if (data.error.includes("ANTHROPIC_API_KEY")) {
+          throw new Error("Erro de configuração: Chave da API não está disponível. Contate o administrador.");
+        }
+        throw new Error(data.error);
+      }
+
       recordAiUsage("text-claude-sonnet", 1);
       setCopy({ ...(data as CopyAprovada), pattern_id: pat });
     } catch (e: any) {
-      toast({ title: "Falha ao gerar copy", description: e.message, variant: "destructive" });
+      const errorMessage = e?.message || "Erro desconhecido ao gerar copy";
+      console.error("Generate copy error:", errorMessage);
+      toast({
+        title: "Falha ao gerar copy",
+        description: errorMessage,
+        variant: "destructive"
+      });
       setPattern(null);
     } finally {
       setLoading(false);

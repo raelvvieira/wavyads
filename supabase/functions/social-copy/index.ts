@@ -350,8 +350,19 @@ Deno.serve(async (req) => {
 
     const data = await resp.json();
     if (!resp.ok) {
-      console.error("anthropic error", data);
-      return new Response(JSON.stringify({ error: data?.error?.message || "Falha" }), {
+      console.error("anthropic error", resp.status, data);
+      let errorMessage = data?.error?.message || "Falha ao chamar API da Anthropic";
+
+      // Mensagens mais específicas por status code
+      if (resp.status === 401) {
+        errorMessage = "Erro de autenticação: Chave da API da Anthropic inválida ou expirada";
+      } else if (resp.status === 429) {
+        errorMessage = "Limite de requisições atingido. Tente novamente em alguns minutos.";
+      } else if (resp.status === 500) {
+        errorMessage = "Erro interno da API da Anthropic. Tente novamente mais tarde.";
+      }
+
+      return new Response(JSON.stringify({ error: errorMessage }), {
         status: resp.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -365,8 +376,9 @@ Deno.serve(async (req) => {
     try {
       parsed = JSON.parse(cleaned);
     } catch (e) {
-      console.error("parse error", e, text);
-      return new Response(JSON.stringify({ error: "Resposta do modelo não é JSON válido", raw: text }), {
+      console.error("parse error", e);
+      console.error("raw response text:", text.slice(0, 500));
+      return new Response(JSON.stringify({ error: "Erro ao processar resposta do modelo: resposta não está em formato JSON válido" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
