@@ -171,6 +171,8 @@ export function FormatPicker({ onConfirm }: Props) {
 
   const canApprove = !!selectedPattern;
 
+  const fixedNumSlides = (id: CopyPatternId) => (id === "3" ? 0 : 1);
+
   return (
     <div className="mx-auto max-w-5xl space-y-4">
       <div className="space-y-2">
@@ -226,7 +228,7 @@ export function FormatPicker({ onConfirm }: Props) {
       <div className="flex gap-2">
         <button
           type="button"
-          onClick={() => canApprove && onConfirm(selectedPattern!, selectedTemplate?.carrossel ? numSlides : 1)}
+          onClick={() => canApprove && onConfirm(selectedPattern!, selectedTemplate?.carrossel ? numSlides : fixedNumSlides(selectedPattern!))}
           disabled={!canApprove}
           className={cn(
             "flex-1 rounded-lg px-4 py-3 text-sm font-semibold transition-colors",
