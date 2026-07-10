@@ -203,14 +203,14 @@ export default function SocialMidiaStudioPage() {
             <button onClick={handleSearch} disabled={loading}
               className="btn-accent rounded-lg px-5 py-2.5 text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-50">
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-              Buscar Virais
+              {source === "url" ? "Analisar" : "Buscar Virais"}
             </button>
 
             {error && (
               <div className="glass rounded-lg px-4 py-3 text-sm text-destructive border-destructive/30">{error}</div>
             )}
 
-            <ViralResultsList posts={results} loading={loading} onPick={pickPost} />
+            <ViralResultsList posts={results} loading={loading} onPick={pickPost} skeletonCount={source === "url" ? 1 : 6} />
           </div>
         </div>
       )}

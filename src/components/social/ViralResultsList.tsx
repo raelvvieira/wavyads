@@ -13,15 +13,17 @@ export function ViralResultsList({
   posts,
   loading,
   onPick,
+  skeletonCount = 6,
 }: {
   posts: ViralPost[];
   loading: boolean;
   onPick: (p: ViralPost) => void;
+  skeletonCount?: number;
 }) {
   if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mt-4">
-        {Array.from({ length: 6 }).map((_, i) => (
+        {Array.from({ length: skeletonCount }).map((_, i) => (
           <div key={i} className="glass rounded-xl h-48 shimmer" />
         ))}
       </div>

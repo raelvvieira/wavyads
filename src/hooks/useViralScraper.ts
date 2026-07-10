@@ -40,15 +40,16 @@ export function useViralScraper() {
         // FunctionsHttpError só expõe uma mensagem genérica; o corpo real do
         // erro (com o motivo específico) vem em error.context (a Response).
         const context = (fnErr as any)?.context;
+        let message = fnErr.message;
         if (context && typeof context.json === "function") {
           try {
             const body = await context.json();
-            throw new Error(body?.detail || body?.error || fnErr.message);
+            message = body?.detail || body?.error || message;
           } catch {
-            throw fnErr;
+            // corpo não é JSON válido — mantém a mensagem genérica
           }
         }
-        throw fnErr;
+        throw new Error(message);
       }
       if (data?.error) throw new Error(data.error);
       recordAiUsage("apify-scrape", 1);
