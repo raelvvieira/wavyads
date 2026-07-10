@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { GlassCard } from "@/components/GlassCard";
 import { FormatPicker } from "./FormatPicker";
@@ -12,12 +12,14 @@ interface Props {
   tema: string;
   briefing: CopyIntensificacao;
   copyReferencia?: string;
+  pattern_id?: CopyPatternId;
+  num_slides?: number;
   onApprove: (pattern_id: CopyPatternId, num_slides: number, copy: CopyAprovada) => void;
 }
 
-export function FormatStep({ tema, briefing, copyReferencia, onApprove }: Props) {
-  const [pattern, setPattern] = useState<CopyPatternId | null>(null);
-  const [numSlides, setNumSlides] = useState(7);
+export function FormatStep({ tema, briefing, copyReferencia, pattern_id: prePat, num_slides: preNum, onApprove }: Props) {
+  const [pattern, setPattern] = useState<CopyPatternId | null>(prePat || null);
+  const [numSlides, setNumSlides] = useState(preNum || 7);
   const [loading, setLoading] = useState(false);
   const [copy, setCopy] = useState<CopyAprovada | null>(null);
 
@@ -79,6 +81,13 @@ export function FormatStep({ tema, briefing, copyReferencia, onApprove }: Props)
       setLoading(false);
     }
   };
+
+  // Auto-generate if pattern is pre-selected
+  useEffect(() => {
+    if (prePat && !copy && !loading) {
+      generate(prePat, preNum || 7);
+    }
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!pattern) {
     return (

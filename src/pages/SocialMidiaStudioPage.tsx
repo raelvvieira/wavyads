@@ -16,16 +16,15 @@ import { DesignStep } from "@/components/social/design/DesignStep";
 import { useViralScraper, type ViralSource, type ViralPost } from "@/hooks/useViralScraper";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import type { CopyPatternId, CopyAprovada, SlideImagem, PostCopy, CopyIntensificacao } from "@/types/social";
+import type { CopyPatternId, CopyAprovada, SlideImagem, PostCopy } from "@/types/social";
 
-const STEPS = ["Scraper", "Intensificar", "Template + Copy", "Imagens", "Design"];
-const SHORT = ["1", "2", "3", "4", "5"];
+const STEPS = ["Scraper", "Resumo", "Template", "Copy Final", "Imagens", "Design"];
+const SHORT = ["1", "2", "3", "4", "5", "6"];
 
 interface Pipeline {
   etapa_atual: number;
   post_viral: ViralPost | null;
   post_copy: PostCopy | null;
-  intensificacao: CopyIntensificacao | null;
   tema: string | null;
   pattern_id: CopyPatternId | null;
   num_slides: number;
@@ -53,31 +52,16 @@ function jumpTo(s: Pipeline, i: number): Pipeline {
       status: {},
     } as PostCopy;
   }
-  if (i >= 2) {
-    if (!next.tema) next.tema = "Tema de configuração";
-    if (!next.intensificacao) {
-      next.intensificacao = {
-        tema: "Tema de configuração",
-        angulo: "Ângulo de configuração",
-        voz: "Wavy",
-        referencia_resumo: "Resumo de configuração",
-        tese_central: "Tese de configuração",
-        gancho: "Gancho de configuração",
-        dor_principal: "Dor de configuração",
-        conflito_principal: "Conflito de configuração",
-        promessa: "Promessa de configuração",
-        preservar: ["Ponto de referência 1"],
-        ampliar: ["Ponto de referência 2"],
-        evitar: ["Ponto de referência 3"],
-        provas_e_dados: ["Dado de configuração"],
-        palavras_chave: ["config", "template"],
-        briefing_texto: "[Brief placeholder — modo configuração]",
-      };
-    }
+  if (i >= 2 && !next.tema) {
+    next.tema = "Tema de configuração";
   }
-  if (i >= 3 && !next.copy_aprovada) {
+  if (i >= 3 && !next.pattern_id) {
+    next.pattern_id = "2A";
+    next.num_slides = 7;
+  }
+  if (i >= 4 && !next.copy_aprovada) {
     next.pattern_id = next.pattern_id || "2A";
-    next.num_slides = next.num_slides || 5;
+    next.num_slides = next.num_slides || 7;
     next.copy_aprovada = {
       pattern_id: next.pattern_id,
       slides: Array.from({ length: 5 }).map((_, k) => ({
@@ -90,7 +74,7 @@ function jumpTo(s: Pipeline, i: number): Pipeline {
       hashtags: ["#exemplo", "#config"],
     };
   }
-  if (i >= 4 && (!next.imagens || next.imagens.length === 0)) {
+  if (i >= 5 && (!next.imagens || next.imagens.length === 0)) {
     const slides = next.copy_aprovada?.slides || [];
     next.imagens = slides.map((_, k) => ({
       slide_index: k,
@@ -112,7 +96,6 @@ export default function SocialMidiaStudioPage() {
     etapa_atual: 0,
     post_viral: null,
     post_copy: null,
-    intensificacao: null,
     tema: null,
     pattern_id: null,
     num_slides: 0,
@@ -239,48 +222,57 @@ export default function SocialMidiaStudioPage() {
           onBack={() => setPipeline((s) => ({ ...s, post_viral: null, post_copy: null }))}
           onApprove={(copy) => {
             setPipeline((s) => ({ ...s, post_copy: copy, etapa_atual: 1 }));
-            toast({ title: "Copy do post salva", description: "Avançando para a Intensificação" });
+            toast({ title: "Copy do post salva", description: "Avançando para a Pesquisa" });
           }}
         />
       )}
 
-      {/* Etapa 2 — Intensificação */}
-      {pipeline.etapa_atual === 1 && (
+      {/* Etapa 2 — Resumo */}
+      {pipeline.etapa_atual === 1 && pipeline.post_copy && (
         <ResearchStep
-          post={pipeline.post_viral}
-          initialTema={pipeline.tema || undefined}
-          copyReferencia={pipeline.post_copy?.copy_consolidada}
-          onApprove={(briefing, tema) => {
-            setPipeline((s) => ({ ...s, intensificacao: briefing, tema, etapa_atual: 2 }));
-            toast({ title: "Brief intensificado salvo", description: "Avançando para Template + Copy" });
+          copyConsolidada={pipeline.post_copy.copy_consolidada}
+          tema={pipeline.tema || ""}
+          onApprove={(tema) => {
+            setPipeline((s) => ({ ...s, tema, etapa_atual: 2 }));
+            toast({ title: "Tema confirmado", description: "Avançando para Template" });
+          }}
+        />
+      )}
+
+      {/* Etapa 3 — Template */}
+      {pipeline.etapa_atual === 2 && pipeline.tema && (
+        <FormatPicker
+          onConfirm={(pattern_id, num_slides) => {
+            setPipeline((s) => ({ ...s, pattern_id, num_slides, etapa_atual: 3 }));
+            toast({ title: "Template selecionado", description: "Avançando para Copy Final" });
           }}
         />
       )}
 
 
 
-      {/* Etapa 3 — Template + Copy final */}
-      {pipeline.etapa_atual === 2 && pipeline.tema && pipeline.intensificacao && (
-        <>
-          <FormatStep
-            tema={pipeline.tema}
-            briefing={pipeline.intensificacao}
-            copyReferencia={pipeline.post_copy?.copy_consolidada}
-            onApprove={(pattern_id, num_slides, copy) => {
-              setPipeline((s) => ({
-                ...s, pattern_id, num_slides, copy_aprovada: copy, etapa_atual: 3,
-              }));
-              toast({
-                title: "Copy aprovada",
-                description: pattern_id === "3" ? "Reel finalizado" : "Avançando para Imagens",
-              });
-            }}
-          />
-        </>
+      {/* Etapa 4 — Copy Final */}
+      {pipeline.etapa_atual === 3 && pipeline.tema && pipeline.pattern_id && pipeline.post_copy && (
+        <FormatStep
+          tema={pipeline.tema}
+          briefing={pipeline.post_copy.copy_consolidada}
+          copyReferencia={pipeline.post_copy.copy_consolidada}
+          pattern_id={pipeline.pattern_id}
+          num_slides={pipeline.num_slides}
+          onApprove={(pattern_id, num_slides, copy) => {
+            setPipeline((s) => ({
+              ...s, pattern_id, num_slides, copy_aprovada: copy, etapa_atual: 4,
+            }));
+            toast({
+              title: "Copy aprovada",
+              description: pattern_id === "3" ? "Reel finalizado" : "Avançando para Imagens",
+            });
+          }}
+        />
       )}
 
-      {/* Etapa 4 — Imagens (ou final do Reel) */}
-      {pipeline.etapa_atual === 3 && pipeline.copy_aprovada && pipeline.pattern_id && (
+      {/* Etapa 5 — Imagens (ou final do Reel) */}
+      {pipeline.etapa_atual === 4 && pipeline.copy_aprovada && pipeline.pattern_id && (
         isReel ? (
           <ReelFinalStep tema={pipeline.tema || ""} copy={pipeline.copy_aprovada} />
         ) : (
@@ -291,18 +283,18 @@ export default function SocialMidiaStudioPage() {
             estiloGlobal={pipeline.post_viral?.caption?.slice(0, 200)}
             initial={pipeline.imagens || undefined}
             onApprove={(imagens) => {
-              setPipeline((s) => ({ ...s, imagens, etapa_atual: 4 }));
+              setPipeline((s) => ({ ...s, imagens, etapa_atual: 5 }));
               toast({ title: "Imagens aprovadas", description: "Avançando para Design" });
             }}
           />
         )
       )}
 
-      {/* Etapa 5 — Design */}
-      {pipeline.etapa_atual === 4 && pipeline.copy_aprovada && (
+      {/* Etapa 6 — Design */}
+      {pipeline.etapa_atual === 5 && pipeline.copy_aprovada && (
         isReel ? (
           <GlassCard className="text-center py-16">
-            <div className="text-xs uppercase tracking-wider text-accent mb-2">Etapa 5 · Design</div>
+            <div className="text-xs uppercase tracking-wider text-accent mb-2">Etapa 6 · Design</div>
             <h2 className="text-xl font-semibold mb-2">Reels não geram slides</h2>
             <p className="text-sm text-white/50">Use o roteiro entregue na etapa anterior.</p>
           </GlassCard>
@@ -315,7 +307,7 @@ export default function SocialMidiaStudioPage() {
             onFinish={() => {
               toast({ title: "Carrossel finalizado!", description: "Pipeline completo." });
               setPipeline({
-                etapa_atual: 0, post_viral: null, post_copy: null, intensificacao: null,
+                etapa_atual: 0, post_viral: null, post_copy: null,
                 tema: null, pattern_id: null, num_slides: 0, copy_aprovada: null, imagens: null,
               });
             }}
