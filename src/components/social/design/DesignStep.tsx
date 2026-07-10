@@ -4,7 +4,6 @@ import { toPng } from "html-to-image";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import { GlassCard } from "@/components/GlassCard";
-import { TemplatePicker } from "./TemplatePicker";
 import { ProfileEditor } from "./ProfileEditor";
 import { SlideCanvas } from "./SlideCanvas";
 import { PATTERN_TEMPLATES } from "./templates";
@@ -126,19 +125,13 @@ export function DesignStep({ tema, copy, imagens, patternId, onFinish }: Props) 
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-          <div>
-            <div className="text-[11px] uppercase tracking-wider text-white/40 mb-2">Template</div>
-            <TemplatePicker value={currentTemplate} onChange={setCurrentTemplate} />
-          </div>
-          <div>
-            <div className="text-[11px] uppercase tracking-wider text-white/40 mb-2">Identidade</div>
-            <ProfileEditor
-              profile={profile}
-              onChange={(p) => save(p)}
-              onUploadAvatar={uploadAvatar}
-            />
-          </div>
+        <div>
+          <div className="text-[11px] uppercase tracking-wider text-white/40 mb-2">Identidade</div>
+          <ProfileEditor
+            profile={profile}
+            onChange={(p) => save(p)}
+            onUploadAvatar={uploadAvatar}
+          />
         </div>
       </GlassCard>
 
