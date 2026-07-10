@@ -1,7 +1,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { WAVY_COPY_SKILL } from "./wavy-skill.ts";
 
-const MODEL = "claude-sonnet-4-20250514";
+const MODEL = "claude-sonnet-5";
 
 type PatternId = "1A" | "1B" | "2A" | "2B" | "3" | "4" | "5";
 
