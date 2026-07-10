@@ -36,6 +36,10 @@ export interface CopyIntensificacao {
   provas_e_dados: string[];
   palavras_chave: string[];
   briefing_texto: string;
+  // Visual Strategy (Etapa 2 Moodboard)
+  visual_strategy?: "cinematic" | "editorial" | "minimalist";
+  cor_primaria_hex?: string;  // "#00D9FF" default
+  influencia_visual?: string; // "Bloomberg meets Wired"
 }
 
 export const PATTERN_TO_FAMILIA: Record<CopyPatternId, FormatoFamilia> = {

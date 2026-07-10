@@ -278,6 +278,77 @@ export function ResearchStep({ post, initialTema, initialAngulo, copyReferencia,
           </p>
         </div>
 
+        {/* Visual Strategy (Moodboard) */}
+        <div className="rounded-lg border border-accent/20 bg-accent/[0.05] p-4">
+          <div className="text-xs uppercase tracking-wider text-accent font-semibold mb-4">🎨 Estratégia Visual (Moodboard)</div>
+
+          <div className="space-y-4">
+            {/* Tom Visual */}
+            <div>
+              <div className="text-[11px] font-medium text-white/70 mb-2">Tom Visual</div>
+              <div className="space-y-2">
+                {(["cinematic", "editorial", "minimalist"] as const).map((strategy) => (
+                  <label key={strategy} className="flex items-center gap-3 cursor-pointer group">
+                    <input
+                      type="radio"
+                      name="visual_strategy"
+                      value={strategy}
+                      checked={briefing.visual_strategy === strategy}
+                      onChange={(e) => setBriefing((current) => current ? { ...current, visual_strategy: e.target.value as any } : current)}
+                      className="w-4 h-4 accent-accent"
+                    />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-white group-hover:text-accent transition-colors">
+                        {strategy === "cinematic" && "🎬 Cinematográfico"}
+                        {strategy === "editorial" && "📰 Editorial"}
+                        {strategy === "minimalist" && "✨ Minimalista"}
+                      </div>
+                      <div className="text-[11px] text-white/50">
+                        {strategy === "cinematic" && "Drama, pessoas, CEO, narrativa, emoção"}
+                        {strategy === "editorial" && "Jornalístico, dados, cases, números, resultado"}
+                        {strategy === "minimalist" && "Abstrato, conceitual, gradientes, statement"}
+                      </div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Cor Primária */}
+            <div>
+              <div className="text-[11px] font-medium text-white/70 mb-2">Cor Primária</div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={briefing.cor_primaria_hex || "#00D9FF"}
+                  onChange={(e) => setBriefing((current) => current ? { ...current, cor_primaria_hex: e.target.value } : current)}
+                  className="w-10 h-10 rounded-lg cursor-pointer border border-white/10"
+                />
+                <input
+                  type="text"
+                  value={briefing.cor_primaria_hex || "#00D9FF"}
+                  onChange={(e) => setBriefing((current) => current ? { ...current, cor_primaria_hex: e.target.value } : current)}
+                  className="glass-input flex-1 rounded-lg px-3 py-2 text-sm font-mono"
+                  placeholder="#00D9FF"
+                />
+              </div>
+            </div>
+
+            {/* Influência Visual */}
+            <div>
+              <div className="text-[11px] font-medium text-white/70 mb-2">Influência Visual</div>
+              <input
+                type="text"
+                value={briefing.influencia_visual || ""}
+                onChange={(e) => setBriefing((current) => current ? { ...current, influencia_visual: e.target.value } : current)}
+                placeholder="ex: Bloomberg meets Wired"
+                className="w-full glass-input rounded-lg px-3 py-2 text-sm"
+              />
+              <p className="text-[11px] text-white/40 mt-1">Referência visual que norteia a geração de imagens</p>
+            </div>
+          </div>
+        </div>
+
         {/* Expandível: Contexto adicional */}
         <details className="group cursor-pointer">
           <summary className="text-sm font-medium text-white/70 hover:text-white transition-colors flex items-center gap-2">
