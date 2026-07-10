@@ -25,7 +25,6 @@ interface Pipeline {
   etapa_atual: number;
   post_viral: ViralPost | null;
   post_copy: PostCopy | null;
-  briefing_texto: string | null;
   tema: string | null;
   pattern_id: CopyPatternId | null;
   num_slides: number;
@@ -55,11 +54,12 @@ function jumpTo(s: Pipeline, i: number): Pipeline {
   }
   if (i >= 2) {
     if (!next.tema) next.tema = "Tema de configuração";
-    if (!next.briefing_texto) next.briefing_texto = "[Briefing placeholder — modo configuração]";
+    if (!next.pattern_id) next.pattern_id = "2A";
+    if (!next.num_slides) next.num_slides = 7;
   }
   if (i >= 3 && !next.copy_aprovada) {
     next.pattern_id = next.pattern_id || "2A";
-    next.num_slides = next.num_slides || 5;
+    next.num_slides = next.num_slides || 7;
     next.copy_aprovada = {
       pattern_id: next.pattern_id,
       slides: Array.from({ length: 5 }).map((_, k) => ({
@@ -94,7 +94,6 @@ export default function SocialMidiaStudioPage() {
     etapa_atual: 0,
     post_viral: null,
     post_copy: null,
-    briefing_texto: null,
     tema: null,
     pattern_id: null,
     num_slides: 0,
@@ -226,44 +225,45 @@ export default function SocialMidiaStudioPage() {
         />
       )}
 
-      {/* Etapa 2 — Pesquisa */}
-      {pipeline.etapa_atual === 1 && (
+      {/* Etapa 2 — Consolidação + Template */}
+      {pipeline.etapa_atual === 1 && pipeline.post_copy && (
         <ResearchStep
-          post={pipeline.post_viral}
-          initialTema={pipeline.tema || undefined}
-          copyReferencia={pipeline.post_copy?.copy_consolidada}
-          onApprove={(briefing, tema) => {
-            setPipeline((s) => ({ ...s, briefing_texto: briefing, tema, etapa_atual: 2 }));
-            toast({ title: "Briefing salvo", description: "Avançando para Formato" });
+          copyConsolidada={pipeline.post_copy.copy_consolidada}
+          tema={pipeline.tema || ""}
+          onApprove={(copyEditada, tema, pattern_id, num_slides) => {
+            setPipeline((s) => ({
+              ...s,
+              tema,
+              pattern_id,
+              num_slides,
+              post_copy: s.post_copy ? { ...s.post_copy, copy_consolidada: copyEditada } : null,
+              etapa_atual: 2
+            }));
+            toast({ title: "Template e copy consolidada", description: "Avançando para Formato" });
           }}
         />
       )}
 
 
 
-      {/* Etapa 3 — Formato + Copy */}
-      {pipeline.etapa_atual === 2 && pipeline.tema && pipeline.briefing_texto && (
-        <>
-          {pipeline.briefing_texto.startsWith("[Pesquisa pulada") && (
-            <div className="max-w-2xl mx-auto mb-4 glass rounded-lg px-4 py-3 text-xs text-white/70 border-accent/30">
-              ⚡ Pesquisa pulada — gerando copy apenas com a referência do post viral.
-            </div>
-          )}
-          <FormatStep
-            tema={pipeline.tema}
-            briefing={pipeline.briefing_texto}
-            copyReferencia={pipeline.post_copy?.copy_consolidada}
-            onApprove={(pattern_id, num_slides, copy) => {
-              setPipeline((s) => ({
-                ...s, pattern_id, num_slides, copy_aprovada: copy, etapa_atual: 3,
-              }));
-              toast({
-                title: "Copy aprovada",
-                description: pattern_id === "3" ? "Reel finalizado" : "Avançando para Imagens",
-              });
-            }}
-          />
-        </>
+      {/* Etapa 3 — Copy Final */}
+      {pipeline.etapa_atual === 2 && pipeline.tema && pipeline.pattern_id && pipeline.post_copy && (
+        <FormatStep
+          tema={pipeline.tema}
+          briefing={pipeline.post_copy.copy_consolidada}
+          copyReferencia={pipeline.post_copy.copy_consolidada}
+          pattern_id={pipeline.pattern_id}
+          num_slides={pipeline.num_slides}
+          onApprove={(pattern_id, num_slides, copy) => {
+            setPipeline((s) => ({
+              ...s, pattern_id, num_slides, copy_aprovada: copy, etapa_atual: 3,
+            }));
+            toast({
+              title: "Copy aprovada",
+              description: pattern_id === "3" ? "Reel finalizado" : "Avançando para Imagens",
+            });
+          }}
+        />
       )}
 
       {/* Etapa 4 — Imagens (ou final do Reel) */}
@@ -302,7 +302,7 @@ export default function SocialMidiaStudioPage() {
             onFinish={() => {
               toast({ title: "Carrossel finalizado!", description: "Pipeline completo." });
               setPipeline({
-                etapa_atual: 0, post_viral: null, post_copy: null, briefing_texto: null,
+                etapa_atual: 0, post_viral: null, post_copy: null,
                 tema: null, pattern_id: null, num_slides: 0, copy_aprovada: null, imagens: null,
               });
             }}

@@ -1,204 +1,321 @@
-import { useState, useEffect } from "react";
-import { Loader2, Search, RotateCw, Check, SkipForward, Sparkles } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Sparkles, Check } from "lucide-react";
 import { GlassCard } from "@/components/GlassCard";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
-import { recordAiUsage } from "@/lib/aiUsageTracker";
-import type { ViralPost } from "@/hooks/useViralScraper";
+import { Slider } from "@/components/ui/slider";
+import { cn } from "@/lib/utils";
+import type { CopyPatternId } from "@/types/social";
 
 interface Props {
-  post: ViralPost | null;
-  initialTema?: string;
-  initialAngulo?: string;
-  copyReferencia?: string;
-  onApprove: (briefing: string, tema: string) => void;
+  copyConsolidada: string;
+  tema: string;
+  onApprove: (copyEditada: string, tema: string, pattern_id: CopyPatternId, num_slides: number) => void;
 }
 
-function captionFallback(post: ViralPost | null): string {
-  if (!post) return "";
-  const caption = (post.caption || "").replace(/\s+/g, " ").trim();
-  return caption ? caption.split(" ").slice(0, 12).join(" ") : `Conteúdo de @${post.username}`;
+interface Template {
+  id: CopyPatternId;
+  emoji: string;
+  nome: string;
+  desc: string;
+  carrossel?: boolean;
+  slidesMin?: number;
+  slidesMax?: number;
+  slidesDefault?: number;
 }
 
-export function ResearchStep({ post, initialTema, initialAngulo, copyReferencia, onApprove }: Props) {
-  const [tema, setTema] = useState(initialTema || captionFallback(post));
-  const [generatingTema, setGeneratingTema] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [briefing, setBriefing] = useState("");
-  const [error, setError] = useState<string | null>(null);
+type PatternMeta = {
+  title: string;
+  summary: string;
+  preview: string;
+};
 
-  useEffect(() => {
-    setBriefing("");
-    setError(null);
+const TEMPLATES: Template[] = [
+  {
+    id: "1A",
+    emoji: "⚡",
+    nome: "1A · Tutorial",
+    desc: "Hook forte + passos executaveis + virada confessional + CTA direto.",
+    carrossel: true,
+    slidesMin: 5,
+    slidesMax: 8,
+    slidesDefault: 6,
+  },
+  {
+    id: "1B",
+    emoji: "⚡",
+    nome: "1B · Conflito",
+    desc: "Provoca, nomeia o vilao e contrasta resultados opostos.",
+    carrossel: true,
+    slidesMin: 5,
+    slidesMax: 8,
+    slidesDefault: 6,
+  },
+  {
+    id: "2A",
+    emoji: "📖",
+    nome: "2A · Storytelling",
+    desc: "Caso real de empresa como veiculo para um principio.",
+    carrossel: true,
+    slidesMin: 6,
+    slidesMax: 10,
+    slidesDefault: 7,
+  },
+  {
+    id: "2B",
+    emoji: "📖",
+    nome: "2B · Editorial Dark",
+    desc: "Tema filosofico, manchete longa e analogias fortes.",
+    carrossel: true,
+    slidesMin: 6,
+    slidesMax: 10,
+    slidesDefault: 7,
+  },
+  {
+    id: "3",
+    emoji: "🎬",
+    nome: "3 · Reel",
+    desc: "Video 15-60s com hook, agitacao, desenvolvimento, virada e CTA.",
+    carrossel: false,
+  },
+  {
+    id: "4",
+    emoji: "🎯",
+    nome: "4 · Post Frase",
+    desc: "Imagem unica + frase forte. Legenda longa em 5 movimentos.",
+    carrossel: false,
+  },
+  {
+    id: "5",
+    emoji: "🧠",
+    nome: "5 · Frase Mestre",
+    desc: "Argumento unico desdobrado em slides interdependentes.",
+    carrossel: true,
+    slidesMin: 6,
+    slidesMax: 9,
+    slidesDefault: 7,
+  },
+];
 
-    // If initialTema is set (user returning to this step), use it as-is
-    if (initialTema) {
-      setTema(initialTema);
-      return;
-    }
+const PATTERN_META: Record<CopyPatternId, PatternMeta> = {
+  "1A": {
+    title: "1A · Tutorial",
+    summary: "Hook forte + passos executaveis + virada confessional + CTA direto.",
+    preview: "linear-gradient(135deg,#0A0A0A 0%,#1A0A0A 60%,#3D1414 100%)",
+  },
+  "1B": {
+    title: "1B · Conflito de Dois Mundos",
+    summary: "Provoca, nomeia o vilao e contrasta resultados opostos com mais tensao.",
+    preview: "linear-gradient(135deg,#F5F2EE 0%,#FD4638 100%)",
+  },
+  "2A": {
+    title: "2A · Storytelling Analitico",
+    summary: "Caso real de empresa como veiculo para um principio maior.",
+    preview: "linear-gradient(160deg,#0D1B2A 0%,#1A2D40 50%,#FD4638 100%)",
+  },
+  "2B": {
+    title: "2B · Editorial Dark com Cinema",
+    summary: "Tema filosofico, manchete longa e analogias fortes com clima de cinema.",
+    preview: "linear-gradient(160deg,#0D1B2A 0%,#1A2D40 45%,#0A0F14 100%)",
+  },
+  "3": {
+    title: "3 · Reel",
+    summary: "Roteiro falado e curto, feito para video com corte ritmico.",
+    preview: "linear-gradient(135deg,#0D1B2A 0%,#1A2D40 50%,#FD4638 100%)",
+  },
+  "4": {
+    title: "4 · Post Frase",
+    summary: "Uma frase central domina e a legenda apoia o impacto.",
+    preview: "linear-gradient(135deg,#0A0A0A 0%,#1A2D40 55%,#FD4638 100%)",
+  },
+  "5": {
+    title: "5 · Frase Mestre",
+    summary: "Tese, antitese e prova social se encadeiam em um manifesto visual.",
+    preview: "linear-gradient(135deg,#0D1520 0%,#1A2535 45%,#F5F2EE 100%)",
+  },
+};
 
-    const copy = copyReferencia?.trim() || "";
-    const isMeaningfulCopy = copy.length > 50 && !copy.startsWith("[");
+function selectTemplateStyle(selected: boolean) {
+  return cn(
+    "group rounded-2xl border p-4 text-left transition-all duration-200",
+    "min-h-[176px] flex flex-col justify-between",
+    selected
+      ? "border-accent/60 bg-accent/10 shadow-[0_0_0_1px_rgba(253,70,56,0.2)]"
+      : "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.05]",
+  );
+}
 
-    if (post?.id && isMeaningfulCopy) {
-      setGeneratingTema(true);
-      setTema("");
-      supabase.functions
-        .invoke("social-tema-gen", { body: { copy_consolidada: copy } })
-        .then(({ data, error: fnErr }) => {
-          if (!fnErr && !data?.error && data?.tema) {
-            setTema(data.tema);
-          } else {
-            setTema(captionFallback(post));
-          }
-        })
-        .catch(() => setTema(captionFallback(post)))
-        .finally(() => setGeneratingTema(false));
-      return;
-    }
+export function ResearchStep({ copyConsolidada, tema, onApprove }: Props) {
+  const [copyEditada, setCopyEditada] = useState(copyConsolidada);
+  const [temaEditado, setTemaEditado] = useState(tema);
+  const [selectedPattern, setSelectedPattern] = useState<CopyPatternId | null>(null);
+  const [numSlides, setNumSlides] = useState(7);
 
-    setTema(captionFallback(post));
-  }, [post, initialTema, copyReferencia]);
+  const selectedTemplate = useMemo(
+    () => TEMPLATES.find((t) => t.id === selectedPattern) ?? null,
+    [selectedPattern],
+  );
 
-  const run = async () => {
-    if (!tema.trim()) {
-      toast({ title: "Defina um tema", variant: "destructive" });
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    setBriefing("");
-    try {
-      const { data, error: fnErr } = await supabase.functions.invoke("social-research", {
-        body: { tema: tema.trim(), angulo: initialAngulo || "", copy_referencia: copyReferencia || "" },
-      });
-      if (fnErr) throw fnErr;
-      if (data?.error) throw new Error(data.error);
-      setBriefing(data?.briefing || "");
-      if (data?.briefing) recordAiUsage("text-claude-websearch", 1);
-      if (!data?.briefing) setError("A pesquisa retornou vazia. Tente novamente.");
-    } catch (e: any) {
-      setError(e?.message || "Falha ao pesquisar");
-    } finally {
-      setLoading(false);
-    }
+  const activeMeta = useMemo(() => {
+    if (selectedPattern) return PATTERN_META[selectedPattern];
+    return null;
+  }, [selectedPattern]);
+
+  const selectTemplate = (t: Template) => {
+    setSelectedPattern(t.id);
+    setNumSlides(t.slidesDefault || 7);
   };
 
-  const skip = () => {
-    if (!tema.trim()) {
-      toast({ title: "Defina um tema antes de pular", variant: "destructive" });
-      return;
-    }
-    const fallback = (copyReferencia && copyReferencia.trim())
-      ? `[Pesquisa pulada — usando copy do post viral como referência]\n\nTema: ${tema.trim()}\n\n${copyReferencia.trim()}`
-      : `[Pesquisa pulada — sem briefing externo]\n\nTema: ${tema.trim()}`;
-    onApprove(fallback, tema.trim());
-  };
+  const canApprove = !!selectedPattern && copyEditada.trim() && temaEditado.trim();
 
-  // estado: gerando tema via IA
-  if (generatingTema) {
-    return (
-      <GlassCard className="max-w-2xl mx-auto">
-        <div className="text-center py-12">
-          <div className="inline-flex items-center gap-2 mb-4">
-            <Sparkles className="h-5 w-5 text-accent animate-pulse" />
-            <Loader2 className="h-5 w-5 text-accent animate-spin" />
-          </div>
-          <p className="text-base text-white/80">Analisando post viral e extraindo tema…</p>
-          <p className="text-xs text-white/40 mt-2">Identificando assunto com precisão técnica</p>
-        </div>
-      </GlassCard>
-    );
-  }
-
-  // estado: pré-pesquisa
-  if (!loading && !briefing) {
-    return (
-      <GlassCard className="max-w-2xl mx-auto">
-        <div className="text-center py-6">
-          <div className="text-xs uppercase tracking-wider text-accent mb-2">Etapa 2 · Pesquisa</div>
-          <h2 className="text-xl font-semibold mb-1">Tema detectado</h2>
-          <p className="text-xs text-white/40 mb-4">
-            {copyReferencia ? "Gerado a partir da copy extraída — ajuste se necessário." : "Você pode ajustar o tema antes de pesquisar."}
-          </p>
-          <input
-            value={tema}
-            onChange={(e) => setTema(e.target.value)}
-            className="glass-input w-full rounded-lg px-4 py-3 text-sm mb-6 text-center"
-            placeholder="Sobre o que pesquisar?"
-          />
-          <div className="flex flex-col sm:flex-row gap-2 justify-center">
-            <button
-              onClick={run}
-              className="btn-accent rounded-lg px-6 py-3 text-sm font-semibold inline-flex items-center justify-center gap-2"
-            >
-              <Search className="h-4 w-4" /> Iniciar Pesquisa
-            </button>
-            <button
-              onClick={skip}
-              className="glass rounded-lg px-6 py-3 text-sm font-medium inline-flex items-center justify-center gap-2 hover:bg-white/5"
-              title="Pula a pesquisa e usa só a copy extraída do post viral"
-            >
-              <SkipForward className="h-4 w-4" /> Pular pesquisa
-            </button>
-          </div>
-          {copyReferencia && (
-            <p className="text-[11px] text-white/40 mt-3">
-              Ao pular, a copy extraída do post viral será usada como referência.
-            </p>
-          )}
-          {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
-        </div>
-      </GlassCard>
-    );
-  }
-
-  // estado: loading pesquisa
-  if (loading) {
-    return (
-      <GlassCard className="max-w-2xl mx-auto">
-        <div className="text-center py-16">
-          <Loader2 className="h-8 w-8 text-accent animate-spin mx-auto mb-4" />
-          <p className="text-base text-white/80">
-            🔍 Pesquisando sobre <span className="text-accent font-semibold">"{tema}"</span> na internet…
-          </p>
-          <p className="text-xs text-white/40 mt-2">Isso pode levar alguns segundos</p>
-        </div>
-      </GlassCard>
-    );
-  }
-
-  // estado: resultado
-  return (
-    <GlassCard className="max-w-3xl mx-auto">
+  const summaryPanel = (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4 sm:p-5">
       <div className="mb-4">
-        <div className="text-xs uppercase tracking-wider text-accent mb-1">Etapa 2 · Pesquisa</div>
-        <h2 className="text-lg font-semibold">📋 Briefing de pesquisa — {tema}</h2>
+        <div className="text-[11px] font-medium uppercase tracking-wider text-accent">Template selecionado</div>
+        <h3 className="mt-1 text-base font-semibold text-white">
+          {activeMeta?.title || "Escolha um template"}
+        </h3>
       </div>
 
-      <textarea
-        value={briefing}
-        onChange={(e) => setBriefing(e.target.value)}
-        className="w-full min-h-[360px] rounded-lg bg-white/[0.03] border border-white/10 px-5 py-4 text-sm leading-relaxed text-white/90 focus:outline-none focus:border-accent/40 transition-colors resize-y"
-      />
+      {activeMeta ? (
+        <div className="space-y-4">
+          <div className="h-20 rounded-xl border border-white/10 p-3" style={{ background: activeMeta.preview }}>
+            <div className="flex h-full flex-col justify-between">
+              <span className="inline-flex w-fit rounded-full bg-black/30 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/75 backdrop-blur">
+                {selectedPattern}
+              </span>
+              <div className="max-w-[12rem] text-xs font-semibold leading-tight text-white drop-shadow">
+                {activeMeta.summary}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-dashed border-white/10 bg-black/10 p-3 text-xs text-white/55">
+          Selecione um template acima.
+        </div>
+      )}
 
-      {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+      {selectedTemplate?.carrossel ? (
+        <div className="mt-4 rounded-xl border border-white/10 bg-black/10 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm text-white/80">Numero de slides</span>
+            <span className="text-sm font-semibold text-accent">{numSlides}</span>
+          </div>
+          <div className="mt-3">
+            <Slider
+              value={[numSlides]}
+              onValueChange={(v) => setNumSlides(v[0])}
+              min={selectedTemplate.slidesMin || 5}
+              max={selectedTemplate.slidesMax || 10}
+              step={1}
+            />
+          </div>
+          <div className="mt-1 flex justify-between text-[10px] text-white/40">
+            <span>{selectedTemplate.slidesMin}</span>
+            <span>{selectedTemplate.slidesMax}</span>
+          </div>
+        </div>
+      ) : null}
 
-      <div className="flex flex-col sm:flex-row gap-3 justify-between mt-5">
-        <button
-          onClick={run}
-          disabled={loading}
-          className="glass rounded-lg px-4 py-2.5 text-sm font-medium inline-flex items-center gap-2 hover:bg-white/5 disabled:opacity-50"
-        >
-          <RotateCw className="h-4 w-4" /> Pesquisar novamente
-        </button>
-        <button
-          onClick={() => onApprove(briefing.trim(), tema.trim())}
-          disabled={!briefing.trim()}
-          className="btn-accent rounded-lg px-5 py-2.5 text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-50"
-        >
-          <Check className="h-4 w-4" /> Usar este briefing
-        </button>
+      <button
+        type="button"
+        onClick={() => canApprove && onApprove(copyEditada.trim(), temaEditado.trim(), selectedPattern!, selectedTemplate?.carrossel ? numSlides : 1)}
+        disabled={!canApprove}
+        className={cn(
+          "mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition-colors",
+          canApprove ? "btn-accent" : "cursor-not-allowed border border-white/10 bg-white/[0.04] text-white/35",
+        )}
+      >
+        <Check className="h-4 w-4" />
+        {canApprove ? "Próximo → Copy Final" : "Escolha template e copy"}
+      </button>
+    </div>
+  );
+
+  return (
+    <GlassCard className="mx-auto max-w-6xl overflow-hidden">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.9fr)]">
+        <div className="space-y-5">
+          <div className="space-y-2">
+            <div className="text-xs uppercase tracking-wider text-accent">Etapa 2 · Consolidação + Template</div>
+            <h2 className="text-xl font-semibold text-white sm:text-2xl">Copy consolidada e estrutura</h2>
+            <p className="max-w-2xl text-sm leading-relaxed text-white/55">
+              Revise a copy extraída e escolha o template que vai guiar a estrutura da sua mensagem.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wider text-white/70 block mb-2">
+                📝 Tema
+              </label>
+              <input
+                value={temaEditado}
+                onChange={(e) => setTemaEditado(e.target.value)}
+                className="glass-input w-full rounded-lg px-4 py-3 text-sm text-white placeholder-white/30 border border-white/10 focus:border-accent/50 focus:outline-none transition-colors"
+                placeholder="Qual é o tema central?"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wider text-white/70 block mb-2">
+                📋 Copy Consolidada
+              </label>
+              <textarea
+                value={copyEditada}
+                onChange={(e) => setCopyEditada(e.target.value)}
+                className="w-full min-h-[200px] rounded-lg bg-white/[0.03] border border-white/10 px-4 py-3 text-sm leading-relaxed text-white/90 focus:outline-none focus:border-accent/40 transition-colors resize-y"
+                placeholder="Copy consolidada do post..."
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wider text-white/70 block mb-3">
+              🎯 Escolha o Template
+            </label>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {TEMPLATES.map((t) => {
+                const meta = PATTERN_META[t.id];
+                const selected = selectedPattern === t.id;
+
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => selectTemplate(t)}
+                    className={selectTemplateStyle(selected)}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-3xl">{t.emoji}</div>
+                        <div className="mt-2 text-sm font-semibold text-white">{t.nome}</div>
+                        <p className="mt-1 text-xs leading-relaxed text-white/55">{t.desc}</p>
+                      </div>
+                      <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/70">
+                        {t.id}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 h-16 rounded-xl border border-white/10 p-3" style={{ background: meta.preview }}>
+                      <div className="flex h-full items-end justify-between">
+                        <div className="text-left text-[10px] uppercase tracking-[0.15em] text-white/70">
+                          Template
+                        </div>
+                        <div className="max-w-[10rem] text-right text-sm font-semibold leading-tight text-white">
+                          {meta.title}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="xl:hidden">{summaryPanel}</div>
+        </div>
+
+        <aside className="hidden xl:block xl:sticky xl:top-6 xl:self-start">{summaryPanel}</aside>
       </div>
     </GlassCard>
   );
