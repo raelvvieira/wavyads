@@ -23,6 +23,8 @@ export interface WavyStyle {
   descricao_longa: string;
   /** Skill editável: template do prompt com placeholders {VISUAL_PROMPT}, {TEMA}, {TITULO}, {CORPO}, {COR_PRIMARIA}, {INFLUENCIA_VISUAL}. */
   promptTemplate: string;
+  /** true = estilo embutido (editável, não deletável). false = custom do usuário. */
+  builtin: boolean;
 }
 
 const COMMON_TAIL = `
@@ -34,6 +36,7 @@ export const WAVY_STYLES: WavyStyle[] = [
     id: "cinematic",
     nome: "Cinematográfico",
     caminho: "ia",
+    builtin: true,
     emoji: "🎬",
     resumo: "Drama, pessoas, narrativa. Photojournalism + cinematography.",
     quando: "Quando a história é sobre pessoas, emoção, transformação pessoal.",
@@ -50,6 +53,7 @@ export const WAVY_STYLES: WavyStyle[] = [
     id: "editorial",
     nome: "Editorial",
     caminho: "ia",
+    builtin: true,
     emoji: "📰",
     resumo: "Jornalístico, dados, cases, números. Bloomberg/Wired quality.",
     quando: "Quando o foco é dados, resultados, provas numéricas, análise.",
@@ -66,6 +70,7 @@ export const WAVY_STYLES: WavyStyle[] = [
     id: "minimalist",
     nome: "Minimalista",
     caminho: "ia",
+    builtin: true,
     emoji: "✨",
     resumo: "Abstrato, conceitual, gradientes. Quando o texto domina.",
     quando: "Quando o conceito/ideia é mais importante que o objeto visual.",

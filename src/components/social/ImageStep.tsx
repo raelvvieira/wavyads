@@ -30,7 +30,7 @@ interface Props {
 export function ImageStep({ patternId, tema, copy, initial, onApprove }: Props) {
   const slides = copy.slides || [];
   const templateId = templateSuffixFromPattern(patternId);
-  const { styles, saveStyle, resetStyle } = useImageStyles();
+  const { styles, saveStyle, createStyle, deleteStyle, resetStyle } = useImageStyles();
 
   // Leitura da copy inteira → base para sugestão de estilo por slide.
   const fullCopyText = useMemo(
@@ -157,6 +157,8 @@ export function ImageStep({ patternId, tema, copy, initial, onApprove }: Props) 
       <ImageStylesEditor
         styles={styles}
         onSave={saveStyle}
+        onCreate={createStyle}
+        onDelete={deleteStyle}
         onReset={resetStyle}
         onClose={() => setEditingStyles(false)}
       />
