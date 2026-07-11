@@ -108,7 +108,9 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      input = { directUrls: [cleanUrl(url)], resultsLimit: 10 };
+      // Este ator exige o campo "username" (mesmo campo usado em "base"/"top");
+      // ele aceita handles OU URLs completas de post/reel/perfil.
+      input = { username: [cleanUrl(url)], resultsLimit: 1 };
     }
 
     const endpoint = `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${token}`;
