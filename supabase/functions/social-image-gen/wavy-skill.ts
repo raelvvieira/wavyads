@@ -95,14 +95,21 @@ export function buildWavyPrompt(params: {
 }): { prompt: string; style_id: string; caminho: WavyPath } {
   const style = STYLES[params.style_id || ""] || STYLES.editorial;
   const suffix = TEMPLATE_SUFFIXES[params.template_id || ""] || TEMPLATE_SUFFIXES.template_1_cover;
-  const filled = style.promptTemplate
-    .replace(/\{VISUAL_PROMPT\}/g, params.visual_prompt || "")
-    .replace(/\{TEMA\}/g, params.tema || "")
-    .replace(/\{TITULO\}/g, params.slide_titulo || "")
-    .replace(/\{CORPO\}/g, params.slide_corpo || "")
-    .replace(/\{SUJEITO\}/g, params.sujeito || params.visual_prompt || "the main subject")
-    .replace(/\{COR_PRIMARIA\}/g, params.cor_primaria_hex || "#00D9FF")
-    .replace(/\{INFLUENCIA_VISUAL\}/g, params.influencia_visual || "editorial magazine quality")
-    .replace(/\{ESTILO_GLOBAL\}/g, params.estilo_global || "");
+  // Substituição via função: evita que '$&', '$$' etc. na copy sejam
+  // interpretados como padrões especiais de String.replace.
+  const vals: Record<string, string> = {
+    VISUAL_PROMPT: params.visual_prompt || "",
+    TEMA: params.tema || "",
+    TITULO: params.slide_titulo || "",
+    CORPO: params.slide_corpo || "",
+    SUJEITO: params.sujeito || params.visual_prompt || "the main subject",
+    COR_PRIMARIA: params.cor_primaria_hex || "#00D9FF",
+    INFLUENCIA_VISUAL: params.influencia_visual || "editorial magazine quality",
+    ESTILO_GLOBAL: params.estilo_global || "",
+  };
+  const filled = style.promptTemplate.replace(
+    /\{(VISUAL_PROMPT|TEMA|TITULO|CORPO|SUJEITO|COR_PRIMARIA|INFLUENCIA_VISUAL|ESTILO_GLOBAL)\}/g,
+    (_m, key) => vals[key] ?? "",
+  );
   return { prompt: filled + suffix, style_id: style.id, caminho: style.caminho };
 }

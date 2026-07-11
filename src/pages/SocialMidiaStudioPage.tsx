@@ -281,7 +281,6 @@ export default function SocialMidiaStudioPage() {
             patternId={pipeline.pattern_id}
             tema={pipeline.tema || ""}
             copy={pipeline.copy_aprovada}
-            estiloGlobal={pipeline.post_viral?.caption?.slice(0, 200)}
             initial={pipeline.imagens || undefined}
             onApprove={(imagens) => {
               setPipeline((s) => ({ ...s, imagens, etapa_atual: 5 }));

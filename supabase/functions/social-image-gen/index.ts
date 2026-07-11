@@ -20,6 +20,8 @@ interface ReqBody {
   /** Sufixo de composição (ex: template_1a_step, template_2b_dark). Override opcional. */
   template_id?: string;
   sujeito?: string;
+  /** Prompt final já montado no client (permite skill/prompt editados). Tem precedência sobre o builder. */
+  prompt?: string;
 }
 
 type GeminiModel = "gemini-3.1-flash-image-preview" | "gemini-3-pro-image-preview" | "gemini-2.5-flash-image";
@@ -57,16 +59,30 @@ Deno.serve(async (req) => {
     const templateSuffix = body.template_id
       || (body.pattern_id ? defaultTemplateFromPattern(body.pattern_id) : defaultTemplateFromFormato(body.formato));
 
-    const { prompt, style_id, caminho } = buildWavyPrompt({
-      style_id: body.style_id,
-      template_id: templateSuffix,
-      visual_prompt: body.visual_prompt,
-      tema: body.tema,
-      slide_titulo: body.slide_titulo,
-      slide_corpo: body.slide_corpo,
-      sujeito: body.sujeito,
-      estilo_global: body.estilo_global,
-    });
+    // Se o client mandou um prompt final (skill/prompt editados), usa direto.
+    // Caso contrário, monta server-side com o builder padrão.
+    let prompt: string;
+    let style_id: string;
+    let caminho: "ia" | "upload";
+    if (body.prompt && body.prompt.trim()) {
+      prompt = body.prompt.trim();
+      style_id = body.style_id || "editorial";
+      caminho = "ia";
+    } else {
+      const built = buildWavyPrompt({
+        style_id: body.style_id,
+        template_id: templateSuffix,
+        visual_prompt: body.visual_prompt,
+        tema: body.tema,
+        slide_titulo: body.slide_titulo,
+        slide_corpo: body.slide_corpo,
+        sujeito: body.sujeito,
+        estilo_global: body.estilo_global,
+      });
+      prompt = built.prompt;
+      style_id = built.style_id;
+      caminho = built.caminho;
+    }
 
     if (caminho === "upload") {
       return new Response(
