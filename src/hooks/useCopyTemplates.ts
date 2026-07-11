@@ -14,6 +14,7 @@ interface Row {
   slides_default: number;
   base_layout: string;
   prompt_body: string;
+  design_code: string | null;
 }
 
 function rowToTemplate(row: Row): CopyTemplate {
@@ -33,6 +34,7 @@ function rowToTemplate(row: Row): CopyTemplate {
     promptBody: row.prompt_body,
     structure: layoutBase.structure,
     builtin: !!builtinMatch,
+    designCode: row.design_code || undefined,
   };
 }
 
@@ -50,6 +52,7 @@ function templateToRow(t: CopyTemplate, userId: string) {
     base_layout: t.baseLayout,
     prompt_body: t.promptBody,
     builtin: t.builtin,
+    design_code: t.designCode ?? null,
   };
 }
 
@@ -92,7 +95,7 @@ export function useCopyTemplates() {
 
   const createTemplate = useCallback(async (fields: {
     nome: string; promptBody: string; baseLayout: CopyPatternId;
-    carrossel: boolean; emoji?: string;
+    carrossel: boolean; emoji?: string; designCode?: string;
   }): Promise<CopyTemplate> => {
     const key = `custom-${crypto.randomUUID()}`;
     const layoutBase = DEFAULT_TEMPLATES.find((t) => t.baseLayout === fields.baseLayout) || DEFAULT_TEMPLATES[2];
@@ -109,6 +112,7 @@ export function useCopyTemplates() {
       promptBody: fields.promptBody,
       structure: layoutBase.structure,
       builtin: false,
+      designCode: fields.designCode,
     };
     setTemplates((arr) => [...arr, t]);
     const { data: { user } } = await supabase.auth.getUser();

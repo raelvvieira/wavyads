@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, Package, Check, Loader2, Save } from "lucide-react";
 import { toPng } from "html-to-image";
 import JSZip from "jszip";
@@ -8,6 +8,7 @@ import { ProfileEditor } from "./ProfileEditor";
 import { SlideCanvas } from "./SlideCanvas";
 import { PATTERN_TEMPLATES } from "./templates";
 import { determinarFormato, templateFromPattern, type TemplateId, type TemplateSlideProps } from "./templates/shared";
+import { useCompiledDesign, DesignErrorBoundary } from "./useCompiledDesign";
 import { useSocialProfile } from "@/hooks/useSocialProfile";
 import { toast } from "@/hooks/use-toast";
 import type { CopyAprovada, SlideImagem, CopyPatternId } from "@/types/social";
@@ -17,10 +18,12 @@ interface Props {
   copy: CopyAprovada;
   imagens: SlideImagem[];
   patternId?: CopyPatternId | null;
+  /** Código React custom do template selecionado. Se presente e válido, substitui o layout embutido. */
+  designCode?: string;
   onFinish: () => void;
 }
 
-export function DesignStep({ tema, copy, imagens, patternId, onFinish }: Props) {
+export function DesignStep({ tema, copy, imagens, patternId, designCode, onFinish }: Props) {
   const { profile, template, save, uploadAvatar } = useSocialProfile();
   // Auto: pattern_id da copy → template, com override manual.
   const suggested = templateFromPattern(patternId ?? copy.pattern_id);
@@ -45,7 +48,14 @@ export function DesignStep({ tema, copy, imagens, patternId, onFinish }: Props) 
     }));
   }, [slides, imagens, total, profile]);
 
-  const Template = PATTERN_TEMPLATES[currentTemplate];
+  const BuiltinTemplate = PATTERN_TEMPLATES[currentTemplate];
+  // Design custom (código React do template). Fallback para o embutido em erro.
+  const { Comp: CustomDesign, error: designError } = useCompiledDesign(designCode);
+  const Template = CustomDesign || BuiltinTemplate;
+  const usingCustom = !!CustomDesign;
+  // Algum slide falhou no render do custom e caiu no embutido.
+  const [renderFailed, setRenderFailed] = useState(false);
+  useEffect(() => { setRenderFailed(false); }, [designCode]);
 
   const setRef = (i: number) => (el: HTMLDivElement | null) => {
     if (el) slideRefs.current.set(i, el);
@@ -135,11 +145,27 @@ export function DesignStep({ tema, copy, imagens, patternId, onFinish }: Props) 
         </div>
       </GlassCard>
 
+      {designCode && (
+        <div className={`rounded-lg px-3 py-2 text-xs border ${usingCustom && !renderFailed ? "bg-accent/5 border-accent/20 text-white/70" : "bg-destructive/10 border-destructive/30 text-destructive"}`}>
+          {!usingCustom
+            ? `Código de design com erro — usando o layout embutido. ${designError || ""}`
+            : renderFailed
+            ? "Alguns slides falharam no código custom e usaram o layout embutido."
+            : "Usando o código de design custom deste template."}
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-4 justify-center p-4 glass rounded-xl">
         {composedSlides.map((props, i) => (
           <div key={i} className="flex flex-col items-center gap-2 group">
             <SlideCanvas ref={setRef(i)} scale={0.25}>
-              <Template {...props} profile={profile} />
+              <DesignErrorBoundary
+                resetKey={designCode || "builtin"}
+                onError={() => setRenderFailed(true)}
+                fallback={<BuiltinTemplate {...props} profile={profile} />}
+              >
+                <Template {...props} profile={profile} />
+              </DesignErrorBoundary>
             </SlideCanvas>
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-white/40 font-mono">{String(i + 1).padStart(2, "0")}/{String(total).padStart(2, "0")}</span>

@@ -41,6 +41,8 @@ export interface CopyTemplate {
   structure: PreviewSlide[];
   /** true = template embutido (pode ser editado, não deletado). */
   builtin: boolean;
+  /** Código React custom do design. Vazio/undefined = usa o layout embutido (baseLayout). */
+  designCode?: string;
 }
 
 export const JSON_CARROSSEL = `{
