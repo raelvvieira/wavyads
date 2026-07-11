@@ -67,15 +67,16 @@ export function FormatPicker({ onConfirm }: Props) {
                   type="button"
                   onClick={() => selectTemplate(t)}
                   className={cn(
-                    "rounded-xl border p-3 text-left transition-all duration-200 flex flex-col items-start gap-2",
+                    "rounded-xl border px-4 py-5 text-left transition-all duration-200 flex flex-col gap-1 justify-center min-h-[78px]",
                     isSel
-                      ? "border-accent/60 bg-accent/10 shadow-[0_0_0_1px_rgba(253,70,56,0.2)]"
-                      : "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.05]",
+                      ? "border-accent/50 bg-accent/[0.07]"
+                      : "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]",
                   )}
                 >
-                  <div className="text-2xl">{t.emoji}</div>
                   <div className="text-sm font-semibold text-white leading-tight">{t.nome}</div>
-                  <div className="h-12 w-full rounded-lg border border-white/10" style={{ background: t.preview }} />
+                  <div className="text-[11px] text-white/40">
+                    {t.carrossel ? `${t.slidesDefault} slides` : t.baseLayout === "3" ? "Reel" : "Post único"}
+                  </div>
                 </button>
               );
             })}

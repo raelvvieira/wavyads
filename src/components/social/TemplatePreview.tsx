@@ -80,13 +80,10 @@ function MiniSlide({ slide, index }: { slide: PreviewSlide; index: number }) {
 export function TemplatePreview({ template }: { template: CopyTemplate }) {
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <span className="text-2xl">{template.emoji}</span>
-        <div>
-          <div className="text-sm font-semibold text-white">{template.nome}</div>
-          <div className="text-[11px] text-white/45">
-            {template.carrossel ? `Carrossel · ${template.slidesDefault} slides` : template.baseLayout === "3" ? "Reel" : "Post único"}
-          </div>
+      <div>
+        <div className="text-sm font-semibold text-white">{template.nome}</div>
+        <div className="text-[11px] text-white/45">
+          {template.carrossel ? `Carrossel · ${template.slidesDefault} slides` : template.baseLayout === "3" ? "Reel" : "Post único"}
         </div>
       </div>
 

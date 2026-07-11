@@ -150,15 +150,12 @@ export function CopyTemplatesEditor({ templates, onSave, onCreate, onDelete, onR
               key={t.key}
               onClick={() => openTemplate(t)}
               className={cn(
-                "w-full glass rounded-lg p-3 text-left transition-colors flex items-center gap-3",
+                "w-full glass rounded-lg p-3 text-left transition-colors",
                 sel === t.key ? "border-accent/60 bg-accent/10" : "hover:bg-white/5",
               )}
             >
-              <span className="text-xl">{t.emoji}</span>
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold text-white truncate">{t.nome}</div>
-                <div className="text-[10px] text-white/40">{t.builtin ? "Padrão" : "Custom"} · layout {t.baseLayout}</div>
-              </div>
+              <div className="text-sm font-semibold text-white truncate">{t.nome}</div>
+              <div className="text-[10px] text-white/40">{t.builtin ? "Padrão" : "Custom"} · layout {t.baseLayout}</div>
             </button>
           ))}
         </div>
