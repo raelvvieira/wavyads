@@ -20,6 +20,7 @@ const STATUS_LABEL: Record<string, { label: string; tone: "ok" | "warn" | "err" 
   sem_fala_detectada: { label: "⚠️ sem fala detectada", tone: "warn" },
   sem_texto_detectado: { label: "⚠️ sem texto detectado", tone: "warn" },
   sem_texto: { label: "⚠️ sem texto", tone: "warn" },
+  erro_download: { label: "❌ imagem bloqueada", tone: "err" },
   ausente: { label: "— ausente", tone: "warn" },
   ocr_desabilitado: { label: "⚠️ OCR indisponível", tone: "warn" },
   erro_api: { label: "❌ erro", tone: "err" },

@@ -16,28 +16,77 @@ function detectTipo(item: any): Tipo {
   return "post_estatico";
 }
 
-async function ocrImage(url: string, visionKey: string): Promise<string> {
+// Instagram/Facebook CDN bloqueia hotlink sem User-Agent de browser.
+// Mesmos cabeçalhos usados na edge function image-proxy (que funciona).
+const IMG_FETCH_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Safari/605.1.15",
+  Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+};
+
+interface OcrResult {
+  text: string;
+  /** "download_failed" quando não conseguimos baixar a imagem nem via imageUri. */
+  note?: "download_failed";
+}
+
+async function ocrImage(url: string, visionKey: string): Promise<OcrResult> {
+  // 1) Baixa a imagem com cabeçalhos de browser (contorna bloqueio do IG CDN).
+  let b64 = "";
   try {
-    const imgResp = await fetch(url);
-    if (!imgResp.ok) return "";
-    const buf = new Uint8Array(await imgResp.arrayBuffer());
-    // base64 encode
-    let bin = "";
-    for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
-    const b64 = btoa(bin);
+    const imgResp = await fetch(url, { headers: IMG_FETCH_HEADERS });
+    if (imgResp.ok) {
+      const buf = new Uint8Array(await imgResp.arrayBuffer());
+      let bin = "";
+      const CHUNK = 0x8000;
+      for (let i = 0; i < buf.length; i += CHUNK) {
+        bin += String.fromCharCode(...buf.subarray(i, i + CHUNK));
+      }
+      b64 = btoa(bin);
+    } else {
+      console.error("[OCR] download falhou", imgResp.status, url.slice(0, 120));
+    }
+  } catch (e) {
+    console.error("[OCR] download erro:", (e as Error).message, url.slice(0, 120));
+  }
+
+  // 2) Chama o Vision. Se o download falhou, tenta via source.imageUri
+  //    (deixa o Google buscar a imagem — às vezes passa onde o Deno não passa).
+  const imagePayload = b64 ? { content: b64 } : { source: { imageUri: url } };
+  try {
     const visionResp = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${visionKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        requests: [{ image: { content: b64 }, features: [{ type: "TEXT_DETECTION", maxResults: 1 }] }],
+        requests: [{ image: imagePayload, features: [{ type: "TEXT_DETECTION", maxResults: 1 }] }],
       }),
     });
     const data = await visionResp.json();
-    return data?.responses?.[0]?.fullTextAnnotation?.text?.trim() || "";
+    if (!visionResp.ok) {
+      console.error("[OCR] vision http", visionResp.status, JSON.stringify(data).slice(0, 300));
+      return { text: "", note: b64 ? undefined : "download_failed" };
+    }
+    const apiErr = data?.responses?.[0]?.error;
+    if (apiErr) {
+      console.error("[OCR] vision error", JSON.stringify(apiErr).slice(0, 300));
+      // Erro do Vision ao buscar imageUri geralmente = imagem inacessível.
+      return { text: "", note: b64 ? undefined : "download_failed" };
+    }
+    const text = data?.responses?.[0]?.fullTextAnnotation?.text?.trim() || "";
+    return { text, note: !text && !b64 ? "download_failed" : undefined };
   } catch (e) {
-    console.error("[OCR] erro:", e);
-    return "";
+    console.error("[OCR] vision erro:", (e as Error).message);
+    return { text: "", note: b64 ? undefined : "download_failed" };
   }
+}
+
+/** Extrai a melhor URL de imagem de um child de carrossel (nomes variam por actor). */
+function childImageUrl(child: any): string {
+  return getStringValue(
+    child?.displayUrl || child?.imageUrl || child?.url || child?.thumbnailUrl ||
+    (Array.isArray(child?.images) ? child.images[0] : "") ||
+    (Array.isArray(child?.imageUrls) ? child.imageUrls[0] : ""),
+  );
 }
 
 function getStringValue(value: unknown): string {
@@ -265,14 +314,28 @@ Deno.serve(async (req) => {
         slides = children.map((_, i) => ({ slide: i + 1, texto: "", status: "ocr_desabilitado" }));
       } else {
         slides = [];
+        let downloadFailures = 0;
         for (let i = 0; i < children.length; i++) {
-          const slideUrl = children[i]?.displayUrl || children[i]?.imageUrl || children[i]?.url;
-          if (slideUrl) ocr_calls++;
-          const texto = slideUrl ? await ocrImage(slideUrl, VISION_KEY) : "";
-          slides.push({ slide: i + 1, texto, status: texto ? "ok" : "sem_texto" });
+          const slideUrl = childImageUrl(children[i]);
+          if (!slideUrl) {
+            slides.push({ slide: i + 1, texto: "", status: "ausente" });
+            continue;
+          }
+          ocr_calls++;
+          const { text, note } = await ocrImage(slideUrl, VISION_KEY);
+          if (note === "download_failed") downloadFailures++;
+          slides.push({
+            slide: i + 1,
+            texto: text,
+            status: text ? "ok" : note === "download_failed" ? "erro_download" : "sem_texto",
+          });
         }
         const totalTxt = slides.filter((s) => s.texto).length;
-        status.ocr = totalTxt > 0 ? "ok" : "sem_texto_detectado";
+        status.ocr = totalTxt > 0
+          ? "ok"
+          : downloadFailures > 0
+          ? "erro_download"
+          : "sem_texto_detectado";
       }
     } else {
       const imgUrl = item.displayUrl || (item.images || [])[0] || item.thumbnailUrl;
@@ -280,8 +343,9 @@ Deno.serve(async (req) => {
         status.ocr = "ocr_desabilitado";
       } else if (imgUrl) {
         ocr_calls = 1;
-        textoVisual = await ocrImage(imgUrl, VISION_KEY);
-        status.ocr = textoVisual ? "ok" : "sem_texto_detectado";
+        const { text, note } = await ocrImage(imgUrl, VISION_KEY);
+        textoVisual = text;
+        status.ocr = text ? "ok" : note === "download_failed" ? "erro_download" : "sem_texto_detectado";
       } else {
         status.ocr = "ausente";
       }
