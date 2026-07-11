@@ -17,6 +17,7 @@ import { DesignStep } from "@/components/social/design/DesignStep";
 import { useViralScraper, type ViralSource, type ViralPost } from "@/hooks/useViralScraper";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { buildCopyPrompt, type CopyTemplate } from "@/lib/copyTemplates";
 import type { CopyPatternId, CopyAprovada, SlideImagem, PostCopy } from "@/types/social";
 
 const STEPS = ["Scraper", "Resumo", "Template", "Copy Final", "Imagens", "Design"];
@@ -29,6 +30,8 @@ interface Pipeline {
   tema: string | null;
   pattern_id: CopyPatternId | null;
   num_slides: number;
+  /** Template escolhido na Etapa 3 (default editado ou custom). */
+  selected_template: CopyTemplate | null;
   copy_aprovada: CopyAprovada | null;
   imagens: SlideImagem[] | null;
 }
@@ -100,6 +103,7 @@ export default function SocialMidiaStudioPage() {
     tema: null,
     pattern_id: null,
     num_slides: 0,
+    selected_template: null,
     copy_aprovada: null,
     imagens: null,
   });
@@ -114,6 +118,17 @@ export default function SocialMidiaStudioPage() {
     () => STEPS.map((_, i) => i < pipeline.etapa_atual),
     [pipeline.etapa_atual],
   );
+
+  // Prompt final do template selecionado (editável/custom) para a Copy Final.
+  const templatePrompt = useMemo(() => {
+    if (!pipeline.selected_template || !pipeline.tema || !pipeline.post_copy) return undefined;
+    return buildCopyPrompt(pipeline.selected_template, {
+      tema: pipeline.tema,
+      briefing: pipeline.post_copy.copy_consolidada,
+      num_slides: pipeline.num_slides,
+      copy_referencia: pipeline.post_copy.copy_consolidada,
+    });
+  }, [pipeline.selected_template, pipeline.tema, pipeline.post_copy, pipeline.num_slides]);
 
   if (isLoading) return null;
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
@@ -243,8 +258,10 @@ export default function SocialMidiaStudioPage() {
       {/* Etapa 3 — Template */}
       {pipeline.etapa_atual === 2 && pipeline.tema?.trim() && (
         <FormatPicker
-          onConfirm={(pattern_id, num_slides) => {
-            setPipeline((s) => ({ ...s, pattern_id, num_slides, etapa_atual: 3 }));
+          onConfirm={(template, num_slides) => {
+            setPipeline((s) => ({
+              ...s, selected_template: template, pattern_id: template.baseLayout, num_slides, etapa_atual: 3,
+            }));
             toast({ title: "Template selecionado", description: "Avançando para Copy Final" });
           }}
         />
@@ -260,6 +277,7 @@ export default function SocialMidiaStudioPage() {
           copyReferencia={pipeline.post_copy.copy_consolidada}
           pattern_id={pipeline.pattern_id}
           num_slides={pipeline.num_slides}
+          templatePrompt={templatePrompt}
           onApprove={(pattern_id, num_slides, copy) => {
             setPipeline((s) => ({
               ...s, pattern_id, num_slides, copy_aprovada: copy, etapa_atual: 4,
@@ -308,7 +326,7 @@ export default function SocialMidiaStudioPage() {
               toast({ title: "Carrossel finalizado!", description: "Pipeline completo." });
               setPipeline({
                 etapa_atual: 0, post_viral: null, post_copy: null,
-                tema: null, pattern_id: null, num_slides: 0, copy_aprovada: null, imagens: null,
+                tema: null, pattern_id: null, num_slides: 0, selected_template: null, copy_aprovada: null, imagens: null,
               });
             }}
           />

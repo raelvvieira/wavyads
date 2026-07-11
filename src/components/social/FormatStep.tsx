@@ -13,10 +13,12 @@ interface Props {
   copyReferencia?: string;
   pattern_id: CopyPatternId;
   num_slides: number;
+  /** Prompt final do template selecionado (editável/custom). Se ausente, usa builder embutido. */
+  templatePrompt?: string;
   onApprove: (pattern_id: CopyPatternId, num_slides: number, copy: CopyAprovada) => void;
 }
 
-export function FormatStep({ tema, briefing, copyReferencia, pattern_id: prePat, num_slides: preNum, onApprove }: Props) {
+export function FormatStep({ tema, briefing, copyReferencia, pattern_id: prePat, num_slides: preNum, templatePrompt, onApprove }: Props) {
   const [pattern] = useState<CopyPatternId>(prePat);
   const [numSlides, setNumSlides] = useState(preNum);
   const [loading, setLoading] = useState(false);
@@ -47,7 +49,7 @@ export function FormatStep({ tema, briefing, copyReferencia, pattern_id: prePat,
     setCopy(null);
     try {
       const { data, error } = await supabase.functions.invoke("social-copy", {
-        body: { mode: "pattern", pattern_id: pat, tema, briefing, num_slides: n, copy_referencia: copyReferencia || "" },
+        body: { mode: "pattern", pattern_id: pat, tema, briefing, num_slides: n, copy_referencia: copyReferencia || "", template_prompt: templatePrompt || "" },
       });
 
       if (error) {

@@ -12,6 +12,8 @@ interface PatternReq {
   briefing: string;
   num_slides?: number;
   copy_referencia?: string;
+  /** Prompt final montado no client (template editável/custom). Tem precedência. */
+  template_prompt?: string;
 }
 interface RewriteReq {
   mode: "rewrite";
@@ -255,7 +257,11 @@ Deno.serve(async (req) => {
 
     if (body.mode === "pattern") {
       activePattern = body.pattern_id;
-      userPrompt = buildPatternPrompt(body);
+      // Prompt final vindo do client (template editável ou custom) tem precedência.
+      // Caso ausente, monta com os builders embutidos (compat).
+      userPrompt = body.template_prompt?.trim()
+        ? body.template_prompt.trim()
+        : buildPatternPrompt(body);
     } else if (body.mode === "rewrite") {
       userPrompt = buildRewritePrompt(body);
     } else if (body.mode === "carrossel" || body.mode === "post_unico" || body.mode === "reel") {
