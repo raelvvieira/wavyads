@@ -1510,16 +1510,20 @@ Integrate the subject naturally into the composition described below.`
       : '';
 
     const designSystem = editedDoc || analysis?.designSystemDoc || '';
+    // IMPORTANTE: nunca injetar aqui copy_structure/base_prompt do template —
+    // ambos podem conter texto literal (headline, CTA, etc.) do projeto em que
+    // o template foi salvo originalmente, e o modelo de imagem pode renderizar
+    // esse texto antigo junto com a copy atual. O template deve influenciar
+    // apenas LAYOUT/ESTILO; todo o texto vem exclusivamente do bloco
+    // [TEXT BLOCKS] abaixo, montado a partir da copy do projeto atual.
     const templateBlock = selectedTemplate
       ? `[TEMPLATE STRUCTURE]
-Use the following reusable template structure as the creative foundation.
+Use the following reusable template structure as the creative foundation — layout, visual hierarchy, typography rhythm, spacing and composition only.
 Template name: ${selectedTemplate.name}
 Template category: ${selectedTemplate.category || 'not specified'}
 Template visual structure: ${JSON.stringify(selectedTemplate.layout_structure || {})}
-Template copy structure: ${JSON.stringify(selectedTemplate.copy_structure || {})}
-Template base prompt: ${selectedTemplate.base_prompt || ''}
 
-The final artwork must follow the template's layout logic, visual hierarchy, typography rhythm, spacing, and composition, while adapting the text, product, references and business context from the current project.`
+This structure defines LAYOUT AND STYLE ONLY. Do NOT reuse, reference or render any headline, label, subtitle, CTA or body copy from a previous use of this template. ALL text content for this artwork comes exclusively from the [TEXT BLOCKS] section below, verbatim — adapt only the text, product, references and business context from the current project.`
       : '';
 
     const safe = `[SAFE ZONE]
@@ -1539,10 +1543,12 @@ ${aspect === 'square' ? 'Centered composition optimized for square 1:1 framing.'
 All text must be rendered exactly as written, in ${language === 'pt-BR' ? 'Portuguese (Brazil)' : language === 'es' ? 'Spanish' : 'English'}, with professional typography and perfect legibility.
 ${parts.join('\n')}`;
     } else if (copySource === 'original' && rawCopy.trim()) {
-      textBlocks = `[TEXT BLOCKS]
-Render the following exact text as overlay on the creative, in ${language === 'pt-BR' ? 'Portuguese (Brazil)' : language === 'es' ? 'Spanish' : 'English'}, professional typography, perfect legibility, do not paraphrase:
-"${rawCopy.trim()}"
-Distribute the text across the composition following the typography system and hierarchy from the design system above.`;
+      textBlocks = `[TEXT BLOCKS — USER-WRITTEN COPY, FINAL]
+Render ONLY the exact text below as overlay on the creative, in ${language === 'pt-BR' ? 'Portuguese (Brazil)' : language === 'es' ? 'Spanish' : 'English'}, professional typography, perfect legibility. Do not paraphrase, shorten, expand or reword it.
+"""
+${rawCopy.trim()}
+"""
+This is the COMPLETE and FINAL copy — the user wrote it themselves and it must not be changed. Do NOT add any headline, kicker, tagline, subtitle, CTA button, price, offer or any other text that is not written above, even if the composition seems to have room for it or a reference/template suggests one. If the text above has no explicit call-to-action line, do not invent one. Distribute exactly this text across the composition following the typography system and hierarchy from the design system above — do not add new text elements to fill the layout.`;
     }
 
     const logoBlock = logoImage.length > 0
