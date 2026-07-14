@@ -331,6 +331,12 @@ export default function CriativoStudioPage() {
   const [referenceClientFilter, setReferenceClientFilter] = useState('all');
   const [referenceClients, setReferenceClients] = useState<{id: string; name: string}[]>([]);
   const [uploadClientId, setUploadClientId] = useState('all');
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [loadingClientLogo, setLoadingClientLogo] = useState(false);
+  // Invalida respostas de applyClientLogo que chegam depois de uma troca de
+  // cliente mais recente (evita que uma busca lenta do cliente A sobrescreva
+  // o logo do cliente B já selecionado).
+  const clientLogoRequestIdRef = useRef(0);
   const [templates, setTemplates] = useState<CreativeTemplate[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [templateSearch, setTemplateSearch] = useState('');
@@ -440,6 +446,12 @@ export default function CriativoStudioPage() {
   }, [styleGalleryOpen, isAdmin]);
 
   useEffect(() => {
+    // Lista de clientes precisa estar pronta já na tela inicial (seletor de cliente).
+    if (isAdmin) fetchClientsForFilter();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin]);
+
+  useEffect(() => {
     setStep(getLegacyStepFromStage(currentStage));
   }, [currentStage]);
 
@@ -527,6 +539,7 @@ export default function CriativoStudioPage() {
         status: 'in_progress',
         user_id: userId,
         created_by: userId,
+        client_id: selectedClientId,
       })
       .select('id,title')
       .single();
@@ -572,6 +585,7 @@ export default function CriativoStudioPage() {
     projectTitle: buildProjectTitle(),
     selectedTemplateId,
     selectedTemplate,
+    selectedClientId,
   });
 
   const saveProjectState = async (options?: { silent?: boolean }) => {
@@ -583,6 +597,11 @@ export default function CriativoStudioPage() {
       await db
         .from('creative_project_state')
         .upsert({ project_id: projectId, state_json: snapshot, updated_at: new Date().toISOString() }, { onConflict: 'project_id' });
+      // Se o upload pro Storage falhou, storyImage/squareImage podem estar como
+      // data: URI (base64 gigante) — nunca usar isso como thumbnail_url, que é
+      // lido em massa na lista do histórico. Cada candidato é checado
+      // independente (não para no primeiro truthy).
+      const thumb = [storyImage, squareImage].find((u) => u && !u.startsWith('data:')) || null;
       await db
         .from('creative_projects')
         .update({
@@ -593,8 +612,9 @@ export default function CriativoStudioPage() {
           selected_resolution: selectedResolution,
           language,
           model,
-          thumbnail_url: storyImage || squareImage || null,
+          thumbnail_url: thumb,
           status: storyImage || squareImage ? 'generated' : 'in_progress',
+          client_id: selectedClientId,
           updated_at: new Date().toISOString(),
         })
         .eq('id', projectId);
@@ -647,6 +667,7 @@ export default function CriativoStudioPage() {
     setProjectTitle(state.projectTitle || state.initialPrompt?.slice(0, 60) || 'Novo criativo');
     setSelectedTemplateId(state.selectedTemplateId || null);
     setSelectedTemplate(state.selectedTemplate || null);
+    setSelectedClientId(state.selectedClientId || null);
   };
 
   const loadCreativeProject = async (projectId: string) => {
@@ -659,6 +680,9 @@ export default function CriativoStudioPage() {
       setCurrentProjectId(projectId);
       setProjectTitle(project?.title || 'Novo criativo');
       restoreProjectState(stateRow?.state_json || {});
+      // client_id da coluna própria é a fonte de verdade (projetos antigos podem
+      // não ter selectedClientId no state_json).
+      setSelectedClientId(project?.client_id || null);
       setLastSavedAt(project?.updated_at || null);
       toast({ title: 'Projeto carregado' });
     } catch (e: any) {
@@ -717,6 +741,7 @@ export default function CriativoStudioPage() {
           status: 'in_progress',
           user_id: userId,
           created_by: userId,
+          client_id: project.client_id,
         })
         .select('id')
         .single();
@@ -757,6 +782,38 @@ export default function CriativoStudioPage() {
       if (error) throw error;
       setReferenceClients(data || []);
     } catch { /* silently ignore — filter just won't have client options */ }
+  };
+
+  // Reaproveita creative_assets (type='logo', client_id=X) como "logo salvo do
+  // cliente" — sem precisar de coluna nova em clients. Sempre pega o mais
+  // recente enviado para aquele cliente.
+  const applyClientLogo = async (clientId: string) => {
+    const requestId = ++clientLogoRequestIdRef.current;
+    setLoadingClientLogo(true);
+    try {
+      const { data, error } = await db
+        .from('creative_assets')
+        .select('url')
+        .eq('type', 'logo')
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (requestId !== clientLogoRequestIdRef.current) return; // usuário já trocou de cliente de novo
+      if (error) throw error;
+      if (data?.url) {
+        setLogoImage([data.url]);
+        toast({ title: 'Logo do cliente carregado', description: 'Não precisa enviar de novo.' });
+      }
+      // Sem logo salvo para esse cliente: não mexe no que já está no dropzone
+      // (pode ser um upload manual feito nesta mesma sessão).
+    } catch (e: any) {
+      if (requestId === clientLogoRequestIdRef.current) {
+        toast({ title: 'Erro ao buscar logo do cliente', description: e?.message, variant: 'destructive' });
+      }
+    } finally {
+      if (requestId === clientLogoRequestIdRef.current) setLoadingClientLogo(false);
+    }
   };
 
   const deleteReferenceAsset = async (assetId: string) => {
@@ -1897,7 +1954,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
   const prepareGenerationSummary = async () => {
     setCurrentStage('generation-summary');
     setRightPanelMode('generation-summary');
-    await persistUploadedImages(logoImage, 'logos', 'logo');
+    await persistUploadedImages(logoImage, 'logos', 'logo', selectedClientId || undefined);
     await persistUploadedImages(productImages, 'products', 'product');
     if (!businessContext && (analysis || selectedCopy || rawCopy.trim())) {
       await generateBusinessContext();
@@ -2186,6 +2243,68 @@ A reference Story version of this same creative is attached as the FIRST image. 
       </button>
     );
   };
+
+  const renderClientSelect = () => (
+    <Select
+      value={selectedClientId || 'none'}
+      onValueChange={(v) => {
+        clientLogoRequestIdRef.current++; // invalida qualquer applyClientLogo ainda em voo
+        if (v === 'none') {
+          setSelectedClientId(null);
+          setLogoImage([]);
+          return;
+        }
+        setSelectedClientId(v);
+        applyClientLogo(v);
+      }}
+    >
+      <SelectTrigger className={cn('h-8 w-[140px] rounded-full', selectedClientId && 'ring-1 ring-[#EC4899]')}>
+        <span className="truncate flex items-center gap-1.5">
+          {loadingClientLogo && <Loader2 className="h-3 w-3 animate-spin" />}
+          {selectedClientId ? (referenceClients.find((c) => c.id === selectedClientId)?.name || 'Cliente') : 'Cliente'}
+        </span>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="none">Sem cliente</SelectItem>
+        {referenceClients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
+
+  const renderBoardCard = ({
+    url, aspect, title, subtitle, onDownload, onEdit, compact,
+  }: {
+    url: string; aspect: 'story' | 'square'; title?: string; subtitle?: string;
+    onDownload: () => void; onEdit: () => void; compact?: boolean;
+  }) => (
+    <div className={cn('flex flex-col gap-2', compact ? 'w-full' : 'w-full max-w-[280px]')}>
+      <div
+        className={cn(
+          'group relative w-full overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035]',
+          aspect === 'story' ? 'aspect-[9/16]' : 'aspect-square',
+        )}
+      >
+        <img src={url} alt={title || 'Criativo gerado'} className="h-full w-full object-cover" />
+        <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/0 opacity-0 transition group-hover:bg-black/45 group-hover:opacity-100">
+          <button type="button" onClick={() => setLightboxUrl(url)} className="rounded-full bg-black/60 p-2 backdrop-blur hover:bg-black/80" title="Ver em tela cheia">
+            <ZoomIn className="h-4 w-4 text-white" />
+          </button>
+          <button type="button" onClick={onDownload} className="rounded-full bg-black/60 p-2 backdrop-blur hover:bg-black/80" title="Baixar">
+            <Download className="h-4 w-4 text-white" />
+          </button>
+          <button type="button" onClick={onEdit} className="rounded-full bg-black/60 p-2 backdrop-blur hover:bg-black/80" title="Editar com IA">
+            <Pencil className="h-4 w-4 text-white" />
+          </button>
+        </div>
+      </div>
+      {(title || subtitle) && (
+        <div>
+          {title && <p className="text-xs font-medium text-white line-clamp-2">{title}</p>}
+          {subtitle && <p className="text-[10px] text-white/40 mt-0.5">{subtitle}</p>}
+        </div>
+      )}
+    </div>
+  );
 
   const PanelFold = ({
     title,
@@ -2789,9 +2908,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
                 <span className="rounded-full bg-white/10 px-2 py-1 text-white/60">{language}</span>
                 <span className="rounded-full bg-white/10 px-2 py-1 text-white/60">GPT Image 2</span>
               </div>
-              {renderGeneratedThumb(storyImage, 'story', 'Story')}
-              {mainSquareLoading && <Skeleton className="aspect-square rounded-2xl" />}
-              {renderGeneratedThumb(squareImage, 'square', 'Quadrado')}
+              <p className="text-xs text-white/45">A arte aparece no quadro grande, logo abaixo da conversa.</p>
               <div className="grid grid-cols-2 gap-2">
                 <Button variant="outline" className="rounded-full" disabled={!storyImage && !squareImage} onClick={() => storyImage ? download(storyImage, imageFileName(`criativo-principal-${selectedAspectRatio}`)) : squareImage && download(squareImage, imageFileName('criativo-square'))}><Download className="mr-2 h-3 w-3" />Baixar</Button>
                 <Button variant="outline" className="rounded-full" disabled={!storyImage || mainSquareLoading} onClick={() => recreateSquare('main')}><RefreshCw className="mr-2 h-3 w-3" />1080</Button>
@@ -2849,11 +2966,12 @@ A reference Story version of this same creative is attached as the FIRST image. 
                 return (
                   <div key={i} className="rounded-2xl border border-white/10 bg-white/[0.035] p-3 space-y-2">
                     <p className="text-[11px] uppercase tracking-wider text-[#EC4899]">#{i + 1} {v?.eixo || 'variação'}</p>
-                    {img ? renderGeneratedThumb(img, 'story', v?.nome || `Fator ${i + 1}`) : err ? (
+                    {err && (
                       <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-xs text-destructive">
                         {err}
                       </div>
-                    ) : <Skeleton className="aspect-[9/16] rounded-2xl" />}
+                    )}
+                    {!img && !err && <Skeleton className="h-10 rounded-2xl" />}
                     {v && (
                       <>
                         <p className="text-sm font-medium">{v.nome}</p>
@@ -2903,7 +3021,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
                     )}
                     {sqImg && (
                       <div className="mt-2 space-y-2 rounded-2xl border border-white/10 bg-black/20 p-2">
-                        {renderGeneratedThumb(sqImg, 'square', `Fator ${i + 1} 1:1`)}
+                        <p className="text-[10px] text-white/40">Versão 1080x1080 · veja no quadro abaixo</p>
                         <div className="grid grid-cols-3 gap-2">
                           <Button size="sm" variant="outline" className="rounded-full" onClick={() => download(sqImg, imageFileName(`criativo-fator-${i + 1}-square`))}>Baixar</Button>
                           <Button size="sm" variant="outline" className="rounded-full" onClick={() => openEditTarget({ key: `f${i}:square`, image: sqImg, aspect: 'square', prompt: v?.promptCompleto || '', label: `Fator ${i + 1} square` })}>Editar</Button>
@@ -3066,6 +3184,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
                   />
                   <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-3">
                     <div className="flex flex-wrap gap-2">
+                      {renderClientSelect()}
                       <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-xs text-white/62">GPT Image 2</span>
                       <Select value={selectedResolution} onValueChange={(v) => setSelectedResolution(v as CreativeResolution)}>
                         <SelectTrigger className="h-8 w-[92px] rounded-full"><span>{selectedResolution}</span></SelectTrigger>
@@ -3113,6 +3232,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
             {currentStage !== 'initial' && (
               <div className="space-y-4">
                 <div className="flex flex-wrap items-center gap-2 rounded-[24px] border border-white/10 bg-[#111113] p-2">
+                  {renderClientSelect()}
                   <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-xs text-white/62">GPT Image 2</span>
                   <Select value={selectedResolution} onValueChange={(v) => setSelectedResolution(v as CreativeResolution)}>
                     <SelectTrigger className="h-8 w-[92px] rounded-full"><span>{selectedResolution}</span></SelectTrigger>
@@ -3184,6 +3304,88 @@ A reference Story version of this same creative is attached as the FIRST image. 
                       {factorLoading && `Aplicando Fator Criativo ${factorProgress}/5...`}
                       {editLoadingKey && 'Aplicando edição...'}
                     </div>
+                  </div>
+                )}
+                {(storyImage || squareImage || factorLoading || (factorVariations && factorVariations.length > 0)) && (
+                  <div className="mt-2 space-y-5 rounded-[24px] border border-white/10 bg-[#111113] p-5">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-white/45">Artes prontas</h3>
+                      {(storyImage || squareImage) && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 rounded-full text-xs text-white/50"
+                          onClick={() => { setCurrentStage('result'); setRightPanelMode('generated-result'); }}
+                        >
+                          Ações e configuração
+                        </Button>
+                      )}
+                    </div>
+
+                    {(storyImage || squareImage) && (
+                      <div className="flex flex-wrap gap-4">
+                        {storyImage && renderBoardCard({
+                          url: storyImage,
+                          aspect: 'story',
+                          title: 'Arte principal',
+                          subtitle: selectedAspectRatio,
+                          onDownload: () => download(storyImage, imageFileName(`criativo-principal-${selectedAspectRatio}`)),
+                          onEdit: () => openEditTarget({ key: 'main:story', image: storyImage, aspect: 'story', prompt: buildFinalPromptForSelectedAspect(), label: 'Principal Story' }),
+                        })}
+                        {mainSquareLoading && (
+                          <div className="w-full max-w-[280px]"><Skeleton className="aspect-square rounded-2xl" /></div>
+                        )}
+                        {squareImage && renderBoardCard({
+                          url: squareImage,
+                          aspect: 'square',
+                          title: 'Versão 1080x1080',
+                          onDownload: () => download(squareImage, imageFileName('criativo-square')),
+                          onEdit: () => openEditTarget({ key: 'main:square', image: squareImage, aspect: 'square', prompt: buildFinalPrompt('square', { selectedAspectRatio: '1:1', selectedResolution }), label: 'Principal 1:1' }),
+                        })}
+                      </div>
+                    )}
+
+                    {(factorLoading || (factorVariations && factorVariations.length > 0)) && (
+                      <div className="space-y-3">
+                        <p className="text-[11px] uppercase tracking-wider text-[#F9A8D4]">
+                          Fator Criativo · 5 variações{factorLoading && ` (${factorProgress}/5)`}
+                        </p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                          {Array.from({ length: 5 }).map((_, i) => {
+                            const v = factorVariations?.[i];
+                            const img = factorImages[i];
+                            const sqImg = factorSquareImages[i];
+                            const err = factorErrors[i];
+                            return (
+                              <div key={i} className="space-y-1.5">
+                                <p className="text-[10px] uppercase tracking-wider text-[#EC4899]">#{i + 1} {v?.eixo || 'variação'}</p>
+                                {img ? renderBoardCard({
+                                  url: img,
+                                  aspect: 'story',
+                                  compact: true,
+                                  title: v?.nome,
+                                  onDownload: () => download(img, imageFileName(`criativo-fator-${i + 1}-${v?.eixo || 'story'}`)),
+                                  onEdit: () => openEditTarget({ key: `f${i}:story`, image: img, aspect: 'story', prompt: v?.promptCompleto || '', label: `Fator ${i + 1}` }),
+                                }) : err ? (
+                                  <div className="aspect-[9/16] rounded-2xl border border-destructive/30 bg-destructive/10 p-3 text-[10px] text-destructive">{err}</div>
+                                ) : (
+                                  <Skeleton className="aspect-[9/16] rounded-2xl" />
+                                )}
+                                {factorSquareLoading[i] && <Skeleton className="aspect-square rounded-2xl" />}
+                                {sqImg && renderBoardCard({
+                                  url: sqImg,
+                                  aspect: 'square',
+                                  compact: true,
+                                  subtitle: '1080x1080',
+                                  onDownload: () => download(sqImg, imageFileName(`criativo-fator-${i + 1}-square`)),
+                                  onEdit: () => openEditTarget({ key: `f${i}:square`, image: sqImg, aspect: 'square', prompt: v?.promptCompleto || '', label: `Fator ${i + 1} square` }),
+                                })}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
                 <div ref={chatEndRef} />
