@@ -44,7 +44,6 @@ import {
   Settings,
   History,
   Users,
-  MoreHorizontal,
   PanelRightClose,
   Search,
 } from 'lucide-react';
@@ -3111,39 +3110,43 @@ A reference Story version of this same creative is attached as the FIRST image. 
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] xl:grid-cols-[minmax(0,1fr)_460px]">
 
         <main className="mx-auto flex w-full max-w-4xl flex-col px-4 py-5 sm:px-6 lg:px-8">
-          <header className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-                <Wand2 className="h-5 w-5 text-[#EC4899]" />
-                Criativo Studio
-              </h1>
-              <p className="mt-1 text-sm text-white/62">Workspace conversacional para criação de criativos</p>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
+          <header className="space-y-3">
+            {/* Barra utilitária: identidade do app (discreta) + ações do workspace */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-white/45">
+                <Wand2 className="h-4 w-4 text-[#EC4899]" />
+                <span className="text-xs font-semibold uppercase tracking-wider">Criativo Studio</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="rounded-full" disabled={savingProject || loadingProject} onClick={() => saveProjectState()}>
+                  {savingProject ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-2 h-3.5 w-3.5" />}
+                  Salvar
+                </Button>
+                <Button variant="outline" size="sm" className="rounded-full" onClick={() => handleQuickAction('open-project-history')}>
+                  <History className="mr-2 h-3.5 w-3.5" /> Histórico
+                </Button>
+                <div className="mx-1 hidden h-5 w-px bg-white/10 sm:block" />
+                <Button variant="ghost" size="sm" className="rounded-full text-white/55 hover:text-white" onClick={reset}>
+                  <RotateCcw className="mr-2 h-3.5 w-3.5" /> Novo chat
+                </Button>
+              </div>
+            </div>
+
+            {/* O que você está criando agora — protagonista da tela, com status de salvamento sempre visível */}
+            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-2.5">
+              <div className="min-w-[200px] flex-1">
+                <label className="text-[10px] uppercase tracking-wider text-white/35">Seu criativo</label>
                 <Input
                   value={projectTitle}
                   onChange={(e) => setProjectTitle(e.target.value)}
-                  placeholder={initialPrompt ? initialPrompt.slice(0, 60) : 'Nome do projeto'}
-                  className="h-8 w-64 rounded-full border-white/10 bg-white/[0.035] text-xs"
+                  placeholder={initialPrompt ? initialPrompt.slice(0, 60) : 'Dê um nome para este criativo'}
+                  className="h-7 border-0 bg-transparent px-0 text-base font-semibold focus-visible:ring-0"
                 />
-                <span className="text-xs text-white/38">
-                  {loadingProject ? 'Carregando...' : savingProject ? 'Salvando...' : lastSavedAt ? `Salvo às ${new Date(lastSavedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 'Ainda não salvo'}
-                </span>
               </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" className="rounded-full" disabled={savingProject || loadingProject} onClick={() => saveProjectState()}>
-                {savingProject ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-2 h-3.5 w-3.5" />}
-                Salvar
-              </Button>
-              <Button variant="outline" size="sm" className="rounded-full" onClick={() => handleQuickAction('open-project-history')}>
-                <History className="mr-2 h-3.5 w-3.5" /> Histórico
-              </Button>
-              <Button variant="outline" size="sm" className="rounded-full" onClick={reset}>
-                <RotateCcw className="mr-2 h-3.5 w-3.5" /> Novo chat
-              </Button>
-              <Button variant="ghost" size="sm" className="h-9 w-9 rounded-full p-0">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-1.5 whitespace-nowrap text-xs text-white/45">
+                <span className={cn('h-1.5 w-1.5 rounded-full', savingProject ? 'animate-pulse bg-amber-400' : 'bg-emerald-400')} />
+                {loadingProject ? 'Carregando...' : savingProject ? 'Salvando...' : lastSavedAt ? `Salvo às ${new Date(lastSavedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 'Salva automaticamente'}
+              </div>
             </div>
           </header>
 
@@ -3163,6 +3166,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
                   <span className={cn('flex h-4 w-4 items-center justify-center rounded-full text-[9px]', item.done ? 'bg-[#EC4899] text-white' : 'bg-white/10')}>
                     {item.done ? <Check className="h-2.5 w-2.5" /> : null}
                   </span>
+                  {item.current && <span className="h-1.5 w-1.5 rounded-full bg-[#EC4899] animate-pulse" />}
                   {item.label}
                   <span className="hidden text-white/35 sm:inline">{item.note}</span>
                 </button>
