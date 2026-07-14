@@ -417,6 +417,7 @@ export default function CriativoStudioPage() {
   const [clientCopyBank, setClientCopyBank] = useState<ClientCopyBankEntry[]>([]);
   const [clientIntelligenceArts, setClientIntelligenceArts] = useState<ClientIntelligenceArt[]>([]);
   const [quickCreativeTrigger, setQuickCreativeTrigger] = useState(0);
+  const [quickCreativePendingGenerate, setQuickCreativePendingGenerate] = useState(false);
 
   // Fator Criativo
   type FactorVariation = {
@@ -1090,7 +1091,9 @@ export default function CriativoStudioPage() {
   // Pré-preenche o estado do editor com a copy/estilo escolhidos e agenda a
   // geração via quickCreativeTrigger — generate() só deve rodar depois que o
   // React já comprometeu esses setState (senão ele leria o estado antigo).
-  const runQuickCreative = ({ copyText, art, tema }: { copyText: string; art: ClientIntelligenceArt | null; tema: string | null }) => {
+  // O logo é aguardado aqui (antes de disparar o trigger) pelo mesmo motivo:
+  // sem o await, generate() quase sempre rodaria antes do logo chegar.
+  const runQuickCreative = async ({ copyText, art, tema }: { copyText: string; art: ClientIntelligenceArt | null; tema: string | null }) => {
     if (!selectedClientId || !copyText.trim()) return;
     const clientId = selectedClientId;
     setQuickCreativeGenerating(true);
@@ -1109,25 +1112,45 @@ export default function CriativoStudioPage() {
     if (art?.metadata?.resolution) setSelectedResolution(art.metadata.resolution);
     setCurrentStage('generation-summary');
     setRightPanelMode('none');
-    applyClientLogo(clientId);
+    await applyClientLogo(clientId);
     setQuickCreativeTrigger((n) => n + 1);
   };
 
-  // Dispara depois que os setState acima (copy, estilo, cliente) já foram
-  // aplicados — só assim generate() lê os valores certos ao montar o prompt.
+  // Dispara depois que os setState acima (copy, estilo, cliente, logo) já
+  // foram aplicados — só assim generate() lê os valores certos ao montar o
+  // prompt. Só cria o projeto aqui (aguardado) e espera currentProjectId se
+  // confirmar num próximo render antes de chamar generateSelectedArt(); se
+  // esse projectId fosse só lido dentro de generate() nesse mesmo tick, o
+  // closure ainda veria null e persistImageAsset/saveCreativeOutput criariam
+  // dois projetos em paralelo.
   useEffect(() => {
     if (quickCreativeTrigger === 0) return;
     (async () => {
       addUserMessage('Criativo rápido com base na inteligência do cliente.');
       addAssistantMessage('Gerando a arte com a copy e o estilo salvos...');
       try {
-        await generate('story');
-      } finally {
+        await createCreativeProject();
+        setQuickCreativePendingGenerate(true);
+      } catch (e: any) {
+        toast({ title: 'Erro no Criativo Rápido', description: e?.message, variant: 'destructive' });
         setQuickCreativeGenerating(false);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quickCreativeTrigger]);
+
+  useEffect(() => {
+    if (!quickCreativePendingGenerate || !currentProjectId) return;
+    setQuickCreativePendingGenerate(false);
+    (async () => {
+      try {
+        await generateSelectedArt();
+      } finally {
+        setQuickCreativeGenerating(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quickCreativePendingGenerate, currentProjectId]);
 
   const templateCategories = ['Oferta', 'Prova social', 'Antes e depois', 'Autoridade', 'Conteúdo educativo', 'Lançamento', 'Lead magnet', 'Evento', 'Produto', 'Institucional'];
 

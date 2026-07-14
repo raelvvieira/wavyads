@@ -6,7 +6,7 @@
 -- (botão "Salvar copy pra inteligência do cliente").
 CREATE TABLE IF NOT EXISTS public.client_copy_bank (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  client_id uuid NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE,
+  client_id uuid NULL REFERENCES public.clients(id) ON DELETE SET NULL,
   copy_text text NOT NULL,
   tema text,
   source text NOT NULL DEFAULT 'manual' CHECK (source IN ('manual', 'ai')),

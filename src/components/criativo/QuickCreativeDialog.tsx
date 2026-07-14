@@ -45,17 +45,20 @@ export function QuickCreativeDialog({
   const [selectedCopyId, setSelectedCopyId] = useState<string | null>(null);
   const [selectedArtId, setSelectedArtId] = useState<string | null>(null);
   const [copyText, setCopyText] = useState('');
+  const [selectedTema, setSelectedTema] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setSelectedCopyId(null);
     setSelectedArtId(null);
     setCopyText('');
+    setSelectedTema(null);
   }, [open]);
 
   const pickCopy = (entry: ClientCopyBankEntry) => {
     setSelectedCopyId(entry.id);
     setCopyText(entry.copy_text);
+    setSelectedTema(entry.tema);
   };
 
   const selectedArt = intelligenceArts.find((a) => a.id === selectedArtId) || null;
@@ -171,7 +174,7 @@ export function QuickCreativeDialog({
             onClick={() => onGenerate({
               copyText: copyText.trim(),
               art: selectedArt,
-              tema: copyBank.find((e) => e.id === selectedCopyId)?.tema || null,
+              tema: selectedTema,
             })}
           >
             {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
