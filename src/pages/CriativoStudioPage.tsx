@@ -46,6 +46,9 @@ import {
   Users,
   PanelRightClose,
   Search,
+  BrainCircuit,
+  BookmarkPlus,
+  BookmarkCheck,
 } from 'lucide-react';
 
 interface VisualAnalysis {
@@ -401,6 +404,12 @@ export default function CriativoStudioPage() {
   const [squareImage, setSquareImage] = useState<string | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [contextLoading, setContextLoading] = useState(false);
+  const [mainStoryAssetId, setMainStoryAssetId] = useState<string | null>(null);
+  const [mainSquareAssetId, setMainSquareAssetId] = useState<string | null>(null);
+  const [savingCopyIntelligence, setSavingCopyIntelligence] = useState(false);
+  const [savingArtIntelligence, setSavingArtIntelligence] = useState(false);
+  const [copySavedToIntelligence, setCopySavedToIntelligence] = useState(false);
+  const [artSavedToIntelligence, setArtSavedToIntelligence] = useState(false);
 
   // Fator Criativo
   type FactorVariation = {
@@ -461,6 +470,15 @@ export default function CriativoStudioPage() {
   const completed = [!!analysis, copyApproved, true, !!storyImage];
   const selectedCopy: CopyResult | null =
     selectedVariationIdx !== null ? copyVariations[selectedVariationIdx] || null : null;
+
+  useEffect(() => {
+    setCopySavedToIntelligence(false);
+  }, [rawCopy, copySource, selectedCopy]);
+
+  useEffect(() => {
+    setArtSavedToIntelligence(false);
+  }, [mainStoryAssetId, mainSquareAssetId]);
+
   const getSelectedAspectConfig = () => ASPECT_CONFIG[selectedAspectRatio] || ASPECT_CONFIG['4:5'];
   const getSelectedResolutionConfig = () => RESOLUTION_CONFIG[selectedResolution] || RESOLUTION_CONFIG['4K'];
   const storageClient = (supabase as any).storage;
@@ -832,12 +850,14 @@ export default function CriativoStudioPage() {
     metadata = {},
     filename,
     clientId,
+    isClientIntelligence,
   }: {
     type: string;
     url: string;
     metadata?: Record<string, any>;
     filename?: string;
     clientId?: string;
+    isClientIntelligence?: boolean;
   }) => {
     const projectId = currentProjectId || await createCreativeProject();
     const userId = await getCurrentUserId();
@@ -852,6 +872,7 @@ export default function CriativoStudioPage() {
         metadata,
         created_by: userId,
         client_id: clientId || null,
+        is_client_intelligence: isClientIntelligence || false,
       })
       .select('id')
       .single();
@@ -962,6 +983,79 @@ export default function CriativoStudioPage() {
         if (type === 'product') setProductImages((prev) => prev.map((item) => (item === image ? replaceUrl : item)));
       }),
     );
+  };
+
+  // "Inteligência do cliente": banco de copy + artes marcadas como
+  // representativas do tom/estilo do cliente, para alimentar o Criativo
+  // Rápido mais tarde (reaproveitar sem passar pelo fluxo completo de novo).
+  const saveCopyToClientIntelligence = async () => {
+    if (!selectedClientId) {
+      toast({ title: 'Selecione um cliente', description: 'Escolha o cliente no topo para salvar a copy na inteligência dele.' });
+      return;
+    }
+    const copyText = copySource === 'ai' && selectedCopy
+      ? [selectedCopy.label, selectedCopy.titulo, selectedCopy.subtitulo, selectedCopy.dados, selectedCopy.cta].filter(Boolean).join('\n')
+      : rawCopy.trim();
+    if (!copyText) return;
+    setSavingCopyIntelligence(true);
+    try {
+      const userId = await getCurrentUserId();
+      const { error } = await db.from('client_copy_bank').insert({
+        client_id: selectedClientId,
+        copy_text: copyText,
+        tema: businessContext || null,
+        source: copySource === 'ai' ? 'ai' : 'manual',
+        project_id: currentProjectId,
+        created_by: userId,
+      });
+      if (error) throw error;
+      setCopySavedToIntelligence(true);
+      toast({ title: 'Copy salva na inteligência do cliente' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao salvar copy', description: e?.message, variant: 'destructive' });
+    } finally {
+      setSavingCopyIntelligence(false);
+    }
+  };
+
+  const saveArtToClientIntelligence = async () => {
+    if (!selectedClientId) {
+      toast({ title: 'Selecione um cliente', description: 'Escolha o cliente no topo para salvar a arte na inteligência dele.' });
+      return;
+    }
+    if (!storyImage && !squareImage) return;
+    setSavingArtIntelligence(true);
+    try {
+      const metadata = {
+        designSystemDoc: editedDoc || analysis?.designSystemDoc || '',
+        promptUsado: storyImage ? buildFinalPromptForSelectedAspect() : buildFinalPrompt('square', { selectedAspectRatio: '1:1', selectedResolution }),
+        copy: copySource === 'ai' ? selectedCopy : { rawCopy },
+        aspectRatio: selectedAspectRatio,
+        resolution: selectedResolution,
+      };
+      const assetIds = [mainStoryAssetId, mainSquareAssetId].filter(Boolean) as string[];
+      if (assetIds.length > 0) {
+        const { error } = await db
+          .from('creative_assets')
+          .update({ is_client_intelligence: true, client_id: selectedClientId, metadata })
+          .in('id', assetIds);
+        if (error) throw error;
+      } else {
+        await saveAssetRecord({
+          type: 'generated',
+          url: (storyImage || squareImage) as string,
+          clientId: selectedClientId,
+          metadata,
+          isClientIntelligence: true,
+        });
+      }
+      setArtSavedToIntelligence(true);
+      toast({ title: 'Arte salva na inteligência do cliente' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao salvar arte', description: e?.message, variant: 'destructive' });
+    } finally {
+      setSavingArtIntelligence(false);
+    }
   };
 
   const templateCategories = ['Oferta', 'Prova social', 'Antes e depois', 'Autoridade', 'Conteúdo educativo', 'Lançamento', 'Lead magnet', 'Evento', 'Produto', 'Institucional'];
@@ -1705,6 +1799,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
               type: 'factor',
               filename: imageFileName(`criativo-fator-${i + 1}-${v.eixo || 'story'}`),
               metadata: { eixo: v.eixo, nome: v.nome, variation_index: i, copy: v.copy, descricaoVisual: v.descricaoVisual, promptCompleto: v.promptCompleto },
+              clientId: selectedClientId || undefined,
             });
             await saveCreativeOutput({
               type: 'factor',
@@ -1766,6 +1861,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
         type: 'generated',
         filename: imageFileName(`criativo-principal-${selectedAspectRatio}`),
         metadata: { aspectRatio: selectedAspectRatio, resolution: selectedResolution },
+        clientId: selectedClientId || undefined,
       });
       await saveCreativeOutput({
         type: 'main',
@@ -1774,6 +1870,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
         assetId: persisted.assetId,
         aspectRatio: selectedAspectRatio,
       });
+      setMainStoryAssetId(persisted.assetId);
       setStoryImage(persisted.url);
       setCurrentStage('result');
       setRightPanelMode('generated-result');
@@ -1825,6 +1922,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
         type: typeof target === 'number' ? 'factor' : 'generated',
         filename: imageFileName(typeof target === 'number' ? `criativo-fator-${target + 1}-square` : 'criativo-square'),
         metadata: { target, aspectRatio: '1:1', resolution: selectedResolution },
+        clientId: selectedClientId || undefined,
       });
       await saveCreativeOutput({
         type: target === 'main' ? 'square' : 'factor',
@@ -1836,6 +1934,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
       });
       const url = persisted.url;
       if (target === 'main') {
+        setMainSquareAssetId(persisted.assetId);
         setSquareImage(url);
       } else {
         setFactorSquareImages((prev) => prev.map((v, i) => (i === target ? url : v)));
@@ -2180,6 +2279,10 @@ A reference Story version of this same creative is attached as the FIRST image. 
     setSelectedTemplateId(null);
     setSelectedTemplate(null);
     setTemplateSource(null);
+    setMainStoryAssetId(null);
+    setMainSquareAssetId(null);
+    setCopySavedToIntelligence(false);
+    setArtSavedToIntelligence(false);
   };
 
   const progressItems = [
@@ -2937,6 +3040,54 @@ A reference Story version of this same creative is attached as the FIRST image. 
                 >
                   <Layers className="mr-2 h-3 w-3" /> Template
                 </Button>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 space-y-2">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-white/80">
+                  <BrainCircuit className="h-3.5 w-3.5 text-[#EC4899]" />
+                  Inteligência do cliente
+                </div>
+                {selectedClientId ? (
+                  <>
+                    <p className="text-[11px] text-white/45">Guarda essa copy e essa arte no perfil do cliente, pra reaproveitar depois no Criativo Rápido.</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-full"
+                        disabled={savingCopyIntelligence || copySavedToIntelligence || (!rawCopy.trim() && !selectedCopy)}
+                        onClick={saveCopyToClientIntelligence}
+                      >
+                        {savingCopyIntelligence ? (
+                          <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                        ) : copySavedToIntelligence ? (
+                          <BookmarkCheck className="mr-1.5 h-3 w-3 text-[#EC4899]" />
+                        ) : (
+                          <BookmarkPlus className="mr-1.5 h-3 w-3" />
+                        )}
+                        {copySavedToIntelligence ? 'Copy salva' : 'Salvar copy'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-full"
+                        disabled={savingArtIntelligence || artSavedToIntelligence || (!storyImage && !squareImage)}
+                        onClick={saveArtToClientIntelligence}
+                      >
+                        {savingArtIntelligence ? (
+                          <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                        ) : artSavedToIntelligence ? (
+                          <BookmarkCheck className="mr-1.5 h-3 w-3 text-[#EC4899]" />
+                        ) : (
+                          <BookmarkPlus className="mr-1.5 h-3 w-3" />
+                        )}
+                        {artSavedToIntelligence ? 'Arte salva' : 'Salvar arte'}
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-[11px] text-white/40">Selecione um cliente no topo para guardar copy e arte no perfil dele.</p>
+                )}
               </div>
             </div>
           )}
