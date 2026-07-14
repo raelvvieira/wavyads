@@ -12,7 +12,9 @@ const SYSTEM = `Você é diretor de arte sênior de criativos publicitários. Su
 
 Princípio central: "Uma IA geradora não vê, ela LÊ." Não use palavras vagas como "elegante", "premium", "bonito". Use instruções precisas: opacidade %, blur strength, hex de cor, peso tipográfico (300/400/500/700), border-radius em px, posição em % do canvas.
 
-Analise as 8 dimensões da metodologia: Composição, Fotografia, Paleta, Tipografia, Camadas/Efeitos, Hierarquia, Espaço, Mood. Responda em português brasileiro nos campos descritivos, mas o campo designSystemDoc deve ser em INGLÊS técnico (vai direto para o prompt de geração).`;
+Analise as 8 dimensões da metodologia: Composição, Fotografia, Paleta, Tipografia, Camadas/Efeitos, Hierarquia, Espaço, Mood. Responda em português brasileiro nos campos descritivos, mas o campo designSystemDoc deve ser em INGLÊS técnico (vai direto para o prompt de geração).
+
+Além disso, gere antiPadroes: uma lista de 5-9 regras EXPLÍCITAS do que a IA geradora NUNCA deve fazer para não quebrar esse estilo específico. Isso é diferente de mood.evita (que são só adjetivos/palavras-chave curtas) — antiPadroes são regras acionáveis e específicas, no formato "NEVER faça X" ou "NEVER use Y — porque Z quebra o estilo". Escreva em INGLÊS técnico (mesmo motivo do designSystemDoc: vai direto pro prompt final). Derive as regras do que você observou nas imagens: se a composição tem muito espaço negativo, uma regra é "NEVER fill negative space with decorative elements". Se a tipografia é serifada e elegante, uma regra é "NEVER use bold geometric sans-serif for headlines". Seja específico à imagem analisada, não genérico.`;
 
 const TOOL_PARAMS = {
   type: "object",
@@ -99,8 +101,13 @@ const TOOL_PARAMS = {
       type: "string",
       description: "Documento Design System COMPLETO em INGLÊS técnico, formato markdown, pronto para ser injetado no prompt final de geração. Deve incluir todas as 8 dimensões com as especificações técnicas (opacity %, blur, hex, border, radius, %position). Esse texto vai direto para o modelo gerador (Flux/Mystic/Imagen/GPT Image).",
     },
+    antiPadroes: {
+      type: "array",
+      description: "5-9 regras EXPLÍCITAS e acionáveis do que a IA geradora NUNCA deve fazer para não quebrar este estilo específico (não confundir com mood.evita, que são só palavras-chave curtas). Em INGLÊS técnico, formato 'NEVER faça X — porque Y'. Específicas à imagem analisada, não genéricas.",
+      items: { type: "string" },
+    },
   },
-  required: ["composicao", "fotografia", "paleta", "tipografia", "camadas", "hierarquiaVisual", "espaco", "mood", "designSystemDoc"],
+  required: ["composicao", "fotografia", "paleta", "tipografia", "camadas", "hierarquiaVisual", "espaco", "mood", "designSystemDoc", "antiPadroes"],
   additionalProperties: false,
 };
 
@@ -122,7 +129,7 @@ serve(async (req) => {
     const userContent: any[] = [
       {
         type: "text",
-        text: `Analise estas ${images.length} imagem(ns) de referência aplicando a metodologia das 8 dimensões. Decodifique decisões de design — não descreva conteúdo. Documente camadas com opacidade, blur, borda, radius e posição. Devolva também o designSystemDoc em inglês técnico, pronto pra prompt.`,
+        text: `Analise estas ${images.length} imagem(ns) de referência aplicando a metodologia das 8 dimensões. Decodifique decisões de design — não descreva conteúdo. Documente camadas com opacidade, blur, borda, radius e posição. Devolva também o designSystemDoc em inglês técnico, pronto pra prompt, e antiPadroes: regras explícitas do que a IA geradora nunca deve fazer para não quebrar este estilo específico.`,
       },
       ...images.map((url: string) => ({ type: "image_url", image_url: { url } })),
     ];

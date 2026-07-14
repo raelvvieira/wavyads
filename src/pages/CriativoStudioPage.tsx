@@ -15,6 +15,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { ImageDropzone } from '@/components/criativo/ImageDropzone';
 import { StepIndicator } from '@/components/criativo/StepIndicator';
+import { StyleGalleryDialog } from '@/components/criativo/StyleGalleryDialog';
 import { cn } from '@/lib/utils';
 import { recordAiUsage } from '@/lib/aiUsageTracker';
 import {
@@ -58,6 +59,7 @@ interface VisualAnalysis {
   espaco: string;
   mood: { adjetivos: string[]; referencias: string[]; evita: string[] };
   designSystemDoc: string;
+  antiPadroes?: string[];
 }
 
 interface CopyResult {
@@ -136,7 +138,7 @@ type CreativeAssetSummary = {
   created_at: string;
 };
 
-type CreativeTemplate = {
+export type CreativeTemplate = {
   id: string;
   name: string;
   description: string | null;
@@ -157,6 +159,7 @@ type CreativeTemplate = {
   usage_count: number;
   source_project_id?: string | null;
   source_output_id?: string | null;
+  is_builtin: boolean;
 };
 
 type TemplateSource = {
@@ -335,6 +338,12 @@ export default function CriativoStudioPage() {
   const [templateAspectFilter, setTemplateAspectFilter] = useState('all');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<CreativeTemplate | null>(null);
+  // Template sendo apenas VISUALIZADO no painel de detalhes (não necessariamente aplicado).
+  // Mantido separado de selectedTemplate para nunca afetar buildFinalPrompt/o pill do composer
+  // sem uma ação explícita de "Usar este template/estilo".
+  const [previewTemplate, setPreviewTemplate] = useState<CreativeTemplate | null>(null);
+  const [builtinTemplates, setBuiltinTemplates] = useState<CreativeTemplate[]>([]);
+  const [styleGalleryOpen, setStyleGalleryOpen] = useState(false);
   const [templateSource, setTemplateSource] = useState<TemplateSource | null>(null);
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [templateForm, setTemplateForm] = useState({
@@ -424,6 +433,11 @@ export default function CriativoStudioPage() {
   useEffect(() => {
     if (!roleLoading && !isAdmin) navigate('/dashboard');
   }, [isAdmin, roleLoading, navigate]);
+
+  useEffect(() => {
+    if (styleGalleryOpen && isAdmin && builtinTemplates.length === 0) fetchBuiltinTemplates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [styleGalleryOpen, isAdmin]);
 
   useEffect(() => {
     setStep(getLegacyStepFromStage(currentStage));
@@ -990,6 +1004,21 @@ export default function CriativoStudioPage() {
     setRightPanelMode('save-template');
   };
 
+  const fetchBuiltinTemplates = async () => {
+    try {
+      const { data, error } = await db
+        .from('creative_templates')
+        .select('*')
+        .eq('status', 'active')
+        .eq('is_builtin', true)
+        .order('name', { ascending: true });
+      if (error) throw error;
+      setBuiltinTemplates(data || []);
+    } catch (e: any) {
+      toast({ title: 'Erro ao buscar estilos', description: e?.message || 'Não foi possível listar os estilos Wavy.', variant: 'destructive' });
+    }
+  };
+
   const fetchTemplates = async () => {
     setTemplatesLoading(true);
     try {
@@ -997,6 +1026,7 @@ export default function CriativoStudioPage() {
         .from('creative_templates')
         .select('*')
         .eq('status', 'active')
+        .eq('is_builtin', false)
         .order('updated_at', { ascending: false })
         .limit(60);
       if (templateCategoryFilter !== 'all') query = query.eq('category', templateCategoryFilter);
@@ -1022,40 +1052,52 @@ export default function CriativoStudioPage() {
   };
 
   const applyTemplate = async (template: CreativeTemplate) => {
-    const projectId = currentProjectId || await createCreativeProject();
-    setSelectedTemplate(template);
-    setSelectedTemplateId(template.id);
-    setSelectedAspectRatio((template.aspect_ratio || '4:5') as CreativeAspectRatio);
-    setSelectedResolution((template.preferred_resolution || '4K') as CreativeResolution);
-    setEditedDoc(template.design_system_doc || editedDoc);
-    setNegativePrompt(template.negative_prompt || '');
-    if (template.design_system_doc && !analysis) {
-      setAnalysis({
-        composicao: template.layout_structure?.visualAnalysis?.composicao || { formato: template.aspect_ratio || '4:5', estrutura: 'Template aplicado', hierarquia: 'Hierarquia preservada do template', silencio: 'Margens e respiro preservados' },
-        fotografia: template.layout_structure?.visualAnalysis?.fotografia || { tipo: 'Direção do template', luz: 'Preservar estilo', tratamento: 'Preservar acabamento', integracao: 'Adaptar produto atual' },
-        paleta: template.style_metadata?.palette || { dominante: 'Template', secundaria: '', acento: '#EC4899', saturacao: 'Preservar', hexes: [] },
-        tipografia: template.style_metadata?.typography || { familiaA: 'Template', familiaB: '', contraste: 'Preservar', alinhamento: 'Preservar' },
-        camadas: template.layout_structure?.visualAnalysis?.camadas || ['Estrutura visual do template'],
-        hierarquiaVisual: template.layout_structure?.visualAnalysis?.hierarquiaVisual || 'Preservar hierarquia do template',
-        espaco: template.layout_structure?.visualAnalysis?.espaco || 'Preservar espaçamento do template',
-        mood: template.style_metadata?.mood || { adjetivos: template.tags || [], referencias: [template.name], evita: [] },
-        designSystemDoc: template.design_system_doc,
-      });
+    try {
+      const projectId = currentProjectId || await createCreativeProject();
+      setSelectedTemplate(template);
+      setSelectedTemplateId(template.id);
+      setPreviewTemplate(null);
+      setSelectedAspectRatio((template.aspect_ratio || '4:5') as CreativeAspectRatio);
+      setSelectedResolution((template.preferred_resolution || '4K') as CreativeResolution);
+      setEditedDoc(template.design_system_doc || editedDoc);
+      setNegativePrompt(template.negative_prompt || '');
+      const antiPadroesFromTemplate = template.negative_prompt
+        ? template.negative_prompt.split('\n').map((l) => l.trim().replace(/^-+\s*/, '')).filter(Boolean)
+        : undefined;
+      if (template.design_system_doc && !analysis) {
+        setAnalysis({
+          composicao: template.layout_structure?.visualAnalysis?.composicao || { formato: template.aspect_ratio || '4:5', estrutura: 'Template aplicado', hierarquia: 'Hierarquia preservada do template', silencio: 'Margens e respiro preservados' },
+          fotografia: template.layout_structure?.visualAnalysis?.fotografia || { tipo: 'Direção do template', luz: 'Preservar estilo', tratamento: 'Preservar acabamento', integracao: 'Adaptar produto atual' },
+          paleta: template.style_metadata?.palette || { dominante: 'Template', secundaria: '', acento: '#EC4899', saturacao: 'Preservar', hexes: [] },
+          tipografia: template.style_metadata?.typography || { familiaA: 'Template', familiaB: '', contraste: 'Preservar', alinhamento: 'Preservar' },
+          camadas: template.layout_structure?.visualAnalysis?.camadas || ['Estrutura visual do template'],
+          hierarquiaVisual: template.layout_structure?.visualAnalysis?.hierarquiaVisual || 'Preservar hierarquia do template',
+          espaco: template.layout_structure?.visualAnalysis?.espaco || 'Preservar espaçamento do template',
+          mood: template.style_metadata?.mood || { adjetivos: template.tags || [], referencias: [template.name], evita: [] },
+          designSystemDoc: template.design_system_doc,
+          antiPadroes: antiPadroesFromTemplate,
+        });
+      }
+      const { error: usageError } = await db.from('creative_templates').update({ usage_count: (template.usage_count || 0) + 1 }).eq('id', template.id);
+      if (usageError) console.error('Falha ao incrementar usage_count do template', usageError);
+      const { error: stateError } = await db.from('creative_project_state').upsert({
+        project_id: projectId,
+        state_json: { ...buildProjectStateSnapshot(), selectedTemplateId: template.id, selectedTemplate: template },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'project_id' });
+      if (stateError) throw stateError;
+      setCurrentStage('copy');
+      setRightPanelMode('template-applied');
+      addAssistantMessage(`Template aplicado: ${template.name}. Agora podemos adaptar copy, produto, avatar e referências para criar uma nova versão.`, [
+        { label: 'Inserir copy', action: 'open-paste-copy', variant: 'primary' },
+        { label: 'Adicionar produto/pessoa', action: 'open-assets-product', variant: 'secondary' },
+        { label: 'Revisar estrutura', action: 'open-template-detail', variant: 'secondary' },
+        { label: 'Gerar arte', action: 'open-generation-summary', variant: 'ghost' },
+      ]);
+    } catch (e: any) {
+      toast({ title: 'Erro ao aplicar template', description: e?.message || 'Não foi possível aplicar o template.', variant: 'destructive' });
+      throw e;
     }
-    await db.from('creative_templates').update({ usage_count: (template.usage_count || 0) + 1 }).eq('id', template.id);
-    await db.from('creative_project_state').upsert({
-      project_id: projectId,
-      state_json: { ...buildProjectStateSnapshot(), selectedTemplateId: template.id, selectedTemplate: template },
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'project_id' });
-    setCurrentStage('copy');
-    setRightPanelMode('template-applied');
-    addAssistantMessage(`Template aplicado: ${template.name}. Agora podemos adaptar copy, produto, avatar e referências para criar uma nova versão.`, [
-      { label: 'Inserir copy', action: 'open-paste-copy', variant: 'primary' },
-      { label: 'Adicionar produto/pessoa', action: 'open-assets-product', variant: 'secondary' },
-      { label: 'Revisar estrutura', action: 'open-template-detail', variant: 'secondary' },
-      { label: 'Gerar arte', action: 'open-generation-summary', variant: 'ghost' },
-    ]);
   };
 
   const saveTemplate = async () => {
@@ -1108,15 +1150,19 @@ export default function CriativoStudioPage() {
   const duplicateTemplate = async (template: CreativeTemplate) => {
     try {
       const userId = await getCurrentUserId();
-      const { id, usage_count, ...payload } = template as any;
+      const { id, usage_count, is_builtin, visibility, ...payload } = template as any;
       const { error } = await db.from('creative_templates').insert({
         ...payload,
         name: `Cópia de ${template.name}`,
         usage_count: 0,
         created_by: userId,
+        is_builtin: false,
+        // Estilos Wavy (globais) sempre viram cópia privada; templates do usuário
+        // preservam a visibilidade original (private/team/global).
+        visibility: is_builtin ? 'private' : (visibility || 'private'),
       });
       if (error) throw error;
-      toast({ title: 'Template duplicado' });
+      toast({ title: 'Template duplicado', description: 'Uma cópia editável foi salva em Meus Templates.' });
       await fetchTemplates();
     } catch (e: any) {
       toast({ title: 'Erro ao duplicar template', description: e?.message || 'Não foi possível duplicar.', variant: 'destructive' });
@@ -1456,12 +1502,13 @@ Not: ${analysis.mood.evita.join(', ')}.`
       : '';
 
     const userNegatives = negativePrompt.trim()
-      ? negativePrompt.split('\n').map((l) => `- ${l.trim()}`).filter((l) => l.length > 2)
+      ? negativePrompt.split('\n').map((l) => `- ${l.trim().replace(/^-+\s*/, '')}`).filter((l) => l.length > 2)
       : [];
     const evitaList = analysis?.mood.evita.map((e) => `- ${e}`) || [];
+    const antiPadroesList = analysis?.antiPadroes?.map((e) => `- ${e}`) || [];
 
     const doNot = `[DO NOT INCLUDE]
-${[...evitaList, ...userNegatives].join('\n')}
+${[...evitaList, ...antiPadroesList, ...userNegatives].join('\n')}
 - Any element within the top or bottom safe zones
 - Any text in a language other than ${language === 'pt-BR' ? 'Portuguese (Brazil)' : language === 'es' ? 'Spanish' : 'English'}
 - Misspelled, garbled or fake-looking text
@@ -2003,7 +2050,12 @@ A reference Story version of this same creative is attached as the FIRST image. 
         break;
       case 'open-template':
       case 'template-coming-soon':
-        setRightPanelMode(selectedTemplate ? 'template-detail' : 'template-library');
+        if (selectedTemplate) {
+          setPreviewTemplate(null);
+          setRightPanelMode('template-detail');
+        } else {
+          setStyleGalleryOpen(true);
+        }
         break;
       default:
         console.warn('Ação não mapeada:', action);
@@ -2285,50 +2337,86 @@ A reference Story version of this same creative is attached as the FIRST image. 
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <Button size="sm" className="rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777]" onClick={() => applyTemplate(template)}>Usar template</Button>
-                    <Button size="sm" variant="outline" className="rounded-full" onClick={() => { setSelectedTemplate(template); setSelectedTemplateId(template.id); setRightPanelMode('template-detail'); }}>Ver detalhes</Button>
+                    <Button size="sm" variant="outline" className="rounded-full" onClick={() => { setPreviewTemplate(template); setRightPanelMode('template-detail'); }}>Ver detalhes</Button>
                   </div>
                 </div>
               ))}
             </div>
           )}
 
-          {rightPanelMode === 'template-detail' && (
+          {rightPanelMode === 'template-detail' && (() => {
+            // previewTemplate (vindo de "Ver detalhes") tem prioridade; cai para o
+            // template realmente aplicado (selectedTemplate) só quando não há preview.
+            const detailTemplate = previewTemplate || selectedTemplate;
+            return (
             <div className="space-y-3">
-              {!selectedTemplate ? (
+              {!detailTemplate ? (
                 <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.025] p-8 text-center text-sm text-white/50">
                   Template não encontrado.
                   <Button className="mt-3 rounded-full" variant="outline" onClick={() => setRightPanelMode('template-library')}>Voltar</Button>
                 </div>
               ) : (
                 <>
-                  {selectedTemplate.preview_url && <img src={selectedTemplate.preview_url} alt={selectedTemplate.name} className="aspect-[4/5] w-full rounded-2xl object-cover" />}
+                  {detailTemplate.preview_url ? (
+                    <img src={detailTemplate.preview_url} alt={detailTemplate.name} className="aspect-[4/5] w-full rounded-2xl object-cover" />
+                  ) : (
+                    <div
+                      className="aspect-[4/5] w-full rounded-2xl"
+                      style={{ background: (detailTemplate.style_metadata as any)?.previewGradient || 'linear-gradient(135deg, #1C1B19 0%, #3A2A2A 55%, #EC4899 100%)' }}
+                    />
+                  )}
                   <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3 text-sm">
-                    <p className="font-semibold text-white">{selectedTemplate.name}</p>
-                    {selectedTemplate.description && <p className="mt-1 text-white/60">{selectedTemplate.description}</p>}
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-semibold text-white">{detailTemplate.name}</p>
+                      {detailTemplate.is_builtin && (
+                        <span className="shrink-0 rounded-full bg-[#EC4899]/15 px-2 py-0.5 text-[10px] text-[#F9A8D4]">Estilo Wavy</span>
+                      )}
+                    </div>
+                    {detailTemplate.description && <p className="mt-1 text-white/60">{detailTemplate.description}</p>}
                     <div className="mt-3 space-y-1 text-xs text-white/55">
-                      <Info k="Categoria" v={selectedTemplate.category || 'Não informada'} />
-                      <Info k="Nicho" v={selectedTemplate.niche || 'Não informado'} />
-                      <Info k="Formato" v={selectedTemplate.aspect_ratio || '4:5'} />
-                      <Info k="Usos" v={String(selectedTemplate.usage_count || 0)} />
+                      <Info k="Categoria" v={detailTemplate.category || 'Não informada'} />
+                      <Info k="Nicho" v={detailTemplate.niche || 'Não informado'} />
+                      <Info k="Formato" v={detailTemplate.aspect_ratio || '4:5'} />
+                      <Info k="Usos" v={String(detailTemplate.usage_count || 0)} />
                     </div>
                   </div>
+                  {detailTemplate.negative_prompt && (
+                    <PanelFold title="Anti-Padrões" defaultOpen>
+                      <AntiPadroesList
+                        items={detailTemplate.negative_prompt.split('\n').map((l) => l.trim().replace(/^-+\s*/, '')).filter(Boolean)}
+                      />
+                    </PanelFold>
+                  )}
                   <PanelFold title="Estrutura">
                     <pre className="whitespace-pre-wrap text-[10px] text-white/60">{JSON.stringify({
-                      layout: selectedTemplate.layout_structure,
-                      copy: selectedTemplate.copy_structure,
-                      style: selectedTemplate.style_metadata,
+                      layout: detailTemplate.layout_structure,
+                      copy: detailTemplate.copy_structure,
+                      style: detailTemplate.style_metadata,
                     }, null, 2)}</pre>
                   </PanelFold>
                   <div className="grid grid-cols-2 gap-2">
-                    <Button className="rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777]" onClick={() => applyTemplate(selectedTemplate)}>Usar este template</Button>
-                    <Button variant="outline" className="rounded-full" onClick={() => duplicateTemplate(selectedTemplate)}>Duplicar</Button>
-                    <Button variant="ghost" className="rounded-full text-destructive hover:text-destructive" onClick={() => archiveTemplate(selectedTemplate.id)}>Arquivar</Button>
-                    <Button variant="outline" className="rounded-full" onClick={() => setRightPanelMode('template-library')}>Voltar</Button>
+                    <Button className="rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777]" onClick={() => applyTemplate(detailTemplate)}>Usar este template</Button>
+                    <Button variant="outline" className="rounded-full" onClick={() => duplicateTemplate(detailTemplate)}>Duplicar</Button>
+                    {!detailTemplate.is_builtin && (
+                      <Button variant="ghost" className="rounded-full text-destructive hover:text-destructive" onClick={() => archiveTemplate(detailTemplate.id)}>Arquivar</Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      className="rounded-full"
+                      onClick={() => {
+                        setPreviewTemplate(null);
+                        if (detailTemplate.is_builtin) setStyleGalleryOpen(true);
+                        else setRightPanelMode('template-library');
+                      }}
+                    >
+                      Voltar
+                    </Button>
                   </div>
                 </>
               )}
             </div>
-          )}
+            );
+          })()}
 
           {rightPanelMode === 'template-applied' && selectedTemplate && (
             <div className="space-y-3">
@@ -2531,6 +2619,11 @@ A reference Story version of this same creative is attached as the FIRST image. 
                       {analysis.mood.evita.map((m) => <span key={m} className="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-1 text-[10px] text-destructive">{m}</span>)}
                     </div>
                   </PanelFold>
+                  {analysis.antiPadroes && analysis.antiPadroes.length > 0 && (
+                    <PanelFold title="Anti-Padrões" defaultOpen>
+                      <AntiPadroesList items={analysis.antiPadroes} />
+                    </PanelFold>
+                  )}
                 </>
               )}
               <Textarea value={editedDoc} onChange={(e) => setEditedDoc(e.target.value)} rows={9} className="font-mono text-xs" placeholder="Design System Document" />
@@ -3119,6 +3212,24 @@ A reference Story version of this same creative is attached as the FIRST image. 
           )}
         </DialogContent>
       </Dialog>
+
+      <StyleGalleryDialog
+        open={styleGalleryOpen}
+        onOpenChange={setStyleGalleryOpen}
+        builtinTemplates={builtinTemplates}
+        appliedTemplateId={selectedTemplate?.is_builtin ? selectedTemplate.id : null}
+        onApply={applyTemplate}
+        onViewDetails={(template) => {
+          setPreviewTemplate(template);
+          setRightPanelMode('template-detail');
+          setStyleGalleryOpen(false);
+        }}
+        onOpenMyTemplates={() => {
+          setStyleGalleryOpen(false);
+          setRightPanelMode('template-library');
+          fetchTemplates();
+        }}
+      />
     </div>
   );
 
@@ -3999,6 +4110,18 @@ function Info({ k, v }: { k: string; v: string }) {
       <span className="text-white/40">{k}: </span>
       <span className="text-white/85">{v}</span>
     </div>
+  );
+}
+
+function AntiPadroesList({ items }: { items: string[] }) {
+  return (
+    <ul className="space-y-1.5">
+      {items.map((rule, i) => (
+        <li key={i} className="rounded-lg border border-destructive/30 bg-destructive/10 px-2.5 py-1.5 text-[11px] text-destructive/90 leading-relaxed">
+          {rule}
+        </li>
+      ))}
+    </ul>
   );
 }
 
