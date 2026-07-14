@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ImageDropzone } from '@/components/criativo/ImageDropzone';
 import { StepIndicator } from '@/components/criativo/StepIndicator';
 import { StyleGalleryDialog } from '@/components/criativo/StyleGalleryDialog';
+import { QuickCreativeDialog, type ClientCopyBankEntry, type ClientIntelligenceArt } from '@/components/criativo/QuickCreativeDialog';
 import { cn } from '@/lib/utils';
 import { recordAiUsage } from '@/lib/aiUsageTracker';
 import {
@@ -410,6 +411,12 @@ export default function CriativoStudioPage() {
   const [savingArtIntelligence, setSavingArtIntelligence] = useState(false);
   const [copySavedToIntelligence, setCopySavedToIntelligence] = useState(false);
   const [artSavedToIntelligence, setArtSavedToIntelligence] = useState(false);
+  const [quickCreativeOpen, setQuickCreativeOpen] = useState(false);
+  const [quickCreativeLoading, setQuickCreativeLoading] = useState(false);
+  const [quickCreativeGenerating, setQuickCreativeGenerating] = useState(false);
+  const [clientCopyBank, setClientCopyBank] = useState<ClientCopyBankEntry[]>([]);
+  const [clientIntelligenceArts, setClientIntelligenceArts] = useState<ClientIntelligenceArt[]>([]);
+  const [quickCreativeTrigger, setQuickCreativeTrigger] = useState(0);
 
   // Fator Criativo
   type FactorVariation = {
@@ -1057,6 +1064,70 @@ export default function CriativoStudioPage() {
       setSavingArtIntelligence(false);
     }
   };
+
+  // Criativo Rápido: reaproveita a base já salva do cliente (copy + estilo
+  // visual) pra gerar uma arte nova direto, sem passar pelo fluxo completo.
+  const openQuickCreative = async () => {
+    if (!selectedClientId) return;
+    setQuickCreativeOpen(true);
+    setQuickCreativeLoading(true);
+    try {
+      const [{ data: copyRows, error: copyErr }, { data: artRows, error: artErr }] = await Promise.all([
+        db.from('client_copy_bank').select('id,copy_text,tema,created_at').eq('client_id', selectedClientId).order('created_at', { ascending: false }).limit(24),
+        db.from('creative_assets').select('id,url,metadata,created_at').eq('client_id', selectedClientId).eq('is_client_intelligence', true).order('created_at', { ascending: false }).limit(24),
+      ]);
+      if (copyErr) throw copyErr;
+      if (artErr) throw artErr;
+      setClientCopyBank(copyRows || []);
+      setClientIntelligenceArts(artRows || []);
+    } catch (e: any) {
+      toast({ title: 'Erro ao carregar inteligência do cliente', description: e?.message, variant: 'destructive' });
+    } finally {
+      setQuickCreativeLoading(false);
+    }
+  };
+
+  // Pré-preenche o estado do editor com a copy/estilo escolhidos e agenda a
+  // geração via quickCreativeTrigger — generate() só deve rodar depois que o
+  // React já comprometeu esses setState (senão ele leria o estado antigo).
+  const runQuickCreative = ({ copyText, art, tema }: { copyText: string; art: ClientIntelligenceArt | null; tema: string | null }) => {
+    if (!selectedClientId || !copyText.trim()) return;
+    const clientId = selectedClientId;
+    setQuickCreativeGenerating(true);
+    setQuickCreativeOpen(false);
+    reset();
+    setSelectedClientId(clientId);
+    const label = `Criativo rápido — ${new Date().toLocaleDateString('pt-BR')}`;
+    setInitialPrompt(label);
+    setProjectTitle(label);
+    setRawCopy(copyText);
+    setCopySource('original');
+    setCopyApproved(true);
+    if (tema) setBusinessContext(tema);
+    if (art?.metadata?.designSystemDoc) setEditedDoc(art.metadata.designSystemDoc);
+    if (art?.metadata?.aspectRatio) setSelectedAspectRatio(art.metadata.aspectRatio);
+    if (art?.metadata?.resolution) setSelectedResolution(art.metadata.resolution);
+    setCurrentStage('generation-summary');
+    setRightPanelMode('none');
+    applyClientLogo(clientId);
+    setQuickCreativeTrigger((n) => n + 1);
+  };
+
+  // Dispara depois que os setState acima (copy, estilo, cliente) já foram
+  // aplicados — só assim generate() lê os valores certos ao montar o prompt.
+  useEffect(() => {
+    if (quickCreativeTrigger === 0) return;
+    (async () => {
+      addUserMessage('Criativo rápido com base na inteligência do cliente.');
+      addAssistantMessage('Gerando a arte com a copy e o estilo salvos...');
+      try {
+        await generate('story');
+      } finally {
+        setQuickCreativeGenerating(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quickCreativeTrigger]);
 
   const templateCategories = ['Oferta', 'Prova social', 'Antes e depois', 'Autoridade', 'Conteúdo educativo', 'Lançamento', 'Lead magnet', 'Evento', 'Produto', 'Institucional'];
 
@@ -3346,6 +3417,16 @@ A reference Story version of this same creative is attached as the FIRST image. 
                   <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-3">
                     <div className="flex flex-wrap gap-2">
                       {renderClientSelect()}
+                      {selectedClientId && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="rounded-full border-[#EC4899]/40 text-[#F9A8D4] hover:bg-[#EC4899]/10"
+                          onClick={openQuickCreative}
+                        >
+                          <BrainCircuit className="mr-1.5 h-3.5 w-3.5" /> Criativo Rápido
+                        </Button>
+                      )}
                       <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-xs text-white/62">GPT Image 2</span>
                       <Select value={selectedResolution} onValueChange={(v) => setSelectedResolution(v as CreativeResolution)}>
                         <SelectTrigger className="h-8 w-[92px] rounded-full"><span>{selectedResolution}</span></SelectTrigger>
@@ -3592,6 +3673,17 @@ A reference Story version of this same creative is attached as the FIRST image. 
           setRightPanelMode('template-library');
           fetchTemplates();
         }}
+      />
+
+      <QuickCreativeDialog
+        open={quickCreativeOpen}
+        onOpenChange={setQuickCreativeOpen}
+        clientName={referenceClients.find((c) => c.id === selectedClientId)?.name || 'Cliente'}
+        loading={quickCreativeLoading}
+        generating={quickCreativeGenerating}
+        copyBank={clientCopyBank}
+        intelligenceArts={clientIntelligenceArts}
+        onGenerate={runQuickCreative}
       />
     </div>
   );
