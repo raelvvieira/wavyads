@@ -471,6 +471,14 @@ export default function CriativoStudioPage() {
     setStep(getLegacyStepFromStage(currentStage));
   }, [currentStage]);
 
+  // Pré-preenche "Associar ao cliente" do upload de referências com o cliente
+  // já selecionado no topo, toda vez que o painel é aberto — evita ter que
+  // escolher o mesmo cliente duas vezes, mas continua editável ali dentro.
+  useEffect(() => {
+    if (rightPanelMode === 'upload-references') setUploadClientId(selectedClientId || 'all');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rightPanelMode]);
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [conversationMessages.length, analyzing, improving, urlReading, contextLoading, generating, factorLoading, editLoadingKey]);
