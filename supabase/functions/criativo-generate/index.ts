@@ -130,40 +130,25 @@ async function verifyUrlPubliclyAccessible(url: string): Promise<void> {
   }
 }
 
-async function uploadReferenceImage(
-  ref: string,
+// Envia UMA base64 pro storage de arquivos do EvoLink e devolve a URL, ou
+// null se o upload/validação falhar.
+async function uploadBase64ToEvolink(
+  dataUrl: string,
   apiKey: string,
   label: string,
-): Promise<string> {
-  // Referências já hospedadas (logo/produto salvos antes, story reutilizada
-  // pra consistência do quadrado) chegam aqui como URL, não como base64. Elas
-  // NÃO passam pelo upload/renomeio abaixo se devolvidas direto — e como o
-  // app grava tudo com extensão .png independente do formato real (bug à
-  // parte, também corrigido no frontend), a URL pode ter extensão errada e
-  // ser rejeitada pelo EvoLink por "formato". Por isso baixamos e reenviamos
-  // sempre pelo mesmo caminho abaixo, com a extensão derivada do Content-Type
-  // real — mais lento, mas elimina essa classe inteira de erro.
-  let dataUrl = ref;
-  if (/^https?:\/\//i.test(ref)) {
-    try {
-      dataUrl = await fetchUrlToBase64DataUrl(ref);
-    } catch (err) {
-      console.error(`Falha ao baixar a imagem "${label}" da URL já hospedada:`, err);
-      throw new Error(`Não consegui baixar a imagem "${label}" pra reenviar. Verifique se ela ainda existe.`);
-    }
-  }
-
+): Promise<string | null> {
   const parsed = parseDataUrl(dataUrl);
-  if (!parsed) throw new Error(`Imagem inválida (${label})`);
+  if (!parsed) {
+    console.error(`Imagem inválida (${label})`);
+    return null;
+  }
 
   if (parsed.bytes.length > MAX_REFERENCE_IMAGE_BYTES) {
     const sizeMb = (parsed.bytes.length / (1024 * 1024)).toFixed(1);
-    throw new Error(
-      `A imagem "${label}" está muito grande (${sizeMb}MB, limite 10MB). Reduza o tamanho e envie de novo.`,
-    );
+    console.error(`Imagem "${label}" acima do limite (${sizeMb}MB) — ignorada.`);
+    return null;
   }
 
-  // Extension hint so EvoLink's image processor accepts the URL
   const extFromMime =
     parsed.mime === "image/jpeg" ? "jpg" :
     parsed.mime === "image/webp" ? "webp" :
@@ -185,30 +170,67 @@ async function uploadReferenceImage(
   });
 
   const respText = await readLoggedText(`EvoLink upload (${label})`, resp);
-  if (!resp.ok) throw new ProviderHttpError(resp.status, respText);
+  if (!resp.ok) {
+    console.error(`EvoLink recusou o upload de "${label}" (${resp.status}).`);
+    return null;
+  }
 
   const data = safeJsonParse(respText);
-  // file_url é o campo documentado pelo EvoLink; download_url/variantes
-  // ficam como fallback caso a resposta venha num formato diferente.
   const fileUrl =
     data?.data?.file_url ??
     data?.data?.fileUrl ??
     data?.data?.download_url ??
     data?.data?.downloadUrl;
   if (!fileUrl || typeof fileUrl !== "string") {
-    throw new Error(`EvoLink não retornou URL da imagem "${label}"`);
+    console.error(`EvoLink não retornou URL de "${label}".`);
+    return null;
   }
 
   try {
     await verifyUrlPubliclyAccessible(fileUrl);
   } catch (err) {
-    console.error(`URL da imagem "${label}" não ficou acessível após upload:`, err);
-    throw new Error(
-      `A imagem "${label}" foi enviada mas não ficou acessível publicamente pra geração. Tente enviar de novo.`,
-    );
+    console.error(`URL de "${label}" não ficou acessível após upload:`, err);
+    return null;
   }
 
   return fileUrl;
+}
+
+// Resolve UMA imagem de referência (logo/produto/story) para uma URL que o
+// EvoLink consiga usar. Nunca lança: se não der pra usar aquela referência,
+// devolve null e o chamador simplesmente a ignora — assim uma referência
+// problemática (ex.: logo antigo com URL quebrada) nunca impede a geração da
+// arte. A copy e o restante do prompt seguem normalmente.
+async function resolveReferenceImage(
+  ref: string,
+  apiKey: string,
+  label: string,
+): Promise<string | null> {
+  // Já é base64 (upload novo do dropzone): sobe direto pro EvoLink.
+  if (!/^https?:\/\//i.test(ref)) {
+    return await uploadBase64ToEvolink(ref, apiKey, label);
+  }
+
+  // É uma URL já hospedada (asset salvo antes). Preferimos baixar e reenviar
+  // pro EvoLink (garante extensão certa a partir do Content-Type real). Se o
+  // download falhar por qualquer motivo, tentamos passar a própria URL direto
+  // pro EvoLink — e só desistimos dessa referência (null) se nada funcionar.
+  try {
+    const dataUrl = await fetchUrlToBase64DataUrl(ref);
+    const uploaded = await uploadBase64ToEvolink(dataUrl, apiKey, label);
+    if (uploaded) return uploaded;
+  } catch (err) {
+    console.error(`Não consegui baixar/reenviar "${label}" (${ref.slice(0, 120)}):`, err);
+  }
+
+  // Fallback: entrega a URL como está e deixa o EvoLink tentar buscá-la.
+  try {
+    await verifyUrlPubliclyAccessible(ref);
+    return ref;
+  } catch (err) {
+    console.error(`Referência "${label}" inutilizável, será ignorada:`, err);
+    return null;
+  }
 }
 
 async function resolveImageFromPayload(data: any): Promise<string | null> {
@@ -378,11 +400,20 @@ serve(async (req) => {
       refs: rawRefs.length,
     });
 
-    const imageUrls = hasRefs
+    // Cada referência é resolvida de forma independente e tolerante a falha:
+    // uma referência problemática vira null e é descartada, sem derrubar a
+    // geração inteira. Assim a arte sempre sai (no pior caso, sem aquele asset).
+    const resolvedRefs = hasRefs
       ? await Promise.all(
-          rawRefs.map((ref) => uploadReferenceImage(ref.data, EVOLINK_API_KEY, ref.label)),
+          rawRefs.map((ref) => resolveReferenceImage(ref.data, EVOLINK_API_KEY, ref.label)),
         )
       : [];
+    const imageUrls = resolvedRefs.filter((u): u is string => typeof u === "string");
+    if (hasRefs && imageUrls.length < rawRefs.length) {
+      console.warn(
+        `${rawRefs.length - imageUrls.length} de ${rawRefs.length} referência(s) foram ignoradas por falha de acesso.`,
+      );
+    }
 
     const requestBody: Record<string, unknown> = {
       model: MODEL_NAME,
