@@ -294,6 +294,22 @@ function getLegacyStepFromStage(stage: CurrentStage) {
   return 3;
 }
 
+// supabase.functions.invoke() só expõe uma mensagem genérica
+// ("Edge Function returned a non-2xx status code") no `error` — o motivo
+// real vem no corpo da resposta, acessível via error.context (a Response).
+async function extractFunctionErrorMessage(error: any): Promise<string> {
+  const context = error?.context;
+  if (context && typeof context.json === 'function') {
+    try {
+      const body = await context.json();
+      if (body?.error || body?.detail || body?.message) return body.error || body.detail || body.message;
+    } catch {
+      // corpo não é JSON válido — mantém a mensagem genérica
+    }
+  }
+  return error?.message || 'Erro desconhecido';
+}
+
 type GeminiModel = 'gemini-2.5-flash-image' | 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview';
 const MODEL_OPTIONS: { id: GeminiModel; name: string; desc: string; usage: 'image-gemini-flash' | 'image-gemini-flash-2' | 'image-gemini-pro' }[] = [
   { id: 'gemini-2.5-flash-image', name: 'Nano Banana', desc: 'Rápido e barato', usage: 'image-gemini-flash' },
@@ -1451,7 +1467,7 @@ export default function CriativoStudioPage() {
           language,
         },
       });
-      if (error) throw error;
+      if (error) throw new Error(await extractFunctionErrorMessage(error));
       if ((data as any)?.error) throw new Error((data as any).error);
       recordAiUsage('text-flash');
       const ctx = (data as any).context;
@@ -1515,7 +1531,7 @@ export default function CriativoStudioPage() {
       const { data, error } = await supabase.functions.invoke('criativo-suggest-copy', {
         body: { analysis: analysis || null, initialPrompt, language, urlContext: ctx || undefined },
       });
-      if (error) throw error;
+      if (error) throw new Error(await extractFunctionErrorMessage(error));
       if ((data as any)?.error) throw new Error((data as any).error);
       recordAiUsage('text-flash');
       const s = ((data as any)?.suggestion || '').trim();
@@ -1544,7 +1560,7 @@ export default function CriativoStudioPage() {
     setUrlError(null);
     try {
       const { data, error } = await supabase.functions.invoke('criativo-fetch-url', { body: { url } });
-      if (error) throw error;
+      if (error) throw new Error(await extractFunctionErrorMessage(error));
       if ((data as any)?.error) throw new Error((data as any).error);
       const ctx = data as { title: string; description: string; text: string };
       setUrlContext(ctx);
@@ -1570,7 +1586,7 @@ export default function CriativoStudioPage() {
       const { data, error } = await supabase.functions.invoke('criativo-edit-image', {
         body: { originalImage, userFeedback: feedback, originalPrompt, aspect, language },
       });
-      if (error) throw error;
+      if (error) throw new Error(await extractFunctionErrorMessage(error));
       if ((data as any)?.error) throw new Error((data as any).error);
       recordAiUsage('text-flash');
       recordAiUsage('image-gemini-flash-2');
@@ -1627,7 +1643,7 @@ export default function CriativoStudioPage() {
       const { data, error } = await supabase.functions.invoke('criativo-analyze-refs', {
         body: { images: refImages },
       });
-      if (error) throw error;
+      if (error) throw new Error(await extractFunctionErrorMessage(error));
       if ((data as any)?.error) throw new Error((data as any).error);
       recordAiUsage('text-flash');
       const a = data as VisualAnalysis;
@@ -1663,7 +1679,7 @@ export default function CriativoStudioPage() {
           moodAdjetivos: analysis?.mood.adjetivos.join(', ') || '',
         },
       });
-      if (error) throw error;
+      if (error) throw new Error(await extractFunctionErrorMessage(error));
       if ((data as any)?.error) throw new Error((data as any).error);
       recordAiUsage('text-flash');
       const variations = ((data as any)?.variations || []) as CopyResult[];
@@ -1871,7 +1887,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
           aspect,
         },
       });
-      if (error) throw error;
+      if (error) throw new Error(await extractFunctionErrorMessage(error));
       if ((data as any)?.error) throw new Error((data as any).error);
       recordAiUsage('text-flash');
       const variations = (data as any).variations as FactorVariation[];
@@ -1891,7 +1907,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
                 storyReference: aspect === 'square' ? storyImage : null,
               },
             });
-            if (ge) throw ge;
+            if (ge) throw new Error(await extractFunctionErrorMessage(ge));
       if ((gd as any)?.error) throw new Error((gd as any).error);
       recordAiUsage(MODEL_OPTIONS.find((m) => m.id === model)?.usage || 'image-gemini-flash-2');
             const rawUrl = (gd as any).imageUrl as string;
@@ -1952,7 +1968,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
           storyReference: null,
         },
       });
-      if (error) throw error;
+      if (error) throw new Error(await extractFunctionErrorMessage(error));
       if ((data as any)?.error) throw new Error((data as any).error);
       const usageType = MODEL_OPTIONS.find((m) => m.id === model)?.usage || 'image-gemini-flash-2';
       recordAiUsage(usageType);
@@ -2013,7 +2029,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
           storyReference: storyImage,
         },
       });
-      if (error) throw error;
+      if (error) throw new Error(await extractFunctionErrorMessage(error));
       if ((data as any)?.error) throw new Error((data as any).error);
       const usageType = MODEL_OPTIONS.find((m) => m.id === model)?.usage || 'image-gemini-flash-2';
       recordAiUsage(usageType);
