@@ -130,7 +130,12 @@ async function uploadReferenceImage(
   if (!resp.ok) throw new ProviderHttpError(resp.status, respText);
 
   const data = safeJsonParse(respText);
-  const fileUrl = data?.data?.file_url ?? data?.data?.fileUrl;
+  // Prefer download_url (served with proper content-type) over file_url (no extension → EvoLink image processor rejects)
+  const fileUrl =
+    data?.data?.download_url ??
+    data?.data?.downloadUrl ??
+    data?.data?.file_url ??
+    data?.data?.fileUrl;
   if (!fileUrl || typeof fileUrl !== "string") {
     throw new Error("EvoLink não retornou URL da imagem de referência");
   }
