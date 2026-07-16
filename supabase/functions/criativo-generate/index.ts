@@ -225,6 +225,54 @@ async function resolveImageFromPayload(data: any): Promise<string | null> {
   return null;
 }
 
+const STORAGE_BUCKET = "creative-assets";
+
+// A imagem gerada volta do EvoLink como base64. Trafegar esse base64 inteiro
+// (uma imagem 4K passa de 10-20MB) pela resposta do invoke é frágil: chega
+// truncado/corrompido no navegador e o arquivo salvo fica quebrado. Então
+// gravamos a imagem no Storage aqui, no servidor, e devolvemos só a URL
+// pública permanente. Se algo falhar, quem chama volta a devolver o data URI
+// (comportamento antigo) pra não quebrar totalmente a geração.
+async function persistImageToStorage(dataUrl: string): Promise<string | null> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !serviceKey) {
+    console.warn("SUPABASE_URL/SERVICE_ROLE_KEY ausentes — devolvendo data URI");
+    return null;
+  }
+
+  const parsed = parseDataUrl(dataUrl);
+  if (!parsed) return null;
+
+  const ext =
+    parsed.mime === "image/jpeg" ? "jpg" :
+    parsed.mime === "image/webp" ? "webp" :
+    parsed.mime === "image/gif" ? "gif" : "png";
+  const objectPath = `generated/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
+
+  const uploadResp = await fetch(
+    `${supabaseUrl}/storage/v1/object/${STORAGE_BUCKET}/${objectPath}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${serviceKey}`,
+        "Content-Type": parsed.mime,
+        "x-upsert": "true",
+        "cache-control": "3600",
+      },
+      body: parsed.bytes,
+    },
+  );
+
+  if (!uploadResp.ok) {
+    const body = await uploadResp.text();
+    console.error("Falha ao gravar imagem no Storage:", uploadResp.status, body.slice(0, 400));
+    return null;
+  }
+
+  return `${supabaseUrl}/storage/v1/object/public/${STORAGE_BUCKET}/${objectPath}`;
+}
+
 async function waitForTaskImage(
   taskId: string,
   apiKey: string,
@@ -381,6 +429,13 @@ serve(async (req) => {
         throw new Error("EvoLink não retornou imagem");
       }
       imageUrl = await waitForTaskImage(taskId, EVOLINK_API_KEY);
+    }
+
+    // Grava no Storage (servidor) e devolve URL permanente em vez do base64
+    // gigante — evita corrupção/truncamento no trânsito. Fallback: data URI.
+    if (imageUrl.startsWith("data:")) {
+      const storedUrl = await persistImageToStorage(imageUrl);
+      if (storedUrl) imageUrl = storedUrl;
     }
 
     return new Response(JSON.stringify({ imageUrl, model: MODEL_NAME }), {
