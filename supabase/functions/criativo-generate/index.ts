@@ -115,7 +115,15 @@ async function uploadReferenceImage(
   apiKey: string,
 ): Promise<string> {
   if (/^https?:\/\//i.test(ref)) return ref;
-  if (!parseDataUrl(ref)) throw new Error("Imagem de referência inválida");
+  const parsed = parseDataUrl(ref);
+  if (!parsed) throw new Error("Imagem de referência inválida");
+
+  // Extension hint so EvoLink's image processor accepts the URL
+  const extFromMime =
+    parsed.mime === "image/jpeg" ? "jpg" :
+    parsed.mime === "image/webp" ? "webp" :
+    parsed.mime === "image/gif" ? "gif" : "png";
+  const filename = `ref-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extFromMime}`;
 
   const resp = await fetch(`${EVOLINK_FILES_BASE_URL}/files/upload/base64`, {
     method: "POST",
@@ -123,14 +131,24 @@ async function uploadReferenceImage(
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ base64_data: ref }),
+    body: JSON.stringify({
+      base64_data: ref,
+      filename,
+      file_name: filename,
+      mime_type: parsed.mime,
+    }),
   });
 
   const respText = await readLoggedText("EvoLink upload", resp);
   if (!resp.ok) throw new ProviderHttpError(resp.status, respText);
 
   const data = safeJsonParse(respText);
-  const fileUrl = data?.data?.file_url ?? data?.data?.fileUrl;
+  // Prefer download_url (served with proper content-type) over file_url (no extension → EvoLink image processor rejects)
+  const fileUrl =
+    data?.data?.download_url ??
+    data?.data?.downloadUrl ??
+    data?.data?.file_url ??
+    data?.data?.fileUrl;
   if (!fileUrl || typeof fileUrl !== "string") {
     throw new Error("EvoLink não retornou URL da imagem de referência");
   }

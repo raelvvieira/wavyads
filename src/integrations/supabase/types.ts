@@ -47,6 +47,54 @@ export type Database = {
         }
         Relationships: []
       }
+      client_copy_bank: {
+        Row: {
+          client_id: string | null
+          copy_text: string
+          created_at: string
+          created_by: string | null
+          id: string
+          project_id: string | null
+          source: string
+          tema: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          copy_text: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          project_id?: string | null
+          source?: string
+          tema?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          copy_text?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          project_id?: string | null
+          source?: string
+          tema?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_copy_bank_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_copy_bank_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "creative_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_editorials: {
         Row: {
           client_id: string
@@ -208,6 +256,434 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      creative_assets: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          filename: string | null
+          id: string
+          is_client_intelligence: boolean
+          metadata: Json
+          mime_type: string | null
+          project_id: string | null
+          size_bytes: number | null
+          thumbnail_url: string | null
+          type: string
+          url: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          filename?: string | null
+          id?: string
+          is_client_intelligence?: boolean
+          metadata?: Json
+          mime_type?: string | null
+          project_id?: string | null
+          size_bytes?: number | null
+          thumbnail_url?: string | null
+          type: string
+          url: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          filename?: string | null
+          id?: string
+          is_client_intelligence?: boolean
+          metadata?: Json
+          mime_type?: string | null
+          project_id?: string | null
+          size_bytes?: number | null
+          thumbnail_url?: string | null
+          type?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creative_assets_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creative_assets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "creative_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creative_copy_variations: {
+        Row: {
+          angle: string | null
+          avaliacao: Json
+          created_at: string
+          cta: string | null
+          dados: string | null
+          id: string
+          justificativa: string | null
+          label: string | null
+          metadata: Json
+          project_id: string
+          selected: boolean
+          source: string
+          subtitulo: string | null
+          titulo: string | null
+        }
+        Insert: {
+          angle?: string | null
+          avaliacao?: Json
+          created_at?: string
+          cta?: string | null
+          dados?: string | null
+          id?: string
+          justificativa?: string | null
+          label?: string | null
+          metadata?: Json
+          project_id: string
+          selected?: boolean
+          source: string
+          subtitulo?: string | null
+          titulo?: string | null
+        }
+        Update: {
+          angle?: string | null
+          avaliacao?: Json
+          created_at?: string
+          cta?: string | null
+          dados?: string | null
+          id?: string
+          justificativa?: string | null
+          label?: string | null
+          metadata?: Json
+          project_id?: string
+          selected?: boolean
+          source?: string
+          subtitulo?: string | null
+          titulo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creative_copy_variations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "creative_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creative_outputs: {
+        Row: {
+          aspect_ratio: string | null
+          asset_id: string | null
+          created_at: string
+          id: string
+          image_url: string
+          metadata: Json
+          project_id: string
+          prompt: string | null
+          resolution: string | null
+          source_output_id: string | null
+          type: string
+        }
+        Insert: {
+          aspect_ratio?: string | null
+          asset_id?: string | null
+          created_at?: string
+          id?: string
+          image_url: string
+          metadata?: Json
+          project_id: string
+          prompt?: string | null
+          resolution?: string | null
+          source_output_id?: string | null
+          type: string
+        }
+        Update: {
+          aspect_ratio?: string | null
+          asset_id?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string
+          metadata?: Json
+          project_id?: string
+          prompt?: string | null
+          resolution?: string | null
+          source_output_id?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creative_outputs_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "creative_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creative_outputs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "creative_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creative_outputs_source_output_id_fkey"
+            columns: ["source_output_id"]
+            isOneToOne: false
+            referencedRelation: "creative_outputs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creative_project_state: {
+        Row: {
+          created_at: string
+          id: string
+          project_id: string
+          state_json: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          project_id: string
+          state_json: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          project_id?: string
+          state_json?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creative_project_state_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "creative_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creative_projects: {
+        Row: {
+          campaign_id: string | null
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          current_stage: string | null
+          id: string
+          initial_prompt: string | null
+          language: string
+          model: string | null
+          selected_aspect_ratio: string
+          selected_resolution: string
+          status: string
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_stage?: string | null
+          id?: string
+          initial_prompt?: string | null
+          language?: string
+          model?: string | null
+          selected_aspect_ratio?: string
+          selected_resolution?: string
+          status?: string
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_stage?: string | null
+          id?: string
+          initial_prompt?: string | null
+          language?: string
+          model?: string | null
+          selected_aspect_ratio?: string
+          selected_resolution?: string
+          status?: string
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creative_projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creative_template_assets: {
+        Row: {
+          asset_id: string
+          created_at: string
+          id: string
+          metadata: Json
+          role: string
+          template_id: string
+        }
+        Insert: {
+          asset_id: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          role: string
+          template_id: string
+        }
+        Update: {
+          asset_id?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          role?: string
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creative_template_assets_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "creative_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creative_template_assets_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "creative_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creative_templates: {
+        Row: {
+          aspect_ratio: string
+          base_prompt: string | null
+          category: string | null
+          client_id: string | null
+          copy_structure: Json
+          created_at: string
+          created_by: string | null
+          description: string | null
+          design_system_doc: string | null
+          id: string
+          layout_structure: Json
+          name: string
+          negative_prompt: string | null
+          niche: string | null
+          preferred_resolution: string
+          preview_url: string | null
+          source_output_id: string | null
+          source_project_id: string | null
+          status: string
+          style_metadata: Json
+          tags: string[]
+          updated_at: string
+          usage_count: number
+          visibility: string
+        }
+        Insert: {
+          aspect_ratio?: string
+          base_prompt?: string | null
+          category?: string | null
+          client_id?: string | null
+          copy_structure?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          design_system_doc?: string | null
+          id?: string
+          layout_structure?: Json
+          name: string
+          negative_prompt?: string | null
+          niche?: string | null
+          preferred_resolution?: string
+          preview_url?: string | null
+          source_output_id?: string | null
+          source_project_id?: string | null
+          status?: string
+          style_metadata?: Json
+          tags?: string[]
+          updated_at?: string
+          usage_count?: number
+          visibility?: string
+        }
+        Update: {
+          aspect_ratio?: string
+          base_prompt?: string | null
+          category?: string | null
+          client_id?: string | null
+          copy_structure?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          design_system_doc?: string | null
+          id?: string
+          layout_structure?: Json
+          name?: string
+          negative_prompt?: string | null
+          niche?: string | null
+          preferred_resolution?: string
+          preview_url?: string | null
+          source_output_id?: string | null
+          source_project_id?: string | null
+          status?: string
+          style_metadata?: Json
+          tags?: string[]
+          updated_at?: string
+          usage_count?: number
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creative_templates_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creative_templates_source_output_id_fkey"
+            columns: ["source_output_id"]
+            isOneToOne: false
+            referencedRelation: "creative_outputs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creative_templates_source_project_id_fkey"
+            columns: ["source_project_id"]
+            isOneToOne: false
+            referencedRelation: "creative_projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       offline_conversions: {
         Row: {
