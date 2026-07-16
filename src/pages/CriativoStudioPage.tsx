@@ -294,6 +294,23 @@ function getLegacyStepFromStage(stage: CurrentStage) {
   return 3;
 }
 
+function extensionForMimeType(mime: string): string {
+  if (mime === 'image/jpeg') return 'jpg';
+  if (mime === 'image/webp') return 'webp';
+  if (mime === 'image/gif') return 'gif';
+  return 'png';
+}
+
+// O caminho chega com extensão "chutada" (imageFileName sempre usa .png) —
+// aqui corrigimos pra bater com o content-type real do blob, senão a URL
+// salva fica com extensão errada (ex.: foto .jpg salva como "arquivo.png")
+// e provedores de geração de imagem que validam por extensão (EvoLink)
+// rejeitam essa URL quando ela é reaproveitada numa geração futura.
+function withCorrectExtension(path: string, mime: string): string {
+  const ext = extensionForMimeType(mime);
+  return path.replace(/\.[a-zA-Z0-9]+$/, `.${ext}`);
+}
+
 // supabase.functions.invoke() só expõe uma mensagem genérica
 // ("Edge Function returned a non-2xx status code") no `error` — o motivo
 // real vem no corpo da resposta, acessível via error.context (a Response).
@@ -540,16 +557,18 @@ export default function CriativoStudioPage() {
     path: string;
     bucket?: string;
   }) => {
-    if (!dataUrl.startsWith('data:')) return dataUrl;
+    if (!dataUrl.startsWith('data:')) return { url: dataUrl, path };
     const blob = await dataUrlToBlob(dataUrl);
-    const { error } = await storageClient.from(bucket).upload(path, blob, {
+    const contentType = blob.type || 'image/png';
+    const correctedPath = withCorrectExtension(path, contentType);
+    const { error } = await storageClient.from(bucket).upload(correctedPath, blob, {
       cacheControl: '3600',
-      contentType: blob.type || 'image/png',
+      contentType,
       upsert: true,
     });
     if (error) throw error;
-    const { data } = storageClient.from(bucket).getPublicUrl(path);
-    return data.publicUrl as string;
+    const { data } = storageClient.from(bucket).getPublicUrl(correctedPath);
+    return { url: data.publicUrl as string, path: correctedPath };
   };
 
   const uploadImageFileToStorage = async ({
@@ -931,8 +950,9 @@ export default function CriativoStudioPage() {
       const projectId = currentProjectId || await createCreativeProject();
       const userId = await getCurrentUserId();
       const path = `${userId || 'admin'}/${projectId}/${folder}/${filename}`;
-      const url = await uploadDataUrlToStorage({ dataUrl: imageUrl, path });
-      const assetId = await saveAssetRecord({ type, url, metadata, filename, clientId });
+      const { url, path: storedPath } = await uploadDataUrlToStorage({ dataUrl: imageUrl, path });
+      const storedFilename = storedPath.split('/').pop() || filename;
+      const assetId = await saveAssetRecord({ type, url, metadata, filename: storedFilename, clientId });
       return { url, assetId };
     } catch (e: any) {
       toast({ title: 'Aviso: imagem não foi salva no Storage', description: e?.message || 'O fluxo continua normalmente.' });

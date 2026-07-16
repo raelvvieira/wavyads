@@ -135,8 +135,25 @@ async function uploadReferenceImage(
   apiKey: string,
   label: string,
 ): Promise<string> {
-  if (/^https?:\/\//i.test(ref)) return ref;
-  const parsed = parseDataUrl(ref);
+  // Referências já hospedadas (logo/produto salvos antes, story reutilizada
+  // pra consistência do quadrado) chegam aqui como URL, não como base64. Elas
+  // NÃO passam pelo upload/renomeio abaixo se devolvidas direto — e como o
+  // app grava tudo com extensão .png independente do formato real (bug à
+  // parte, também corrigido no frontend), a URL pode ter extensão errada e
+  // ser rejeitada pelo EvoLink por "formato". Por isso baixamos e reenviamos
+  // sempre pelo mesmo caminho abaixo, com a extensão derivada do Content-Type
+  // real — mais lento, mas elimina essa classe inteira de erro.
+  let dataUrl = ref;
+  if (/^https?:\/\//i.test(ref)) {
+    try {
+      dataUrl = await fetchUrlToBase64DataUrl(ref);
+    } catch (err) {
+      console.error(`Falha ao baixar a imagem "${label}" da URL já hospedada:`, err);
+      throw new Error(`Não consegui baixar a imagem "${label}" pra reenviar. Verifique se ela ainda existe.`);
+    }
+  }
+
+  const parsed = parseDataUrl(dataUrl);
   if (!parsed) throw new Error(`Imagem inválida (${label})`);
 
   if (parsed.bytes.length > MAX_REFERENCE_IMAGE_BYTES) {
@@ -160,7 +177,7 @@ async function uploadReferenceImage(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      base64_data: ref,
+      base64_data: dataUrl,
       filename,
       file_name: filename,
       mime_type: parsed.mime,
