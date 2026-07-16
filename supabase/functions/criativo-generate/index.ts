@@ -110,13 +110,41 @@ function mapResolution(quality: "low" | "medium" | "high"): string {
   return "1K";
 }
 
+const MAX_REFERENCE_IMAGE_BYTES = 9.5 * 1024 * 1024; // EvoLink recusa acima de 10MB
+
+// EvoLink exige que a URL da imagem seja diretamente baixável por eles
+// (https://docs.evolink.ai/.../gpt-image-2-image-generation). Uma URL que
+// devolve 401/403/redirect/HTML de erro passa despercebida no upload e só
+// falha depois, no /images/generations, com a mensagem genérica "Image
+// processing failed" — então confirmamos aqui, logo após o upload.
+async function verifyUrlPubliclyAccessible(url: string): Promise<void> {
+  try {
+    const head = await fetch(url, { method: "HEAD" });
+    if (head.ok) return;
+  } catch {
+    // alguns hosts recusam HEAD — cai pro GET abaixo antes de desistir
+  }
+  const get = await fetch(url, { headers: { Range: "bytes=0-0" } });
+  if (!get.ok && get.status !== 206) {
+    throw new Error(`status ${get.status}`);
+  }
+}
+
 async function uploadReferenceImage(
   ref: string,
   apiKey: string,
+  label: string,
 ): Promise<string> {
   if (/^https?:\/\//i.test(ref)) return ref;
   const parsed = parseDataUrl(ref);
-  if (!parsed) throw new Error("Imagem de referência inválida");
+  if (!parsed) throw new Error(`Imagem inválida (${label})`);
+
+  if (parsed.bytes.length > MAX_REFERENCE_IMAGE_BYTES) {
+    const sizeMb = (parsed.bytes.length / (1024 * 1024)).toFixed(1);
+    throw new Error(
+      `A imagem "${label}" está muito grande (${sizeMb}MB, limite 10MB). Reduza o tamanho e envie de novo.`,
+    );
+  }
 
   // Extension hint so EvoLink's image processor accepts the URL
   const extFromMime =
@@ -139,19 +167,30 @@ async function uploadReferenceImage(
     }),
   });
 
-  const respText = await readLoggedText("EvoLink upload", resp);
+  const respText = await readLoggedText(`EvoLink upload (${label})`, resp);
   if (!resp.ok) throw new ProviderHttpError(resp.status, respText);
 
   const data = safeJsonParse(respText);
-  // Prefer download_url (served with proper content-type) over file_url (no extension → EvoLink image processor rejects)
+  // file_url é o campo documentado pelo EvoLink; download_url/variantes
+  // ficam como fallback caso a resposta venha num formato diferente.
   const fileUrl =
-    data?.data?.download_url ??
-    data?.data?.downloadUrl ??
     data?.data?.file_url ??
-    data?.data?.fileUrl;
+    data?.data?.fileUrl ??
+    data?.data?.download_url ??
+    data?.data?.downloadUrl;
   if (!fileUrl || typeof fileUrl !== "string") {
-    throw new Error("EvoLink não retornou URL da imagem de referência");
+    throw new Error(`EvoLink não retornou URL da imagem "${label}"`);
   }
+
+  try {
+    await verifyUrlPubliclyAccessible(fileUrl);
+  } catch (err) {
+    console.error(`URL da imagem "${label}" não ficou acessível após upload:`, err);
+    throw new Error(
+      `A imagem "${label}" foi enviada mas não ficou acessível publicamente pra geração. Tente enviar de novo.`,
+    );
+  }
+
   return fileUrl;
 }
 
@@ -244,14 +283,16 @@ serve(async (req) => {
     const quality = body.quality ?? "low";
     const resolution = mapResolution(quality);
 
-    const rawRefs: string[] = [];
+    const rawRefs: { label: string; data: string }[] = [];
     const productImages = Array.isArray(body.productImages)
       ? body.productImages
       : [];
-    rawRefs.push(...productImages.slice(0, 14));
-    if (body.logoImage) rawRefs.push(body.logoImage);
+    productImages.slice(0, 14).forEach((img, i) =>
+      rawRefs.push({ label: `produto/pessoa #${i + 1}`, data: img })
+    );
+    if (body.logoImage) rawRefs.push({ label: "logo", data: body.logoImage });
     const aspectRef = body.aspectReference ?? (!isStory ? body.storyReference : null);
-    if (aspectRef) rawRefs.push(aspectRef);
+    if (aspectRef) rawRefs.push({ label: "referência de consistência visual", data: aspectRef });
 
     const hasRefs = rawRefs.length > 0;
     const referenceHints = hasRefs
@@ -274,7 +315,7 @@ serve(async (req) => {
 
     const imageUrls = hasRefs
       ? await Promise.all(
-          rawRefs.map((ref) => uploadReferenceImage(ref, EVOLINK_API_KEY)),
+          rawRefs.map((ref) => uploadReferenceImage(ref.data, EVOLINK_API_KEY, ref.label)),
         )
       : [];
 
