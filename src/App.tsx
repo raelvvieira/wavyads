@@ -12,6 +12,7 @@ import DashboardPage from "@/pages/DashboardPage";
 import SettingsPage from "@/pages/SettingsPage";
 import ComercialPage from "@/pages/ComercialPage";
 import ComercialIndexPage from "@/pages/ComercialIndexPage";
+import CrmPage from "@/pages/CrmPage";
 import GoogleAdsAIPage from "@/pages/GoogleAdsAIPage";
 import CriativoStudioPage from "@/pages/CriativoStudioPage";
 import SocialMidiaStudioPage from "@/pages/SocialMidiaStudioPage";
@@ -40,6 +41,8 @@ const App = () => (
               <Route path="/dashboard/:clientId" element={<DashboardPage />} />
               <Route path="/comercial" element={<ComercialIndexPage />} />
               <Route path="/comercial/:clientId" element={<ComercialPage />} />
+              <Route path="/crm" element={<CrmPage />} />
+              <Route path="/crm/:clientId" element={<CrmPage />} />
               <Route path="/google-ads-ai" element={<GoogleAdsAIPage />} />
               <Route path="/criativo-studio" element={<CriativoStudioPage />} />
               <Route path="/social-midia-studio" element={<SocialMidiaStudioPage />} />

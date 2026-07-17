@@ -13,6 +13,7 @@ import {
   Wand2,
   PlayCircle,
   Zap,
+  Contact,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAiUsage } from '@/lib/aiUsageTracker';
@@ -39,6 +40,7 @@ export function AppSidebar() {
   const clientItems = [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', show: true },
     { to: '/comercial', icon: Users, label: 'Comercial', show: true },
+    { to: '/crm', icon: Contact, label: 'CRM', show: true },
   ];
 
   const adminItems = [
