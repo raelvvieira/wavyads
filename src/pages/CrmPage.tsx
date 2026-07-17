@@ -80,10 +80,32 @@ function CrmClientView({ clientId }: { clientId: string }) {
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [iframeFailed, setIframeFailed] = useState(false);
+  const [ssoUrl, setSsoUrl] = useState<string | null>(null);
+
+  // Tenta obter uma URL do EVO já autenticada (SSO) via edge function crm-sso.
+  // Enquanto a função/EVO não estiverem no ar, isto falha silenciosamente e
+  // caímos no embed simples da crm_url — sem quebrar nada.
+  useEffect(() => {
+    let active = true;
+    setSsoUrl(null);
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('crm-sso', { body: { clientId } });
+        if (!active || error) return;
+        if ((data as any)?.url) setSsoUrl((data as any).url as string);
+      } catch {
+        /* função ainda não publicada — usa fallback */
+      }
+    })();
+    return () => { active = false; };
+  }, [clientId]);
+
+  // URL efetivamente embutida/aberta: prioriza a sessão SSO; senão a crm_url.
+  const effectiveUrl = ssoUrl || crmUrl;
 
   useEffect(() => {
     setIframeFailed(false);
-  }, [crmUrl]);
+  }, [effectiveUrl]);
 
   const saveUrl = async () => {
     const normalized = normalizeUrl(draft);
@@ -136,8 +158,8 @@ function CrmClientView({ clientId }: { clientId: string }) {
             <ArrowLeft className="mr-1.5 h-4 w-4" /> Trocar cliente
           </Button>
         )}
-        {crmUrl && (
-          <Button variant="outline" size="sm" className="rounded-full" onClick={() => window.open(crmUrl, '_blank', 'noopener')}>
+        {effectiveUrl && (
+          <Button variant="outline" size="sm" className="rounded-full" onClick={() => window.open(effectiveUrl, '_blank', 'noopener')}>
             <ExternalLink className="mr-1.5 h-4 w-4" /> Abrir em nova aba
           </Button>
         )}
@@ -148,7 +170,7 @@ function CrmClientView({ clientId }: { clientId: string }) {
         )}
       </div>
 
-      {(editing || (isAdmin && !crmUrl && !loading)) && (
+      {(editing || (isAdmin && !effectiveUrl && !loading)) && (
         <GlassCard className="mb-4 p-4">
           <label className="mb-1.5 block text-xs uppercase tracking-wider text-white/40">
             URL do CRM (EVO) deste cliente
@@ -180,7 +202,7 @@ function CrmClientView({ clientId }: { clientId: string }) {
         <div className="flex flex-1 items-center justify-center">
           <Loader2 className="h-6 w-6 animate-spin text-accent" />
         </div>
-      ) : !crmUrl ? (
+      ) : !effectiveUrl ? (
         !isAdmin && (
           <GlassCard className="flex flex-1 flex-col items-center justify-center gap-2 p-10 text-center">
             <Contact className="h-8 w-8 text-white/30" />
@@ -192,15 +214,15 @@ function CrmClientView({ clientId }: { clientId: string }) {
         <GlassCard className="flex flex-1 flex-col items-center justify-center gap-3 p-10 text-center">
           <ExternalLink className="h-8 w-8 text-white/30" />
           <p className="text-sm text-white/70">Este CRM não permite abrir embutido aqui.</p>
-          <Button className="rounded-full bg-accent text-white hover:bg-accent/90" onClick={() => window.open(crmUrl, '_blank', 'noopener')}>
+          <Button className="rounded-full bg-accent text-white hover:bg-accent/90" onClick={() => window.open(effectiveUrl, '_blank', 'noopener')}>
             <ExternalLink className="mr-1.5 h-4 w-4" /> Abrir CRM em nova aba
           </Button>
         </GlassCard>
       ) : (
         <div className="relative flex-1 overflow-hidden rounded-2xl border border-white/10 bg-black/20">
           <iframe
-            key={crmUrl}
-            src={crmUrl}
+            key={effectiveUrl}
+            src={effectiveUrl}
             title="CRM"
             className="h-full min-h-[70vh] w-full"
             onError={() => setIframeFailed(true)}
