@@ -548,6 +548,12 @@ export default function CriativoStudioPage() {
     return response.blob();
   };
 
+  // `creative-assets` é privado (política da workspace bloqueia buckets
+  // públicos), então URLs públicas retornam 400 tanto no <img> quanto na
+  // hora do EvoLink baixar. Usamos signed URLs de longa duração: funcionam
+  // no navegador e servem para a edge function reenviar como referência.
+  const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 365 * 5; // ~5 anos
+
   const uploadDataUrlToStorage = async ({
     dataUrl,
     path,
@@ -567,8 +573,11 @@ export default function CriativoStudioPage() {
       upsert: true,
     });
     if (error) throw error;
-    const { data } = storageClient.from(bucket).getPublicUrl(correctedPath);
-    return { url: data.publicUrl as string, path: correctedPath };
+    const { data: signed, error: signErr } = await storageClient
+      .from(bucket)
+      .createSignedUrl(correctedPath, SIGNED_URL_TTL_SECONDS);
+    if (signErr || !signed?.signedUrl) throw signErr || new Error('Falha ao assinar URL');
+    return { url: signed.signedUrl, path: correctedPath };
   };
 
   const uploadImageFileToStorage = async ({
@@ -586,8 +595,11 @@ export default function CriativoStudioPage() {
       upsert: true,
     });
     if (error) throw error;
-    const { data } = storageClient.from(bucket).getPublicUrl(path);
-    return data.publicUrl as string;
+    const { data: signed, error: signErr } = await storageClient
+      .from(bucket)
+      .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
+    if (signErr || !signed?.signedUrl) throw signErr || new Error('Falha ao assinar URL');
+    return signed.signedUrl;
   };
 
   const createCreativeProject = async () => {
