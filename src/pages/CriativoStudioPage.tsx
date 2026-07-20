@@ -100,12 +100,29 @@ type RightPanelMode =
   | 'generation-summary'
   | 'generated-result'
   | 'creative-factor'
+  | 'asset-actions'
   | 'edit-image'
   | 'project-history'
   | 'template-library'
   | 'template-detail'
   | 'save-template'
   | 'template-applied';
+
+// Uma arte selecionada no quadro (principal, quadrada ou uma variação do Fator).
+// Serve pra abrir o menu lateral de ações focado NAQUELA imagem — não só na
+// arte principal. factorIndex identifica de qual variação do Fator ela veio
+// (usado pra recriar 1080 e pra reaplicar o Fator a partir dela).
+interface SelectedAsset {
+  key: string;                 // 'main:story' | 'main:square' | 'f{i}:story' | 'f{i}:square'
+  url: string;
+  aspect: 'story' | 'square';
+  prompt: string;
+  label: string;
+  copy?: any;
+  assetId?: string | null;
+  factorIndex?: number | null;
+  factorVariation?: any;
+}
 
 type ConversationAction = {
   label: string;
@@ -444,6 +461,10 @@ export default function CriativoStudioPage() {
   const [savingArtIntelligence, setSavingArtIntelligence] = useState(false);
   const [copySavedToIntelligence, setCopySavedToIntelligence] = useState(false);
   const [artSavedToIntelligence, setArtSavedToIntelligence] = useState(false);
+  // Arte selecionada no quadro + quais já foram salvas na inteligência do cliente
+  // (por key, pra o botão "Salvar arte" do menu por-imagem mostrar o estado certo).
+  const [selectedAsset, setSelectedAsset] = useState<SelectedAsset | null>(null);
+  const [assetSavedKeys, setAssetSavedKeys] = useState<Set<string>>(new Set());
   const [quickCreativeOpen, setQuickCreativeOpen] = useState(false);
   const [quickCreativeLoading, setQuickCreativeLoading] = useState(false);
   const [quickCreativeGenerating, setQuickCreativeGenerating] = useState(false);
@@ -1082,22 +1103,35 @@ export default function CriativoStudioPage() {
     }
   };
 
-  const saveArtToClientIntelligence = async () => {
+  // Sem `asset` → salva a arte principal (story/square), comportamento antigo.
+  // Com `asset` → salva aquela imagem específica do quadro (ex.: uma variação
+  // do Fator), marcando a key como salva pro botão refletir o estado.
+  const saveArtToClientIntelligence = async (asset?: {
+    key: string;
+    url: string;
+    assetId?: string | null;
+    prompt: string;
+    copy?: any;
+    aspect: 'story' | 'square';
+  }) => {
     if (!selectedClientId) {
       toast({ title: 'Selecione um cliente', description: 'Escolha o cliente no topo para salvar a arte na inteligência dele.' });
       return;
     }
-    if (!storyImage && !squareImage) return;
+    const url = asset?.url ?? storyImage ?? squareImage;
+    if (!url) return;
     setSavingArtIntelligence(true);
     try {
       const metadata = {
         designSystemDoc: editedDoc || analysis?.designSystemDoc || '',
-        promptUsado: storyImage ? buildFinalPromptForSelectedAspect() : buildFinalPrompt('square', { selectedAspectRatio: '1:1', selectedResolution }),
-        copy: copySource === 'ai' ? selectedCopy : { rawCopy },
-        aspectRatio: selectedAspectRatio,
+        promptUsado: asset?.prompt ?? (storyImage ? buildFinalPromptForSelectedAspect() : buildFinalPrompt('square', { selectedAspectRatio: '1:1', selectedResolution })),
+        copy: asset?.copy ?? (copySource === 'ai' ? selectedCopy : { rawCopy }),
+        aspectRatio: asset ? (asset.aspect === 'square' ? '1:1' : selectedAspectRatio) : selectedAspectRatio,
         resolution: selectedResolution,
       };
-      const assetIds = [mainStoryAssetId, mainSquareAssetId].filter(Boolean) as string[];
+      const assetIds = asset
+        ? (asset.assetId ? [asset.assetId] : [])
+        : ([mainStoryAssetId, mainSquareAssetId].filter(Boolean) as string[]);
       if (assetIds.length > 0) {
         const { error } = await db
           .from('creative_assets')
@@ -1107,19 +1141,27 @@ export default function CriativoStudioPage() {
       } else {
         await saveAssetRecord({
           type: 'generated',
-          url: (storyImage || squareImage) as string,
+          url,
           clientId: selectedClientId,
           metadata,
           isClientIntelligence: true,
         });
       }
-      setArtSavedToIntelligence(true);
+      if (asset) setAssetSavedKeys((prev) => new Set(prev).add(asset.key));
+      else setArtSavedToIntelligence(true);
       toast({ title: 'Arte salva na inteligência do cliente' });
     } catch (e: any) {
       toast({ title: 'Erro ao salvar arte', description: e?.message, variant: 'destructive' });
     } finally {
       setSavingArtIntelligence(false);
     }
+  };
+
+  // Abre o menu lateral de ações focado numa arte específica do quadro.
+  const openAssetActions = (asset: SelectedAsset) => {
+    setSelectedAsset(asset);
+    setCurrentStage('result');
+    setRightPanelMode('asset-actions');
   };
 
   // Criativo Rápido: reaproveita a base já salva do cliente (copy + estilo
@@ -1895,9 +1937,12 @@ A reference Story version of this same creative is attached as the FIRST image. 
     };
   };
 
-  const applyFatorCriativo = async () => {
-    if (!storyImage && !squareImage) return;
-    const aspect: 'story' | 'square' = storyImage ? 'story' : 'square';
+  // Sem `base` → aplica o Fator sobre a arte principal (comportamento antigo).
+  // Com `base` → reaplica o Fator a partir de uma imagem/variação escolhida no
+  // quadro, usando o prompt e a copy dela como semente das 5 novas variações.
+  const applyFatorCriativo = async (base?: { image: string; aspect: 'story' | 'square'; prompt: string; copy?: any }) => {
+    if (!base?.image && !storyImage && !squareImage) return;
+    const aspect: 'story' | 'square' = base?.aspect ?? (storyImage ? 'story' : 'square');
     setFactorLoading(true);
     setFactorVariations(null);
     setFactorImages([null, null, null, null, null]);
@@ -1906,14 +1951,15 @@ A reference Story version of this same creative is attached as the FIRST image. 
     setFactorSquareLoading([false, false, false, false, false]);
     setFactorProgress(0);
     try {
-      const originalPrompt = buildFinalPrompt(aspect, {
+      const originalPrompt = base?.prompt ?? buildFinalPrompt(aspect, {
         selectedAspectRatio: aspect === 'square' ? '1:1' : selectedAspectRatio,
         selectedResolution,
       });
+      const baseCopy = base?.copy ?? (copySource === 'ai' ? selectedCopy : { rawCopy });
       const { data, error } = await supabase.functions.invoke('criativo-fator', {
         body: {
           originalPrompt,
-          copy: copySource === 'ai' ? selectedCopy : { rawCopy },
+          copy: baseCopy,
           businessContext,
           language,
           aspect,
@@ -1936,7 +1982,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
                 isVariation: true,
                 productImages,
                 logoImage: logoImage[0] || null,
-                storyReference: aspect === 'square' ? storyImage : null,
+                storyReference: aspect === 'square' ? (base?.image ?? storyImage) : null,
               },
             });
             if (ge) throw new Error(await extractFunctionErrorMessage(ge));
@@ -2530,10 +2576,10 @@ A reference Story version of this same creative is attached as the FIRST image. 
   );
 
   const renderBoardCard = ({
-    url, aspect, title, subtitle, onDownload, onEdit, compact,
+    url, aspect, title, subtitle, onDownload, onEdit, onSelect, compact,
   }: {
     url: string; aspect: 'story' | 'square'; title?: string; subtitle?: string;
-    onDownload: () => void; onEdit: () => void; compact?: boolean;
+    onDownload: () => void; onEdit: () => void; onSelect?: () => void; compact?: boolean;
   }) => (
     <div className={cn('flex flex-col gap-2', compact ? 'w-full' : 'w-full max-w-[280px]')}>
       <div
@@ -2543,16 +2589,31 @@ A reference Story version of this same creative is attached as the FIRST image. 
         )}
       >
         <img src={url} alt={title || 'Criativo gerado'} className="h-full w-full object-cover" />
-        <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/0 opacity-0 transition group-hover:bg-black/45 group-hover:opacity-100">
-          <button type="button" onClick={() => setLightboxUrl(url)} className="rounded-full bg-black/60 p-2 backdrop-blur hover:bg-black/80" title="Ver em tela cheia">
+        {/* Clicar na imagem abre o menu lateral de ações focado nesta arte.
+            Fica atrás dos botões de hover (que têm pointer-events próprios). */}
+        {onSelect && (
+          <button
+            type="button"
+            onClick={onSelect}
+            className="absolute inset-0 cursor-pointer"
+            aria-label="Abrir ações desta arte"
+          />
+        )}
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 bg-black/0 opacity-0 transition group-hover:bg-black/45 group-hover:opacity-100">
+          <button type="button" onClick={(e) => { e.stopPropagation(); setLightboxUrl(url); }} className="pointer-events-auto rounded-full bg-black/60 p-2 backdrop-blur hover:bg-black/80" title="Ver em tela cheia">
             <ZoomIn className="h-4 w-4 text-white" />
           </button>
-          <button type="button" onClick={onDownload} className="rounded-full bg-black/60 p-2 backdrop-blur hover:bg-black/80" title="Baixar">
+          <button type="button" onClick={(e) => { e.stopPropagation(); onDownload(); }} className="pointer-events-auto rounded-full bg-black/60 p-2 backdrop-blur hover:bg-black/80" title="Baixar">
             <Download className="h-4 w-4 text-white" />
           </button>
-          <button type="button" onClick={onEdit} className="rounded-full bg-black/60 p-2 backdrop-blur hover:bg-black/80" title="Editar com IA">
+          <button type="button" onClick={(e) => { e.stopPropagation(); onEdit(); }} className="pointer-events-auto rounded-full bg-black/60 p-2 backdrop-blur hover:bg-black/80" title="Editar com IA">
             <Pencil className="h-4 w-4 text-white" />
           </button>
+          {onSelect && (
+            <button type="button" onClick={(e) => { e.stopPropagation(); onSelect(); }} className="pointer-events-auto rounded-full bg-[#EC4899]/80 p-2 backdrop-blur hover:bg-[#EC4899]" title="Ações desta arte">
+              <Settings className="h-4 w-4 text-white" />
+            </button>
+          )}
         </div>
       </div>
       {(title || subtitle) && (
@@ -3242,6 +3303,104 @@ A reference Story version of this same creative is attached as the FIRST image. 
             </div>
           )}
 
+          {rightPanelMode === 'asset-actions' && selectedAsset && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs uppercase tracking-wider text-[#F9A8D4]">{selectedAsset.label}</p>
+                <span className="rounded-full bg-white/10 px-2 py-1 text-[10px] text-white/60">
+                  {selectedAsset.aspect === 'square' ? '1:1' : selectedAspectRatio}
+                </span>
+              </div>
+              {renderGeneratedThumb(selectedAsset.url, selectedAsset.aspect, selectedAsset.label)}
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" className="rounded-full" onClick={() => download(selectedAsset.url, imageFileName(sanitizeFileName(selectedAsset.label)))}>
+                  <Download className="mr-2 h-3 w-3" />Baixar
+                </Button>
+                {selectedAsset.aspect === 'story' && (
+                  <Button
+                    variant="outline"
+                    className="rounded-full"
+                    disabled={selectedAsset.factorIndex != null ? factorSquareLoading[selectedAsset.factorIndex] : mainSquareLoading}
+                    onClick={() => recreateSquare(selectedAsset.factorIndex != null ? selectedAsset.factorIndex : 'main')}
+                  >
+                    <RefreshCw className="mr-2 h-3 w-3" />1080
+                  </Button>
+                )}
+                <Button variant="outline" className="rounded-full" onClick={() => openEditTarget({ key: selectedAsset.key, image: selectedAsset.url, aspect: selectedAsset.aspect, prompt: selectedAsset.prompt, label: selectedAsset.label })}>
+                  <Pencil className="mr-2 h-3 w-3" />Editar
+                </Button>
+                <Button
+                  variant="outline"
+                  className="rounded-full"
+                  disabled={factorLoading}
+                  onClick={() => {
+                    setRightPanelMode('creative-factor');
+                    applyFatorCriativo({ image: selectedAsset.url, aspect: selectedAsset.aspect, prompt: selectedAsset.prompt, copy: selectedAsset.copy });
+                  }}
+                >
+                  <Sparkles className="mr-2 h-3 w-3" />Fator
+                </Button>
+                <Button variant="outline" className="rounded-full" onClick={() => setLightboxUrl(selectedAsset.url)}>
+                  <ZoomIn className="mr-2 h-3 w-3" />Preview
+                </Button>
+                <Button
+                  variant="outline"
+                  className="rounded-full"
+                  onClick={() => openSaveTemplate({
+                    sourceProjectId: currentProjectId,
+                    imageUrl: selectedAsset.url,
+                    prompt: selectedAsset.prompt,
+                    aspectRatio: selectedAsset.aspect === 'square' ? '1:1' : selectedAspectRatio,
+                    copy: selectedAsset.copy ?? (copySource === 'ai' ? selectedCopy : { rawCopy }),
+                    designSystemDoc: editedDoc,
+                    negativePrompt,
+                    businessContext,
+                    factorVariation: selectedAsset.factorVariation || undefined,
+                  })}
+                >
+                  <Layers className="mr-2 h-3 w-3" /> Template
+                </Button>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 space-y-2">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-white/80">
+                  <BrainCircuit className="h-3.5 w-3.5 text-[#EC4899]" />
+                  Inteligência do cliente
+                </div>
+                {selectedClientId ? (
+                  <>
+                    <p className="text-[11px] text-white/45">Guarda esta arte no perfil do cliente, pra reaproveitar depois no Criativo Rápido.</p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full rounded-full"
+                      disabled={savingArtIntelligence || assetSavedKeys.has(selectedAsset.key)}
+                      onClick={() => saveArtToClientIntelligence({
+                        key: selectedAsset.key,
+                        url: selectedAsset.url,
+                        assetId: selectedAsset.assetId,
+                        prompt: selectedAsset.prompt,
+                        copy: selectedAsset.copy,
+                        aspect: selectedAsset.aspect,
+                      })}
+                    >
+                      {savingArtIntelligence ? (
+                        <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                      ) : assetSavedKeys.has(selectedAsset.key) ? (
+                        <BookmarkCheck className="mr-1.5 h-3 w-3 text-[#EC4899]" />
+                      ) : (
+                        <BookmarkPlus className="mr-1.5 h-3 w-3" />
+                      )}
+                      {assetSavedKeys.has(selectedAsset.key) ? 'Arte salva' : 'Salvar arte'}
+                    </Button>
+                  </>
+                ) : (
+                  <p className="text-[11px] text-white/40">Selecione um cliente no topo para guardar a arte no perfil dele.</p>
+                )}
+              </div>
+            </div>
+          )}
+
           {rightPanelMode === 'creative-factor' && (
             <div className="space-y-3">
               <p className="text-sm text-white/62">Gere 5 variações estratégicas para testar ângulos diferentes no Meta Ads.</p>
@@ -3652,6 +3811,11 @@ A reference Story version of this same creative is attached as the FIRST image. 
                           subtitle: selectedAspectRatio,
                           onDownload: () => download(storyImage, imageFileName(`criativo-principal-${selectedAspectRatio}`)),
                           onEdit: () => openEditTarget({ key: 'main:story', image: storyImage, aspect: 'story', prompt: buildFinalPromptForSelectedAspect(), label: 'Principal Story' }),
+                          onSelect: () => openAssetActions({
+                            key: 'main:story', url: storyImage, aspect: 'story',
+                            prompt: buildFinalPromptForSelectedAspect(), label: 'Arte principal',
+                            assetId: mainStoryAssetId, copy: copySource === 'ai' ? selectedCopy : { rawCopy },
+                          }),
                         })}
                         {mainSquareLoading && (
                           <div className="w-full max-w-[280px]"><Skeleton className="aspect-square rounded-2xl" /></div>
@@ -3662,6 +3826,12 @@ A reference Story version of this same creative is attached as the FIRST image. 
                           title: 'Versão 1080x1080',
                           onDownload: () => download(squareImage, imageFileName('criativo-square')),
                           onEdit: () => openEditTarget({ key: 'main:square', image: squareImage, aspect: 'square', prompt: buildFinalPrompt('square', { selectedAspectRatio: '1:1', selectedResolution }), label: 'Principal 1:1' }),
+                          onSelect: () => openAssetActions({
+                            key: 'main:square', url: squareImage, aspect: 'square',
+                            prompt: buildFinalPrompt('square', { selectedAspectRatio: '1:1', selectedResolution }),
+                            label: 'Versão 1080x1080', assetId: mainSquareAssetId,
+                            copy: copySource === 'ai' ? selectedCopy : { rawCopy },
+                          }),
                         })}
                       </div>
                     )}
@@ -3687,6 +3857,11 @@ A reference Story version of this same creative is attached as the FIRST image. 
                                   title: v?.nome,
                                   onDownload: () => download(img, imageFileName(`criativo-fator-${i + 1}-${v?.eixo || 'story'}`)),
                                   onEdit: () => openEditTarget({ key: `f${i}:story`, image: img, aspect: 'story', prompt: v?.promptCompleto || '', label: `Fator ${i + 1}` }),
+                                  onSelect: () => openAssetActions({
+                                    key: `f${i}:story`, url: img, aspect: 'story',
+                                    prompt: v?.promptCompleto || '', label: `Fator #${i + 1}${v?.eixo ? ` · ${v.eixo}` : ''}`,
+                                    factorIndex: i, factorVariation: v, copy: v?.copy,
+                                  }),
                                 }) : err ? (
                                   <div className="aspect-[9/16] rounded-2xl border border-destructive/30 bg-destructive/10 p-3 text-[10px] text-destructive">{err}</div>
                                 ) : (
@@ -3700,6 +3875,11 @@ A reference Story version of this same creative is attached as the FIRST image. 
                                   subtitle: '1080x1080',
                                   onDownload: () => download(sqImg, imageFileName(`criativo-fator-${i + 1}-square`)),
                                   onEdit: () => openEditTarget({ key: `f${i}:square`, image: sqImg, aspect: 'square', prompt: v?.promptCompleto || '', label: `Fator ${i + 1} square` }),
+                                  onSelect: () => openAssetActions({
+                                    key: `f${i}:square`, url: sqImg, aspect: 'square',
+                                    prompt: v?.promptCompleto || '', label: `Fator #${i + 1} · 1080`,
+                                    factorIndex: i, factorVariation: v, copy: v?.copy,
+                                  }),
                                 })}
                               </div>
                             );
@@ -3721,7 +3901,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
       </div>
 
       <Dialog open={!!lightboxUrl} onOpenChange={(o) => !o && setLightboxUrl(null)}>
-        <DialogContent className="max-w-[95vw] sm:max-w-[90vw] max-h-[95vh] p-0 bg-black/95 border-white/10 overflow-hidden">
+        <DialogContent className="max-w-[95vw] sm:max-w-[90vw] max-h-[95vh] p-0 bg-black/95 border-white/10 overflow-hidden [&>button]:hidden">
           {lightboxUrl && (
             <div className="relative flex items-center justify-center w-full h-full">
               <img src={lightboxUrl} alt="preview" className="max-w-full max-h-[88vh] object-contain" />
