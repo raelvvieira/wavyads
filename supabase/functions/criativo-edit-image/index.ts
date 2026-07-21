@@ -40,6 +40,29 @@ function parseDataUrl(dataUrl: string): { mime: string; data: string } | null {
   return { mime: m[1], data: m[2] };
 }
 
+// criativo-generate agora salva as imagens no Storage e devolve uma URL
+// pública em vez de base64. O editor recebe essa URL como originalImage,
+// então precisa baixá-la e converter para base64 antes de mandar ao Gemini.
+async function fetchUrlToParts(url: string): Promise<{ mime: string; data: string }> {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`Falha ao baixar imagem original (${r.status})`);
+  const mime = r.headers.get("content-type")?.split(";")[0] || "image/png";
+  const buf = new Uint8Array(await r.arrayBuffer());
+  let bin = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < buf.length; i += chunk) {
+    bin += String.fromCharCode(...buf.subarray(i, i + chunk));
+  }
+  return { mime, data: btoa(bin) };
+}
+
+async function resolveImageParts(originalImage: string): Promise<{ mime: string; data: string }> {
+  const parsed = parseDataUrl(originalImage);
+  if (parsed) return parsed;
+  if (/^https?:\/\//.test(originalImage)) return fetchUrlToParts(originalImage);
+  throw new Error("originalImage deve ser data URL base64 ou URL http(s)");
+}
+
 async function buildEditPrompt(userFeedback: string, originalPrompt: string, lang: string): Promise<string> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
@@ -94,8 +117,7 @@ serve(async (req) => {
 
     const editPrompt = await buildEditPrompt(userFeedback, originalPrompt || "", language || "pt-BR");
 
-    const ref = parseDataUrl(originalImage);
-    if (!ref) throw new Error("originalImage deve ser data URL base64");
+    const ref = await resolveImageParts(originalImage);
 
     const aspectNote = aspect === "square"
       ? "Keep the exact 1:1 square framing of the original (1080x1080)."
