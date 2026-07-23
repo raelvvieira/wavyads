@@ -1649,6 +1649,21 @@ export default function CriativoStudioPage() {
     }
   };
 
+  // A edge function criativo-edit-image só edita a partir de base64. Como a arte
+  // gerada agora vem como URL assinada do Storage, convertemos no próprio
+  // navegador antes de enviar — assim a edição funciona independentemente da
+  // versão da edge function publicada (a antiga exige base64; a nova aceita ambos).
+  const imageUrlToDataUrl = async (url: string): Promise<string> => {
+    if (url.startsWith('data:')) return url;
+    const blob = await (await fetch(url)).blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error('Falha ao carregar a imagem para edição'));
+      reader.readAsDataURL(blob);
+    });
+  };
+
   const editArt = async (key: string, originalImage: string, aspect: 'story' | 'square', originalPrompt: string) => {
     const feedback = editFeedback.trim();
     if (!feedback) {
@@ -1657,8 +1672,9 @@ export default function CriativoStudioPage() {
     }
     setEditLoadingKey(key);
     try {
+      const originalImageData = await imageUrlToDataUrl(originalImage);
       const { data, error } = await supabase.functions.invoke('criativo-edit-image', {
-        body: { originalImage, userFeedback: feedback, originalPrompt, aspect, language },
+        body: { originalImage: originalImageData, userFeedback: feedback, originalPrompt, aspect, language },
       });
       if (error) throw new Error(await extractFunctionErrorMessage(error));
       if ((data as any)?.error) throw new Error((data as any).error);
