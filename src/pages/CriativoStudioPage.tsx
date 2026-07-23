@@ -122,6 +122,7 @@ interface SelectedAsset {
   assetId?: string | null;
   factorIndex?: number | null;
   factorVariation?: any;
+  isEdited?: boolean;   // arte que veio da edição com I.A. (não regenera 1080)
 }
 
 type ConversationAction = {
@@ -500,7 +501,7 @@ export default function CriativoStudioPage() {
   } | null>(null);
 
   // Edições por imagem
-  type EditedVersion = { url: string; feedback: string };
+  type EditedVersion = { url: string; feedback: string; assetId?: string | null; aspect?: 'story' | 'square'; prompt?: string };
   const [editedVersions, setEditedVersions] = useState<Record<string, EditedVersion[]>>({});
   const [editPanelKey, setEditPanelKey] = useState<string | null>(null);
   const [editFeedback, setEditFeedback] = useState('');
@@ -1164,6 +1165,31 @@ export default function CriativoStudioPage() {
     setRightPanelMode('asset-actions');
   };
 
+  // Abre o mesmo menu tradicional de ações, mas focado numa versão EDITADA.
+  // Usa uma key própria (edit:<origem>#<idx>) para que re-edições, salvamento e
+  // estados (loading/salvo) não colidam com a arte de origem. Todas as ações do
+  // painel (Baixar, Editar de novo, Fator, Preview, Template, Salvar) operam
+  // sobre a URL da imagem editada.
+  const openEditedAssetActions = (
+    sourceKey: string,
+    ed: EditedVersion,
+    idx: number,
+    fallbackAspect: 'story' | 'square',
+    fallbackPrompt: string,
+    copy?: any,
+  ) => {
+    openAssetActions({
+      key: `edit:${sourceKey}#${idx}`,
+      url: ed.url,
+      aspect: ed.aspect ?? fallbackAspect,
+      prompt: ed.prompt ?? fallbackPrompt,
+      label: `Edição ${idx + 1}`,
+      copy,
+      assetId: ed.assetId ?? null,
+      isEdited: true,
+    });
+  };
+
   // Criativo Rápido: reaproveita a base já salva do cliente (copy + estilo
   // visual) pra gerar uma arte nova direto, sem passar pelo fluxo completo.
   const openQuickCreative = async () => {
@@ -1699,7 +1725,7 @@ export default function CriativoStudioPage() {
       const url = persisted.url;
       setEditedVersions((prev) => ({
         ...prev,
-        [key]: [...(prev[key] || []), { url, feedback }],
+        [key]: [...(prev[key] || []), { url, feedback, assetId: persisted.assetId, aspect, prompt: originalPrompt }],
       }));
       setEditPanelKey(null);
       setEditFeedback('');
@@ -3332,7 +3358,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
                 <Button variant="outline" className="rounded-full" onClick={() => download(selectedAsset.url, imageFileName(sanitizeFileName(selectedAsset.label)))}>
                   <Download className="mr-2 h-3 w-3" />Baixar
                 </Button>
-                {selectedAsset.aspect === 'story' && (
+                {selectedAsset.aspect === 'story' && !selectedAsset.isEdited && (
                   <Button
                     variant="outline"
                     className="rounded-full"
@@ -3521,6 +3547,8 @@ A reference Story version of this same creative is attached as the FIRST image. 
               <Select
                 value={selectedEditTarget?.key || selectedEditKey}
                 onValueChange={(key) => {
+                  // Chave de arte editada já é o alvo atual — nada a trocar.
+                  if (key.startsWith('edit:')) return;
                   const target = getEditTargetFromKey(key);
                   if (target.image) openEditTarget(target);
                   else setSelectedEditKey(key);
@@ -3532,6 +3560,10 @@ A reference Story version of this same creative is attached as the FIRST image. 
                   {squareImage && <SelectItem value="main:square">Principal 1:1</SelectItem>}
                   {factorImages.map((img, i) => img && <SelectItem key={i} value={`f${i}:story`}>Fator #{i + 1}</SelectItem>)}
                   {factorSquareImages.map((img, i) => img && <SelectItem key={`sq-${i}`} value={`f${i}:square`}>Fator #{i + 1} 1:1</SelectItem>)}
+                  {/* Re-edição de uma arte já editada: expõe o alvo atual para não ficar vazio */}
+                  {(selectedEditTarget?.key || selectedEditKey).startsWith('edit:') && (
+                    <SelectItem value={selectedEditTarget?.key || selectedEditKey}>{selectedEditTarget?.label || 'Arte editada'}</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
               {selectedEditTarget && (
@@ -3558,28 +3590,47 @@ A reference Story version of this same creative is attached as the FIRST image. 
                 {editLoadingKey === (selectedEditTarget?.key || selectedEditKey) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Pencil className="mr-2 h-4 w-4" />}
                 Aplicar edição
               </Button>
-              {(editedVersions[selectedEditTarget?.key || selectedEditKey] || []).map((ed, i) => (
-                <div key={i} className="rounded-2xl border border-white/10 bg-white/[0.035] p-2 space-y-2">
-                  {renderGeneratedThumb(ed.url, selectedEditTarget?.aspect || getEditTargetFromKey(selectedEditKey).aspect, `Edit ${i + 1}`)}
-                  <p className="text-xs text-white/50">{ed.feedback}</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    <Button size="sm" variant="outline" onClick={() => download(ed.url, imageFileName(`criativo-edit-${selectedEditTarget?.label || selectedEditKey}`))}>Baixar</Button>
-                    <Button size="sm" variant="outline" onClick={() => setLightboxUrl(ed.url)}>Preview</Button>
-                    <Button size="sm" variant="outline" onClick={() => openSaveTemplate({
-                      sourceProjectId: currentProjectId,
-                      imageUrl: ed.url,
-                      prompt: selectedEditTarget?.prompt || getEditTargetFromKey(selectedEditKey).prompt,
-                      aspectRatio: selectedEditTarget?.aspect === 'square' ? '1:1' : selectedAspectRatio,
-                      copy: copySource === 'ai' ? selectedCopy : { rawCopy },
-                      designSystemDoc: editedDoc,
-                      negativePrompt,
-                      businessContext,
-                      editFeedback: ed.feedback,
-                    })}>Template</Button>
-                    <Button size="sm" variant="ghost" onClick={() => discardEdit(selectedEditTarget?.key || selectedEditKey, i)} className="text-destructive hover:text-destructive">Descartar</Button>
+              {(() => {
+                const sourceKey = selectedEditTarget?.key || selectedEditKey;
+                const editAspect = selectedEditTarget?.aspect || getEditTargetFromKey(selectedEditKey).aspect;
+                const editPrompt = selectedEditTarget?.prompt || getEditTargetFromKey(selectedEditKey).prompt;
+                const editCopy = copySource === 'ai' ? selectedCopy : { rawCopy };
+                const versions = editedVersions[sourceKey] || [];
+                if (versions.length === 0) return null;
+                return (
+                  <div className="space-y-3">
+                    <p className="text-xs uppercase tracking-wider text-[#F9A8D4]">Versões editadas</p>
+                    {versions.map((ed, i) => (
+                      <div key={i} className="rounded-2xl border border-white/10 bg-white/[0.035] p-2 space-y-2">
+                        <button
+                          type="button"
+                          onClick={() => openEditedAssetActions(sourceKey, ed, i, editAspect, editPrompt, editCopy)}
+                          className={cn(
+                            'group relative w-full overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035]',
+                            editAspect === 'story' ? 'aspect-[9/16]' : 'aspect-square',
+                          )}
+                          title="Abrir ações desta versão"
+                        >
+                          <img src={ed.url} alt={`Edição ${i + 1}`} className="h-full w-full object-cover" />
+                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/0 opacity-0 transition group-hover:bg-black/45 group-hover:opacity-100">
+                            <Settings className="h-5 w-5" />
+                            <span className="text-[11px] font-medium">Ações desta arte</span>
+                          </div>
+                        </button>
+                        <p className="text-xs text-white/50">{ed.feedback}</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button size="sm" variant="outline" className="rounded-full" onClick={() => openEditedAssetActions(sourceKey, ed, i, editAspect, editPrompt, editCopy)}>
+                            <Settings className="mr-1.5 h-3 w-3" />Ações
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => discardEdit(sourceKey, i)} className="rounded-full text-destructive hover:text-destructive">
+                            <Trash2 className="mr-1.5 h-3 w-3" />Descartar
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              ))}
+                );
+              })()}
             </div>
           )}
         </div>
