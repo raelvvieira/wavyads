@@ -10,7 +10,7 @@ export interface UseSocialProfileResult {
   uploadAvatar: (file: File) => Promise<string | null>;
 }
 
-const VALID: TemplateId[] = ["1A", "1B", "2A", "2B", "4", "5"];
+const VALID: TemplateId[] = ["1A", "1B", "2A", "2B", "4", "5", "we-light", "we-dark"];
 
 // Compat: pipelines salvos com IDs antigos do Design ("1","2A","2B","3","4")
 const LEGACY_MAP: Record<string, TemplateId> = {
@@ -23,7 +23,7 @@ const LEGACY_MAP: Record<string, TemplateId> = {
 
 export function useSocialProfile(): UseSocialProfileResult {
   const [profile, setProfile] = useState<SocialProfile>(DEFAULT_PROFILE);
-  const [template, setTemplate] = useState<TemplateId>("2A");
+  const [template, setTemplate] = useState<TemplateId>("we-light");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

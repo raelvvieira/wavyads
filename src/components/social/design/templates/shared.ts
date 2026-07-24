@@ -1,7 +1,8 @@
 import type { SlideTipo } from "@/types/social";
 
-/** IDs canônicos unificados com a Wavy Copy Skill. */
-export type TemplateId = "1A" | "1B" | "2A" | "2B" | "4" | "5";
+/** IDs de design. Os 6 primeiros espelham a Wavy Copy Skill; we-* são designs
+ *  "Wavy Editorial" (claro/escuro) aplicáveis a QUALQUER padrão de copy. */
+export type TemplateId = "1A" | "1B" | "2A" | "2B" | "4" | "5" | "we-light" | "we-dark";
 export type FormatoSlide = "cover" | "content" | "statement" | "tension" | "cta";
 
 export interface SocialProfile {
