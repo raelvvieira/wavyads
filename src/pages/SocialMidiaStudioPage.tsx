@@ -15,9 +15,13 @@ import { ReelFinalStep } from "@/components/social/ReelFinalStep";
 import { DesignStep } from "@/components/social/design/DesignStep";
 
 import { useViralScraper, type ViralSource, type ViralPost } from "@/hooks/useViralScraper";
+import { useImageStyles } from "@/hooks/useImageStyles";
 import { toast } from "@/hooks/use-toast";
+import { recordAiUsage } from "@/lib/aiUsageTracker";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { buildCopyPrompt, type CopyTemplate } from "@/lib/copyTemplates";
+import { buildImagePrompt, suggestStyleId, getStyle, templateSuffixFromPattern } from "@/lib/wavyImageStyles";
 import type { CopyPatternId, CopyAprovada, SlideImagem, PostCopy } from "@/types/social";
 
 const STEPS = ["Scraper", "Resumo", "Template", "Copy Final", "Imagens", "Design"];
@@ -149,6 +153,79 @@ export default function SocialMidiaStudioPage() {
     setPipeline((s) => ({ ...s, post_viral: p, post_copy: null }));
   };
 
+  // ---- Criar post rápido: template → copy → imagens → arte final, sozinho ----
+  const { styles: imageStyles } = useImageStyles();
+  const [quickBusy, setQuickBusy] = useState<{ step: "copy" | "images"; done: number; total: number } | null>(null);
+
+  const quickCreate = async (template: CopyTemplate, num_slides: number) => {
+    const tema = pipeline.tema?.trim();
+    const briefing = pipeline.post_copy?.copy_consolidada?.trim();
+    if (!tema || !briefing) {
+      toast({ title: "Faltam dados", description: "Confirme o tema na etapa anterior.", variant: "destructive" });
+      return;
+    }
+    const pattern_id = template.baseLayout;
+    setQuickBusy({ step: "copy", done: 0, total: 1 });
+    try {
+      // 1) Copy — mesma chamada da Etapa 4 (FormatStep)
+      const tPrompt = buildCopyPrompt(template, { tema, briefing, num_slides, copy_referencia: briefing });
+      const { data: copyData, error: copyErr } = await supabase.functions.invoke("social-copy", {
+        body: { mode: "pattern", pattern_id, tema, briefing, num_slides, copy_referencia: briefing, template_prompt: tPrompt },
+      });
+      if (copyErr) throw new Error(copyErr.message);
+      if ((copyData as any)?.error) throw new Error((copyData as any).error);
+      recordAiUsage("text-claude-sonnet", 1);
+      const copy: CopyAprovada = { ...(copyData as CopyAprovada), pattern_id };
+
+      // Reel não tem imagens/design — entrega o roteiro (Etapa 5).
+      if (pattern_id === "3") {
+        setPipeline((s) => ({ ...s, selected_template: template, pattern_id, num_slides, copy_aprovada: copy, etapa_atual: 4 }));
+        setQuickBusy(null);
+        toast({ title: "Reel pronto!", description: "Roteiro gerado." });
+        return;
+      }
+
+      // 2) Imagens — mesma lógica da Etapa 5 (ImageStep), estilo sugerido por slide
+      const slides = copy.slides || [];
+      const templateId = templateSuffixFromPattern(pattern_id);
+      const fullText = [...slides.map((sl) => `${sl.titulo} ${sl.corpo} ${sl.visual_prompt}`), copy.legenda].join(" ");
+      const imagens: SlideImagem[] = [];
+      for (let i = 0; i < slides.length; i++) {
+        setQuickBusy({ step: "images", done: i, total: slides.length });
+        const styleId = suggestStyleId(slides[i], fullText, tema);
+        const style = getStyle(styleId, imageStyles) || imageStyles[0];
+        const prompt = buildImagePrompt({
+          style, template_id: templateId, visual_prompt: slides[i].visual_prompt,
+          tema, slide_titulo: slides[i].titulo, slide_corpo: slides[i].corpo,
+        });
+        try {
+          const { data: imgData, error: imgErr } = await supabase.functions.invoke("social-image-gen", {
+            body: {
+              prompt, style_id: style.id, pattern_id, tema, slide_index: i,
+              slide_titulo: slides[i].titulo, slide_corpo: slides[i].corpo,
+              visual_prompt: slides[i].visual_prompt, template_id: templateId,
+            },
+          });
+          if (imgErr || (imgData as any)?.error) throw new Error(imgErr?.message || (imgData as any)?.error);
+          recordAiUsage("image-gemini-pro", 1);
+          imagens.push({ slide_index: i, url: (imgData as any).url, source: "ai", prompt_usado: (imgData as any).prompt_usado || prompt, style_id: style.id });
+        } catch (imgE) {
+          // Um slide sem imagem não trava o fluxo — o template renderiza puro texto.
+          console.warn(`quickCreate: imagem do slide ${i} falhou`, imgE);
+        }
+      }
+
+      // 3) Arte final — deixa tudo pronto na Etapa 6 (Design)
+      setQuickBusy({ step: "images", done: slides.length, total: slides.length });
+      setPipeline((s) => ({ ...s, selected_template: template, pattern_id, num_slides, copy_aprovada: copy, imagens, etapa_atual: 5 }));
+      setQuickBusy(null);
+      toast({ title: "Post pronto!", description: "Arte final gerada. Revise e exporte." });
+    } catch (e: any) {
+      setQuickBusy(null);
+      toast({ title: "Falha ao criar post rápido", description: e?.message || "Erro", variant: "destructive" });
+    }
+  };
+
 
   return (
     <div className="container mx-auto px-4 lg:px-6 pt-20 lg:pt-6 pb-10 max-w-7xl">
@@ -257,14 +334,34 @@ export default function SocialMidiaStudioPage() {
 
       {/* Etapa 3 — Template */}
       {pipeline.etapa_atual === 2 && pipeline.tema?.trim() && (
-        <FormatPicker
-          onConfirm={(template, num_slides) => {
-            setPipeline((s) => ({
-              ...s, selected_template: template, pattern_id: template.baseLayout, num_slides, etapa_atual: 3,
-            }));
-            toast({ title: "Template selecionado", description: "Avançando para Copy Final" });
-          }}
-        />
+        quickBusy ? (
+          <GlassCard className="max-w-2xl mx-auto text-center py-16">
+            <Loader2 className="h-8 w-8 text-accent animate-spin mx-auto mb-4" />
+            <h2 className="text-lg font-semibold mb-1">Criando seu post…</h2>
+            <p className="text-sm text-white/60">
+              {quickBusy.step === "copy"
+                ? "Gerando a copy final…"
+                : `Gerando imagens ${Math.min(quickBusy.done + 1, quickBusy.total)}/${quickBusy.total}…`}
+            </p>
+            <p className="text-xs text-white/35 mt-2">Template, copy, imagens e arte final — tudo automático. Pode levar 1–2 min.</p>
+            <div className="mt-6 w-full max-w-md mx-auto h-1.5 bg-white/5 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-accent rounded-full transition-all"
+                style={{ width: `${quickBusy.step === "copy" ? 15 : 20 + (quickBusy.done / Math.max(1, quickBusy.total)) * 80}%` }}
+              />
+            </div>
+          </GlassCard>
+        ) : (
+          <FormatPicker
+            onConfirm={(template, num_slides) => {
+              setPipeline((s) => ({
+                ...s, selected_template: template, pattern_id: template.baseLayout, num_slides, etapa_atual: 3,
+              }));
+              toast({ title: "Template selecionado", description: "Avançando para Copy Final" });
+            }}
+            onQuickCreate={quickCreate}
+          />
+        )
       )}
 
 

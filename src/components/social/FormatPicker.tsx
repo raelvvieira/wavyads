@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { GlassCard } from "@/components/GlassCard";
 import { Slider } from "@/components/ui/slider";
-import { Pencil } from "lucide-react";
+import { Pencil, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCopyTemplates } from "@/hooks/useCopyTemplates";
 import { TemplatePreview } from "./TemplatePreview";
@@ -10,9 +10,11 @@ import type { CopyTemplate } from "@/lib/copyTemplates";
 
 interface Props {
   onConfirm: (template: CopyTemplate, num_slides: number) => void;
+  /** Cria o post inteiro (copy + imagens + arte) automaticamente a partir do template. */
+  onQuickCreate?: (template: CopyTemplate, num_slides: number) => void;
 }
 
-export function FormatPicker({ onConfirm }: Props) {
+export function FormatPicker({ onConfirm, onQuickCreate }: Props) {
   const { templates, saveTemplate, createTemplate, deleteTemplate, resetTemplate } = useCopyTemplates();
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [numSlides, setNumSlides] = useState(7);
@@ -102,6 +104,22 @@ export function FormatPicker({ onConfirm }: Props) {
             </GlassCard>
           )}
 
+          {onQuickCreate && (
+            <button
+              type="button"
+              onClick={() => selected && onQuickCreate(selected, confirmNum(selected))}
+              disabled={!selected}
+              className={cn(
+                "w-full rounded-lg px-4 py-3 text-sm font-semibold inline-flex items-center justify-center gap-2 transition-colors",
+                selected
+                  ? "btn-accent"
+                  : "cursor-not-allowed border border-white/10 bg-white/[0.04] text-white/35",
+              )}
+            >
+              <Zap className="h-4 w-4" />
+              Criar post rápido (copy + imagens + arte)
+            </button>
+          )}
           <button
             type="button"
             onClick={() => selected && onConfirm(selected, confirmNum(selected))}
@@ -109,11 +127,11 @@ export function FormatPicker({ onConfirm }: Props) {
             className={cn(
               "w-full rounded-lg px-4 py-3 text-sm font-semibold transition-colors",
               selected
-                ? "btn-accent"
+                ? "glass hover:bg-white/5 text-white"
                 : "cursor-not-allowed border border-white/10 bg-white/[0.04] text-white/35",
             )}
           >
-            {selected ? "Próximo" : "Selecione um template"}
+            {selected ? "Ou seguir passo a passo →" : "Selecione um template"}
           </button>
         </div>
 
