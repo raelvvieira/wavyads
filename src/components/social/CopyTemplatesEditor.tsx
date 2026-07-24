@@ -9,6 +9,7 @@ import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { CopyTemplate } from "@/lib/copyTemplates";
 import { STARTER_DESIGN_CODE } from "@/lib/designCode";
+import { STARTER_DESIGN_CODE_BY_LAYOUT } from "@/lib/designStarters";
 import { DesignCodePreview } from "@/components/social/design/DesignCodePreview";
 import type { CopyPatternId } from "@/types/social";
 
@@ -223,7 +224,7 @@ export function CopyTemplatesEditor({ templates, onSave, onCreate, onDelete, onR
                     Ative o código para customizar o design (cores, fontes, espaçamento, posição, logo).
                   </p>
                   <button
-                    onClick={() => setDesignCode(STARTER_DESIGN_CODE)}
+                    onClick={() => setDesignCode(STARTER_DESIGN_CODE_BY_LAYOUT[baseLayout] || STARTER_DESIGN_CODE)}
                     className="btn-accent rounded-lg px-4 py-2 text-sm font-semibold inline-flex items-center gap-2"
                   >
                     <Code2 className="h-4 w-4" /> Ativar código de design

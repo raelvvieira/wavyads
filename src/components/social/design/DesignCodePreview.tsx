@@ -2,21 +2,34 @@ import { useEffect, useState } from "react";
 import { Loader2, AlertTriangle } from "lucide-react";
 import { SlideCanvas } from "./SlideCanvas";
 import { useCompiledDesign, DesignErrorBoundary } from "./useCompiledDesign";
+import { AdaptiveCarouselProvider } from "./templates/adaptive";
 import { DEFAULT_PROFILE, type TemplateSlideProps } from "./templates/shared";
 import { cn } from "@/lib/utils";
+import sampleImage from "@/assets/twitter-pure/twitter-pure-balanced.png";
 
+// Cobre os 5 formatos reais (determinarFormato) e inclui imagem em parte das
+// amostras — muitos padrões só desenham a foto em statement/tension/content,
+// então sem essas amostras o preview nunca exercitava esse caminho.
 const SAMPLES: { key: string; label: string; props: TemplateSlideProps }[] = [
   {
     key: "cover", label: "Capa",
-    props: { slideIndex: 0, total: 6, titulo: "Título de exemplo da capa", corpo: "Subtítulo de apoio da capa.", imgUrl: undefined, tipoSlide: "cover", formato: "cover", profile: DEFAULT_PROFILE },
+    props: { slideIndex: 0, total: 6, titulo: "Título de exemplo da capa", corpo: "Subtítulo de apoio da capa.", imgUrl: sampleImage, tipoSlide: "cover", formato: "cover", profile: DEFAULT_PROFILE },
   },
   {
     key: "content", label: "Conteúdo",
-    props: { slideIndex: 2, total: 6, titulo: "Passo 2: fazer algo", corpo: "Corpo de exemplo mostrando como o texto se comporta dentro deste layout de design em um slide de conteúdo.", imgUrl: undefined, tipoSlide: "solucao", formato: "content", profile: DEFAULT_PROFILE },
+    props: { slideIndex: 2, total: 6, titulo: "Passo 2: fazer algo", corpo: "Corpo de exemplo mostrando como o texto se comporta dentro deste layout de design em um slide de conteúdo.", imgUrl: sampleImage, tipoSlide: "solucao", formato: "content", profile: DEFAULT_PROFILE },
+  },
+  {
+    key: "statement", label: "Prova",
+    props: { slideIndex: 3, total: 6, titulo: "Título de exemplo do slide de prova", corpo: "Corpo de exemplo mostrando contraste ou dado numérico dentro do slide de prova.", imgUrl: sampleImage, tipoSlide: "prova", formato: "statement", profile: DEFAULT_PROFILE },
+  },
+  {
+    key: "tension", label: "Tensão",
+    props: { slideIndex: 1, total: 6, titulo: "Título de exemplo do slide de tensão", corpo: "Corpo de exemplo nomeando o vilão dentro do slide de agitação.", imgUrl: undefined, tipoSlide: "agitacao", formato: "tension", profile: DEFAULT_PROFILE },
   },
   {
     key: "cta", label: "CTA",
-    props: { slideIndex: 5, total: 6, titulo: "Comenta MÉTODO", corpo: "Chamada final para ação.", imgUrl: undefined, tipoSlide: "cta", formato: "cta", profile: DEFAULT_PROFILE },
+    props: { slideIndex: 5, total: 6, titulo: "Comenta MÉTODO", corpo: "Chamada final para ação.", imgUrl: sampleImage, tipoSlide: "cta", formato: "cta", profile: DEFAULT_PROFILE },
   },
 ];
 
@@ -57,15 +70,19 @@ export function DesignCodePreview({ code }: { code: string }) {
         {loading ? (
           <Loader2 className="h-6 w-6 text-accent animate-spin" />
         ) : Comp && !problem ? (
-          <SlideCanvas scale={0.26}>
-            <DesignErrorBoundary
-              resetKey={`${debounced}::${sampleKey}`}
-              onError={setRenderErr}
-              fallback={<div style={{ width: 1080, height: 1350 }} />}
-            >
-              <Comp {...sample.props} />
-            </DesignErrorBoundary>
-          </SlideCanvas>
+          // Mesmo AdaptiveCarouselProvider da Etapa 5 real — sem ele, texto que usa
+          // AdaptiveText/TextSlot cai no fallback pausado e nunca ajusta o tamanho.
+          <AdaptiveCarouselProvider sessionKey={`${debounced}::${sampleKey}`}>
+            <SlideCanvas scale={0.26}>
+              <DesignErrorBoundary
+                resetKey={`${debounced}::${sampleKey}`}
+                onError={setRenderErr}
+                fallback={<div style={{ width: 1080, height: 1350 }} />}
+              >
+                <Comp {...sample.props} />
+              </DesignErrorBoundary>
+            </SlideCanvas>
+          </AdaptiveCarouselProvider>
         ) : (
           <div className="text-center text-white/40 text-xs">Sem preview</div>
         )}
