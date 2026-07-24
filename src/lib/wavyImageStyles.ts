@@ -29,9 +29,27 @@ export interface WavyStyle {
 
 const COMMON_TAIL = `
 No text, no watermark, no logo, no UI overlays, no AI artifacts, no extra or malformed fingers/hands, no uncanny-valley skin, no plastic/waxy rendering.
+Any screens, monitors or documents in frame must be turned off, blurred or out of focus — NEVER show generated/legible text on them (garbled fake text is the #1 AI giveaway).
 Photorealistic only — not illustrated, not painterly, not 3D-rendered, not CGI, not an "AI-generated" look.`;
 
 export const WAVY_STYLES: WavyStyle[] = [
+  {
+    id: "ugc",
+    nome: "UGC / Celular",
+    caminho: "ia",
+    builtin: true,
+    emoji: "📱",
+    resumo: "Foto real de celular, luz de ambiente, sem pose. Autêntico, não produzido.",
+    quando: "Padrão para pessoas, rotina, cenas do dia a dia. O visual que mais parece conteúdo real.",
+    descricao_longa:
+      "Estilo UGC autêntico: parece uma foto tirada no celular num momento real, não um anúncio. Luz de ambiente doméstico/escritório, enquadramento levemente torto, sem pose, sem iluminação de estúdio. Ideal para quase tudo — é o visual que não denuncia IA.",
+    promptTemplate: `[TIPO] Authentic UGC photo, shot on a modern smartphone (iPhone-style), a real candid moment someone actually captured — NOT an ad, NOT a stock photo, NOT a studio shoot.
+[SUJEITO] {VISUAL_PROMPT} — tema {TEMA}. A real, ordinary-looking person in the middle of a real moment, not modeling for the camera.
+[NARRATIVA] Specific situation: {TITULO}. Context: {CORPO}. Everyday, unstaged, a little imperfect — the kind of scene you'd scroll past on a friend's feed.
+[COMPOSIÇÃO] Slightly off-kilter handheld framing, natural eye-level or casual angle, subject not perfectly centered, 3:4 portrait vertical with top 15% clear for typography.
+[ATMOSFERA] Natural available indoor light (window, lamp, screen glow) or soft daylight — never studio lighting, never a beauty-dish look. Real domestic or office setting (sofa, bed, desk, kitchen, commute). Muted, true-to-life color, {COR_PRIMARIA} only if it appears naturally in the scene. Reference: {INFLUENCIA_VISUAL}.
+[QUALIDADE] Phone-camera realism: slightly soft, natural depth, mild sensor noise/grain in shadows, realistic skin with pores and blemishes, no retouching, no bokeh-machine background. Looks like a real photo taken 5 minutes ago, indistinguishable from an actual smartphone snapshot.${COMMON_TAIL}`,
+  },
   {
     id: "cinematic",
     nome: "Cinematográfico",
@@ -154,7 +172,10 @@ export function buildImagePrompt(params: {
   return filled + suffix;
 }
 
-const CINEMATIC_KEYWORDS = ["pessoa", "pessoas", "gestor", "ceo", "cliente", "equipe", "time", "história", "historia", "jornada", "mindset", "decisão", "decisao", "medo", "coragem", "sonho", "vida", "rotina", "humano", "emoção", "emocao", "transformação", "transformacao"];
+// UGC = pessoas reais e cenas do dia a dia (o default do novo estilo-alvo).
+const UGC_KEYWORDS = ["pessoa", "pessoas", "gestor", "cliente", "equipe", "time", "vida", "rotina", "dia a dia", "humano", "casa", "trabalho", "celular", "feed", "sofá", "sofa", "quarto", "escritório", "escritorio", "café", "cafe", "manhã", "manha", "noite"];
+// CINEMATIC = drama/narrativa explícita (opt-in, mais produzido).
+const CINEMATIC_KEYWORDS = ["ceo", "história", "historia", "jornada", "mindset", "decisão", "decisao", "medo", "coragem", "sonho", "emoção", "emocao", "transformação", "transformacao", "cinematográfico", "cinematografico", "dramático", "dramatico"];
 const EDITORIAL_KEYWORDS = ["roas", "faturamento", "faturou", "leads", "r$", "%", "conversões", "conversoes", "dashboard", "ads manager", "campanha", "métrica", "metrica", "resultado", "número", "numero", "dados", "caso", "case", "prova", "relatório", "relatorio", "analise", "análise"];
 const MINIMALIST_KEYWORDS = ["valor", "qualidade", "conceito", "estratégia", "estrategia", "intangível", "intangivel", "filosofia", "pensamento", "ideia", "princípio", "principio", "premium", "exclusivo", "essência", "essencia", "simplicidade"];
 
@@ -173,6 +194,9 @@ export function suggestStyleId(slide: Slide, fullCopyText: string, tema?: string
   const score = (kws: string[]) => countHits(slideText, kws) * 2 + countHits(globalText, kws);
 
   const scores: Record<string, number> = {
+    // UGC começa com uma leve vantagem: é o visual-alvo padrão, e só perde
+    // quando o conteúdo pede claramente dados (editorial) ou conceito (minimalist).
+    ugc: score(UGC_KEYWORDS) + 1,
     cinematic: score(CINEMATIC_KEYWORDS),
     editorial: score(EDITORIAL_KEYWORDS),
     minimalist: score(MINIMALIST_KEYWORDS),
@@ -180,10 +204,10 @@ export function suggestStyleId(slide: Slide, fullCopyText: string, tema?: string
 
   // Vieses leves por tipo de slide (desempate, não sobrepõe conteúdo forte)
   if (slide.tipo === "prova") scores.editorial += 1;
-  if (slide.tipo === "cover" || slide.tipo === "cta") scores.cinematic += 1;
+  if (slide.tipo === "cover" || slide.tipo === "cta") scores.ugc += 1;
 
   const best = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-  // Se ninguém pontuou, default editorial (neutro/versátil)
-  if (best[0][1] === 0) return "editorial";
+  // Se ninguém pontuou, default UGC (o visual autêntico do estilo-alvo).
+  if (best[0][1] === 0) return "ugc";
   return best[0][0];
 }
