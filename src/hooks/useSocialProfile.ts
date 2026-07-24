@@ -10,7 +10,7 @@ export interface UseSocialProfileResult {
   uploadAvatar: (file: File) => Promise<string | null>;
 }
 
-const VALID: TemplateId[] = ["1A", "1B", "2A", "2B", "4", "5"];
+const VALID: TemplateId[] = ["1A", "1B", "2A", "2B", "4", "5", "we-light", "we-dark"];
 
 // Compat: pipelines salvos com IDs antigos do Design ("1","2A","2B","3","4")
 const LEGACY_MAP: Record<string, TemplateId> = {
@@ -23,7 +23,7 @@ const LEGACY_MAP: Record<string, TemplateId> = {
 
 export function useSocialProfile(): UseSocialProfileResult {
   const [profile, setProfile] = useState<SocialProfile>(DEFAULT_PROFILE);
-  const [template, setTemplate] = useState<TemplateId>("2A");
+  const [template, setTemplate] = useState<TemplateId>("we-light");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -33,14 +33,18 @@ export function useSocialProfile(): UseSocialProfileResult {
         if (!user) { setLoading(false); return; }
         const { data } = await supabase
           .from("social_profiles")
-          .select("nome, handle, avatar_url, template_padrao")
+          .select("nome, handle, avatar_url, template_padrao, veiculo, veiculo_tag, verificado")
           .eq("user_id", user.id)
           .maybeSingle();
         if (data) {
+          const d = data as typeof data & { veiculo?: string | null; veiculo_tag?: string | null; verificado?: boolean | null };
           setProfile({
-            nome: data.nome || DEFAULT_PROFILE.nome,
-            handle: data.handle || DEFAULT_PROFILE.handle,
-            avatarUrl: data.avatar_url || DEFAULT_PROFILE.avatarUrl,
+            nome: d.nome || DEFAULT_PROFILE.nome,
+            handle: d.handle || DEFAULT_PROFILE.handle,
+            avatarUrl: d.avatar_url || DEFAULT_PROFILE.avatarUrl,
+            veiculo: d.veiculo ?? DEFAULT_PROFILE.veiculo,
+            veiculoTag: d.veiculo_tag ?? DEFAULT_PROFILE.veiculoTag,
+            verificado: d.verificado ?? DEFAULT_PROFILE.verificado,
           });
           const raw = data.template_padrao as string | null;
           const normalized = raw && (VALID.includes(raw as TemplateId) ? (raw as TemplateId) : LEGACY_MAP[raw]);
@@ -56,7 +60,10 @@ export function useSocialProfile(): UseSocialProfileResult {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const next = { ...profile, ...p };
-    setProfile({ nome: next.nome, handle: next.handle, avatarUrl: next.avatarUrl });
+    setProfile({
+      nome: next.nome, handle: next.handle, avatarUrl: next.avatarUrl,
+      veiculo: next.veiculo, veiculoTag: next.veiculoTag, verificado: next.verificado,
+    });
     if (p.template) setTemplate(p.template);
     await supabase.from("social_profiles").upsert({
       user_id: user.id,
@@ -64,7 +71,10 @@ export function useSocialProfile(): UseSocialProfileResult {
       handle: next.handle,
       avatar_url: next.avatarUrl,
       template_padrao: p.template ?? template,
-    });
+      veiculo: next.veiculo ?? null,
+      veiculo_tag: next.veiculoTag ?? null,
+      verificado: next.verificado ?? true,
+    } as any);
   };
 
   const uploadAvatar = async (file: File): Promise<string | null> => {

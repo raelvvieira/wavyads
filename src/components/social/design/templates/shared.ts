@@ -1,19 +1,29 @@
 import type { SlideTipo } from "@/types/social";
 
-/** IDs canônicos unificados com a Wavy Copy Skill. */
-export type TemplateId = "1A" | "1B" | "2A" | "2B" | "4" | "5";
+/** IDs de design. Os 6 primeiros espelham a Wavy Copy Skill; we-* são designs
+ *  "Wavy Editorial" (claro/escuro) aplicáveis a QUALQUER padrão de copy. */
+export type TemplateId = "1A" | "1B" | "2A" | "2B" | "4" | "5" | "we-light" | "we-dark";
 export type FormatoSlide = "cover" | "content" | "statement" | "tension" | "cta";
 
 export interface SocialProfile {
   nome: string;
   handle: string;
   avatarUrl: string;
+  /** Masthead editorial (opcional) — nome do "veículo" no topo do slide. */
+  veiculo?: string;
+  /** Tag do masthead (ex.: "Conteúdo com IA"). */
+  veiculoTag?: string;
+  /** Mostra o selo verificado ao lado do nome. */
+  verificado?: boolean;
 }
 
 export const DEFAULT_PROFILE: SocialProfile = {
   nome: "Rael Vieira",
   handle: "@wavy.mkt",
   avatarUrl: "https://i.ibb.co/bMtB5PZL/488223687-8876273612474124-8754739128155263998-n.jpg",
+  veiculo: "Wavy",
+  veiculoTag: "Conteúdo com IA",
+  verificado: true,
 };
 
 export const SLIDE_W = 1080;

@@ -6,9 +6,10 @@ import { saveAs } from "file-saver";
 import { GlassCard } from "@/components/GlassCard";
 import { ProfileEditor } from "./ProfileEditor";
 import { SlideCanvas } from "./SlideCanvas";
-import { PATTERN_TEMPLATES } from "./templates";
+import { PATTERN_TEMPLATES, PRODUCTION_TEMPLATE_OPTIONS } from "./templates";
 import { AdaptiveCarouselProvider, waitForAdaptiveReady } from "./templates/adaptive";
-import { determinarFormato, templateFromPattern, type TemplateId, type TemplateSlideProps } from "./templates/shared";
+import { determinarFormato, type TemplateId, type TemplateSlideProps } from "./templates/shared";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCompiledDesign, DesignErrorBoundary } from "./useCompiledDesign";
 import { useSocialProfile } from "@/hooks/useSocialProfile";
 import { toast } from "@/hooks/use-toast";
@@ -26,9 +27,15 @@ interface Props {
 
 export function DesignStep({ tema, copy, imagens, patternId, designCode, onFinish }: Props) {
   const { profile, template, save, uploadAvatar } = useSocialProfile();
-  // Auto: pattern_id da copy → template, com override manual.
-  const suggested = templateFromPattern(patternId ?? copy.pattern_id);
-  const [currentTemplate, setCurrentTemplate] = useState<TemplateId>(suggested || template);
+  // Design desacoplado da copy: default = Wavy Editorial claro; adota a
+  // preferência salva (template_padrao) quando ela carrega, se o usuário
+  // ainda não trocou manualmente o design nesta sessão.
+  const [currentTemplate, setCurrentTemplate] = useState<TemplateId>("we-light");
+  const templateTouched = useRef(false);
+  useEffect(() => {
+    if (!templateTouched.current && template) setCurrentTemplate(template);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [template]);
   const [exporting, setExporting] = useState(false);
   const [exportingIndex, setExportingIndex] = useState<number | null>(null);
   const slideRefs = useRef<Map<number, HTMLDivElement>>(new Map());
@@ -129,7 +136,9 @@ export function DesignStep({ tema, copy, imagens, patternId, designCode, onFinis
       <GlassCard>
         <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
           <div>
-            <div className="text-xs uppercase tracking-wider text-accent">Etapa 5 · Design · Padrão {currentTemplate}</div>
+            <div className="text-xs uppercase tracking-wider text-accent">
+              Etapa 5 · Design · {PRODUCTION_TEMPLATE_OPTIONS.find((o) => o.id === currentTemplate)?.label || currentTemplate}
+            </div>
             <h2 className="text-lg font-semibold">Aplicar template visual e exportar</h2>
           </div>
           <div className="flex items-center gap-2">
@@ -149,6 +158,21 @@ export function DesignStep({ tema, copy, imagens, patternId, designCode, onFinis
               {exporting ? "Exportando…" : "Baixar tudo (.zip)"}
             </button>
           </div>
+        </div>
+
+        <div className="mb-4">
+          <div className="text-[11px] uppercase tracking-wider text-white/40 mb-2">Design</div>
+          <Select
+            value={currentTemplate}
+            onValueChange={(v) => { templateTouched.current = true; setCurrentTemplate(v as TemplateId); }}
+          >
+            <SelectTrigger className="glass-input h-9 text-sm w-full sm:w-72"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {PRODUCTION_TEMPLATE_OPTIONS.map((opt) => (
+                <SelectItem key={opt.id} value={opt.id} className="text-sm">{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div>
