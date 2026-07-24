@@ -1,4 +1,4 @@
-// Direct Gemini image generation com Wavy Image Skill (12 camadas + sufixos de template).
+// Direct Gemini image generation com Wavy Image Skill (6 camadas + sufixos de template).
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 import { buildWavyPrompt } from "./wavy-skill.ts";
