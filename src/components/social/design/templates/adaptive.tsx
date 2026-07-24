@@ -1,1 +1,1 @@
-export { AdaptiveCarouselProvider, AdaptiveText, MediaSlot, SlideFrame, TextSlot } from "./twitter-pure/adaptive";
+export { AdaptiveCarouselProvider, AdaptiveText, MediaSlot, SlideFrame, TextSlot, waitForAdaptiveReady } from "./twitter-pure/adaptive";

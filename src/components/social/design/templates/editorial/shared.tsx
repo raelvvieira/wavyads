@@ -184,7 +184,7 @@ function CoverLayout({
           ) : null}
         </div>
 
-        <div style={{ marginTop: "auto", width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ marginTop: 32, width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ fontSize: 20, color: "rgba(255,255,255,0.58)" }}>{profile.handle}</div>
           <div style={{ fontSize: 20, color: "rgba(255,255,255,0.72)" }}>Arraste para o lado.</div>
         </div>
@@ -303,6 +303,7 @@ function StatementLayout({
   total,
   titulo,
   corpo,
+  imgUrl,
   profile,
 }: TemplateSlideProps & {
   mode: EditorialMode;
@@ -357,6 +358,24 @@ function StatementLayout({
           }}
         />
 
+        {imgUrl ? (
+          <MediaSlot
+            src={imgUrl}
+            alt={titulo}
+            aspectRatio="16 / 9"
+            minHeight={260}
+            maxHeight={360}
+            templateKey={templateKey}
+            style={{
+              width: "100%",
+              maxWidth: 900,
+              borderRadius: 20,
+              border: `1px solid ${palette.border}`,
+              background: light ? "#FFFFFF" : "#111",
+            }}
+          />
+        ) : null}
+
         {corpo ? (
           <div
             style={{
@@ -397,6 +416,7 @@ function TensionLayout({
   total,
   titulo,
   corpo,
+  imgUrl,
   profile,
 }: TemplateSlideProps & {
   mode: EditorialMode;
@@ -446,6 +466,23 @@ function TensionLayout({
             letterSpacing: "-0.01em",
           }}
         />
+        {imgUrl ? (
+          <MediaSlot
+            src={imgUrl}
+            alt={titulo}
+            aspectRatio="16 / 9"
+            minHeight={240}
+            maxHeight={340}
+            templateKey={templateKey}
+            style={{
+              width: "100%",
+              maxWidth: 920,
+              borderRadius: 20,
+              border: `1px solid ${palette.border}`,
+              background: light ? "#FFFFFF" : "#111",
+            }}
+          />
+        ) : null}
         {corpo ? (
           <TextSlot
             text={corpo}
