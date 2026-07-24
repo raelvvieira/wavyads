@@ -67,6 +67,24 @@ function useAdaptiveCarousel() {
   return useContext(AdaptiveCarouselContext) ?? FALLBACK_CAROUSEL_CONTEXT;
 }
 
+// Espera as fontes carregarem e o auto-fit de todo texto dentro de `root`
+// estabilizar (data-adaptive-ready="false" some) antes de capturar um
+// snapshot (ex.: toPng) — sem isso o export pode sair com a fonte
+// provisória (maxFontSize) em vez do tamanho final ajustado.
+export async function waitForAdaptiveReady(root?: HTMLElement | null, timeoutMs = 4000) {
+  await waitForFonts();
+  await waitForPaints(2);
+
+  if (!root) return;
+
+  const startedAt = performance.now();
+  while (performance.now() - startedAt < timeoutMs) {
+    const notReady = root.querySelector<HTMLElement>('[data-adaptive-ready="false"]');
+    if (!notReady) return;
+    await waitForPaints(1);
+  }
+}
+
 function useSlideFrame() {
   return useContext(SlideFrameContext) ?? FALLBACK_SLIDE_CONTEXT;
 }

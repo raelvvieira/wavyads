@@ -7,6 +7,7 @@ import { GlassCard } from "@/components/GlassCard";
 import { ProfileEditor } from "./ProfileEditor";
 import { SlideCanvas } from "./SlideCanvas";
 import { PATTERN_TEMPLATES } from "./templates";
+import { AdaptiveCarouselProvider, waitForAdaptiveReady } from "./templates/adaptive";
 import { determinarFormato, templateFromPattern, type TemplateId, type TemplateSlideProps } from "./templates/shared";
 import { useCompiledDesign, DesignErrorBoundary } from "./useCompiledDesign";
 import { useSocialProfile } from "@/hooks/useSocialProfile";
@@ -29,6 +30,7 @@ export function DesignStep({ tema, copy, imagens, patternId, designCode, onFinis
   const suggested = templateFromPattern(patternId ?? copy.pattern_id);
   const [currentTemplate, setCurrentTemplate] = useState<TemplateId>(suggested || template);
   const [exporting, setExporting] = useState(false);
+  const [exportingIndex, setExportingIndex] = useState<number | null>(null);
   const slideRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const slides = copy.slides || [];
@@ -57,6 +59,15 @@ export function DesignStep({ tema, copy, imagens, patternId, designCode, onFinis
   const [renderFailed, setRenderFailed] = useState(false);
   useEffect(() => { setRenderFailed(false); }, [designCode]);
 
+  // Chave que muda sempre que o conteúdo visível dos slides muda, para o
+  // AdaptiveCarouselProvider reiniciar o ciclo de auto-fit do texto.
+  const adaptiveSessionKey = useMemo(
+    () =>
+      `${currentTemplate}:${usingCustom ? "custom" : "builtin"}:` +
+      composedSlides.map((s) => `${s.titulo}|${s.corpo}|${s.imgUrl ?? ""}`).join("~~"),
+    [currentTemplate, usingCustom, composedSlides],
+  );
+
   const setRef = (i: number) => (el: HTMLDivElement | null) => {
     if (el) slideRefs.current.set(i, el);
     else slideRefs.current.delete(i);
@@ -67,7 +78,9 @@ export function DesignStep({ tema, copy, imagens, patternId, designCode, onFinis
   const exportOne = async (i: number) => {
     const node = slideRefs.current.get(i);
     if (!node) return;
+    setExportingIndex(i);
     try {
+      await waitForAdaptiveReady(node);
       const dataUrl = await toPng(node, {
         width: 1080, height: 1350, pixelRatio: 1,
         canvasWidth: 1080, canvasHeight: 1350,
@@ -78,6 +91,8 @@ export function DesignStep({ tema, copy, imagens, patternId, designCode, onFinis
       saveAs(blob, `${baseName}-${String(i + 1).padStart(2, "0")}.png`);
     } catch (e: any) {
       toast({ title: "Falha ao exportar slide", description: e.message, variant: "destructive" });
+    } finally {
+      setExportingIndex(null);
     }
   };
 
@@ -88,6 +103,7 @@ export function DesignStep({ tema, copy, imagens, patternId, designCode, onFinis
       for (let i = 0; i < total; i++) {
         const node = slideRefs.current.get(i);
         if (!node) continue;
+        await waitForAdaptiveReady(node);
         const dataUrl = await toPng(node, {
           width: 1080, height: 1350, pixelRatio: 1,
           canvasWidth: 1080, canvasHeight: 1350,
@@ -155,31 +171,34 @@ export function DesignStep({ tema, copy, imagens, patternId, designCode, onFinis
         </div>
       )}
 
-      <div className="flex flex-wrap gap-4 justify-center p-4 glass rounded-xl">
-        {composedSlides.map((props, i) => (
-          <div key={i} className="flex flex-col items-center gap-2 group">
-            <SlideCanvas ref={setRef(i)} scale={0.25}>
-              <DesignErrorBoundary
-                resetKey={designCode || "builtin"}
-                onError={() => setRenderFailed(true)}
-                fallback={<BuiltinTemplate {...props} profile={profile} />}
-              >
-                <Template {...props} profile={profile} />
-              </DesignErrorBoundary>
-            </SlideCanvas>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-white/40 font-mono">{String(i + 1).padStart(2, "0")}/{String(total).padStart(2, "0")}</span>
-              <button
-                onClick={() => exportOne(i)}
-                className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] inline-flex items-center gap-1 text-accent hover:text-accent-foreground"
-                title="Baixar este slide"
-              >
-                <Download className="h-3 w-3" /> PNG
-              </button>
+      <AdaptiveCarouselProvider sessionKey={adaptiveSessionKey} paused={exporting || exportingIndex !== null}>
+        <div className="flex flex-wrap gap-4 justify-center p-4 glass rounded-xl">
+          {composedSlides.map((props, i) => (
+            <div key={i} className="flex flex-col items-center gap-2 group">
+              <SlideCanvas ref={setRef(i)} scale={0.25}>
+                <DesignErrorBoundary
+                  resetKey={designCode || "builtin"}
+                  onError={() => setRenderFailed(true)}
+                  fallback={<BuiltinTemplate {...props} profile={profile} />}
+                >
+                  <Template {...props} profile={profile} />
+                </DesignErrorBoundary>
+              </SlideCanvas>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-white/40 font-mono">{String(i + 1).padStart(2, "0")}/{String(total).padStart(2, "0")}</span>
+                <button
+                  onClick={() => exportOne(i)}
+                  disabled={exportingIndex !== null || exporting}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] inline-flex items-center gap-1 text-accent hover:text-accent-foreground disabled:opacity-40"
+                  title="Baixar este slide"
+                >
+                  <Download className="h-3 w-3" /> PNG
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      </AdaptiveCarouselProvider>
 
       {copy.legenda && (
         <GlassCard>

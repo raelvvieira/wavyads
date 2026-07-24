@@ -52,17 +52,34 @@ export function ConflictAdaptiveTemplate(props: TemplateSlideProps) {
   if (formato === "cover") {
     return (
       <ConflictFrame templateKey="conflict-adaptive">
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundImage: imgUrl
-              ? `linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.92) 75%), url('${imgUrl}')`
-              : "linear-gradient(135deg,#0A0A0A 0%,#1A0A0A 60%,#3D1414 100%)",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        />
+        {imgUrl ? (
+          <>
+            <MediaSlot
+              src={imgUrl}
+              alt="Imagem de capa"
+              aspectRatio="1080 / 1350"
+              minHeight={1350}
+              maxHeight={1350}
+              templateKey="conflict-adaptive"
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", borderRadius: 0, border: "none" }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.92) 75%)",
+              }}
+            />
+          </>
+        ) : (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "linear-gradient(135deg,#0A0A0A 0%,#1A0A0A 60%,#3D1414 100%)",
+            }}
+          />
+        )}
         <div style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", gap: 24, flex: 1, minHeight: 0 }}>
           <div style={{ ...accentText, fontSize: 20, letterSpacing: "0.18em", fontWeight: 800 }}>CONFLITO</div>
           <AdaptiveText
@@ -155,6 +172,17 @@ export function ConflictAdaptiveTemplate(props: TemplateSlideProps) {
             color={C.white}
             style={{ maxWidth: 920, maxHeight: 260, letterSpacing: "-0.01em" }}
           />
+          {imgUrl ? (
+            <MediaSlot
+              src={imgUrl}
+              alt={titulo}
+              aspectRatio="16 / 9"
+              minHeight={260}
+              maxHeight={380}
+              templateKey="conflict-adaptive"
+              style={{ width: "100%", borderRadius: 20, border: "1px solid rgba(255,255,255,0.08)", background: "#111" }}
+            />
+          ) : null}
           {corpo ? <TextSlot text={corpo} as="p" minFontSize={24} maxFontSize={36} lineHeight={1.5} fontWeight={400} color="#AAA" style={{ maxWidth: 880, maxHeight: 220 }} /> : null}
         </div>
         <Footer handle={profile.handle} showArrow={showArrow} />
@@ -176,6 +204,17 @@ export function ConflictAdaptiveTemplate(props: TemplateSlideProps) {
             color={C.white}
             style={{ maxWidth: 920, maxHeight: 280, letterSpacing: "-0.01em" }}
           />
+          {imgUrl ? (
+            <MediaSlot
+              src={imgUrl}
+              alt={titulo}
+              aspectRatio="16 / 9"
+              minHeight={240}
+              maxHeight={340}
+              templateKey="conflict-adaptive"
+              style={{ width: "100%", borderRadius: 20, border: "1px solid rgba(255,255,255,0.08)", background: "#111" }}
+            />
+          ) : null}
           {corpo ? (
             <TextSlot
               text={corpo}
@@ -248,6 +287,17 @@ export function ConflictAdaptiveTemplate(props: TemplateSlideProps) {
     <ConflictFrame templateKey="conflict-adaptive">
       <div style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", gap: 24, flex: 1, minHeight: 0 }}>
         <AdaptiveText text={titulo} as="h1" minFontSize={48} maxFontSize={92} lineHeight={0.94} color={C.white} style={{ maxWidth: 920, maxHeight: 260, letterSpacing: "-0.01em" }} />
+        {imgUrl ? (
+          <MediaSlot
+            src={imgUrl}
+            alt={titulo}
+            aspectRatio="16 / 9"
+            minHeight={260}
+            maxHeight={380}
+            templateKey="conflict-adaptive"
+            style={{ width: "100%", borderRadius: 20, border: "1px solid rgba(255,255,255,0.08)", background: "#111" }}
+          />
+        ) : null}
         {corpo ? <TextSlot text={corpo} as="p" minFontSize={24} maxFontSize={36} lineHeight={1.5} fontWeight={400} color="#AAA" style={{ maxWidth: 880, maxHeight: 220 }} /> : null}
       </div>
       <Footer handle={profile.handle} showArrow={showArrow} />

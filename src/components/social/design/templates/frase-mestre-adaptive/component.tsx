@@ -39,15 +39,26 @@ export function FraseMestreAdaptiveTemplate(props: TemplateSlideProps) {
   if (slideIndex === 0) {
     return (
       <FraseFrame templateKey="frase-mestre-adaptive" background="linear-gradient(160deg,#0D1B2A 0%,#1A2D40 45%,#0A0F14 100%)" color={C.white}>
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundImage: imgUrl ? `linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.78) 100%), url('${imgUrl}')` : undefined,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        />
+        {imgUrl ? (
+          <>
+            <MediaSlot
+              src={imgUrl}
+              alt="Imagem de capa"
+              aspectRatio="1080 / 1350"
+              minHeight={1350}
+              maxHeight={1350}
+              templateKey="frase-mestre-adaptive"
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", borderRadius: 0, border: "none" }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.78) 100%)",
+              }}
+            />
+          </>
+        ) : null}
         <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 30%, rgba(253,70,56,0.10) 0%, transparent 55%)" }} />
         <div style={{ position: "relative", zIndex: 2, height: "100%", padding: "140px 60px 64px", boxSizing: "border-box", display: "flex", flexDirection: "column" }}>
           <AdaptiveText

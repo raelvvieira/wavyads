@@ -180,6 +180,22 @@ export function TutorialAdaptiveTemplate(props: TemplateSlideProps) {
             color={C.black}
             style={{ maxWidth: 900, maxHeight: 280, letterSpacing: "-0.01em" }}
           />
+          {imgUrl ? (
+            <MediaSlot
+              src={imgUrl}
+              alt={titulo}
+              aspectRatio="16 / 9"
+              minHeight={260}
+              maxHeight={360}
+              templateKey="tutorial-adaptive"
+              style={{
+                width: "100%",
+                borderRadius: 20,
+                border: `1px solid ${C.borderLight}`,
+                background: C.white,
+              }}
+            />
+          ) : null}
           {corpo ? (
             <TextSlot
               text={corpo}
