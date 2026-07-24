@@ -1,10 +1,16 @@
 // Social Mídia Studio — extrai copy de um post viral
 // Reel: transcrição via Apify (invideoiq/video-transcriber)
-// Carrossel / Post: OCR via Google Vision (TEXT_DETECTION)
+// Carrossel / Post: OCR via Gemini (visão → texto, gateway Lovable)
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// OCR por IA (mesmo gateway/modelo de visão já usado em criativo-analyze-refs).
+const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const OCR_MODEL = "google/gemini-2.5-flash";
+const OCR_SYSTEM =
+  "Você é um motor de OCR. Transcreva fielmente TODO o texto visível na imagem, na ordem natural de leitura (de cima para baixo). Devolva SOMENTE o texto, sem comentários, sem aspas, sem descrever a imagem. Se não houver nenhum texto legível, devolva uma string vazia.";
 
 type Tipo = "reel" | "carrossel" | "post_estatico";
 
@@ -26,23 +32,26 @@ const IMG_FETCH_HEADERS = {
 
 interface OcrResult {
   text: string;
-  /** "download_failed" quando não conseguimos baixar a imagem nem via imageUri. */
-  note?: "download_failed";
+  /** "download_failed": não baixou a imagem. "api_error": OCR (Gemini) falhou. */
+  note?: "download_failed" | "api_error";
 }
 
-async function ocrImage(url: string, visionKey: string): Promise<OcrResult> {
-  // 1) Baixa a imagem com cabeçalhos de browser (contorna bloqueio do IG CDN).
-  let b64 = "";
+async function ocrImage(url: string, aiKey: string): Promise<OcrResult> {
+  // 1) Baixa a imagem com cabeçalhos de browser (contorna bloqueio do IG CDN)
+  //    e monta um data URL — o gateway lê data URLs diretamente, e assim não
+  //    dependemos de o Gemini conseguir buscar a URL protegida do IG.
+  let dataUrl = "";
   try {
     const imgResp = await fetch(url, { headers: IMG_FETCH_HEADERS });
     if (imgResp.ok) {
+      const mime = imgResp.headers.get("content-type")?.split(";")[0] || "image/jpeg";
       const buf = new Uint8Array(await imgResp.arrayBuffer());
       let bin = "";
       const CHUNK = 0x8000;
       for (let i = 0; i < buf.length; i += CHUNK) {
         bin += String.fromCharCode(...buf.subarray(i, i + CHUNK));
       }
-      b64 = btoa(bin);
+      dataUrl = `data:${mime};base64,${btoa(bin)}`;
     } else {
       console.error("[OCR] download falhou", imgResp.status, url.slice(0, 120));
     }
@@ -50,33 +59,37 @@ async function ocrImage(url: string, visionKey: string): Promise<OcrResult> {
     console.error("[OCR] download erro:", (e as Error).message, url.slice(0, 120));
   }
 
-  // 2) Chama o Vision. Se o download falhou, tenta via source.imageUri
-  //    (deixa o Google buscar a imagem — às vezes passa onde o Deno não passa).
-  const imagePayload = b64 ? { content: b64 } : { source: { imageUri: url } };
+  if (!dataUrl) return { text: "", note: "download_failed" };
+
+  // 2) OCR via Gemini (visão → texto) no gateway Lovable.
   try {
-    const visionResp = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${visionKey}`, {
+    const resp = await fetch(AI_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${aiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        requests: [{ image: imagePayload, features: [{ type: "TEXT_DETECTION", maxResults: 1 }] }],
+        model: OCR_MODEL,
+        messages: [
+          { role: "system", content: OCR_SYSTEM },
+          {
+            role: "user",
+            content: [
+              { type: "text", text: "Transcreva o texto desta imagem." },
+              { type: "image_url", image_url: { url: dataUrl } },
+            ],
+          },
+        ],
       }),
     });
-    const data = await visionResp.json();
-    if (!visionResp.ok) {
-      console.error("[OCR] vision http", visionResp.status, JSON.stringify(data).slice(0, 300));
-      return { text: "", note: b64 ? undefined : "download_failed" };
+    if (!resp.ok) {
+      console.error("[OCR] gemini http", resp.status, (await resp.text()).slice(0, 300));
+      return { text: "", note: "api_error" };
     }
-    const apiErr = data?.responses?.[0]?.error;
-    if (apiErr) {
-      console.error("[OCR] vision error", JSON.stringify(apiErr).slice(0, 300));
-      // Erro do Vision ao buscar imageUri geralmente = imagem inacessível.
-      return { text: "", note: b64 ? undefined : "download_failed" };
-    }
-    const text = data?.responses?.[0]?.fullTextAnnotation?.text?.trim() || "";
-    return { text, note: !text && !b64 ? "download_failed" : undefined };
+    const data = await resp.json();
+    const text = (data?.choices?.[0]?.message?.content || "").toString().trim();
+    return { text };
   } catch (e) {
-    console.error("[OCR] vision erro:", (e as Error).message);
-    return { text: "", note: b64 ? undefined : "download_failed" };
+    console.error("[OCR] gemini erro:", (e as Error).message);
+    return { text: "", note: "api_error" };
   }
 }
 
@@ -274,7 +287,7 @@ Deno.serve(async (req) => {
 
   try {
     const APIFY_TOKEN = Deno.env.get("APIFY_TOKEN");
-    const VISION_KEY = Deno.env.get("GOOGLE_VISION_API_KEY");
+    const OCR_KEY = Deno.env.get("LOVABLE_API_KEY");
     const { item } = await req.json();
     if (!item || typeof item !== "object") {
       return new Response(JSON.stringify({ error: "item é obrigatório" }), {
@@ -309,12 +322,13 @@ Deno.serve(async (req) => {
       }
     } else if (tipo === "carrossel") {
       const children: any[] = item.childPosts || item.sidecarChildren || [];
-      if (!VISION_KEY) {
+      if (!OCR_KEY) {
         status.ocr = "ocr_desabilitado";
         slides = children.map((_, i) => ({ slide: i + 1, texto: "", status: "ocr_desabilitado" }));
       } else {
         slides = [];
         let downloadFailures = 0;
+        let apiErrors = 0;
         for (let i = 0; i < children.length; i++) {
           const slideUrl = childImageUrl(children[i]);
           if (!slideUrl) {
@@ -322,30 +336,45 @@ Deno.serve(async (req) => {
             continue;
           }
           ocr_calls++;
-          const { text, note } = await ocrImage(slideUrl, VISION_KEY);
+          const { text, note } = await ocrImage(slideUrl, OCR_KEY);
           if (note === "download_failed") downloadFailures++;
+          if (note === "api_error") apiErrors++;
           slides.push({
             slide: i + 1,
             texto: text,
-            status: text ? "ok" : note === "download_failed" ? "erro_download" : "sem_texto",
+            status: text
+              ? "ok"
+              : note === "download_failed"
+              ? "erro_download"
+              : note === "api_error"
+              ? "erro_api"
+              : "sem_texto",
           });
         }
         const totalTxt = slides.filter((s) => s.texto).length;
         status.ocr = totalTxt > 0
           ? "ok"
+          : apiErrors > 0
+          ? "erro_api"
           : downloadFailures > 0
           ? "erro_download"
           : "sem_texto_detectado";
       }
     } else {
       const imgUrl = item.displayUrl || (item.images || [])[0] || item.thumbnailUrl;
-      if (!VISION_KEY) {
+      if (!OCR_KEY) {
         status.ocr = "ocr_desabilitado";
       } else if (imgUrl) {
         ocr_calls = 1;
-        const { text, note } = await ocrImage(imgUrl, VISION_KEY);
+        const { text, note } = await ocrImage(imgUrl, OCR_KEY);
         textoVisual = text;
-        status.ocr = text ? "ok" : note === "download_failed" ? "erro_download" : "sem_texto_detectado";
+        status.ocr = text
+          ? "ok"
+          : note === "download_failed"
+          ? "erro_download"
+          : note === "api_error"
+          ? "erro_api"
+          : "sem_texto_detectado";
       } else {
         status.ocr = "ausente";
       }
