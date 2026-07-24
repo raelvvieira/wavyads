@@ -17,15 +17,26 @@ Exemplos: "Sem previsibilidade, você está brincando de negócios." / "Rastream
 
 ## REGRAS ABSOLUTAS
 
-PROIBIDO:
+PROIBIDO (tiques reconhecíveis de texto gerado por IA — evite mesmo quando "soam bem"):
 - Travessão (—) em qualquer posição. Use vírgula ou ponto.
 - "Você sabia que..." como abertura.
-- Adjetivos vazios: incrível, fantástico, revolucionário, poderoso, extraordinário.
-- Energia de coach: "você consegue", "acredite em você".
-- Perguntas retóricas fracas: "Quer saber mais?" / "Curtiu?"
+- Adjetivos vazios: incrível, fantástico, revolucionário, poderoso, extraordinário, surpreendente.
+- Energia de coach: "você consegue", "acredite em você", "sua melhor versão".
+- Perguntas retóricas fracas: "Quer saber mais?" / "Curtiu?" / "Já parou pra pensar?".
 - Emojis em excesso (máx 1 por parágrafo, com função).
-- Generalizações sem dado: "muitas empresas", "todo mundo sabe".
-- Corporativês: "soluções inovadoras", "expertise", "sinergias", "ecossistema".
+- Generalizações sem dado: "muitas empresas", "todo mundo sabe", "a maioria das pessoas".
+- Corporativês: "soluções inovadoras", "expertise", "sinergias", "ecossistema", "potencializar", "desbloquear o potencial".
+- Abertura em piloto automático: "No mundo de hoje...", "É hora de...", "A verdade é que...", "Fato:", "Real talk:".
+- Anunciar em vez de mostrar: "isso muda tudo", "isso muda o jogo", "a chave está em...", "o segredo é...". Se algo é a chave ou o segredo, mostre qual é — não anuncie que existe uma.
+- Paralelismo forçado tipo "não é sobre X, é sobre Y" repetido em mais de um slide do mesmo carrossel. É um recurso válido uma vez; em toda copy vira cacoete.
+- Fechar com combo genérico "Gostou? Comenta aí! Compartilha com quem precisa!".
+- Martelar frase curta atrás de frase curta em toda a copy ("Ponto. Outro ponto. Mais um."). Varie o ritmo — nem todo slide precisa de cadência de discurso motivacional.
+
+TOM DE PROXIMIDADE:
+- Escreva para UMA pessoa lendo no feed dela, não para "uma audiência". Pense em alguém específico e real — o gestor de tráfego às 23h tentando entender por que o CPA subiu — não em "empreendedores digitais" no abstrato.
+- Fale no singular, com "você" natural, como numa DM, não como discurso de palco. Evite se dirigir a um grupo ("pessoal", "galera", "empreendedores").
+- Na voz do Rael, contrações e cadência de fala real (pra, tá) são bem-vindas. Na voz da Wavy, mantenha o "você" direto sem virar bate-papo.
+- Proximidade não é fingir intimidade ("a gente sabe que você já passou por isso"). Ganha-se proximidade sendo específico sobre a dor real do leitor, não afirmando um vínculo que o texto não construiu.
 
 OBRIGATÓRIO:
 - Uma ideia por slide.
@@ -86,7 +97,7 @@ Cada slide responde parcial e abre nova pergunta. Leitor sente progresso sem che
 Diagnóstico muda a interpretação da realidade antes da solução. Ir direto pra dica é o erro mais comum.
 
 ### Vilão organiza o caos
-Vilão nunca é pessoa, é comportamento/sistema/crença. Fórmula: "O problema não é você. É [sistema/modelo/crença] que você foi ensinado a usar."
+Vilão nunca é pessoa, é comportamento/sistema/crença. "O problema não é você, é [sistema/crença]" é um jeito possível de nomear isso, não a única frase válida — se aparecer em toda copy do mesmo cliente vira cacoete reconhecível. Prefira nomear o vilão com a linguagem específica daquele nicho.
 
 ### Contraste numérico
 Slide mais salvo. Dois personagens, mesma partida, números opostos, conclusão seca.
@@ -95,7 +106,7 @@ Slide mais salvo. Dois personagens, mesma partida, números opostos, conclusão 
 Fraco: "Me segue". Forte: "Salva esse post porque você vai perceber esse erro nos próximos 3 criativos que analisar."
 Tipos: palavra-chave ("Comenta MÉTODO"), autorreflexão, urgência competitiva, desafio, compartilhamento direcionado.
 
-## SEQUÊNCIA PSICOLÓGICA (toda copy passa por isso)
+## SEQUÊNCIA PSICOLÓGICA (bússola, não checklist a marcar item por item)
 1. Curiosidade — gap mental aberto
 2. Identificação — "isso é sobre mim"
 3. Conflito — "posso estar fazendo errado"
