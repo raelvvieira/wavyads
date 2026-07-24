@@ -86,9 +86,19 @@ Argumento único desdobrado. Slides interdependentes. Cover duplo: tese topo + a
 
 ## PSICOLOGIA DE COPY
 
-### Hook = gatilho de interrupção (não título)
-Precisa: criar conflito interno + atacar crença existente + abrir lacuna que só fecha no final.
-Padrões: curiosidade extrema, quebra de expectativa, aviso de perigo, ataque a crença, conflito de identidade, BREAKING.
+### Título = AFIRMAÇÃO-VERDADE (o modo padrão, o que mais funciona)
+O melhor título raramente é pergunta ou clickbait — é uma AFIRMAÇÃO calma e confiante que reinterpreta a realidade do leitor. Uma frase que ele lê e pensa "…é verdade, nunca tinha pensado assim". O corpo então explica por quê.
+Modelos de referência (o TOM, não pra copiar literal):
+- "Scroll parece descanso, mas é estimulação disfarçada."
+- "Seu cérebro não foi feito para interrupção constante."
+- "A maioria das pessoas perde tempo tentando ter uma ideia genial."
+- "Quem cresce rápido não começa criando. Começa pesquisando."
+Estrutura frequente: [coisa que parece X] mas [na verdade é Y] · [afirmação contra-intuitiva sobre o comportamento comum].
+Fuja de: título-pergunta fraco, "BREAKING:" mecânico, urgência inventada. A afirmação-verdade já é o gancho — não precisa gritar.
+
+### Hook = gatilho de interrupção
+Precisa: criar conflito interno + atacar crença existente + abrir lacuna que só fecha no final. A afirmação-verdade acima já faz isso quando bem feita.
+Outros modos (quando a afirmação não couber): curiosidade extrema, quebra de expectativa, ataque a crença, conflito de identidade. BREAKING só quando o assunto é genuinamente novo.
 
 ### Loop aberto
 Cada slide responde parcial e abre nova pergunta. Leitor sente progresso sem chegar ao destino.
@@ -122,6 +132,6 @@ IA: prompt, agente, automação, fluxo, rastreamento server-side.
 
 ## APLICAÇÃO POR TEMA
 - Meta Ads / Tráfego: prioriza 1B ou 2B. Tom técnico-acessível.
-- IA / Ferramentas: prioriza 1A ou 2A. Hook BREAKING + "salva antes que".
+- IA / Ferramentas: prioriza 1A ou 2A. Abre com o dado ou a afirmação-verdade central (BREAKING só se for genuinamente novo).
 - Agência / Empreendedorismo: prioriza 2B ou 5. Tom filosófico com clareza cansada.
-- Posicionamento / Mindset: prioriza 4 ou 2B. Tom analítico-jornalístico.`;
+- Posicionamento / Mindset: prioriza 4 ou 2B. Tom analítico-jornalístico, título em afirmação-verdade.`;
