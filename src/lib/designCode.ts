@@ -13,12 +13,23 @@ import * as React from "react";
 import { C, F, SLIDE_W, SLIDE_H } from "@/components/social/design/templates/shared";
 import {
   AvatarRing, Footer, Grain, HeaderAvatar, AccentTitle, Copyright, PillWavy, PillHandle,
+  accentLine, accentText,
 } from "@/components/social/design/templates/parts";
+import { SlideFrame, AdaptiveText, TextSlot, MediaSlot } from "@/components/social/design/templates/adaptive";
 
-/** Primitivas disponíveis dentro do código do usuário (variáveis globais). */
+/**
+ * Primitivas disponíveis dentro do código do usuário (variáveis globais).
+ *
+ * SlideFrame/AdaptiveText/TextSlot/MediaSlot são as MESMAS primitivas dos
+ * templates embutidos reais — usá-las (em vez de <div>/<img> cru) é o que
+ * garante que o texto do código custom também ganhe o auto-fit de tamanho
+ * de fonte (a etapa Design já envolve tudo num AdaptiveCarouselProvider).
+ */
 export const DESIGN_SCOPE: Record<string, unknown> = {
   C, F, SLIDE_W, SLIDE_H,
   AvatarRing, Footer, Grain, HeaderAvatar, AccentTitle, Copyright, PillWavy, PillHandle,
+  accentLine, accentText,
+  SlideFrame, AdaptiveText, TextSlot, MediaSlot,
 };
 
 const SCOPE_KEYS = Object.keys(DESIGN_SCOPE);

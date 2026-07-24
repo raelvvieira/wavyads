@@ -16,9 +16,21 @@ export interface StyleSpec {
 
 const COMMON_TAIL = `
 No text, no watermark, no logo, no UI overlays, no AI artifacts, no extra or malformed fingers/hands, no uncanny-valley skin, no plastic/waxy rendering.
+Any screens, monitors or documents in frame must be turned off, blurred or out of focus — NEVER show generated/legible text on them (garbled fake text is the #1 AI giveaway).
 Photorealistic only — not illustrated, not painterly, not 3D-rendered, not CGI, not an "AI-generated" look.`;
 
 export const STYLES: Record<string, StyleSpec> = {
+  ugc: {
+    id: "ugc",
+    nome: "UGC / Celular",
+    caminho: "ia",
+    promptTemplate: `[TIPO] Authentic UGC photo, shot on a modern smartphone (iPhone-style), a real candid moment someone actually captured — NOT an ad, NOT a stock photo, NOT a studio shoot.
+[SUJEITO] {VISUAL_PROMPT} — tema {TEMA}. A real, ordinary-looking person in the middle of a real moment, not modeling for the camera.
+[NARRATIVA] Specific situation: {TITULO}. Context: {CORPO}. Everyday, unstaged, a little imperfect — the kind of scene you'd scroll past on a friend's feed.
+[COMPOSIÇÃO] Slightly off-kilter handheld framing, natural eye-level or casual angle, subject not perfectly centered, 3:4 portrait vertical with top 15% clear for typography.
+[ATMOSFERA] Natural available indoor light (window, lamp, screen glow) or soft daylight — never studio lighting, never a beauty-dish look. Real domestic or office setting (sofa, bed, desk, kitchen, commute). Muted, true-to-life color, {COR_PRIMARIA} only if it appears naturally in the scene. Reference: {INFLUENCIA_VISUAL}.
+[QUALIDADE] Phone-camera realism: slightly soft, natural depth, mild sensor noise/grain in shadows, realistic skin with pores and blemishes, no retouching, no bokeh-machine background. Looks like a real photo taken 5 minutes ago, indistinguishable from an actual smartphone snapshot.${COMMON_TAIL}`,
+  },
   cinematic: {
     id: "cinematic",
     nome: "Cinematográfico",
@@ -93,7 +105,7 @@ export function buildWavyPrompt(params: {
   influencia_visual?: string;
   estilo_global?: string;
 }): { prompt: string; style_id: string; caminho: WavyPath } {
-  const style = STYLES[params.style_id || ""] || STYLES.editorial;
+  const style = STYLES[params.style_id || ""] || STYLES.ugc;
   const suffix = TEMPLATE_SUFFIXES[params.template_id || ""] || TEMPLATE_SUFFIXES.template_1_cover;
   // Substituição via função: evita que '$&', '$$' etc. na copy sejam
   // interpretados como padrões especiais de String.replace.
