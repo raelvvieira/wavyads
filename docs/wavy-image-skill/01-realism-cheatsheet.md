@@ -83,4 +83,4 @@ Base: *"shot on a 35mm lens, shallow depth of field, natural bokeh"*.
 - Caricatura: aplicar o "toque hiper-realista" = manter a exageração de caricatura MAS com pele/luz/textura/grão fotográficos.
 - Modelo atual de geração: `gemini-3.1-flash-image-preview` (aceita bem essa direção via texto).
 
-> ⏳ PENDENTE: Rael ainda vai enviar mais partes (mais prompts / tipos de imagem / regras). Consolidar tudo antes de desenhar a skill.
+> ✅ Complementado pelos docs 02, 03 (renderização) e 04 (motor de conceito). Base 01–04 completa.

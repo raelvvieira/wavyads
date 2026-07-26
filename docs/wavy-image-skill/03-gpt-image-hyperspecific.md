@@ -75,4 +75,4 @@ Hoboken sofa 4:25pm iced coffee mid-sip · Phoenix Starbucks 7:55am harsh desert
 - Os **tipos não-pessoa (B)** viram "geradores de slide" prontos no Social Studio: hook de iMessage, prova de recorte de jornal (perfeito pra Wavy), explicativo de lousa, mock de produto do cliente.
 - Mantém o alerta de marca/direito: usar marcas reais só quando fizer sentido; suportar versões genéricas/fictícias (como "MARÉA"/"BIG OAT"/"THE DAILY CHRONICLE").
 
-> ⏳ PENDENTE: Rael segue mandando material. Consolidar 01+02+03 (e o que vier) antes de desenhar a skill de imagens.
+> ✅ Complementado pelo `04-motor-de-conceito.md` (a camada que decide O QUE a imagem mostra). Base 01–04 completa.

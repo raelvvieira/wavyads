@@ -130,4 +130,4 @@ Os melhores prompts longos seguem quase sempre esta sequência de blocos. É o "
 - Manter os **negativos por arquétipo** (fashion ≠ esporte ≠ produto).
 - Caricatura: aplicar o "toque hiper-realista" do `01`.
 
-> ⏳ PENDENTE: Rael disse que ainda vem mais. Continuar acumulando antes de desenhar a skill.
+> ✅ Complementado pelo `04-motor-de-conceito.md`. Base 01–04 completa.
