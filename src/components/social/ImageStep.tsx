@@ -8,13 +8,16 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import { Sparkles, Check, Loader2, Upload, ImageIcon, Palette, RotateCcw } from "lucide-react";
+import { Sparkles, Check, Loader2, Upload, ImageIcon, Palette, RotateCcw, Lightbulb } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { recordAiUsage } from "@/lib/aiUsageTracker";
 import {
   buildImagePrompt, suggestStyleId, getStyle, templateSuffixFromPattern,
 } from "@/lib/wavyImageStyles";
+import {
+  generateVisualConcept, conceptNegatives, styleFromVisualFamily, type VisualConcept,
+} from "@/lib/visualConcept";
 import { useImageStyles } from "@/hooks/useImageStyles";
 import { ImageStylesEditor } from "./ImageStylesEditor";
 import type { CopyAprovada, CopyPatternId, SlideImagem } from "@/types/social";
@@ -24,10 +27,12 @@ interface Props {
   tema: string;
   copy: CopyAprovada;
   initial?: SlideImagem[];
+  /** Assunto real do post viral — o diretor de arte usa como fonte de fatos/entidades. */
+  briefing?: string;
   onApprove: (imagens: SlideImagem[]) => void;
 }
 
-export function ImageStep({ patternId, tema, copy, initial, onApprove }: Props) {
+export function ImageStep({ patternId, tema, copy, initial, briefing, onApprove }: Props) {
   const slides = copy.slides || [];
   const templateId = templateSuffixFromPattern(patternId);
   const { styles, saveStyle, createStyle, deleteStyle, resetStyle } = useImageStyles();
@@ -55,50 +60,111 @@ export function ImageStep({ patternId, tema, copy, initial, onApprove }: Props) 
   );
   // Prompt editado manualmente (drawer). null = derivar do estilo.
   const [promptOverride, setPromptOverride] = useState<(string | null)[]>(() => slides.map(() => null));
+  // Conceito do diretor de arte por slide (decide O QUE a imagem mostra).
+  const [concepts, setConcepts] = useState<(VisualConcept | null)[]>(() => slides.map(() => null));
+  const [conceptLoadingIdx, setConceptLoadingIdx] = useState<number | null>(null);
   const [loadingIdx, setLoadingIdx] = useState<number | null>(null);
   const [batch, setBatch] = useState<{ done: number; total: number } | null>(null);
   const [drawerIdx, setDrawerIdx] = useState<number | null>(null);
   const [editingStyles, setEditingStyles] = useState(false);
 
   const fileInputs = useRef<(HTMLInputElement | null)[]>([]);
+  // Slides cujo estilo o usuário trocou na mão — não sobrescrever com o do conceito.
+  const styleTouched = useRef<Set<number>>(new Set());
 
   const styleOf = (i: number) => getStyle(chosenIds[i], styles) || styles[1] || styles[0];
 
-  const effectivePrompt = (i: number) => {
+  /**
+   * Monta o prompt final. O "o quê" vem do conceito do diretor de arte
+   * (image_generation_core); se não houver, cai no visual_prompt da copy.
+   * O "como" (câmera/luz/pele/grão) vem do estilo.
+   */
+  const buildPromptFor = (i: number, concept?: VisualConcept | null) => {
     if (promptOverride[i] != null) return promptOverride[i]!;
+    const core = concept?.image_generation_core?.trim() || slides[i].visual_prompt;
     return buildImagePrompt({
       style: styleOf(i),
       template_id: templateId,
-      visual_prompt: slides[i].visual_prompt,
+      visual_prompt: core,
       tema,
       slide_titulo: slides[i].titulo,
       slide_corpo: slides[i].corpo,
-    });
+    }) + conceptNegatives(concept);
+  };
+
+  const effectivePrompt = (i: number) => buildPromptFor(i, concepts[i]);
+
+  /** Roda o diretor de arte para o slide e adota o estilo sugerido pela família. */
+  const makeConcept = async (i: number): Promise<VisualConcept | null> => {
+    setConceptLoadingIdx(i);
+    try {
+      const concept = await generateVisualConcept({
+        tema,
+        briefing,
+        slide: slides[i],
+        slideIndex: i,
+        total: slides.length,
+        formato: slides[i].tipo,
+        slidesAround: slides
+          .map((s, idx) => ({ titulo: s.titulo, corpo: s.corpo, idx }))
+          .filter((s) => s.idx !== i)
+          .slice(0, 4)
+          .map(({ titulo, corpo }) => ({ titulo, corpo })),
+        pattern: patternId,
+      });
+      setConcepts((arr) => arr.map((c, idx) => (idx === i ? concept : c)));
+      // A família visual sugere um acabamento — só aplica se o usuário não escolheu.
+      if (!styleTouched.current.has(i)) {
+        const suggested = styleFromVisualFamily(concept.visual_family);
+        if (suggested && getStyle(suggested, styles)) {
+          setChosenIds((arr) => arr.map((x, idx) => (idx === i ? suggested : x)));
+        }
+      }
+      return concept;
+    } catch (e: any) {
+      toast({ title: `Conceito do slide ${i + 1} falhou`, description: e.message, variant: "destructive" });
+      return null;
+    } finally {
+      setConceptLoadingIdx(null);
+    }
   };
 
   const setOne = (i: number, img: SlideImagem | null) =>
     setImages((arr) => arr.map((x, idx) => (idx === i ? img : x)));
 
   const chooseStyle = (i: number, id: string) => {
+    styleTouched.current.add(i);
     setChosenIds((arr) => arr.map((x, idx) => (idx === i ? id : x)));
     // Trocar de estilo descarta o prompt editado (rebuild do novo estilo).
     setPromptOverride((arr) => arr.map((x, idx) => (idx === i ? null : x)));
   };
 
   const generateOne = async (i: number) => {
-    const style = styleOf(i);
     setLoadingIdx(i);
     try {
+      // 1) Conceito primeiro (o QUÊ). Se o usuário editou o prompt na mão, respeita.
+      let concept = concepts[i];
+      if (!concept && promptOverride[i] == null) {
+        concept = await makeConcept(i);
+      }
+      // 2) Renderização (o COMO) — o estilo pode ter mudado por causa da família.
+      const style = getStyle(
+        concept && !styleTouched.current.has(i)
+          ? (styleFromVisualFamily(concept.visual_family) || chosenIds[i])
+          : chosenIds[i],
+        styles,
+      ) || styleOf(i);
+      const prompt = buildPromptFor(i, concept);
       const { data, error } = await supabase.functions.invoke("social-image-gen", {
         body: {
-          prompt: effectivePrompt(i),
+          prompt,
           style_id: style.id,
           pattern_id: patternId,
           tema,
           slide_index: i,
           slide_titulo: slides[i].titulo,
           slide_corpo: slides[i].corpo,
-          visual_prompt: slides[i].visual_prompt,
+          visual_prompt: concept?.image_generation_core || slides[i].visual_prompt,
           template_id: templateId,
         },
       });
@@ -109,7 +175,7 @@ export function ImageStep({ patternId, tema, copy, initial, onApprove }: Props) 
         slide_index: i,
         url: data.url,
         source: "ai",
-        prompt_usado: data.prompt_usado || effectivePrompt(i),
+        prompt_usado: data.prompt_usado || prompt,
         style_id: style.id,
       });
     } catch (e: any) {
@@ -312,6 +378,53 @@ export function ImageStep({ patternId, tema, copy, initial, onApprove }: Props) 
                       </p>
                     )}
                   </div>
+                </div>
+
+                {/* Conceito do diretor de arte — o QUÊ e o PORQUÊ da imagem */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="text-[10px] uppercase tracking-wider text-white/40 inline-flex items-center gap-1.5">
+                      <Lightbulb className="h-3 w-3 text-accent" /> Conceito visual
+                    </div>
+                    <button
+                      onClick={() => makeConcept(drawerIdx)}
+                      disabled={conceptLoadingIdx === drawerIdx}
+                      className="text-[10px] text-white/50 hover:text-white inline-flex items-center gap-1 disabled:opacity-50"
+                    >
+                      {conceptLoadingIdx === drawerIdx
+                        ? <Loader2 className="h-3 w-3 animate-spin" />
+                        : <RotateCcw className="h-3 w-3" />}
+                      {concepts[drawerIdx] ? "Refazer conceito" : "Gerar conceito"}
+                    </button>
+                  </div>
+                  {concepts[drawerIdx] ? (
+                    <div className="rounded-lg bg-accent/[0.06] border border-accent/20 p-3 space-y-2">
+                      <p className="text-sm font-semibold text-white">{concepts[drawerIdx]!.creative_concept}</p>
+                      <p className="text-[11px] text-white/70">
+                        <span className="text-accent">Twist:</span> {concepts[drawerIdx]!.creative_twist}
+                      </p>
+                      {concepts[drawerIdx]!.scene?.moment && (
+                        <p className="text-[11px] text-white/55">
+                          <span className="text-white/35">Cena:</span> {concepts[drawerIdx]!.scene!.moment}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-white/60">
+                          {concepts[drawerIdx]!.visual_family}
+                        </span>
+                        {concepts[drawerIdx]!.composition?.hero_element && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-white/60">
+                            hero: {concepts[drawerIdx]!.composition!.hero_element}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg bg-white/[0.03] border border-dashed border-white/15 p-3 text-[11px] text-white/45">
+                      Sem conceito ainda — será criado automaticamente ao gerar a imagem.
+                      Ele decide <span className="text-white/70">o que</span> a imagem mostra a partir da copy deste slide.
+                    </div>
+                  )}
                 </div>
 
                 <div>

@@ -27,3 +27,5 @@ verify_jwt = false
 [functions.social-image-search]
 verify_jwt = true
 
+[functions.social-visual-concept]
+verify_jwt = true

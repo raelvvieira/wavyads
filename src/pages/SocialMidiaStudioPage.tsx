@@ -22,6 +22,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { buildCopyPrompt, type CopyTemplate } from "@/lib/copyTemplates";
 import { buildImagePrompt, suggestStyleId, getStyle, templateSuffixFromPattern } from "@/lib/wavyImageStyles";
+import {
+  generateVisualConcept, conceptNegatives, styleFromVisualFamily, type VisualConcept,
+} from "@/lib/visualConcept";
 import type { CopyPatternId, CopyAprovada, SlideImagem, PostCopy } from "@/types/social";
 
 const STEPS = ["Scraper", "Resumo", "Template", "Copy Final", "Imagens", "Design"];
@@ -192,12 +195,31 @@ export default function SocialMidiaStudioPage() {
       const imagens: SlideImagem[] = [];
       for (let i = 0; i < slides.length; i++) {
         setQuickBusy({ step: "images", done: i, total: slides.length });
-        const styleId = suggestStyleId(slides[i], fullText, tema);
+
+        // Diretor de arte primeiro: decide O QUE a imagem mostra. Se falhar,
+        // cai no visual_prompt da copy — não trava o lote.
+        let concept: VisualConcept | null = null;
+        try {
+          concept = await generateVisualConcept({
+            tema, briefing, slide: slides[i], slideIndex: i, total: slides.length,
+            formato: slides[i].tipo, pattern: pattern_id,
+            slidesAround: slides
+              .map((s, idx) => ({ titulo: s.titulo, corpo: s.corpo, idx }))
+              .filter((s) => s.idx !== i).slice(0, 4)
+              .map(({ titulo, corpo }) => ({ titulo, corpo })),
+          });
+        } catch (cErr) {
+          console.warn(`quickCreate: conceito do slide ${i} falhou`, cErr);
+        }
+
+        const styleId = styleFromVisualFamily(concept?.visual_family)
+          || suggestStyleId(slides[i], fullText, tema);
         const style = getStyle(styleId, imageStyles) || imageStyles[0];
         const prompt = buildImagePrompt({
-          style, template_id: templateId, visual_prompt: slides[i].visual_prompt,
+          style, template_id: templateId,
+          visual_prompt: concept?.image_generation_core || slides[i].visual_prompt,
           tema, slide_titulo: slides[i].titulo, slide_corpo: slides[i].corpo,
-        });
+        }) + conceptNegatives(concept);
         try {
           const { data: imgData, error: imgErr } = await supabase.functions.invoke("social-image-gen", {
             body: {
@@ -341,9 +363,9 @@ export default function SocialMidiaStudioPage() {
             <p className="text-sm text-white/60">
               {quickBusy.step === "copy"
                 ? "Gerando a copy final…"
-                : `Gerando imagens ${Math.min(quickBusy.done + 1, quickBusy.total)}/${quickBusy.total}…`}
+                : `Criando conceito e imagem ${Math.min(quickBusy.done + 1, quickBusy.total)}/${quickBusy.total}…`}
             </p>
-            <p className="text-xs text-white/35 mt-2">Template, copy, imagens e arte final — tudo automático. Pode levar 1–2 min.</p>
+            <p className="text-xs text-white/35 mt-2">Copy, conceito visual, imagens e arte final — tudo automático. Pode levar 2–3 min.</p>
             <div className="mt-6 w-full max-w-md mx-auto h-1.5 bg-white/5 rounded-full overflow-hidden">
               <div
                 className="h-full bg-accent rounded-full transition-all"
@@ -396,6 +418,7 @@ export default function SocialMidiaStudioPage() {
             patternId={pipeline.pattern_id}
             tema={pipeline.tema || ""}
             copy={pipeline.copy_aprovada}
+            briefing={pipeline.post_copy?.copy_consolidada}
             initial={pipeline.imagens || undefined}
             onApprove={(imagens) => {
               setPipeline((s) => ({ ...s, imagens, etapa_atual: 5 }));
