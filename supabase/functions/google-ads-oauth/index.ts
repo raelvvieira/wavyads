@@ -271,9 +271,56 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ success: accounts.length > 0, accounts, warning: listError, error: listError }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-
       );
     }
+
+    // ========== LIST ACCOUNTS (usa refresh token já salvo) ==========
+    if (action === "list-accounts") {
+      const dbClientId = body.client_id;
+      if (!dbClientId) {
+        return new Response(JSON.stringify({ error: "client_id é obrigatório" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const accessToken = await refreshAccessToken(supabase, dbClientId, clientId, clientSecret);
+      const { accounts, error: listError } = await listAccounts(accessToken, developerToken);
+      return new Response(
+        JSON.stringify({ success: accounts.length > 0, accounts, error: listError }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ========== SET ACCOUNT MANUAL ==========
+    if (action === "set-account-manual") {
+      const dbClientId = body.client_id;
+      const rawId = String(body.customer_id || "").replace(/\D/g, "");
+      if (!dbClientId || rawId.length !== 10) {
+        return new Response(JSON.stringify({ error: "Informe um Customer ID válido (10 dígitos)." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const accessToken = await refreshAccessToken(supabase, dbClientId, clientId, clientSecret);
+      const name = await fetchAccountName(rawId, accessToken, developerToken);
+
+      const { error } = await supabase
+        .from("clients")
+        .update({
+          google_ads_customer_id: rawId,
+          google_ads_customer_name: name,
+          google_ads_synced: true,
+          google_ads_last_sync_at: new Date().toISOString(),
+        })
+        .eq("id", dbClientId);
+
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      return new Response(JSON.stringify({ success: true, account: { id: rawId, name } }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+
 
     // ========== SELECT ACCOUNT ==========
     if (action === "select-account") {
