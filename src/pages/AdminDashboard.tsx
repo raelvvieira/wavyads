@@ -171,23 +171,35 @@ export default function AdminDashboard() {
     }
   }, [pendingAccounts, pendingSyncClientId, selectAccount]);
 
-  // Google Ads auto-select if single account
-  useEffect(() => {
-    if (pendingGoogleAccounts && pendingGoogleSyncClientId && pendingGoogleAccounts.length === 1) {
-      const acc = pendingGoogleAccounts[0];
-      selectGoogleAccount.mutate(
-        { clientId: pendingGoogleSyncClientId, customerId: acc.id, customerName: acc.name },
-        {
-          onSuccess: () => {
-            toast({ title: 'Sincronizado!', description: `Conta Google ${acc.name} vinculada.` });
-            setPendingGoogleAccounts(null);
-            setPendingGoogleSyncClientId(null);
-          },
-          onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
-        }
-      );
-    }
-  }, [pendingGoogleAccounts, pendingGoogleSyncClientId, selectGoogleAccount]);
+  const handleRelistGoogleAccounts = (clientId: string) => {
+    setPendingGoogleSyncClientId(clientId);
+    setPendingGoogleAccounts([]);
+    setGoogleListError(null);
+    listGoogleAccounts.mutate(clientId, {
+      onSuccess: (accs) => setPendingGoogleAccounts(accs),
+      onError: (err: any) => setGoogleListError(err.message || 'Falha ao listar contas.'),
+    });
+  };
+
+  const handleManualGoogleAccount = () => {
+    if (!pendingGoogleSyncClientId) return;
+    setManualGoogleTouched(true);
+    if (manualCustomerId.replace(/\D/g, '').length !== 10) return;
+    setGoogleAccountManual.mutate(
+      { clientId: pendingGoogleSyncClientId, customerId: manualCustomerId },
+      {
+        onSuccess: (data: any) => {
+          toast({ title: 'Sincronizado!', description: `Conta Google ${data?.account?.name || ''} vinculada.` });
+          setPendingGoogleAccounts(null);
+          setPendingGoogleSyncClientId(null);
+          setManualCustomerId('');
+          setManualGoogleTouched(false);
+        },
+        onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
+      },
+    );
+  };
+
 
   const handlePickAccount = (acc: any) => {
     if (!pendingSyncClientId) return;
