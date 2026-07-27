@@ -713,14 +713,21 @@ export default function AdminDashboard() {
               <button
                 key={acc.id}
                 onClick={() => handlePickGoogleAccount(acc)}
-                disabled={selectGoogleAccount.isPending}
-                className="w-full text-left glass rounded-xl p-4 hover:border-accent/50 hover:bg-white/5 transition-all disabled:opacity-50"
+                disabled={selectGoogleAccount.isPending || acc.manager}
+                title={acc.manager ? 'Conta gerenciadora (MCC) não possui campanhas' : undefined}
+                className="w-full text-left glass rounded-xl p-4 hover:border-accent/50 hover:bg-white/5 transition-all disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed"
               >
-                <p className="font-medium text-sm">{acc.name}</p>
+                <p className="font-medium text-sm">
+                  {acc.name}
+                  {acc.manager && (
+                    <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground">gerenciadora (MCC)</span>
+                  )}
+                </p>
                 <p className="text-xs text-muted-foreground mt-0.5">ID: {acc.id}</p>
               </button>
             ))}
           </div>
+
 
           {pendingGoogleAccounts?.length === 0 && !listGoogleAccounts.isPending && (
             <p className="text-xs text-muted-foreground">
