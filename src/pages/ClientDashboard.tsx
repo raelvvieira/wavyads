@@ -25,10 +25,16 @@ import { useGetMetaAuthUrl, useSelectMetaAccount } from '@/hooks/useMetaOAuth';
 import { useGetGoogleAdsAuthUrl, useSelectGoogleAdsAccount } from '@/hooks/useGoogleAdsOAuth';
 import { useMetaCampaigns, useMetaInsights, useMetaInsightsPrevious, type DailyMetric, type TimeRange } from '@/hooks/useMetaInsights';
 import { useMetaAds } from '@/hooks/useMetaAds';
-import { useGoogleAdsCampaigns, useGoogleAdsInsights, useGoogleAdsInsightsPrevious } from '@/hooks/useGoogleAdsInsights';
+import {
+  useGoogleAdsCampaigns, useGoogleAdsInsights, useGoogleAdsInsightsPrevious,
+  useGoogleAdsImpressionShare, useGoogleAdsDeviceBreakdown, useGoogleAdsConversionBreakdown,
+} from '@/hooks/useGoogleAdsInsights';
 import { useGoogleAdsKeywords, useGoogleAdsSearchTerms } from '@/hooks/useGoogleAdsKeywords';
 import { KeywordsTable } from '@/components/KeywordsTable';
 import { SearchTermsTable } from '@/components/SearchTermsTable';
+import { ImpressionShareCard } from '@/components/ImpressionShareCard';
+import { ConversionBreakdownTable } from '@/components/ConversionBreakdownTable';
+import { DeviceBreakdown } from '@/components/DeviceBreakdown';
 import { generateDailySpend, formatCurrency, formatNumber, mockCampaigns } from '@/data/mock';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -220,6 +226,15 @@ export default function ClientDashboard() {
   );
   const { data: searchTermsData, isLoading: searchTermsLoading } = useGoogleAdsSearchTerms(
     clientId, platform === 'google' && isGoogleSynced && googleSubTab === 'search_terms', timeRange
+  );
+  const { data: impressionShareData, isLoading: impressionShareLoading } = useGoogleAdsImpressionShare(
+    clientId, platform === 'google' && isGoogleSynced && googleSubTab === 'overview', timeRange
+  );
+  const { data: conversionBreakdownData, isLoading: conversionBreakdownLoading } = useGoogleAdsConversionBreakdown(
+    clientId, platform === 'google' && isGoogleSynced && googleSubTab === 'overview', timeRange
+  );
+  const { data: deviceBreakdownData, isLoading: deviceBreakdownLoading } = useGoogleAdsDeviceBreakdown(
+    clientId, platform === 'google' && isGoogleSynced && googleSubTab === 'segments', timeRange
   );
 
   // Active data based on platform
@@ -818,6 +833,11 @@ export default function ClientDashboard() {
                 <CampaignsTable campaigns={campaignList} />
               )}
 
+              {/* Impression Share (Google Ads apenas) */}
+              {!isLoading && platform === 'google' && (
+                <ImpressionShareCard campaigns={impressionShareData ?? []} isLoading={impressionShareLoading} />
+              )}
+
               {/* Creatives Gallery — visible for all clients with Meta ads data */}
               {!isLoading && (
                 <>
@@ -868,6 +888,11 @@ export default function ClientDashboard() {
                 />
               )}
 
+              {/* Conversões por tipo (Google Ads apenas) */}
+              {!isLoading && platform === 'google' && (
+                <ConversionBreakdownTable actions={conversionBreakdownData ?? []} isLoading={conversionBreakdownLoading} />
+              )}
+
               {/* Strategic Summary */}
               {!isLoading && campaignList.length > 0 && (
                 <StrategicSummary
@@ -903,11 +928,13 @@ export default function ClientDashboard() {
             />
           )}
 
-          {platform === 'google' && (googleSubTab === 'segments' || googleSubTab === 'ads') && (
+          {platform === 'google' && googleSubTab === 'segments' && (
+            <DeviceBreakdown devices={deviceBreakdownData ?? []} isLoading={deviceBreakdownLoading} />
+          )}
+
+          {platform === 'google' && googleSubTab === 'ads' && (
             <GlassCard className="animate-fade-in">
-              <h3 className="text-base sm:text-lg font-semibold mb-2">
-                {googleSubTab === 'segments' ? 'Dispositivos & Local' : 'Anúncios'}
-              </h3>
+              <h3 className="text-base sm:text-lg font-semibold mb-2">Anúncios</h3>
               <p className="text-sm text-muted-foreground">Em breve.</p>
             </GlassCard>
           )}

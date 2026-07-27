@@ -500,6 +500,105 @@ Deno.serve(async (req) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // ==================== IMPRESSION SHARE ====================
+    if (action === "impression_share") {
+      const query = `
+        SELECT
+          campaign.id, campaign.name, campaign.advertising_channel_type,
+          metrics.search_impression_share,
+          metrics.search_budget_lost_impression_share,
+          metrics.search_rank_lost_impression_share
+        FROM campaign
+        WHERE segments.date BETWEEN '${since}' AND '${until}'
+          AND campaign.status != 'REMOVED'
+      `;
+      const rows = await gaqlQuery(accessToken, customerId, loginCustomerId, developerToken, query);
+
+      // Impression share só é significativa pra campanhas de Pesquisa —
+      // Display/PMax/Vídeo não reportam essas métricas de forma útil.
+      const campaigns = rows
+        .filter((row) => row.campaign?.advertisingChannelType === "SEARCH")
+        .map((row) => ({
+          id: row.campaign.id,
+          name: row.campaign.name,
+          impression_share: Number(row.metrics?.searchImpressionShare || 0) * 100,
+          lost_to_budget: Number(row.metrics?.searchBudgetLostImpressionShare || 0) * 100,
+          lost_to_rank: Number(row.metrics?.searchRankLostImpressionShare || 0) * 100,
+        }))
+        .sort((a, b) => a.impression_share - b.impression_share);
+
+      return new Response(JSON.stringify({ campaigns }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ==================== DEVICE BREAKDOWN ====================
+    if (action === "device_breakdown") {
+      const query = `
+        SELECT
+          segments.device,
+          metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions
+        FROM customer
+        WHERE segments.date BETWEEN '${since}' AND '${until}'
+      `;
+      const rows = await gaqlQuery(accessToken, customerId, loginCustomerId, developerToken, query);
+
+      const deviceLabels: Record<string, string> = {
+        MOBILE: "Celular", DESKTOP: "Computador", TABLET: "Tablet",
+        CONNECTED_TV: "Smart TV", OTHER: "Outro",
+      };
+
+      const deviceMap = new Map<string, any>();
+      for (const row of rows) {
+        const device = row.segments?.device;
+        if (!device) continue;
+        if (!deviceMap.has(device)) {
+          deviceMap.set(device, {
+            device: deviceLabels[device] || device,
+            impressions: 0, clicks: 0, spend: 0, conversions: 0,
+          });
+        }
+        const d = deviceMap.get(device)!;
+        d.impressions += Number(row.metrics?.impressions || 0);
+        d.clicks += Number(row.metrics?.clicks || 0);
+        d.spend += microsToAmount(row.metrics?.costMicros);
+        d.conversions += Number(row.metrics?.conversions || 0);
+      }
+
+      const devices = Array.from(deviceMap.values()).sort((a, b) => b.spend - a.spend);
+
+      return new Response(JSON.stringify({ devices }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ==================== CONVERSION BREAKDOWN ====================
+    if (action === "conversion_breakdown") {
+      const query = `
+        SELECT
+          segments.conversion_action_name,
+          metrics.conversions, metrics.conversions_value
+        FROM customer
+        WHERE segments.date BETWEEN '${since}' AND '${until}'
+      `;
+      const rows = await gaqlQuery(accessToken, customerId, loginCustomerId, developerToken, query);
+
+      const actionMap = new Map<string, any>();
+      for (const row of rows) {
+        const name = row.segments?.conversionActionName;
+        if (!name) continue;
+        if (!actionMap.has(name)) {
+          actionMap.set(name, { action_name: name, conversions: 0, conversions_value: 0 });
+        }
+        const a = actionMap.get(name)!;
+        a.conversions += Number(row.metrics?.conversions || 0);
+        a.conversions_value += Number(row.metrics?.conversionsValue || 0);
+      }
+
+      const actions = Array.from(actionMap.values()).sort((a, b) => b.conversions - a.conversions);
+
+      return new Response(JSON.stringify({ actions }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     return new Response(JSON.stringify({ error: "Ação não reconhecida" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

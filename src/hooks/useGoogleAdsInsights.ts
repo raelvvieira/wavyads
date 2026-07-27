@@ -58,3 +58,61 @@ export function useGoogleAdsInsightsPrevious(clientId: string | undefined, enabl
     staleTime: 5 * 60 * 1000,
   });
 }
+
+export interface GoogleAdsImpressionShareCampaign {
+  id: string;
+  name: string;
+  impression_share: number;
+  lost_to_budget: number;
+  lost_to_rank: number;
+}
+
+export function useGoogleAdsImpressionShare(clientId: string | undefined, enabled: boolean, timeRange: TimeRange | undefined) {
+  return useQuery({
+    queryKey: ['google-impression-share', clientId, timeRange?.since, timeRange?.until],
+    queryFn: async () => {
+      const data = await fetchGoogleInsights('impression_share', clientId!, timeRange!);
+      return (data.campaigns ?? []) as GoogleAdsImpressionShareCampaign[];
+    },
+    enabled: enabled && !!clientId && !!timeRange,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export interface GoogleAdsDevice {
+  device: string;
+  impressions: number;
+  clicks: number;
+  spend: number;
+  conversions: number;
+}
+
+export function useGoogleAdsDeviceBreakdown(clientId: string | undefined, enabled: boolean, timeRange: TimeRange | undefined) {
+  return useQuery({
+    queryKey: ['google-device-breakdown', clientId, timeRange?.since, timeRange?.until],
+    queryFn: async () => {
+      const data = await fetchGoogleInsights('device_breakdown', clientId!, timeRange!);
+      return (data.devices ?? []) as GoogleAdsDevice[];
+    },
+    enabled: enabled && !!clientId && !!timeRange,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export interface GoogleAdsConversionAction {
+  action_name: string;
+  conversions: number;
+  conversions_value: number;
+}
+
+export function useGoogleAdsConversionBreakdown(clientId: string | undefined, enabled: boolean, timeRange: TimeRange | undefined) {
+  return useQuery({
+    queryKey: ['google-conversion-breakdown', clientId, timeRange?.since, timeRange?.until],
+    queryFn: async () => {
+      const data = await fetchGoogleInsights('conversion_breakdown', clientId!, timeRange!);
+      return (data.actions ?? []) as GoogleAdsConversionAction[];
+    },
+    enabled: enabled && !!clientId && !!timeRange,
+    staleTime: 5 * 60 * 1000,
+  });
+}
