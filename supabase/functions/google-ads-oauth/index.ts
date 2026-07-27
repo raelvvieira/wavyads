@@ -10,6 +10,24 @@ const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 // v18 foi desativado pelo Google em ago/2025 — mantendo uma versão suportada.
 const GOOGLE_ADS_API = "https://googleads.googleapis.com/v24";
 
+// O Google às vezes responde com uma página HTML (404/500) em vez de JSON.
+// Sem essa proteção, res.json() estoura com "Unexpected token '<'".
+async function readJson(res: Response, label: string): Promise<any> {
+  const raw = await res.text();
+  const ct = res.headers.get("content-type") || "";
+  if (!ct.includes("json")) {
+    console.error(`[${label}] resposta não-JSON (status ${res.status}): ${raw.slice(0, 300)}`);
+    throw new Error(`Google respondeu ${res.status} (não-JSON) em ${label}`);
+  }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    console.error(`[${label}] JSON inválido (status ${res.status}): ${raw.slice(0, 300)}`);
+    throw new Error(`Resposta inválida do Google em ${label}`);
+  }
+}
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
