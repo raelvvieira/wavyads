@@ -5,7 +5,7 @@ import { GlassCard } from '@/components/GlassCard';
 import { useClients, useCreateClient, useUpdateClient, useDeleteClient } from '@/hooks/useClients';
 import { useAddClientUser, useClientUsers } from '@/hooks/useClientUsers';
 import { useGetMetaAuthUrl, useSelectMetaAccount } from '@/hooks/useMetaOAuth';
-import { useGetGoogleAdsAuthUrl, useSelectGoogleAdsAccount } from '@/hooks/useGoogleAdsOAuth';
+import { useGetGoogleAdsAuthUrl, useSelectGoogleAdsAccount, useListGoogleAdsAccounts, useSetGoogleAdsAccountManual } from '@/hooks/useGoogleAdsOAuth';
 import { useAllClientPixels, useUpsertClientPixel } from '@/hooks/useClientPixels';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
