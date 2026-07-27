@@ -621,6 +621,18 @@ export default function AdminDashboard() {
                   )}
                   {(client as any).google_ads_synced ? 'Resincronizar Google' : 'Sincronizar Google'}
                 </button>
+                {((client as any).google_ads_synced || (client as any).google_ads_token_expires_at) && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRelistGoogleAccounts(client.id);
+                    }}
+                    className="btn-glass w-full rounded-xl py-2.5 text-xs font-medium flex items-center justify-center gap-2"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Trocar conta do Google
+                  </button>
+                )}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
