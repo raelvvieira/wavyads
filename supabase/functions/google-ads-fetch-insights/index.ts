@@ -6,7 +6,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const GOOGLE_ADS_API = "https://googleads.googleapis.com/v18";
+// v18 foi desativado pelo Google em ago/2025 — mantendo uma versão suportada.
+const GOOGLE_ADS_API = "https://googleads.googleapis.com/v24";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 
 async function refreshAccessToken(supabase: any, clientRecord: any, clientIdGoogle: string, clientSecretGoogle: string): Promise<string> {

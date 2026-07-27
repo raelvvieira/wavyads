@@ -7,7 +7,8 @@ const corsHeaders = {
 };
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
-const GOOGLE_ADS_API = "https://googleads.googleapis.com/v18";
+// v18 foi desativado pelo Google em ago/2025 — mantendo uma versão suportada.
+const GOOGLE_ADS_API = "https://googleads.googleapis.com/v24";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
