@@ -34,9 +34,9 @@ export function useGoogleAdsCallback() {
 export function useSelectGoogleAdsAccount() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ clientId, customerId, customerName }: { clientId: string; customerId: string; customerName: string }) => {
+    mutationFn: async ({ clientId, customerId, customerName, loginCustomerId }: { clientId: string; customerId: string; customerName: string; loginCustomerId?: string }) => {
       const { data, error } = await supabase.functions.invoke('google-ads-oauth', {
-        body: { action: 'select-account', client_id: clientId, customer_id: customerId, customer_name: customerName },
+        body: { action: 'select-account', client_id: clientId, customer_id: customerId, customer_name: customerName, login_customer_id: loginCustomerId },
       });
       if (error) throw error;
       return data;
@@ -56,7 +56,7 @@ export function useListGoogleAdsAccounts() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      return (data?.accounts || []) as { id: string; name: string }[];
+      return (data?.accounts || []) as { id: string; name: string; manager?: boolean; loginCustomerId?: string }[];
     },
   });
 }

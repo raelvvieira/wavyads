@@ -225,7 +225,7 @@ export default function AdminDashboard() {
   const handlePickGoogleAccount = (acc: any) => {
     if (!pendingGoogleSyncClientId) return;
     selectGoogleAccount.mutate(
-      { clientId: pendingGoogleSyncClientId, customerId: acc.id, customerName: acc.name },
+      { clientId: pendingGoogleSyncClientId, customerId: acc.id, customerName: acc.name, loginCustomerId: acc.loginCustomerId },
       {
         onSuccess: () => {
           toast({ title: 'Sincronizado!', description: `Conta Google ${acc.name} vinculada.` });

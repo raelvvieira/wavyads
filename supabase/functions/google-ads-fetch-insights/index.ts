@@ -9,6 +9,10 @@ const corsHeaders = {
 // v18 foi desativado pelo Google em ago/2025 — mantendo uma versão suportada.
 const GOOGLE_ADS_API = "https://googleads.googleapis.com/v24";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
+// Contas de cliente hoje são acessadas via a gerenciadora WAVY. Usado como
+// fallback quando o cliente ainda não tem login_customer_id persistido
+// (ex.: sincronizado antes dessa coluna existir).
+const WAVY_MANAGER_CUSTOMER_ID = "8125716511";
 
 async function refreshAccessToken(supabase: any, clientRecord: any, clientIdGoogle: string, clientSecretGoogle: string): Promise<string> {
   const now = new Date();
@@ -50,17 +54,25 @@ async function refreshAccessToken(supabase: any, clientRecord: any, clientIdGoog
   return newToken;
 }
 
-async function gaqlQuery(accessToken: string, customerId: string, developerToken: string, query: string) {
+// Se o cliente já tem um login-customer-id conhecido (salvo ao selecionar a
+// conta na tela de sincronização), usa ele direto. Senão — clientes antigos,
+// sincronizados antes dessa coluna existir — tenta sem o header (conta
+// direta) e depois com o da gerenciadora WAVY (conta sob MCC).
+async function gaqlQuery(
+  accessToken: string,
+  customerId: string,
+  loginCustomerId: string | null,
+  developerToken: string,
+  query: string,
+) {
   const baseHeaders: Record<string, string> = {
     Authorization: `Bearer ${accessToken}`,
     "developer-token": developerToken,
     "Content-Type": "application/json",
   };
-  // Tenta primeiro sem login-customer-id (conta direta) e depois com (conta sob MCC).
-  const attempts: Array<Record<string, string>> = [
-    baseHeaders,
-    { ...baseHeaders, "login-customer-id": customerId },
-  ];
+  const attempts: Array<Record<string, string>> = loginCustomerId
+    ? [{ ...baseHeaders, "login-customer-id": loginCustomerId }]
+    : [baseHeaders, { ...baseHeaders, "login-customer-id": WAVY_MANAGER_CUSTOMER_ID }];
 
   let lastError = "Falha ao consultar o Google Ads";
 
@@ -184,6 +196,7 @@ Deno.serve(async (req) => {
     }
 
     const customerId = clientRecord.google_ads_customer_id;
+    const loginCustomerId: string | null = clientRecord.google_ads_login_customer_id || null;
     const accessToken = await refreshAccessToken(supabase, clientRecord, googleClientId, googleClientSecret);
 
     const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -206,7 +219,7 @@ Deno.serve(async (req) => {
         WHERE segments.date BETWEEN '${since}' AND '${until}'
           AND campaign.status != 'REMOVED'
       `;
-      const rows = await gaqlQuery(accessToken, customerId, developerToken, query);
+      const rows = await gaqlQuery(accessToken, customerId, loginCustomerId, developerToken, query);
 
       // Aggregate by campaign
       const campaignMap = new Map<string, any>();
@@ -255,7 +268,7 @@ Deno.serve(async (req) => {
         FROM customer
         WHERE segments.date BETWEEN '${since}' AND '${until}'
       `;
-      const rows = await gaqlQuery(accessToken, customerId, developerToken, query);
+      const rows = await gaqlQuery(accessToken, customerId, loginCustomerId, developerToken, query);
 
       let spend = 0, impressions = 0, clicks = 0, conversions = 0;
       for (const row of rows) {
@@ -274,7 +287,7 @@ Deno.serve(async (req) => {
         FROM customer
         WHERE segments.date BETWEEN '${since}' AND '${until}'
       `;
-      const dailyRows = await gaqlQuery(accessToken, customerId, developerToken, dailyQuery);
+      const dailyRows = await gaqlQuery(accessToken, customerId, loginCustomerId, developerToken, dailyQuery);
 
       const dailyMap = new Map<string, any>();
       for (const row of dailyRows) {
@@ -349,7 +362,7 @@ Deno.serve(async (req) => {
         FROM customer
         WHERE segments.date BETWEEN '${prevSince}' AND '${prevUntil}'
       `;
-      const rows = await gaqlQuery(accessToken, customerId, developerToken, query);
+      const rows = await gaqlQuery(accessToken, customerId, loginCustomerId, developerToken, query);
 
       let spend = 0, impressions = 0, clicks = 0, conversions = 0;
       for (const row of rows) {
