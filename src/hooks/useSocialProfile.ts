@@ -33,11 +33,11 @@ export function useSocialProfile(): UseSocialProfileResult {
         if (!user) { setLoading(false); return; }
         const { data } = await supabase
           .from("social_profiles")
-          .select("nome, handle, avatar_url, template_padrao, veiculo, veiculo_tag, verificado")
+          .select("*")
           .eq("user_id", user.id)
           .maybeSingle();
         if (data) {
-          const d = data as typeof data & { veiculo?: string | null; veiculo_tag?: string | null; verificado?: boolean | null };
+          const d = data as any;
           setProfile({
             nome: d.nome || DEFAULT_PROFILE.nome,
             handle: d.handle || DEFAULT_PROFILE.handle,
@@ -46,7 +46,7 @@ export function useSocialProfile(): UseSocialProfileResult {
             veiculoTag: d.veiculo_tag ?? DEFAULT_PROFILE.veiculoTag,
             verificado: d.verificado ?? DEFAULT_PROFILE.verificado,
           });
-          const raw = data.template_padrao as string | null;
+          const raw = (data as any).template_padrao as string | null;
           const normalized = raw && (VALID.includes(raw as TemplateId) ? (raw as TemplateId) : LEGACY_MAP[raw]);
           if (normalized) setTemplate(normalized);
         }
