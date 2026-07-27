@@ -306,13 +306,19 @@ Deno.serve(async (req) => {
       }
 
       const accessToken = await refreshAccessToken(supabase, dbClientId, clientId, clientSecret);
-      const name = await fetchAccountName(rawId, accessToken, developerToken);
+      const info = await fetchAccountInfo(rawId, accessToken, developerToken);
+      if (info.manager) {
+        return new Response(JSON.stringify({ error: `"${info.name}" é uma conta gerenciadora (MCC) e não possui campanhas. Escolha uma conta de anúncios.` }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const name = info.name;
 
       const { error } = await supabase
         .from("clients")
         .update({
           google_ads_customer_id: rawId,
           google_ads_customer_name: name,
+
           google_ads_synced: true,
           google_ads_last_sync_at: new Date().toISOString(),
         })
