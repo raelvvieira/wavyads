@@ -62,6 +62,8 @@ export default function AdminDashboard() {
     },
   });
   const selectGoogleAccount = useSelectGoogleAdsAccount();
+  const listGoogleAccounts = useListGoogleAdsAccounts();
+  const setGoogleAccountManual = useSetGoogleAdsAccountManual();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newName, setNewName] = useState('');
