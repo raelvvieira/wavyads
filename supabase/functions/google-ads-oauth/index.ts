@@ -27,6 +27,122 @@ async function readJson(res: Response, label: string): Promise<any> {
   }
 }
 
+// Busca o nome de uma conta. Tenta sem login-customer-id e, se falhar,
+// repete com o header (necessário em contas sob MCC).
+async function fetchAccountName(
+  customerId: string,
+  accessToken: string,
+  developerToken: string,
+): Promise<string> {
+  const query = "SELECT customer.id, customer.descriptive_name FROM customer LIMIT 1";
+  const attempts: Array<Record<string, string>> = [
+    { Authorization: `Bearer ${accessToken}`, "developer-token": developerToken, "Content-Type": "application/json" },
+    {
+      Authorization: `Bearer ${accessToken}`,
+      "developer-token": developerToken,
+      "login-customer-id": customerId,
+      "Content-Type": "application/json",
+    },
+  ];
+  for (const headers of attempts) {
+    try {
+      const res = await fetch(`${GOOGLE_ADS_API}/customers/${customerId}/googleAds:searchStream`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ query }),
+      });
+      const detail = await readJson(res, `customer ${customerId}`);
+      const name = Array.isArray(detail)
+        ? detail?.[0]?.results?.[0]?.customer?.descriptiveName
+        : detail?.results?.[0]?.customer?.descriptiveName;
+      if (name) return name;
+    } catch (e) {
+      console.error(`Falha ao obter nome da conta ${customerId}:`, e);
+    }
+  }
+  return `Conta ${customerId}`;
+}
+
+// Lista as contas acessíveis com o access token informado.
+async function listAccounts(
+  accessToken: string,
+  developerToken: string,
+): Promise<{ accounts: Array<{ id: string; name: string }>; error: string | null }> {
+  let resourceNames: string[] = [];
+  try {
+    const res = await fetch(`${GOOGLE_ADS_API}/customers:listAccessibleCustomers`, {
+      headers: { Authorization: `Bearer ${accessToken}`, "developer-token": developerToken },
+    });
+    const data = await readJson(res, "listAccessibleCustomers");
+    if (data.error) {
+      console.error("Google Ads listAccessibleCustomers error:", JSON.stringify(data.error));
+      return { accounts: [], error: data.error.message || "Não foi possível listar as contas do Google Ads." };
+    }
+    resourceNames = data.resourceNames || [];
+  } catch (e) {
+    console.error("listAccessibleCustomers falhou:", e);
+    return { accounts: [], error: e instanceof Error ? e.message : "Falha ao listar contas do Google Ads." };
+  }
+
+  const accounts = await Promise.all(
+    resourceNames.map(async (rn) => {
+      const customerId = rn.replace("customers/", "");
+      return { id: customerId, name: await fetchAccountName(customerId, accessToken, developerToken) };
+    }),
+  );
+
+  if (accounts.length === 0) {
+    return { accounts, error: "Nenhuma conta do Google Ads foi encontrada para este login." };
+  }
+  return { accounts, error: null };
+}
+
+// Renova o access token a partir do refresh token salvo.
+async function refreshAccessToken(
+  supabase: any,
+  dbClientId: string,
+  clientId: string,
+  clientSecret: string,
+): Promise<string> {
+  const { data: client } = await supabase
+    .from("clients")
+    .select("google_ads_access_token, google_ads_refresh_token, google_ads_token_expires_at")
+    .eq("id", dbClientId)
+    .maybeSingle();
+
+  if (!client) throw new Error("Cliente não encontrado");
+
+  const expires = client.google_ads_token_expires_at ? new Date(client.google_ads_token_expires_at).getTime() : 0;
+  if (client.google_ads_access_token && expires - 60_000 > Date.now()) {
+    return client.google_ads_access_token;
+  }
+  if (!client.google_ads_refresh_token) {
+    throw new Error("Conexão com Google Ads não encontrada. Sincronize novamente.");
+  }
+
+  const res = await fetch(GOOGLE_TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: client.google_ads_refresh_token,
+      grant_type: "refresh_token",
+    }),
+  });
+  const data = await readJson(res, "refresh token");
+  if (data.error) throw new Error(data.error_description || data.error);
+
+  const expiresAt = new Date(Date.now() + (data.expires_in || 3600) * 1000).toISOString();
+  await supabase
+    .from("clients")
+    .update({ google_ads_access_token: data.access_token, google_ads_token_expires_at: expiresAt })
+    .eq("id", dbClientId);
+
+  return data.access_token;
+}
+
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
