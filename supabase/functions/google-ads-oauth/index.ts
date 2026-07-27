@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
           grant_type: "authorization_code",
         }),
       });
-      const tokenData = await tokenRes.json();
+      const tokenData = await readJson(tokenRes, "token exchange");
 
       if (tokenData.error) {
         console.error("Google token exchange error:", JSON.stringify(tokenData));
@@ -150,53 +150,67 @@ Deno.serve(async (req) => {
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // List accessible customer IDs
-      const customersRes = await fetch(
-        `${GOOGLE_ADS_API}/customers:listAccessibleCustomers`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "developer-token": developerToken,
-          },
+      // List accessible customer IDs. Se essa etapa falhar, os tokens já
+      // foram salvos — devolvemos accounts vazio com aviso em vez de erro.
+      let resourceNames: string[] = [];
+      let warning: string | null = null;
+      try {
+        const customersRes = await fetch(
+          `${GOOGLE_ADS_API}/customers:listAccessibleCustomers`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "developer-token": developerToken,
+            },
+          }
+        );
+        const customersData = await readJson(customersRes, "listAccessibleCustomers");
+        if (customersData.error) {
+          console.error("Google Ads listAccessibleCustomers error:", JSON.stringify(customersData.error));
+          warning = customersData.error.message || "Não foi possível listar as contas do Google Ads.";
+        } else {
+          resourceNames = customersData.resourceNames || [];
         }
-      );
-      const customersData = await customersRes.json();
-
-      if (customersData.error) {
-        console.error("Google Ads listAccessibleCustomers error:", JSON.stringify(customersData.error));
-        return new Response(JSON.stringify({ error: customersData.error.message }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      } catch (listErr) {
+        console.error("listAccessibleCustomers falhou:", listErr);
+        warning = listErr instanceof Error ? listErr.message : "Falha ao listar contas do Google Ads.";
       }
 
-      // Para cada resource name, busca o nome da conta — em paralelo. Um
-      // login de agência pode enxergar dezenas de contas; buscando em
-      // sequência isso passava do timeout do gateway de Edge Functions,
-      // que devolve uma página de erro HTML em vez do JSON da função.
-      const resourceNames: string[] = customersData.resourceNames || [];
+      // Nome de cada conta via googleAds:searchStream (o GET /customers/{id}
+      // simples não existe na API e devolve HTML 404).
       const accounts = await Promise.all(
         resourceNames.map(async (rn) => {
           const customerId = rn.replace("customers/", "");
           try {
             const detailRes = await fetch(
-              `${GOOGLE_ADS_API}/customers/${customerId}`,
+              `${GOOGLE_ADS_API}/customers/${customerId}/googleAds:searchStream`,
               {
+                method: "POST",
                 headers: {
                   Authorization: `Bearer ${accessToken}`,
                   "developer-token": developerToken,
                   "login-customer-id": customerId,
+                  "Content-Type": "application/json",
                 },
+                body: JSON.stringify({
+                  query: "SELECT customer.id, customer.descriptive_name FROM customer LIMIT 1",
+                }),
               }
             );
-            const detail = await detailRes.json();
-            return { id: customerId, name: detail.descriptiveName || `Conta ${customerId}` };
-          } catch {
+            const detail = await readJson(detailRes, `customer ${customerId}`);
+            const name = Array.isArray(detail)
+              ? detail?.[0]?.results?.[0]?.customer?.descriptiveName
+              : detail?.results?.[0]?.customer?.descriptiveName;
+            return { id: customerId, name: name || `Conta ${customerId}` };
+          } catch (e) {
+            console.error(`Falha ao obter nome da conta ${customerId}:`, e);
             return { id: customerId, name: `Conta ${customerId}` };
           }
         })
       );
 
       return new Response(
-        JSON.stringify({ success: true, accounts }),
+        JSON.stringify({ success: true, accounts, warning }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
