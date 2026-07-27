@@ -674,13 +674,20 @@ export default function ClientDashboard() {
               <TrendingUp className="h-8 w-8 text-accent" />
             </div>
             <h2 className="text-xl font-semibold mb-2">
-              {platform === 'meta' ? 'Sincronize com Meta Ads' : 'Sincronize com Google Ads'}
+              {platform === 'meta'
+                ? 'Sincronize com Meta Ads'
+                : (client as any)?.google_ads_token_expires_at
+                  ? 'Conta do Google Ads ainda não selecionada'
+                  : 'Sincronize com Google Ads'}
             </h2>
             <p className="text-sm text-muted-foreground mb-6">
               {platform === 'meta'
                 ? 'Conecte a conta de anúncios do Facebook para visualizar dados reais de campanhas.'
-                : 'Conecte a conta do Google Ads para visualizar dados reais de campanhas.'}
+                : (client as any)?.google_ads_token_expires_at
+                  ? 'O login do Google já foi feito, mas nenhuma conta de anúncios foi vinculada a este cliente. Escolha a conta no painel de clientes do admin ("Trocar conta do Google").'
+                  : 'Conecte a conta do Google Ads para visualizar dados reais de campanhas.'}
             </p>
+
             {platform === 'meta' ? (
               <button
                 onClick={handleSync}

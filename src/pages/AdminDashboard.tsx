@@ -5,7 +5,7 @@ import { GlassCard } from '@/components/GlassCard';
 import { useClients, useCreateClient, useUpdateClient, useDeleteClient } from '@/hooks/useClients';
 import { useAddClientUser, useClientUsers } from '@/hooks/useClientUsers';
 import { useGetMetaAuthUrl, useSelectMetaAccount } from '@/hooks/useMetaOAuth';
-import { useGetGoogleAdsAuthUrl, useSelectGoogleAdsAccount } from '@/hooks/useGoogleAdsOAuth';
+import { useGetGoogleAdsAuthUrl, useSelectGoogleAdsAccount, useListGoogleAdsAccounts, useSetGoogleAdsAccountManual } from '@/hooks/useGoogleAdsOAuth';
 import { useAllClientPixels, useUpsertClientPixel } from '@/hooks/useClientPixels';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -62,6 +62,8 @@ export default function AdminDashboard() {
     },
   });
   const selectGoogleAccount = useSelectGoogleAdsAccount();
+  const listGoogleAccounts = useListGoogleAdsAccounts();
+  const setGoogleAccountManual = useSetGoogleAdsAccountManual();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newName, setNewName] = useState('');
@@ -94,6 +96,9 @@ export default function AdminDashboard() {
   const [syncingGoogleClientId, setSyncingGoogleClientId] = useState<string | null>(null);
   const [pendingGoogleAccounts, setPendingGoogleAccounts] = useState<any[] | null>(null);
   const [pendingGoogleSyncClientId, setPendingGoogleSyncClientId] = useState<string | null>(null);
+  const [googleListError, setGoogleListError] = useState<string | null>(null);
+  const [manualCustomerId, setManualCustomerId] = useState('');
+  const [manualGoogleTouched, setManualGoogleTouched] = useState(false);
 
   // Pixel Meta modal state
   const [pixelDialogOpen, setPixelDialogOpen] = useState(false);
@@ -144,8 +149,9 @@ export default function AdminDashboard() {
         setPendingAccounts(event.data.accounts);
         setSyncingClientId(null);
       }
-      if (event.data?.type === 'GOOGLE_ADS_OAUTH_CALLBACK' && event.data?.accounts) {
-        setPendingGoogleAccounts(event.data.accounts);
+      if (event.data?.type === 'GOOGLE_ADS_OAUTH_CALLBACK') {
+        setPendingGoogleAccounts(event.data.accounts || []);
+        setGoogleListError(event.data.error || null);
         setSyncingGoogleClientId(null);
       }
     };
@@ -171,23 +177,35 @@ export default function AdminDashboard() {
     }
   }, [pendingAccounts, pendingSyncClientId, selectAccount]);
 
-  // Google Ads auto-select if single account
-  useEffect(() => {
-    if (pendingGoogleAccounts && pendingGoogleSyncClientId && pendingGoogleAccounts.length === 1) {
-      const acc = pendingGoogleAccounts[0];
-      selectGoogleAccount.mutate(
-        { clientId: pendingGoogleSyncClientId, customerId: acc.id, customerName: acc.name },
-        {
-          onSuccess: () => {
-            toast({ title: 'Sincronizado!', description: `Conta Google ${acc.name} vinculada.` });
-            setPendingGoogleAccounts(null);
-            setPendingGoogleSyncClientId(null);
-          },
-          onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
-        }
-      );
-    }
-  }, [pendingGoogleAccounts, pendingGoogleSyncClientId, selectGoogleAccount]);
+  const handleRelistGoogleAccounts = (clientId: string) => {
+    setPendingGoogleSyncClientId(clientId);
+    setPendingGoogleAccounts([]);
+    setGoogleListError(null);
+    listGoogleAccounts.mutate(clientId, {
+      onSuccess: (accs) => setPendingGoogleAccounts(accs),
+      onError: (err: any) => setGoogleListError(err.message || 'Falha ao listar contas.'),
+    });
+  };
+
+  const handleManualGoogleAccount = () => {
+    if (!pendingGoogleSyncClientId) return;
+    setManualGoogleTouched(true);
+    if (manualCustomerId.replace(/\D/g, '').length !== 10) return;
+    setGoogleAccountManual.mutate(
+      { clientId: pendingGoogleSyncClientId, customerId: manualCustomerId },
+      {
+        onSuccess: (data: any) => {
+          toast({ title: 'Sincronizado!', description: `Conta Google ${data?.account?.name || ''} vinculada.` });
+          setPendingGoogleAccounts(null);
+          setPendingGoogleSyncClientId(null);
+          setManualCustomerId('');
+          setManualGoogleTouched(false);
+        },
+        onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
+      },
+    );
+  };
+
 
   const handlePickAccount = (acc: any) => {
     if (!pendingSyncClientId) return;
@@ -603,6 +621,18 @@ export default function AdminDashboard() {
                   )}
                   {(client as any).google_ads_synced ? 'Resincronizar Google' : 'Sincronizar Google'}
                 </button>
+                {((client as any).google_ads_synced || (client as any).google_ads_token_expires_at) && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRelistGoogleAccounts(client.id);
+                    }}
+                    className="btn-glass w-full rounded-xl py-2.5 text-xs font-medium flex items-center justify-center gap-2"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Trocar conta do Google
+                  </button>
+                )}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -654,16 +684,30 @@ export default function AdminDashboard() {
       </Dialog>
 
       {/* Google Ads Account Picker Dialog */}
-      <Dialog open={!!pendingGoogleAccounts && pendingGoogleAccounts.length > 1} onOpenChange={(open) => {
+      <Dialog open={pendingGoogleAccounts !== null} onOpenChange={(open) => {
         if (!open) {
           setPendingGoogleAccounts(null);
           setPendingGoogleSyncClientId(null);
+          setGoogleListError(null);
+          setManualCustomerId('');
+          setManualGoogleTouched(false);
         }
       }}>
         <DialogContent className="glass border-white/10 bg-card max-w-md">
           <DialogHeader>
             <DialogTitle>Escolha a conta Google Ads</DialogTitle>
           </DialogHeader>
+
+          {listGoogleAccounts.isPending && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Buscando contas...
+            </div>
+          )}
+
+          {googleListError && (
+            <p className="text-xs text-destructive mt-2 break-words">{googleListError}</p>
+          )}
+
           <div className="space-y-2 mt-2 max-h-80 overflow-y-auto">
             {pendingGoogleAccounts?.map((acc: any) => (
               <button
@@ -677,8 +721,44 @@ export default function AdminDashboard() {
               </button>
             ))}
           </div>
+
+          {pendingGoogleAccounts?.length === 0 && !listGoogleAccounts.isPending && (
+            <p className="text-xs text-muted-foreground">
+              Nenhuma conta listada. Tente novamente ou informe o Customer ID manualmente.
+            </p>
+          )}
+
+          <div className="space-y-2 pt-2 border-t border-white/10">
+            <button
+              onClick={() => pendingGoogleSyncClientId && handleRelistGoogleAccounts(pendingGoogleSyncClientId)}
+              disabled={listGoogleAccounts.isPending || !pendingGoogleSyncClientId}
+              className="btn-glass w-full rounded-xl py-2 text-xs font-medium disabled:opacity-50"
+            >
+              Tentar listar contas de novo
+            </button>
+            <div>
+              <label className="text-xs text-muted-foreground">Ou informe o Customer ID (10 dígitos)</label>
+              <input
+                value={manualCustomerId}
+                onChange={(e) => setManualCustomerId(e.target.value)}
+                placeholder="1234567890"
+                className="w-full glass rounded-xl px-3 py-2 text-sm mt-1 bg-transparent outline-none"
+              />
+              {manualGoogleTouched && manualCustomerId.replace(/\D/g, '').length !== 10 && (
+                <p className="text-xs text-destructive mt-1">Informe exatamente 10 dígitos.</p>
+              )}
+              <button
+                onClick={handleManualGoogleAccount}
+                disabled={setGoogleAccountManual.isPending}
+                className="btn-accent w-full rounded-xl py-2 text-xs font-medium mt-2 disabled:opacity-50"
+              >
+                Vincular esse Customer ID
+              </button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
+
 
       {/* Add Access Dialog */}
       <Dialog open={accessDialogOpen} onOpenChange={setAccessDialogOpen}>

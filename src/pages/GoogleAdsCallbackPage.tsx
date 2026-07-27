@@ -32,13 +32,23 @@ export default function GoogleAdsCallbackPage() {
       googleCallback.mutate(
         { code, clientId, redirectUri, accessToken: session.access_token },
         {
-          onSuccess: (data) => {
-            setStatus('success');
+          onSuccess: (data: any) => {
+            const accounts = data?.accounts || [];
             if (window.opener) {
-              window.opener.postMessage({ type: 'GOOGLE_ADS_OAUTH_CALLBACK', accounts: data.accounts || [] }, window.location.origin);
-              setTimeout(() => window.close(), 1500);
+              window.opener.postMessage(
+                { type: 'GOOGLE_ADS_OAUTH_CALLBACK', accounts, error: data?.error || null },
+                window.location.origin,
+              );
             }
+            if (accounts.length === 0) {
+              setStatus('error');
+              setErrorMsg(data?.error || 'Nenhuma conta do Google Ads foi encontrada para este login.');
+              return;
+            }
+            setStatus('success');
+            if (window.opener) setTimeout(() => window.close(), 1500);
           },
+
           onError: async (err: any) => {
             setStatus('error');
             let msg = 'Erro ao conectar';

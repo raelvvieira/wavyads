@@ -48,6 +48,37 @@ export function useSelectGoogleAdsAccount() {
   });
 }
 
+export function useListGoogleAdsAccounts() {
+  return useMutation({
+    mutationFn: async (clientId: string) => {
+      const { data, error } = await supabase.functions.invoke('google-ads-oauth', {
+        body: { action: 'list-accounts', client_id: clientId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return (data?.accounts || []) as { id: string; name: string }[];
+    },
+  });
+}
+
+export function useSetGoogleAdsAccountManual() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ clientId, customerId }: { clientId: string; customerId: string }) => {
+      const { data, error } = await supabase.functions.invoke('google-ads-oauth', {
+        body: { action: 'set-account-manual', client_id: clientId, customer_id: customerId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data as { success: boolean; account: { id: string; name: string } };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['clients'] });
+      qc.invalidateQueries({ queryKey: ['client'] });
+    },
+  });
+}
+
 export function useDisconnectGoogleAds() {
   const qc = useQueryClient();
   return useMutation({
