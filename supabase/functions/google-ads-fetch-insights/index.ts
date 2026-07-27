@@ -51,34 +51,54 @@ async function refreshAccessToken(supabase: any, clientRecord: any, clientIdGoog
 }
 
 async function gaqlQuery(accessToken: string, customerId: string, developerToken: string, query: string) {
-  const res = await fetch(
-    `${GOOGLE_ADS_API}/customers/${customerId}/googleAds:searchStream`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "developer-token": developerToken,
-        "login-customer-id": customerId,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ query }),
-    }
-  );
-  const data = await res.json();
+  const baseHeaders: Record<string, string> = {
+    Authorization: `Bearer ${accessToken}`,
+    "developer-token": developerToken,
+    "Content-Type": "application/json",
+  };
+  // Tenta primeiro sem login-customer-id (conta direta) e depois com (conta sob MCC).
+  const attempts: Array<Record<string, string>> = [
+    baseHeaders,
+    { ...baseHeaders, "login-customer-id": customerId },
+  ];
 
-  if (data.error) {
-    throw new Error(data.error.message || JSON.stringify(data.error));
+  let lastError = "Falha ao consultar o Google Ads";
+
+  for (const headers of attempts) {
+    const res = await fetch(
+      `${GOOGLE_ADS_API}/customers/${customerId}/googleAds:searchStream`,
+      { method: "POST", headers, body: JSON.stringify({ query }) }
+    );
+
+    const text = await res.text();
+    let data: any;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      lastError = `Resposta inesperada do Google Ads (HTTP ${res.status}): ${text.slice(0, 200)}`;
+      continue;
+    }
+
+    const err = Array.isArray(data) ? data[0]?.error : data?.error;
+    if (err) {
+      lastError = err.message || JSON.stringify(err);
+      continue;
+    }
+
+    const results: any[] = [];
+    if (Array.isArray(data)) {
+      for (const batch of data) {
+        if (batch.results) results.push(...batch.results);
+      }
+    } else if (data?.results) {
+      results.push(...data.results);
+    }
+    return results;
   }
 
-  // searchStream returns array of batches
-  const results: any[] = [];
-  if (Array.isArray(data)) {
-    for (const batch of data) {
-      if (batch.results) results.push(...batch.results);
-    }
-  }
-  return results;
+  throw new Error(lastError);
 }
+
 
 function microsToAmount(micros: string | number | undefined): number {
   if (!micros) return 0;
