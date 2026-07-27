@@ -1,12 +1,19 @@
 import { useState, useEffect } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2, Zap } from "lucide-react";
 import { GlassCard } from "@/components/GlassCard";
 import { supabase } from "@/integrations/supabase/client";
+import { useCopyTemplates } from "@/hooks/useCopyTemplates";
+import { FormatChooser, FormatAction } from "./FormatChooser";
+import { CopyTemplatesEditor } from "./CopyTemplatesEditor";
+import type { CopyTemplate } from "@/lib/copyTemplates";
 
 interface Props {
   copyConsolidada: string;
   tema: string;
-  onApprove: (tema: string) => void;
+  /** Segue passo a passo: confirma tema + formato e vai pra Copy Final. */
+  onApprove: (tema: string, template: CopyTemplate, numSlides: number) => void;
+  /** Gera tudo automaticamente a partir daqui. */
+  onQuickCreate?: (tema: string, template: CopyTemplate, numSlides: number) => void;
 }
 
 interface AnalisisTema {
@@ -16,13 +23,29 @@ interface AnalisisTema {
   estrategia: string;
 }
 
-export function ResearchStep({ copyConsolidada, tema, onApprove }: Props) {
+export function ResearchStep({ copyConsolidada, tema, onApprove, onQuickCreate }: Props) {
   const [temaEditado, setTemaEditado] = useState(tema);
   const [analise, setAnalise] = useState<AnalisisTema | null>(null);
   const [loadingAnalise, setLoadingAnalise] = useState(false);
   const [loadingTema, setLoadingTema] = useState(false);
 
-  const canApprove = copyConsolidada.trim() && temaEditado.trim();
+  // Escolha do formato (copy + design pareados) acontece aqui mesmo.
+  const { templates, saveTemplate, createTemplate, deleteTemplate, resetTemplate } = useCopyTemplates();
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [numSlides, setNumSlides] = useState(7);
+  const [editingTemplates, setEditingTemplates] = useState(false);
+
+  const selected = templates.find((t) => t.key === selectedKey) || null;
+  const temaOk = !!(copyConsolidada.trim() && temaEditado.trim());
+  const canApprove = temaOk && !!selected;
+
+  const selectTemplate = (t: CopyTemplate) => {
+    setSelectedKey(t.key);
+    setNumSlides(t.slidesDefault || 7);
+  };
+
+  /** Reel = 0 slides; post único = 1; carrossel = o do slider. */
+  const confirmNum = (t: CopyTemplate) => (t.carrossel ? numSlides : t.baseLayout === "3" ? 0 : 1);
 
   useEffect(() => {
     if (temaEditado.trim() || !copyConsolidada.trim()) return;
@@ -81,14 +104,28 @@ export function ResearchStep({ copyConsolidada, tema, onApprove }: Props) {
     return () => clearTimeout(timeout);
   }, [temaEditado, copyConsolidada]);
 
+  if (editingTemplates) {
+    return (
+      <CopyTemplatesEditor
+        templates={templates}
+        onSave={saveTemplate}
+        onCreate={createTemplate}
+        onDelete={deleteTemplate}
+        onReset={resetTemplate}
+        onClose={() => setEditingTemplates(false)}
+      />
+    );
+  }
+
   return (
-    <GlassCard className="mx-auto max-w-2xl overflow-hidden">
+    <GlassCard className="mx-auto max-w-4xl overflow-hidden">
       <div className="space-y-5">
         <div className="space-y-2">
-          <div className="text-xs uppercase tracking-wider text-accent">Etapa 2 · Resumo</div>
-          <h2 className="text-xl font-semibold text-white sm:text-2xl">Revise a copy e confirme o tema</h2>
+          <div className="text-xs uppercase tracking-wider text-accent">Etapa 2 · Resumo e formato</div>
+          <h2 className="text-xl font-semibold text-white sm:text-2xl">Confirme o tema e escolha o formato</h2>
           <p className="max-w-2xl text-sm leading-relaxed text-white/55">
-            Leia a copy extraída do post viral e confirme (ou ajuste) o tema principal.
+            Revise a copy extraída, ajuste o tema e escolha o formato — cada um já traz
+            sua estrutura de copy e o visual que combina com ela.
           </p>
         </div>
 
@@ -142,19 +179,38 @@ export function ResearchStep({ copyConsolidada, tema, onApprove }: Props) {
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={() => canApprove && onApprove(temaEditado.trim())}
-          disabled={!canApprove}
-          className={`w-full rounded-lg px-4 py-3 text-sm font-semibold inline-flex items-center justify-center gap-2 transition-colors ${
-            canApprove
-              ? "btn-accent"
-              : "cursor-not-allowed border border-white/10 bg-white/[0.04] text-white/35"
-          }`}
-        >
-          <Check className="h-4 w-4" />
-          {canApprove ? "Próximo → Template" : "Confirme o tema"}
-        </button>
+        {/* Escolha do formato: copy + design numa decisão só */}
+        <div className="border-t border-white/10 pt-5">
+          <FormatChooser
+            templates={templates}
+            selected={selected}
+            numSlides={numSlides}
+            onSelect={selectTemplate}
+            onNumSlides={setNumSlides}
+            onEditTemplates={() => setEditingTemplates(true)}
+          >
+            <div className="space-y-2 pt-1">
+              {onQuickCreate && (
+                <FormatAction
+                  variant="primary"
+                  disabled={!canApprove}
+                  icon={<Zap className="h-4 w-4" />}
+                  onClick={() => selected && onQuickCreate(temaEditado.trim(), selected, confirmNum(selected))}
+                >
+                  Criar post rápido (copy + imagens + arte)
+                </FormatAction>
+              )}
+              <FormatAction
+                variant={onQuickCreate ? "secondary" : "primary"}
+                disabled={!canApprove}
+                icon={<Check className="h-4 w-4" />}
+                onClick={() => selected && onApprove(temaEditado.trim(), selected, confirmNum(selected))}
+              >
+                {!temaOk ? "Confirme o tema" : !selected ? "Escolha um formato" : "Ou seguir passo a passo →"}
+              </FormatAction>
+            </div>
+          </FormatChooser>
+        </div>
       </div>
     </GlassCard>
   );

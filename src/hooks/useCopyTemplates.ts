@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { DEFAULT_TEMPLATES, type CopyTemplate } from "@/lib/copyTemplates";
 import type { CopyPatternId } from "@/types/social";
+import type { TemplateId } from "@/components/social/design/templates/shared";
 
 interface Row {
   template_key: string;
@@ -15,6 +16,7 @@ interface Row {
   base_layout: string;
   prompt_body: string;
   design_code: string | null;
+  design_template: string | null;
 }
 
 function rowToTemplate(row: Row): CopyTemplate {
@@ -31,6 +33,9 @@ function rowToTemplate(row: Row): CopyTemplate {
     slidesMax: row.slides_max,
     slidesDefault: row.slides_default,
     baseLayout: (row.base_layout as CopyPatternId) || "2A",
+    // Pareamento copy↔design: usa o salvo; se a coluna ainda estiver vazia
+    // (linhas anteriores à migration), herda o par do layout base.
+    designTemplate: (row.design_template as TemplateId) || layoutBase.designTemplate,
     promptBody: row.prompt_body,
     structure: layoutBase.structure,
     builtin: !!builtinMatch,
@@ -53,6 +58,7 @@ function templateToRow(t: CopyTemplate, userId: string) {
     prompt_body: t.promptBody,
     builtin: t.builtin,
     design_code: t.designCode ?? null,
+    design_template: t.designTemplate ?? null,
   };
 }
 
@@ -95,7 +101,7 @@ export function useCopyTemplates() {
 
   const createTemplate = useCallback(async (fields: {
     nome: string; promptBody: string; baseLayout: CopyPatternId;
-    carrossel: boolean; emoji?: string; designCode?: string;
+    carrossel: boolean; emoji?: string; designCode?: string; designTemplate?: TemplateId;
   }): Promise<CopyTemplate> => {
     const key = `custom-${crypto.randomUUID()}`;
     const layoutBase = DEFAULT_TEMPLATES.find((t) => t.baseLayout === fields.baseLayout) || DEFAULT_TEMPLATES[2];
@@ -109,6 +115,8 @@ export function useCopyTemplates() {
       slidesMax: fields.carrossel ? 10 : (fields.baseLayout === "3" ? 0 : 1),
       slidesDefault: fields.carrossel ? 7 : (fields.baseLayout === "3" ? 0 : 1),
       baseLayout: fields.baseLayout,
+      // Sem escolha explícita, herda o design pareado com o layout base.
+      designTemplate: fields.designTemplate || layoutBase.designTemplate,
       promptBody: fields.promptBody,
       structure: layoutBase.structure,
       builtin: false,

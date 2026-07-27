@@ -14,6 +14,7 @@
  * {METADE} slide do meio, {TEMA}, {BRIEFING}, {ANCORA}.
  */
 import type { CopyPatternId } from "@/types/social";
+import type { TemplateId } from "@/components/social/design/templates/shared";
 
 export type PreviewLayout = "cover" | "steps" | "contrast" | "statement" | "cta" | "single" | "reel";
 
@@ -33,8 +34,14 @@ export interface CopyTemplate {
   slidesMin: number;
   slidesMax: number;
   slidesDefault: number;
-  /** Pattern real usado por imagens/design (custom herda um layout base). */
+  /** Pattern real usado pelas imagens (composição/zona de texto). */
   baseLayout: CopyPatternId;
+  /**
+   * Design pareado com esta estrutura de copy — o visual que o formato usa.
+   * Cada estrutura pede um visual próprio (frase forte → imagem conceitual;
+   * copy longa → layout editorial). Undefined = Reel (não tem design).
+   */
+  designTemplate?: TemplateId;
   /** Texto editável que estrutura a geração de copy. */
   promptBody: string;
   /** Esquema visual do preview (visualização apenas). */
@@ -74,6 +81,7 @@ export const DEFAULT_TEMPLATES: CopyTemplate[] = [
     carrossel: true,
     slidesMin: 5, slidesMax: 8, slidesDefault: 6,
     baseLayout: "1A",
+    designTemplate: "1A",
     builtin: true,
     structure: [
       { role: "Capa", layout: "cover", hasImage: true },
@@ -101,6 +109,7 @@ Briefing:
     carrossel: true,
     slidesMin: 5, slidesMax: 8, slidesDefault: 6,
     baseLayout: "1B",
+    designTemplate: "1B",
     builtin: true,
     structure: [
       { role: "Capa", layout: "cover", hasImage: true },
@@ -130,6 +139,7 @@ Briefing:
     carrossel: true,
     slidesMin: 6, slidesMax: 10, slidesDefault: 7,
     baseLayout: "2A",
+    designTemplate: "we-light",
     builtin: true,
     structure: [
       { role: "Capa", layout: "cover", hasImage: true },
@@ -159,6 +169,7 @@ Briefing:
     carrossel: true,
     slidesMin: 6, slidesMax: 10, slidesDefault: 7,
     baseLayout: "2B",
+    designTemplate: "we-dark",
     builtin: true,
     structure: [
       { role: "Capa", layout: "cover", hasImage: true },
@@ -211,6 +222,7 @@ Briefing:
     carrossel: false,
     slidesMin: 1, slidesMax: 1, slidesDefault: 1,
     baseLayout: "4",
+    designTemplate: "4",
     builtin: true,
     structure: [{ role: "Post único", layout: "single", hasImage: true }],
     promptBody: `PADRÃO 4 — POST FRASE.
@@ -239,6 +251,7 @@ Briefing:
     carrossel: true,
     slidesMin: 6, slidesMax: 9, slidesDefault: 7,
     baseLayout: "5",
+    designTemplate: "5",
     builtin: true,
     structure: [
       { role: "Cover duplo", layout: "cover", hasImage: false },

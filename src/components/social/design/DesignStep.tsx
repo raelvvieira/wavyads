@@ -13,29 +13,32 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useCompiledDesign, DesignErrorBoundary } from "./useCompiledDesign";
 import { useSocialProfile } from "@/hooks/useSocialProfile";
 import { toast } from "@/hooks/use-toast";
-import type { CopyAprovada, SlideImagem, CopyPatternId } from "@/types/social";
+import type { CopyAprovada, SlideImagem } from "@/types/social";
 
 interface Props {
   tema: string;
   copy: CopyAprovada;
   imagens: SlideImagem[];
-  patternId?: CopyPatternId | null;
+  /** Design pareado com o formato escolhido — já vem decidido da Etapa 2. */
+  designTemplate?: TemplateId | null;
   /** Código React custom do template selecionado. Se presente e válido, substitui o layout embutido. */
   designCode?: string;
   onFinish: () => void;
 }
 
-export function DesignStep({ tema, copy, imagens, patternId, designCode, onFinish }: Props) {
+export function DesignStep({ tema, copy, imagens, designTemplate, designCode, onFinish }: Props) {
   const { profile, template, save, uploadAvatar } = useSocialProfile();
-  // Design desacoplado da copy: default = Wavy Editorial claro; adota a
-  // preferência salva (template_padrao) quando ela carrega, se o usuário
-  // ainda não trocou manualmente o design nesta sessão.
-  const [currentTemplate, setCurrentTemplate] = useState<TemplateId>("we-light");
+  // O visual vem pareado com o formato escolhido na Etapa 2 — aqui é só
+  // refinamento. Precedência: troca manual > design do formato >
+  // preferência salva do perfil > Wavy Editorial claro.
+  const [currentTemplate, setCurrentTemplate] = useState<TemplateId>(designTemplate || "we-light");
   const templateTouched = useRef(false);
   useEffect(() => {
-    if (!templateTouched.current && template) setCurrentTemplate(template);
+    if (templateTouched.current) return;
+    if (designTemplate) setCurrentTemplate(designTemplate);
+    else if (template) setCurrentTemplate(template);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [template]);
+  }, [designTemplate, template]);
   const [exporting, setExporting] = useState(false);
   const [exportingIndex, setExportingIndex] = useState<number | null>(null);
   const slideRefs = useRef<Map<number, HTMLDivElement>>(new Map());
@@ -161,7 +164,9 @@ export function DesignStep({ tema, copy, imagens, patternId, designCode, onFinis
         </div>
 
         <div className="mb-4">
-          <div className="text-[11px] uppercase tracking-wider text-white/40 mb-2">Design</div>
+          <div className="text-[11px] uppercase tracking-wider text-white/40 mb-2">
+            Trocar visual <span className="normal-case tracking-normal text-white/30">(opcional — já vem do formato)</span>
+          </div>
           <Select
             value={currentTemplate}
             onValueChange={(v) => { templateTouched.current = true; setCurrentTemplate(v as TemplateId); }}
@@ -191,7 +196,7 @@ export function DesignStep({ tema, copy, imagens, patternId, designCode, onFinis
             ? `Código de design com erro — usando o layout embutido. ${designError || ""}`
             : renderFailed
             ? "Alguns slides falharam no código custom e usaram o layout embutido."
-            : "Usando o código de design custom deste template."}
+            : "Este formato tem código de design custom — ele tem prioridade, então o seletor de visual acima não altera o resultado."}
         </div>
       )}
 
