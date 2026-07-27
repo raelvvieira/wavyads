@@ -385,6 +385,121 @@ Deno.serve(async (req) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // ==================== KEYWORDS ====================
+    if (action === "keywords") {
+      const query = `
+        SELECT
+          campaign.name, ad_group.name,
+          ad_group_criterion.criterion_id,
+          ad_group_criterion.keyword.text,
+          ad_group_criterion.keyword.match_type,
+          ad_group_criterion.quality_info.quality_score,
+          metrics.impressions, metrics.clicks, metrics.cost_micros,
+          metrics.conversions, metrics.conversions_value, metrics.ctr, metrics.average_cpc
+        FROM keyword_view
+        WHERE segments.date BETWEEN '${since}' AND '${until}'
+          AND ad_group_criterion.status != 'REMOVED'
+      `;
+      const rows = await gaqlQuery(accessToken, customerId, loginCustomerId, developerToken, query);
+
+      const matchTypeMap: Record<string, string> = { EXACT: "Exata", PHRASE: "Frase", BROAD: "Ampla" };
+
+      const keywordMap = new Map<string, any>();
+      for (const row of rows) {
+        const id = row.adGroupCriterion?.criterionId;
+        if (!id) continue;
+        if (!keywordMap.has(id)) {
+          keywordMap.set(id, {
+            id,
+            text: row.adGroupCriterion?.keyword?.text || "",
+            match_type: matchTypeMap[row.adGroupCriterion?.keyword?.matchType] || row.adGroupCriterion?.keyword?.matchType || "",
+            campaign_name: row.campaign?.name || "",
+            ad_group_name: row.adGroup?.name || "",
+            quality_score: null as number | null,
+            impressions: 0, clicks: 0, spend: 0, conversions: 0, conversions_value: 0,
+          });
+        }
+        const k = keywordMap.get(id)!;
+        k.impressions += Number(row.metrics?.impressions || 0);
+        k.clicks += Number(row.metrics?.clicks || 0);
+        k.spend += microsToAmount(row.metrics?.costMicros);
+        k.conversions += Number(row.metrics?.conversions || 0);
+        k.conversions_value += Number(row.metrics?.conversionsValue || 0);
+        // Quality Score é um retrato do momento, não uma métrica somável —
+        // guarda o valor mais recente não-nulo em vez de somar.
+        const qs = row.adGroupCriterion?.qualityInfo?.qualityScore;
+        if (qs !== undefined && qs !== null) k.quality_score = qs;
+      }
+
+      const MAX_ROWS = 200;
+      const allKeywords = Array.from(keywordMap.values())
+        .map((k) => ({
+          ...k,
+          ctr: k.impressions > 0 ? (k.clicks / k.impressions) * 100 : 0,
+          cpc: k.clicks > 0 ? k.spend / k.clicks : 0,
+          cost_per_conversion: k.conversions > 0 ? k.spend / k.conversions : 0,
+        }))
+        .sort((a, b) => b.spend - a.spend);
+
+      return new Response(JSON.stringify({
+        keywords: allKeywords.slice(0, MAX_ROWS),
+        truncated: allKeywords.length > MAX_ROWS,
+        total: allKeywords.length,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ==================== SEARCH TERMS ====================
+    if (action === "search_terms") {
+      const query = `
+        SELECT
+          campaign.name, ad_group.name,
+          search_term_view.search_term, search_term_view.status,
+          metrics.impressions, metrics.clicks, metrics.cost_micros,
+          metrics.conversions, metrics.conversions_value
+        FROM search_term_view
+        WHERE segments.date BETWEEN '${since}' AND '${until}'
+      `;
+      const rows = await gaqlQuery(accessToken, customerId, loginCustomerId, developerToken, query);
+
+      // NONE = termo não gerenciado (candidato a negativa); ADDED = já é
+      // palavra-chave; EXCLUDED/ADDED_EXCLUDED = já é negativa em algum lugar.
+      const statusMap: Record<string, string> = {
+        NONE: "none", ADDED: "added", EXCLUDED: "excluded", ADDED_EXCLUDED: "excluded",
+      };
+
+      const termMap = new Map<string, any>();
+      for (const row of rows) {
+        const term = row.searchTermView?.searchTerm;
+        const adGroupName = row.adGroup?.name || "";
+        if (!term) continue;
+        const key = `${term}::${adGroupName}`;
+        if (!termMap.has(key)) {
+          termMap.set(key, {
+            term,
+            status: statusMap[row.searchTermView?.status] || "none",
+            campaign_name: row.campaign?.name || "",
+            ad_group_name: adGroupName,
+            impressions: 0, clicks: 0, spend: 0, conversions: 0, conversions_value: 0,
+          });
+        }
+        const t = termMap.get(key)!;
+        t.impressions += Number(row.metrics?.impressions || 0);
+        t.clicks += Number(row.metrics?.clicks || 0);
+        t.spend += microsToAmount(row.metrics?.costMicros);
+        t.conversions += Number(row.metrics?.conversions || 0);
+        t.conversions_value += Number(row.metrics?.conversionsValue || 0);
+      }
+
+      const MAX_ROWS = 200;
+      const allTerms = Array.from(termMap.values()).sort((a, b) => b.spend - a.spend);
+
+      return new Response(JSON.stringify({
+        search_terms: allTerms.slice(0, MAX_ROWS),
+        truncated: allTerms.length > MAX_ROWS,
+        total: allTerms.length,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     return new Response(JSON.stringify({ error: "Ação não reconhecida" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

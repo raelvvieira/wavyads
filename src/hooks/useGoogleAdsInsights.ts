@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { MetaCampaign, MetaInsights, DailyMetric, TimeRange } from './useMetaInsights';
 
-async function fetchGoogleInsights(action: string, clientId: string, timeRange: TimeRange) {
+export async function fetchGoogleInsights(action: string, clientId: string, timeRange: TimeRange) {
   const { data, error } = await supabase.functions.invoke('google-ads-fetch-insights', {
     body: { action, client_id: clientId, time_range: timeRange },
   });
