@@ -8,7 +8,6 @@ import { MyBaseSidebar, useMyBase } from "@/components/social/MyBaseSidebar";
 import { ViralResultsList } from "@/components/social/ViralResultsList";
 import { CopyExtractionStep } from "@/components/social/CopyExtractionStep";
 import { ResearchStep } from "@/components/social/ResearchStep";
-import { FormatPicker } from "@/components/social/FormatPicker";
 import { FormatStep } from "@/components/social/FormatStep";
 import { ImageStep } from "@/components/social/ImageStep";
 import { ReelFinalStep } from "@/components/social/ReelFinalStep";
@@ -20,15 +19,17 @@ import { toast } from "@/hooks/use-toast";
 import { recordAiUsage } from "@/lib/aiUsageTracker";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { buildCopyPrompt, type CopyTemplate } from "@/lib/copyTemplates";
+import { buildCopyPrompt, DEFAULT_TEMPLATES, type CopyTemplate } from "@/lib/copyTemplates";
 import { buildImagePrompt, suggestStyleId, getStyle, templateSuffixFromPattern } from "@/lib/wavyImageStyles";
 import {
   generateVisualConcept, conceptNegatives, styleFromVisualFamily, type VisualConcept,
 } from "@/lib/visualConcept";
 import type { CopyPatternId, CopyAprovada, SlideImagem, PostCopy } from "@/types/social";
 
-const STEPS = ["Scraper", "Resumo", "Template", "Copy Final", "Imagens", "Design"];
-const SHORT = ["1", "2", "3", "4", "5", "6"];
+// A escolha de formato (copy + design pareados) acontece dentro do Resumo,
+// então não existe mais uma etapa "Template" separada.
+const STEPS = ["Scraper", "Resumo", "Copy Final", "Imagens", "Design"];
+const SHORT = ["1", "2", "3", "4", "5"];
 
 interface Pipeline {
   etapa_atual: number;
@@ -63,14 +64,18 @@ function jumpTo(s: Pipeline, i: number): Pipeline {
       status: {},
     } as PostCopy;
   }
+  // A partir da etapa 2 (Copy Final) já precisa de tema + formato escolhidos.
   if (i >= 2 && !next.tema) {
     next.tema = "Tema de configuração";
   }
-  if (i >= 3 && !next.pattern_id) {
-    next.pattern_id = "2A";
-    next.num_slides = 7;
+  if (i >= 2 && !next.selected_template) {
+    // Reconstrói o formato para não derrubar templatePrompt nem o design pareado.
+    const fallback = DEFAULT_TEMPLATES.find((t) => t.key === "2A") || DEFAULT_TEMPLATES[0];
+    next.selected_template = fallback;
+    next.pattern_id = next.pattern_id || fallback.baseLayout;
+    next.num_slides = next.num_slides || fallback.slidesDefault;
   }
-  if (i >= 4 && !next.copy_aprovada) {
+  if (i >= 3 && !next.copy_aprovada) {
     next.pattern_id = next.pattern_id || "2A";
     next.num_slides = next.num_slides || 7;
     next.copy_aprovada = {
@@ -85,7 +90,7 @@ function jumpTo(s: Pipeline, i: number): Pipeline {
       hashtags: ["#exemplo", "#config"],
     };
   }
-  if (i >= 5 && (!next.imagens || next.imagens.length === 0)) {
+  if (i >= 4 && (!next.imagens || next.imagens.length === 0)) {
     const slides = next.copy_aprovada?.slides || [];
     next.imagens = slides.map((_, k) => ({
       slide_index: k,
@@ -160,11 +165,12 @@ export default function SocialMidiaStudioPage() {
   const { styles: imageStyles } = useImageStyles();
   const [quickBusy, setQuickBusy] = useState<{ step: "copy" | "images"; done: number; total: number } | null>(null);
 
-  const quickCreate = async (template: CopyTemplate, num_slides: number) => {
-    const tema = pipeline.tema?.trim();
+  // temaArg vem da própria tela (o setPipeline do tema é assíncrono).
+  const quickCreate = async (template: CopyTemplate, num_slides: number, temaArg?: string) => {
+    const tema = (temaArg || pipeline.tema || "").trim();
     const briefing = pipeline.post_copy?.copy_consolidada?.trim();
     if (!tema || !briefing) {
-      toast({ title: "Faltam dados", description: "Confirme o tema na etapa anterior.", variant: "destructive" });
+      toast({ title: "Faltam dados", description: "Confirme o tema antes de gerar.", variant: "destructive" });
       return;
     }
     const pattern_id = template.baseLayout;
@@ -182,7 +188,7 @@ export default function SocialMidiaStudioPage() {
 
       // Reel não tem imagens/design — entrega o roteiro (Etapa 5).
       if (pattern_id === "3") {
-        setPipeline((s) => ({ ...s, selected_template: template, pattern_id, num_slides, copy_aprovada: copy, etapa_atual: 4 }));
+        setPipeline((s) => ({ ...s, selected_template: template, pattern_id, num_slides, copy_aprovada: copy, etapa_atual: 3 }));
         setQuickBusy(null);
         toast({ title: "Reel pronto!", description: "Roteiro gerado." });
         return;
@@ -239,7 +245,7 @@ export default function SocialMidiaStudioPage() {
 
       // 3) Arte final — deixa tudo pronto na Etapa 6 (Design)
       setQuickBusy({ step: "images", done: slides.length, total: slides.length });
-      setPipeline((s) => ({ ...s, selected_template: template, pattern_id, num_slides, copy_aprovada: copy, imagens, etapa_atual: 5 }));
+      setPipeline((s) => ({ ...s, selected_template: template, pattern_id, num_slides, copy_aprovada: copy, imagens, etapa_atual: 4 }));
       setQuickBusy(null);
       toast({ title: "Post pronto!", description: "Arte final gerada. Revise e exporte." });
     } catch (e: any) {
@@ -344,18 +350,6 @@ export default function SocialMidiaStudioPage() {
 
       {/* Etapa 2 — Resumo */}
       {pipeline.etapa_atual === 1 && pipeline.post_copy && (
-        <ResearchStep
-          copyConsolidada={pipeline.post_copy.copy_consolidada}
-          tema={pipeline.tema || ""}
-          onApprove={(tema) => {
-            setPipeline((s) => ({ ...s, tema, etapa_atual: 2 }));
-            toast({ title: "Tema confirmado", description: "Avançando para Template" });
-          }}
-        />
-      )}
-
-      {/* Etapa 3 — Template */}
-      {pipeline.etapa_atual === 2 && pipeline.tema?.trim() && (
         quickBusy ? (
           <GlassCard className="max-w-2xl mx-auto text-center py-16">
             <Loader2 className="h-8 w-8 text-accent animate-spin mx-auto mb-4" />
@@ -374,22 +368,27 @@ export default function SocialMidiaStudioPage() {
             </div>
           </GlassCard>
         ) : (
-          <FormatPicker
-            onConfirm={(template, num_slides) => {
+          <ResearchStep
+            copyConsolidada={pipeline.post_copy.copy_consolidada}
+            tema={pipeline.tema || ""}
+            onApprove={(tema, template, num_slides) => {
               setPipeline((s) => ({
-                ...s, selected_template: template, pattern_id: template.baseLayout, num_slides, etapa_atual: 3,
+                ...s, tema, selected_template: template,
+                pattern_id: template.baseLayout, num_slides, etapa_atual: 2,
               }));
-              toast({ title: "Template selecionado", description: "Avançando para Copy Final" });
+              toast({ title: "Formato escolhido", description: "Avançando para a Copy Final" });
             }}
-            onQuickCreate={quickCreate}
+            onQuickCreate={(tema, template, num_slides) => {
+              setPipeline((s) => ({ ...s, tema }));
+              quickCreate(template, num_slides, tema);
+            }}
           />
         )
       )}
 
 
-
-      {/* Etapa 4 — Copy Final */}
-      {pipeline.etapa_atual === 3 && pipeline.tema?.trim() && pipeline.pattern_id && pipeline.post_copy && (
+      {/* Etapa 3 — Copy Final */}
+      {pipeline.etapa_atual === 2 && pipeline.tema?.trim() && pipeline.pattern_id && pipeline.post_copy && (
         <FormatStep
           tema={pipeline.tema}
           briefing={pipeline.post_copy.copy_consolidada}
@@ -399,7 +398,7 @@ export default function SocialMidiaStudioPage() {
           templatePrompt={templatePrompt}
           onApprove={(pattern_id, num_slides, copy) => {
             setPipeline((s) => ({
-              ...s, pattern_id, num_slides, copy_aprovada: copy, etapa_atual: 4,
+              ...s, pattern_id, num_slides, copy_aprovada: copy, etapa_atual: 3,
             }));
             toast({
               title: "Copy aprovada",
@@ -409,8 +408,8 @@ export default function SocialMidiaStudioPage() {
         />
       )}
 
-      {/* Etapa 5 — Imagens (ou final do Reel) */}
-      {pipeline.etapa_atual === 4 && pipeline.copy_aprovada && pipeline.pattern_id && (
+      {/* Etapa 4 — Imagens (ou final do Reel) */}
+      {pipeline.etapa_atual === 3 && pipeline.copy_aprovada && pipeline.pattern_id && (
         isReel ? (
           <ReelFinalStep tema={pipeline.tema || ""} copy={pipeline.copy_aprovada} />
         ) : (
@@ -421,18 +420,18 @@ export default function SocialMidiaStudioPage() {
             briefing={pipeline.post_copy?.copy_consolidada}
             initial={pipeline.imagens || undefined}
             onApprove={(imagens) => {
-              setPipeline((s) => ({ ...s, imagens, etapa_atual: 5 }));
+              setPipeline((s) => ({ ...s, imagens, etapa_atual: 4 }));
               toast({ title: "Imagens aprovadas", description: "Avançando para Design" });
             }}
           />
         )
       )}
 
-      {/* Etapa 6 — Design */}
-      {pipeline.etapa_atual === 5 && pipeline.copy_aprovada && (
+      {/* Etapa 5 — Design */}
+      {pipeline.etapa_atual === 4 && pipeline.copy_aprovada && (
         isReel ? (
           <GlassCard className="text-center py-16">
-            <div className="text-xs uppercase tracking-wider text-accent mb-2">Etapa 6 · Design</div>
+            <div className="text-xs uppercase tracking-wider text-accent mb-2">Etapa 5 · Design</div>
             <h2 className="text-xl font-semibold mb-2">Reels não geram slides</h2>
             <p className="text-sm text-white/50">Use o roteiro entregue na etapa anterior.</p>
           </GlassCard>
@@ -441,7 +440,7 @@ export default function SocialMidiaStudioPage() {
             tema={pipeline.tema || ""}
             copy={pipeline.copy_aprovada}
             imagens={pipeline.imagens || []}
-            patternId={pipeline.pattern_id}
+            designTemplate={pipeline.selected_template?.designTemplate}
             designCode={pipeline.selected_template?.designCode}
             onFinish={() => {
               toast({ title: "Carrossel finalizado!", description: "Pipeline completo." });
