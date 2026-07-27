@@ -150,32 +150,32 @@ Deno.serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // For each resource name, fetch the customer name
+      // Para cada resource name, busca o nome da conta — em paralelo. Um
+      // login de agência pode enxergar dezenas de contas; buscando em
+      // sequência isso passava do timeout do gateway de Edge Functions,
+      // que devolve uma página de erro HTML em vez do JSON da função.
       const resourceNames: string[] = customersData.resourceNames || [];
-      const accounts: { id: string; name: string }[] = [];
-
-      for (const rn of resourceNames) {
-        const customerId = rn.replace("customers/", "");
-        try {
-          const detailRes = await fetch(
-            `${GOOGLE_ADS_API}/customers/${customerId}`,
-            {
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                "developer-token": developerToken,
-                "login-customer-id": customerId,
-              },
-            }
-          );
-          const detail = await detailRes.json();
-          accounts.push({
-            id: customerId,
-            name: detail.descriptiveName || `Conta ${customerId}`,
-          });
-        } catch {
-          accounts.push({ id: customerId, name: `Conta ${customerId}` });
-        }
-      }
+      const accounts = await Promise.all(
+        resourceNames.map(async (rn) => {
+          const customerId = rn.replace("customers/", "");
+          try {
+            const detailRes = await fetch(
+              `${GOOGLE_ADS_API}/customers/${customerId}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  "developer-token": developerToken,
+                  "login-customer-id": customerId,
+                },
+              }
+            );
+            const detail = await detailRes.json();
+            return { id: customerId, name: detail.descriptiveName || `Conta ${customerId}` };
+          } catch {
+            return { id: customerId, name: `Conta ${customerId}` };
+          }
+        })
+      );
 
       return new Response(
         JSON.stringify({ success: true, accounts }),
