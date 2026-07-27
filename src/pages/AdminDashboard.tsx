@@ -672,16 +672,30 @@ export default function AdminDashboard() {
       </Dialog>
 
       {/* Google Ads Account Picker Dialog */}
-      <Dialog open={!!pendingGoogleAccounts && pendingGoogleAccounts.length > 1} onOpenChange={(open) => {
+      <Dialog open={pendingGoogleAccounts !== null} onOpenChange={(open) => {
         if (!open) {
           setPendingGoogleAccounts(null);
           setPendingGoogleSyncClientId(null);
+          setGoogleListError(null);
+          setManualCustomerId('');
+          setManualGoogleTouched(false);
         }
       }}>
         <DialogContent className="glass border-white/10 bg-card max-w-md">
           <DialogHeader>
             <DialogTitle>Escolha a conta Google Ads</DialogTitle>
           </DialogHeader>
+
+          {listGoogleAccounts.isPending && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Buscando contas...
+            </div>
+          )}
+
+          {googleListError && (
+            <p className="text-xs text-destructive mt-2 break-words">{googleListError}</p>
+          )}
+
           <div className="space-y-2 mt-2 max-h-80 overflow-y-auto">
             {pendingGoogleAccounts?.map((acc: any) => (
               <button
@@ -695,8 +709,44 @@ export default function AdminDashboard() {
               </button>
             ))}
           </div>
+
+          {pendingGoogleAccounts?.length === 0 && !listGoogleAccounts.isPending && (
+            <p className="text-xs text-muted-foreground">
+              Nenhuma conta listada. Tente novamente ou informe o Customer ID manualmente.
+            </p>
+          )}
+
+          <div className="space-y-2 pt-2 border-t border-white/10">
+            <button
+              onClick={() => pendingGoogleSyncClientId && handleRelistGoogleAccounts(pendingGoogleSyncClientId)}
+              disabled={listGoogleAccounts.isPending || !pendingGoogleSyncClientId}
+              className="btn-glass w-full rounded-xl py-2 text-xs font-medium disabled:opacity-50"
+            >
+              Tentar listar contas de novo
+            </button>
+            <div>
+              <label className="text-xs text-muted-foreground">Ou informe o Customer ID (10 dígitos)</label>
+              <input
+                value={manualCustomerId}
+                onChange={(e) => setManualCustomerId(e.target.value)}
+                placeholder="1234567890"
+                className="w-full glass rounded-xl px-3 py-2 text-sm mt-1 bg-transparent outline-none"
+              />
+              {manualGoogleTouched && manualCustomerId.replace(/\D/g, '').length !== 10 && (
+                <p className="text-xs text-destructive mt-1">Informe exatamente 10 dígitos.</p>
+              )}
+              <button
+                onClick={handleManualGoogleAccount}
+                disabled={setGoogleAccountManual.isPending}
+                className="btn-accent w-full rounded-xl py-2 text-xs font-medium mt-2 disabled:opacity-50"
+              >
+                Vincular esse Customer ID
+              </button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
+
 
       {/* Add Access Dialog */}
       <Dialog open={accessDialogOpen} onOpenChange={setAccessDialogOpen}>
