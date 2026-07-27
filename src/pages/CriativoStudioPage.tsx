@@ -2690,6 +2690,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
   const renderRightPanel = () => {
     const panelTitle: Record<RightPanelMode, string> = {
       none: 'Painel contextual',
+      'asset-actions': 'Ações do asset',
       'upload-references': 'Enviar referências',
       'reference-library': 'Base de referências',
       'design-system': 'Direção visual',
@@ -3325,7 +3326,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
                         variant="outline"
                         className="rounded-full"
                         disabled={savingArtIntelligence || artSavedToIntelligence || (!storyImage && !squareImage)}
-                        onClick={saveArtToClientIntelligence}
+                        onClick={() => saveArtToClientIntelligence()}
                       >
                         {savingArtIntelligence ? (
                           <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
@@ -3447,7 +3448,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
             <div className="space-y-3">
               <p className="text-sm text-white/62">Gere 5 variações estratégicas para testar ângulos diferentes no Meta Ads.</p>
               {(!factorVariations || factorLoading) && (
-                <Button onClick={applyFatorCriativo} disabled={factorLoading || (!storyImage && !squareImage)} className="w-full rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777]">
+                <Button onClick={() => applyFatorCriativo()} disabled={factorLoading || (!storyImage && !squareImage)} className="w-full rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777]">
                   {factorLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
                   {factorLoading ? `Gerando ${factorProgress}/5...` : 'Aplicar Fator Criativo'}
                 </Button>
@@ -4496,7 +4497,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
               <div className="flex flex-col sm:items-end gap-1">
                 <button
                   type="button"
-                  onClick={applyFatorCriativo}
+                  onClick={() => applyFatorCriativo()}
                   disabled={factorLoading}
                   className={cn(
                     'relative overflow-hidden rounded-lg bg-white text-black px-5 py-2.5 text-sm font-semibold',
