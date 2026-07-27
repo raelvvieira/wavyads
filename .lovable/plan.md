@@ -1,30 +1,38 @@
-## Diagnóstico (confirmado nos logs)
+## Diagnóstico (confirmado nos logs e no banco)
 
-Logs da edge function `google-ads-oauth` mostram, exatamente nos horários das tentativas:
+1. Os tokens do Google **foram salvos** para "Deni Haut Cursos" (`google_ads_synced = false`, `customer_id = null`).
+2. A listagem de contas falhou com erro 403 do Google:
+   `Google Ads API has not been used in project 687673242990 before or it is disabled` (SERVICE_DISABLED).
+3. Como a lista voltou vazia, o popup enviou `accounts: []` → o seletor de conta (que só abre com 2+ contas) nunca apareceu, e mesmo assim a tela mostrou "Conectado com sucesso".
+4. Sem `google_ads_customer_id`, a função `google-ads-fetch-insights` não busca nada → dashboard do Google Ads vazio. O controle de acesso por cliente (admin ou `client_users`) já está correto, então cada cliente só vê os dados dele.
 
-```
-ERROR google-ads-oauth unhandled error: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
-    at ... index.ts:162:29
-```
+## Ação necessária fora do código (bloqueante)
 
-Ou seja: o OAuth com o Google funciona (o code é trocado por token, os tokens são salvos), mas na etapa seguinte — listar as contas do Google Ads — uma das chamadas à API do Google devolve uma **página HTML** (404/erro) em vez de JSON. O `await res.json()` estoura, cai no catch geral e a função devolve 500. A janela popup então mostra "Erro ao conectar / Unexpected token '<'".
+No Google Cloud Console, no projeto **687673242990**, ativar a **Google Ads API**:
+https://console.developers.google.com/apis/api/googleads.googleapis.com/overview?project=687673242990
+Aguardar alguns minutos para propagar. Sem isso nenhuma conta será listada.
 
-Causa provável na área da linha 162: o loop que busca o nome de cada conta chama `GET https://googleads.googleapis.com/v24/customers/{id}`. Esse endpoint REST simples não existe na Google Ads API (nomes de conta só saem via `googleAds:searchStream`), então o Google responde com HTML.
+## Correções no código
 
-## O que fazer
+**1. `supabase/functions/google-ads-oauth/index.ts`**
+- Se `listAccessibleCustomers` falhar ou vier vazio, retornar `success: false` com a mensagem real do Google (em vez de "sucesso" com lista vazia).
+- Ao buscar o nome de cada conta, tentar sem `login-customer-id` e, em caso de falha, repetir com o header (contas gerenciadas por MCC).
+- Nova ação `list-accounts`: relista as contas usando o refresh token já salvo, sem precisar refazer o OAuth.
+- Nova ação `set-account-manual`: aceita um Customer ID digitado (10 dígitos), valida com uma query simples e salva.
 
-Editar apenas `supabase/functions/google-ads-oauth/index.ts`:
+**2. `src/pages/GoogleAdsCallbackPage.tsx`**
+- Só mostrar "Conectado com sucesso" quando vierem contas; caso contrário exibir o erro devolvido pela função e ainda assim avisar a janela principal.
 
-1. **Helper seguro de resposta** — criar `readJson(res, label)` que checa `res.ok` e o `content-type`; se não for JSON, loga status + os primeiros ~300 caracteres do corpo e lança um erro legível (`"Google respondeu HTML (404) em {label}"`) em vez de quebrar no parse.
-2. **Usar esse helper** em todas as chamadas ao Google: troca de token, `customers:listAccessibleCustomers` e a busca de detalhes.
-3. **Corrigir a busca do nome da conta** — substituir o `GET /customers/{id}` pelo endpoint suportado:
-   `POST /v24/customers/{id}/googleAds:searchStream` com a query
-   `SELECT customer.id, customer.descriptive_name FROM customer LIMIT 1`,
-   headers `developer-token` e `login-customer-id: {id}`. Se falhar, manter o fallback `Conta {id}` (sem derrubar a conexão inteira).
-4. **Nunca deixar a listagem derrubar o fluxo** — se `listAccessibleCustomers` falhar, retornar `success: true` com `accounts: []` e uma mensagem de aviso, já que os tokens foram salvos. Assim o admin pode informar/selecionar a conta em vez de recomeçar o OAuth.
-5. **Redeploy** da função e novo teste de conexão.
+**3. `src/pages/AdminDashboard.tsx`**
+- Abrir o diálogo de seleção de conta do Google sempre que houver **1 ou mais** contas (hoje só abre com 2+), removendo a auto-seleção silenciosa.
+- Se a lista voltar vazia, mostrar o diálogo com a mensagem de erro, um botão "Tentar listar contas de novo" (ação `list-accounts`) e um campo para informar o Customer ID manualmente.
+- Botão "Trocar conta do Google" no card do cliente já conectado, para relistar e escolher outra conta.
 
-## Detalhes técnicos
+**4. `src/hooks/useGoogleAdsOAuth.ts`**
+- Hooks novos: `useListGoogleAdsAccounts` e `useSetGoogleAdsAccountManual`.
 
-- Validar também a versão da API: se `listAccessibleCustomers` em `v24` retornar HTML, o log passará a mostrar status + corpo, o que confirma na hora se é versão sunset ou developer token inválido — hoje isso está invisível.
-- Frontend (`GoogleAdsCallbackPage.tsx`, `useGoogleAdsOAuth.ts`) não precisa mudar: ele já sabe exibir a mensagem `error` vinda em JSON da função.
+**5. `src/pages/ClientDashboard.tsx`**
+- Quando o cliente tem token do Google mas nenhuma conta escolhida, mostrar estado claro ("conta do Google Ads ainda não selecionada") em vez do vazio atual.
+
+## Verificação
+Depois de ativar a API: sincronizar o Google Ads da Deni Haut Cursos, escolher a conta no seletor, e conferir se o dashboard Google Ads carrega campanhas e métricas no período selecionado.
