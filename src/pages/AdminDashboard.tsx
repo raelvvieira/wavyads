@@ -94,6 +94,9 @@ export default function AdminDashboard() {
   const [syncingGoogleClientId, setSyncingGoogleClientId] = useState<string | null>(null);
   const [pendingGoogleAccounts, setPendingGoogleAccounts] = useState<any[] | null>(null);
   const [pendingGoogleSyncClientId, setPendingGoogleSyncClientId] = useState<string | null>(null);
+  const [googleListError, setGoogleListError] = useState<string | null>(null);
+  const [manualCustomerId, setManualCustomerId] = useState('');
+  const [manualGoogleTouched, setManualGoogleTouched] = useState(false);
 
   // Pixel Meta modal state
   const [pixelDialogOpen, setPixelDialogOpen] = useState(false);
