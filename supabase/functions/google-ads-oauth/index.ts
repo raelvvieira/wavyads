@@ -27,14 +27,14 @@ async function readJson(res: Response, label: string): Promise<any> {
   }
 }
 
-// Busca o nome de uma conta. Tenta sem login-customer-id e, se falhar,
+// Busca nome e tipo de uma conta. Tenta sem login-customer-id e, se falhar,
 // repete com o header (necessário em contas sob MCC).
-async function fetchAccountName(
+async function fetchAccountInfo(
   customerId: string,
   accessToken: string,
   developerToken: string,
-): Promise<string> {
-  const query = "SELECT customer.id, customer.descriptive_name FROM customer LIMIT 1";
+): Promise<{ name: string; manager: boolean }> {
+  const query = "SELECT customer.id, customer.descriptive_name, customer.manager FROM customer LIMIT 1";
   const attempts: Array<Record<string, string>> = [
     { Authorization: `Bearer ${accessToken}`, "developer-token": developerToken, "Content-Type": "application/json" },
     {
@@ -52,22 +52,24 @@ async function fetchAccountName(
         body: JSON.stringify({ query }),
       });
       const detail = await readJson(res, `customer ${customerId}`);
-      const name = Array.isArray(detail)
-        ? detail?.[0]?.results?.[0]?.customer?.descriptiveName
-        : detail?.results?.[0]?.customer?.descriptiveName;
-      if (name) return name;
+      const customer = Array.isArray(detail)
+        ? detail?.[0]?.results?.[0]?.customer
+        : detail?.results?.[0]?.customer;
+      if (customer?.descriptiveName) {
+        return { name: customer.descriptiveName, manager: !!customer.manager };
+      }
     } catch (e) {
       console.error(`Falha ao obter nome da conta ${customerId}:`, e);
     }
   }
-  return `Conta ${customerId}`;
+  return { name: `Conta ${customerId}`, manager: false };
 }
 
 // Lista as contas acessíveis com o access token informado.
 async function listAccounts(
   accessToken: string,
   developerToken: string,
-): Promise<{ accounts: Array<{ id: string; name: string }>; error: string | null }> {
+): Promise<{ accounts: Array<{ id: string; name: string; manager: boolean }>; error: string | null }> {
   let resourceNames: string[] = [];
   try {
     const res = await fetch(`${GOOGLE_ADS_API}/customers:listAccessibleCustomers`, {
@@ -87,15 +89,20 @@ async function listAccounts(
   const accounts = await Promise.all(
     resourceNames.map(async (rn) => {
       const customerId = rn.replace("customers/", "");
-      return { id: customerId, name: await fetchAccountName(customerId, accessToken, developerToken) };
+      const info = await fetchAccountInfo(customerId, accessToken, developerToken);
+      return { id: customerId, name: info.name, manager: info.manager };
     }),
   );
+
+  // Contas gerenciadoras (MCC) não têm campanhas — vão para o fim da lista.
+  accounts.sort((a, b) => Number(a.manager) - Number(b.manager) || a.name.localeCompare(b.name));
 
   if (accounts.length === 0) {
     return { accounts, error: "Nenhuma conta do Google Ads foi encontrada para este login." };
   }
   return { accounts, error: null };
 }
+
 
 // Renova o access token a partir do refresh token salvo.
 async function refreshAccessToken(
