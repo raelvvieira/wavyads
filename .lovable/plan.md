@@ -1,26 +1,30 @@
-## Diagnóstico
+## Diagnóstico (confirmado nos logs)
 
-O bug tem duas causas, ambas ligadas ao mesmo detalhe: o bucket `creative-assets` está **privado**.
+Logs da edge function `google-ads-oauth` mostram, exatamente nos horários das tentativas:
 
-1. **Miniaturas quebradas no dropzone** (imagem "ref 1" com ícone de imagem quebrada)
-   - `persistUploadedImages` faz upload do data URL para `creative-assets` e substitui o estado por `getPublicUrl(...)`.
-   - Como o bucket é privado, essa URL retorna 400/404 no navegador → `<img>` renderiza quebrado.
+```
+ERROR google-ads-oauth unhandled error: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+    at ... index.ts:162:29
+```
 
-2. **"Não consegui baixar a imagem 'logo' pra reenviar"**
-   - Confirmado nos logs da edge function `criativo-generate`: EvoLink recebe a URL pública do Storage, tenta baixar e leva 400 (bucket privado). O código antigo lançava exceção quando isso acontecia.
-   - O código atual da função já é tolerante (marca a referência como `null` e segue a geração sem ela), mas a versão implantada é antiga — precisa redeploy.
+Ou seja: o OAuth com o Google funciona (o code é trocado por token, os tokens são salvos), mas na etapa seguinte — listar as contas do Google Ads — uma das chamadas à API do Google devolve uma **página HTML** (404/erro) em vez de JSON. O `await res.json()` estoura, cai no catch geral e a função devolve 500. A janela popup então mostra "Erro ao conectar / Unexpected token '<'".
 
-## Alterações
+Causa provável na área da linha 162: o loop que busca o nome de cada conta chama `GET https://googleads.googleapis.com/v24/customers/{id}`. Esse endpoint REST simples não existe na Google Ads API (nomes de conta só saem via `googleAds:searchStream`), então o Google responde com HTML.
 
-1. **Storage**: tornar o bucket `creative-assets` público (`supabase--storage_update_bucket`).
-   - Só assets de referência do Criativo Studio ficam nele; nada sensível.
-   - Isso conserta as miniaturas no dropzone **e** libera o EvoLink a baixar os assets.
-2. **Edge function**: redeploy do `criativo-generate` (código atual já ignora referências problemáticas em vez de falhar a geração inteira).
+## O que fazer
 
-Nenhuma mudança no frontend é necessária — o `ImageDropzone` e o `persistUploadedImages` já funcionam corretamente com URLs públicas.
+Editar apenas `supabase/functions/google-ads-oauth/index.ts`:
 
-## Pontos técnicos
+1. **Helper seguro de resposta** — criar `readJson(res, label)` que checa `res.ok` e o `content-type`; se não for JSON, loga status + os primeiros ~300 caracteres do corpo e lança um erro legível (`"Google respondeu HTML (404) em {label}"`) em vez de quebrar no parse.
+2. **Usar esse helper** em todas as chamadas ao Google: troca de token, `customers:listAccessibleCustomers` e a busca de detalhes.
+3. **Corrigir a busca do nome da conta** — substituir o `GET /customers/{id}` pelo endpoint suportado:
+   `POST /v24/customers/{id}/googleAds:searchStream` com a query
+   `SELECT customer.id, customer.descriptive_name FROM customer LIMIT 1`,
+   headers `developer-token` e `login-customer-id: {id}`. Se falhar, manter o fallback `Conta {id}` (sem derrubar a conexão inteira).
+4. **Nunca deixar a listagem derrubar o fluxo** — se `listAccessibleCustomers` falhar, retornar `success: true` com `accounts: []` e uma mensagem de aviso, já que os tokens foram salvos. Assim o admin pode informar/selecionar a conta em vez de recomeçar o OAuth.
+5. **Redeploy** da função e novo teste de conexão.
 
-- Sem GRANT/RLS extra em `storage.objects`: buckets públicos já permitem SELECT anônimo.
-- Se sua workspace bloqueia buckets públicos (`cloud_block_public_buckets`), o tool devolve erro claro e aviso você para habilitar em Settings → Privacy & Security.
-- Alternativa (não recomendada agora, mais trabalho): manter o bucket privado e passar signed URLs de curta duração para o edge function. Fica pra depois se surgir requisito de privacidade.
+## Detalhes técnicos
+
+- Validar também a versão da API: se `listAccessibleCustomers` em `v24` retornar HTML, o log passará a mostrar status + corpo, o que confirma na hora se é versão sunset ou developer token inválido — hoje isso está invisível.
+- Frontend (`GoogleAdsCallbackPage.tsx`, `useGoogleAdsOAuth.ts`) não precisa mudar: ele já sabe exibir a mensagem `error` vinda em JSON da função.
