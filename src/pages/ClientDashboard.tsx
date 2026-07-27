@@ -25,7 +25,16 @@ import { useGetMetaAuthUrl, useSelectMetaAccount } from '@/hooks/useMetaOAuth';
 import { useGetGoogleAdsAuthUrl, useSelectGoogleAdsAccount } from '@/hooks/useGoogleAdsOAuth';
 import { useMetaCampaigns, useMetaInsights, useMetaInsightsPrevious, type DailyMetric, type TimeRange } from '@/hooks/useMetaInsights';
 import { useMetaAds } from '@/hooks/useMetaAds';
-import { useGoogleAdsCampaigns, useGoogleAdsInsights, useGoogleAdsInsightsPrevious } from '@/hooks/useGoogleAdsInsights';
+import {
+  useGoogleAdsCampaigns, useGoogleAdsInsights, useGoogleAdsInsightsPrevious,
+  useGoogleAdsImpressionShare, useGoogleAdsDeviceBreakdown, useGoogleAdsConversionBreakdown,
+} from '@/hooks/useGoogleAdsInsights';
+import { useGoogleAdsKeywords, useGoogleAdsSearchTerms } from '@/hooks/useGoogleAdsKeywords';
+import { KeywordsTable } from '@/components/KeywordsTable';
+import { SearchTermsTable } from '@/components/SearchTermsTable';
+import { ImpressionShareCard } from '@/components/ImpressionShareCard';
+import { ConversionBreakdownTable } from '@/components/ConversionBreakdownTable';
+import { DeviceBreakdown } from '@/components/DeviceBreakdown';
 import { generateDailySpend, formatCurrency, formatNumber, mockCampaigns } from '@/data/mock';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -36,6 +45,15 @@ import { useAllClientPixels } from '@/hooks/useClientPixels';
 
 type PresetKey = 'today' | 'yesterday' | 'last_7d' | 'last_14d' | 'last_30d' | 'this_month' | 'last_month' | 'custom';
 type Platform = 'meta' | 'google';
+type GoogleSubTab = 'overview' | 'keywords' | 'search_terms' | 'segments' | 'ads';
+
+const GOOGLE_SUB_TABS: { value: GoogleSubTab; label: string }[] = [
+  { value: 'overview', label: 'Visão Geral' },
+  { value: 'keywords', label: 'Palavras-chave' },
+  { value: 'search_terms', label: 'Termos de busca' },
+  { value: 'segments', label: 'Dispositivos & Local' },
+  { value: 'ads', label: 'Anúncios' },
+];
 
 const PRESETS: { label: string; value: PresetKey }[] = [
   { label: 'Hoje', value: 'today' },
@@ -102,6 +120,9 @@ export default function ClientDashboard() {
 
   // Platform toggle — default to whichever is synced
   const [platform, setPlatform] = useState<Platform>('meta');
+
+  // Google Ads sub-tab (Visão Geral / Palavras-chave / Termos de busca / ...)
+  const [googleSubTab, setGoogleSubTab] = useState<GoogleSubTab>('overview');
 
   // KPI card customization
   const [kpiCards, setKpiCards] = useState<MetricKey[]>(DEFAULT_CARDS);
@@ -200,6 +221,21 @@ export default function ClientDashboard() {
   const { data: googleCampaigns, isLoading: googleCampaignsLoading } = useGoogleAdsCampaigns(clientId, platform === 'google' && isGoogleSynced, timeRange);
   const { data: googleInsights, isLoading: googleInsightsLoading } = useGoogleAdsInsights(clientId, platform === 'google' && isGoogleSynced, timeRange);
   const { data: googlePreviousInsights } = useGoogleAdsInsightsPrevious(clientId, platform === 'google' && isGoogleSynced, timeRange);
+  const { data: keywordsData, isLoading: keywordsLoading } = useGoogleAdsKeywords(
+    clientId, platform === 'google' && isGoogleSynced && googleSubTab === 'keywords', timeRange
+  );
+  const { data: searchTermsData, isLoading: searchTermsLoading } = useGoogleAdsSearchTerms(
+    clientId, platform === 'google' && isGoogleSynced && googleSubTab === 'search_terms', timeRange
+  );
+  const { data: impressionShareData, isLoading: impressionShareLoading } = useGoogleAdsImpressionShare(
+    clientId, platform === 'google' && isGoogleSynced && googleSubTab === 'overview', timeRange
+  );
+  const { data: conversionBreakdownData, isLoading: conversionBreakdownLoading } = useGoogleAdsConversionBreakdown(
+    clientId, platform === 'google' && isGoogleSynced && googleSubTab === 'overview', timeRange
+  );
+  const { data: deviceBreakdownData, isLoading: deviceBreakdownLoading } = useGoogleAdsDeviceBreakdown(
+    clientId, platform === 'google' && isGoogleSynced && googleSubTab === 'segments', timeRange
+  );
 
   // Active data based on platform
   const campaigns = platform === 'meta' ? metaCampaigns : googleCampaigns;
@@ -745,102 +781,162 @@ export default function ClientDashboard() {
             </GlassCard>
           )}
 
-          {/* Gap Alert */}
-          <GapAlert leads={metricValues.leads} purchases={metricValues.purchases} />
-
-          {/* KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-7 gap-3 sm:gap-4">
-            {isLoading ? (
-              Array.from({ length: 7 }).map((_, i) => (
-                <GlassCard key={i}><Skeleton className="h-20 bg-white/5" /></GlassCard>
-              ))
-            ) : (
-              kpiCards.map((key, i) => (
-                <KpiCard
-                  key={`${key}-${i}`}
-                  metricKey={key}
-                  value={metricValues[key]}
-                  previousValue={previousValues?.[key]}
-                  onChangeMetric={(newKey) => handleChangeMetric(i, newKey)}
-                />
-              ))
-            )}
-          </div>
-
-          {/* Daily Chart */}
-          {!isLoading && dailyData.length > 0 && (
-            <DailyChart data={dailyData} />
+          {/* Sub-navegação do Google Ads */}
+          {platform === 'google' && (
+            <div className="flex items-center gap-1 glass rounded-xl p-1 w-fit flex-wrap">
+              {GOOGLE_SUB_TABS.map((tab) => (
+                <button
+                  key={tab.value}
+                  onClick={() => setGoogleSubTab(tab.value)}
+                  className={cn(
+                    'rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-300 whitespace-nowrap',
+                    googleSubTab === tab.value ? 'btn-accent' : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           )}
 
-          {/* Campaigns Table */}
-          {!isLoading && campaignList.length > 0 && (
-            <CampaignsTable campaigns={campaignList} />
-          )}
-
-          {/* Creatives Gallery — visible for all clients with Meta ads data */}
-          {!isLoading && (
+          {(platform === 'meta' || googleSubTab === 'overview') && (
             <>
-              {metaAdsLoading ? (
-                <GlassCard className="space-y-4">
-                  <div className="flex items-center justify-between mb-6">
-                    <Skeleton className="h-7 w-48" />
-                    <Skeleton className="h-10 w-32" />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {[...Array(8)].map((_, i) => (
-                      <div key={i} className="space-y-3">
-                        <Skeleton className="aspect-[4/5] w-full rounded-lg" />
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-4 w-3/4" />
+              {/* Gap Alert */}
+              <GapAlert leads={metricValues.leads} purchases={metricValues.purchases} />
+
+              {/* KPI Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-7 gap-3 sm:gap-4">
+                {isLoading ? (
+                  Array.from({ length: 7 }).map((_, i) => (
+                    <GlassCard key={i}><Skeleton className="h-20 bg-white/5" /></GlassCard>
+                  ))
+                ) : (
+                  kpiCards.map((key, i) => (
+                    <KpiCard
+                      key={`${key}-${i}`}
+                      metricKey={key}
+                      value={metricValues[key]}
+                      previousValue={previousValues?.[key]}
+                      onChangeMetric={(newKey) => handleChangeMetric(i, newKey)}
+                    />
+                  ))
+                )}
+              </div>
+
+              {/* Daily Chart */}
+              {!isLoading && dailyData.length > 0 && (
+                <DailyChart data={dailyData} />
+              )}
+
+              {/* Campaigns Table */}
+              {!isLoading && campaignList.length > 0 && (
+                <CampaignsTable campaigns={campaignList} />
+              )}
+
+              {/* Impression Share (Google Ads apenas) */}
+              {!isLoading && platform === 'google' && (
+                <ImpressionShareCard campaigns={impressionShareData ?? []} isLoading={impressionShareLoading} />
+              )}
+
+              {/* Creatives Gallery — visible for all clients with Meta ads data */}
+              {!isLoading && (
+                <>
+                  {metaAdsLoading ? (
+                    <GlassCard className="space-y-4">
+                      <div className="flex items-center justify-between mb-6">
+                        <Skeleton className="h-7 w-48" />
+                        <Skeleton className="h-10 w-32" />
                       </div>
-                    ))}
-                  </div>
-                </GlassCard>
-              ) : metaAds && metaAds.length > 0 ? (
-                <CreativesGallery ads={metaAds} />
-              ) : null}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {[...Array(8)].map((_, i) => (
+                          <div key={i} className="space-y-3">
+                            <Skeleton className="aspect-[4/5] w-full rounded-lg" />
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-3/4" />
+                          </div>
+                        ))}
+                      </div>
+                    </GlassCard>
+                  ) : metaAds && metaAds.length > 0 ? (
+                    <CreativesGallery ads={metaAds} />
+                  ) : null}
+                </>
+              )}
+
+              {/* Conversion Funnel */}
+              {!isLoading && (
+                <ConversionFunnel
+                  reach={metricValues.reach}
+                  impressions={metricValues.impressions}
+                  clicks={metricValues.clicks}
+                  leads={metricValues.leads}
+                  purchases={metricValues.purchases}
+                  results={metricValues.results}
+                  addToCart={(insights as any)?.add_to_cart ?? 0}
+                  initiateCheckout={(insights as any)?.initiate_checkout ?? 0}
+                  viewContent={(insights as any)?.view_content ?? 0}
+                  cpm={metricValues.cpm}
+                  cpc={metricValues.cpc}
+                  cpl={metricValues.cpl}
+                  costPerPurchase={metricValues.cost_per_purchase}
+                  costPerResult={metricValues.cost_per_result}
+                  costPerAddToCart={(insights as any)?.cost_per_add_to_cart ?? 0}
+                  costPerInitiateCheckout={(insights as any)?.cost_per_initiate_checkout ?? 0}
+                  costPerViewContent={(insights as any)?.cost_per_view_content ?? 0}
+                  stages={funnelStages}
+                  onChangeStages={handleChangeFunnelStages}
+                />
+              )}
+
+              {/* Conversões por tipo (Google Ads apenas) */}
+              {!isLoading && platform === 'google' && (
+                <ConversionBreakdownTable actions={conversionBreakdownData ?? []} isLoading={conversionBreakdownLoading} />
+              )}
+
+              {/* Strategic Summary */}
+              {!isLoading && campaignList.length > 0 && (
+                <StrategicSummary
+                  clientName={client.name}
+                  period={selectedPreset}
+                  totalSpend={metricValues.spend}
+                  totalLeads={metricValues.leads}
+                  totalResults={metricValues.results}
+                  totalPurchases={metricValues.purchases}
+                  avgCpl={metricValues.cpl}
+                  costPerResult={metricValues.cost_per_result}
+                  campaigns={campaignList}
+                />
+              )}
             </>
           )}
 
-
-          {/* Conversion Funnel */}
-          {!isLoading && (
-            <ConversionFunnel
-              reach={metricValues.reach}
-              impressions={metricValues.impressions}
-              clicks={metricValues.clicks}
-              leads={metricValues.leads}
-              purchases={metricValues.purchases}
-              results={metricValues.results}
-              addToCart={(insights as any)?.add_to_cart ?? 0}
-              initiateCheckout={(insights as any)?.initiate_checkout ?? 0}
-              viewContent={(insights as any)?.view_content ?? 0}
-              cpm={metricValues.cpm}
-              cpc={metricValues.cpc}
-              cpl={metricValues.cpl}
-              costPerPurchase={metricValues.cost_per_purchase}
-              costPerResult={metricValues.cost_per_result}
-              costPerAddToCart={(insights as any)?.cost_per_add_to_cart ?? 0}
-              costPerInitiateCheckout={(insights as any)?.cost_per_initiate_checkout ?? 0}
-              costPerViewContent={(insights as any)?.cost_per_view_content ?? 0}
-              stages={funnelStages}
-              onChangeStages={handleChangeFunnelStages}
+          {platform === 'google' && googleSubTab === 'keywords' && (
+            <KeywordsTable
+              keywords={keywordsData?.items ?? []}
+              isLoading={keywordsLoading}
+              truncated={keywordsData?.truncated}
+              total={keywordsData?.total}
             />
           )}
 
-          {/* Strategic Summary */}
-          {!isLoading && campaignList.length > 0 && (
-            <StrategicSummary
-              clientName={client.name}
-              period={selectedPreset}
-              totalSpend={metricValues.spend}
-              totalLeads={metricValues.leads}
-              totalResults={metricValues.results}
-              totalPurchases={metricValues.purchases}
-              avgCpl={metricValues.cpl}
-              costPerResult={metricValues.cost_per_result}
-              campaigns={campaignList}
+          {platform === 'google' && googleSubTab === 'search_terms' && (
+            <SearchTermsTable
+              searchTerms={searchTermsData?.items ?? []}
+              isLoading={searchTermsLoading}
+              truncated={searchTermsData?.truncated}
+              total={searchTermsData?.total}
             />
+          )}
+
+          {platform === 'google' && googleSubTab === 'segments' && (
+            <DeviceBreakdown devices={deviceBreakdownData ?? []} isLoading={deviceBreakdownLoading} />
+          )}
+
+          {platform === 'google' && googleSubTab === 'ads' && (
+            <GlassCard className="animate-fade-in">
+              <h3 className="text-base sm:text-lg font-semibold mb-2">Anúncios</h3>
+              <p className="text-sm text-muted-foreground">Em breve.</p>
+            </GlassCard>
           )}
         </div>
       )}

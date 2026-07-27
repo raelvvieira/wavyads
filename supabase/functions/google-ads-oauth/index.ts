@@ -9,6 +9,9 @@ const corsHeaders = {
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 // v18 foi desativado pelo Google em ago/2025 — mantendo uma versão suportada.
 const GOOGLE_ADS_API = "https://googleads.googleapis.com/v24";
+// Contas de cliente hoje são acessadas via a gerenciadora WAVY. Usado como
+// fallback quando ainda não sabemos qual login-customer-id uma conta precisa.
+const WAVY_MANAGER_CUSTOMER_ID = "8125716511";
 
 // O Google às vezes responde com uma página HTML (404/500) em vez de JSON.
 // Sem essa proteção, res.json() estoura com "Unexpected token '<'".
@@ -28,27 +31,33 @@ async function readJson(res: Response, label: string): Promise<any> {
 }
 
 // Busca nome e tipo de uma conta. Tenta sem login-customer-id e, se falhar,
-// repete com o header (necessário em contas sob MCC).
+// repete com o ID da gerenciadora WAVY (necessário em contas sob MCC — usar
+// o ID da própria conta como login-customer-id não resolve permissão).
+// Retorna também qual login-customer-id funcionou, pra ser salvo junto do
+// cliente e reaproveitado nas consultas de métricas.
 async function fetchAccountInfo(
   customerId: string,
   accessToken: string,
   developerToken: string,
-): Promise<{ name: string; manager: boolean }> {
+): Promise<{ name: string; manager: boolean; loginCustomerId: string | null }> {
   const query = "SELECT customer.id, customer.descriptive_name, customer.manager FROM customer LIMIT 1";
-  const attempts: Array<Record<string, string>> = [
-    { Authorization: `Bearer ${accessToken}`, "developer-token": developerToken, "Content-Type": "application/json" },
+  const attempts: Array<{ loginCustomerId: string | null; headers: Record<string, string> }> = [
+    { loginCustomerId: null, headers: { Authorization: `Bearer ${accessToken}`, "developer-token": developerToken, "Content-Type": "application/json" } },
     {
-      Authorization: `Bearer ${accessToken}`,
-      "developer-token": developerToken,
-      "login-customer-id": customerId,
-      "Content-Type": "application/json",
+      loginCustomerId: WAVY_MANAGER_CUSTOMER_ID,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "developer-token": developerToken,
+        "login-customer-id": WAVY_MANAGER_CUSTOMER_ID,
+        "Content-Type": "application/json",
+      },
     },
   ];
-  for (const headers of attempts) {
+  for (const attempt of attempts) {
     try {
       const res = await fetch(`${GOOGLE_ADS_API}/customers/${customerId}/googleAds:searchStream`, {
         method: "POST",
-        headers,
+        headers: attempt.headers,
         body: JSON.stringify({ query }),
       });
       const detail = await readJson(res, `customer ${customerId}`);
@@ -56,20 +65,80 @@ async function fetchAccountInfo(
         ? detail?.[0]?.results?.[0]?.customer
         : detail?.results?.[0]?.customer;
       if (customer?.descriptiveName) {
-        return { name: customer.descriptiveName, manager: !!customer.manager };
+        return { name: customer.descriptiveName, manager: !!customer.manager, loginCustomerId: attempt.loginCustomerId };
       }
     } catch (e) {
       console.error(`Falha ao obter nome da conta ${customerId}:`, e);
     }
   }
-  return { name: `Conta ${customerId}`, manager: false };
+  return { name: `Conta ${customerId}`, manager: false, loginCustomerId: null };
+}
+
+// Explora a hierarquia enxergada a partir de uma conta de topo (retornada por
+// listAccessibleCustomers). Se ela for uma gerenciadora (caso da WAVY), o
+// listAccessibleCustomers só devolve o ID da própria gerenciadora — não das
+// contas de anúncio de cada cliente abaixo dela. É preciso consultar
+// customer_client (padrão da Google Ads API pra andar a hierarquia de um
+// MCC) pra achar as contas filhas de verdade.
+async function fetchAccountHierarchy(
+  topId: string,
+  accessToken: string,
+  developerToken: string,
+): Promise<Array<{ id: string; name: string; manager: boolean; loginCustomerId?: string }>> {
+  const query = `
+    SELECT customer_client.id, customer_client.descriptive_name,
+           customer_client.manager, customer_client.level
+    FROM customer_client
+    WHERE customer_client.level <= 1
+  `;
+  try {
+    const res = await fetch(`${GOOGLE_ADS_API}/customers/${topId}/googleAds:searchStream`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "developer-token": developerToken,
+        "login-customer-id": topId,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query }),
+    });
+    const data = await readJson(res, `customer_client ${topId}`);
+    if (data.error) {
+      console.error(`customer_client ${topId} error:`, JSON.stringify(data.error));
+      return [];
+    }
+
+    const rows: any[] = [];
+    if (Array.isArray(data)) {
+      for (const batch of data) if (batch.results) rows.push(...batch.results);
+    }
+
+    const self = rows.find((r) => String(r.customerClient?.level) === "0");
+    if (self && self.customerClient?.manager === false) {
+      // Não é gerenciadora — a própria conta de topo já é a conta de anúncios.
+      return [{ id: topId, name: self.customerClient.descriptiveName || `Conta ${topId}`, manager: false }];
+    }
+
+    // É gerenciadora: retorna as contas de anúncio diretamente abaixo dela.
+    return rows
+      .filter((r) => String(r.customerClient?.level) === "1" && r.customerClient?.manager === false)
+      .map((r) => ({
+        id: String(r.customerClient.id),
+        name: r.customerClient.descriptiveName || `Conta ${r.customerClient.id}`,
+        manager: false,
+        loginCustomerId: topId,
+      }));
+  } catch (e) {
+    console.error(`Falha ao explorar hierarquia de ${topId}:`, e);
+    return [];
+  }
 }
 
 // Lista as contas acessíveis com o access token informado.
 async function listAccounts(
   accessToken: string,
   developerToken: string,
-): Promise<{ accounts: Array<{ id: string; name: string; manager: boolean }>; error: string | null }> {
+): Promise<{ accounts: Array<{ id: string; name: string; manager: boolean; loginCustomerId?: string }>; error: string | null }> {
   let resourceNames: string[] = [];
   try {
     const res = await fetch(`${GOOGLE_ADS_API}/customers:listAccessibleCustomers`, {
@@ -86,16 +155,23 @@ async function listAccounts(
     return { accounts: [], error: e instanceof Error ? e.message : "Falha ao listar contas do Google Ads." };
   }
 
-  const accounts = await Promise.all(
-    resourceNames.map(async (rn) => {
-      const customerId = rn.replace("customers/", "");
-      const info = await fetchAccountInfo(customerId, accessToken, developerToken);
-      return { id: customerId, name: info.name, manager: info.manager };
-    }),
-  );
+  const topIds = resourceNames.map((rn) => rn.replace("customers/", ""));
+  const nested = await Promise.all(topIds.map((id) => fetchAccountHierarchy(id, accessToken, developerToken)));
+  let accounts = nested.flat();
 
-  // Contas gerenciadoras (MCC) não têm campanhas — vão para o fim da lista.
-  accounts.sort((a, b) => Number(a.manager) - Number(b.manager) || a.name.localeCompare(b.name));
+  // Se a exploração da hierarquia não achou nada (ex.: erro de acesso ao
+  // customer_client), cai pro comportamento antigo de listar as contas de
+  // topo diretamente — inclusive gerenciadoras, marcadas como tal.
+  if (accounts.length === 0) {
+    accounts = await Promise.all(
+      topIds.map(async (customerId) => {
+        const info = await fetchAccountInfo(customerId, accessToken, developerToken);
+        return { id: customerId, name: info.name, manager: info.manager, loginCustomerId: info.loginCustomerId || undefined };
+      }),
+    );
+    // Contas gerenciadoras (MCC) não têm campanhas — vão para o fim da lista.
+    accounts.sort((a, b) => Number(a.manager) - Number(b.manager) || a.name.localeCompare(b.name));
+  }
 
   if (accounts.length === 0) {
     return { accounts, error: "Nenhuma conta do Google Ads foi encontrada para este login." };
@@ -318,7 +394,7 @@ Deno.serve(async (req) => {
         .update({
           google_ads_customer_id: rawId,
           google_ads_customer_name: name,
-
+          google_ads_login_customer_id: info.loginCustomerId,
           google_ads_synced: true,
           google_ads_last_sync_at: new Date().toISOString(),
         })
@@ -340,6 +416,7 @@ Deno.serve(async (req) => {
       const dbClientId = body.client_id;
       const customerId = body.customer_id;
       const customerName = body.customer_name;
+      const loginCustomerId = body.login_customer_id;
 
       if (!dbClientId || !customerId) {
         return new Response(JSON.stringify({ error: "client_id e customer_id são obrigatórios" }),
@@ -351,6 +428,7 @@ Deno.serve(async (req) => {
         .update({
           google_ads_customer_id: customerId,
           google_ads_customer_name: customerName || null,
+          google_ads_login_customer_id: loginCustomerId || null,
           google_ads_synced: true,
           google_ads_last_sync_at: new Date().toISOString(),
         })
@@ -380,6 +458,7 @@ Deno.serve(async (req) => {
           google_ads_refresh_token: null,
           google_ads_customer_id: null,
           google_ads_customer_name: null,
+          google_ads_login_customer_id: null,
           google_ads_synced: false,
           google_ads_token_expires_at: null,
           google_ads_last_sync_at: null,

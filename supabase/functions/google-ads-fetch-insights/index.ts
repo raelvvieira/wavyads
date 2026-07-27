@@ -9,6 +9,10 @@ const corsHeaders = {
 // v18 foi desativado pelo Google em ago/2025 — mantendo uma versão suportada.
 const GOOGLE_ADS_API = "https://googleads.googleapis.com/v24";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
+// Contas de cliente hoje são acessadas via a gerenciadora WAVY. Usado como
+// fallback quando o cliente ainda não tem login_customer_id persistido
+// (ex.: sincronizado antes dessa coluna existir).
+const WAVY_MANAGER_CUSTOMER_ID = "8125716511";
 
 async function refreshAccessToken(supabase: any, clientRecord: any, clientIdGoogle: string, clientSecretGoogle: string): Promise<string> {
   const now = new Date();
@@ -50,17 +54,25 @@ async function refreshAccessToken(supabase: any, clientRecord: any, clientIdGoog
   return newToken;
 }
 
-async function gaqlQuery(accessToken: string, customerId: string, developerToken: string, query: string) {
+// Se o cliente já tem um login-customer-id conhecido (salvo ao selecionar a
+// conta na tela de sincronização), usa ele direto. Senão — clientes antigos,
+// sincronizados antes dessa coluna existir — tenta sem o header (conta
+// direta) e depois com o da gerenciadora WAVY (conta sob MCC).
+async function gaqlQuery(
+  accessToken: string,
+  customerId: string,
+  loginCustomerId: string | null,
+  developerToken: string,
+  query: string,
+) {
   const baseHeaders: Record<string, string> = {
     Authorization: `Bearer ${accessToken}`,
     "developer-token": developerToken,
     "Content-Type": "application/json",
   };
-  // Tenta primeiro sem login-customer-id (conta direta) e depois com (conta sob MCC).
-  const attempts: Array<Record<string, string>> = [
-    baseHeaders,
-    { ...baseHeaders, "login-customer-id": customerId },
-  ];
+  const attempts: Array<Record<string, string>> = loginCustomerId
+    ? [{ ...baseHeaders, "login-customer-id": loginCustomerId }]
+    : [baseHeaders, { ...baseHeaders, "login-customer-id": WAVY_MANAGER_CUSTOMER_ID }];
 
   let lastError = "Falha ao consultar o Google Ads";
 
@@ -184,6 +196,7 @@ Deno.serve(async (req) => {
     }
 
     const customerId = clientRecord.google_ads_customer_id;
+    const loginCustomerId: string | null = clientRecord.google_ads_login_customer_id || null;
     const accessToken = await refreshAccessToken(supabase, clientRecord, googleClientId, googleClientSecret);
 
     const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -206,7 +219,7 @@ Deno.serve(async (req) => {
         WHERE segments.date BETWEEN '${since}' AND '${until}'
           AND campaign.status != 'REMOVED'
       `;
-      const rows = await gaqlQuery(accessToken, customerId, developerToken, query);
+      const rows = await gaqlQuery(accessToken, customerId, loginCustomerId, developerToken, query);
 
       // Aggregate by campaign
       const campaignMap = new Map<string, any>();
@@ -255,7 +268,7 @@ Deno.serve(async (req) => {
         FROM customer
         WHERE segments.date BETWEEN '${since}' AND '${until}'
       `;
-      const rows = await gaqlQuery(accessToken, customerId, developerToken, query);
+      const rows = await gaqlQuery(accessToken, customerId, loginCustomerId, developerToken, query);
 
       let spend = 0, impressions = 0, clicks = 0, conversions = 0;
       for (const row of rows) {
@@ -274,7 +287,7 @@ Deno.serve(async (req) => {
         FROM customer
         WHERE segments.date BETWEEN '${since}' AND '${until}'
       `;
-      const dailyRows = await gaqlQuery(accessToken, customerId, developerToken, dailyQuery);
+      const dailyRows = await gaqlQuery(accessToken, customerId, loginCustomerId, developerToken, dailyQuery);
 
       const dailyMap = new Map<string, any>();
       for (const row of dailyRows) {
@@ -349,7 +362,7 @@ Deno.serve(async (req) => {
         FROM customer
         WHERE segments.date BETWEEN '${prevSince}' AND '${prevUntil}'
       `;
-      const rows = await gaqlQuery(accessToken, customerId, developerToken, query);
+      const rows = await gaqlQuery(accessToken, customerId, loginCustomerId, developerToken, query);
 
       let spend = 0, impressions = 0, clicks = 0, conversions = 0;
       for (const row of rows) {
@@ -370,6 +383,220 @@ Deno.serve(async (req) => {
         cpm: impressions > 0 ? (spend / impressions) * 1000 : 0,
         frequency: 0, roas: 0, daily: [],
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ==================== KEYWORDS ====================
+    if (action === "keywords") {
+      const query = `
+        SELECT
+          campaign.name, ad_group.name,
+          ad_group_criterion.criterion_id,
+          ad_group_criterion.keyword.text,
+          ad_group_criterion.keyword.match_type,
+          ad_group_criterion.quality_info.quality_score,
+          metrics.impressions, metrics.clicks, metrics.cost_micros,
+          metrics.conversions, metrics.conversions_value, metrics.ctr, metrics.average_cpc
+        FROM keyword_view
+        WHERE segments.date BETWEEN '${since}' AND '${until}'
+          AND ad_group_criterion.status != 'REMOVED'
+      `;
+      const rows = await gaqlQuery(accessToken, customerId, loginCustomerId, developerToken, query);
+
+      const matchTypeMap: Record<string, string> = { EXACT: "Exata", PHRASE: "Frase", BROAD: "Ampla" };
+
+      const keywordMap = new Map<string, any>();
+      for (const row of rows) {
+        const id = row.adGroupCriterion?.criterionId;
+        if (!id) continue;
+        if (!keywordMap.has(id)) {
+          keywordMap.set(id, {
+            id,
+            text: row.adGroupCriterion?.keyword?.text || "",
+            match_type: matchTypeMap[row.adGroupCriterion?.keyword?.matchType] || row.adGroupCriterion?.keyword?.matchType || "",
+            campaign_name: row.campaign?.name || "",
+            ad_group_name: row.adGroup?.name || "",
+            quality_score: null as number | null,
+            impressions: 0, clicks: 0, spend: 0, conversions: 0, conversions_value: 0,
+          });
+        }
+        const k = keywordMap.get(id)!;
+        k.impressions += Number(row.metrics?.impressions || 0);
+        k.clicks += Number(row.metrics?.clicks || 0);
+        k.spend += microsToAmount(row.metrics?.costMicros);
+        k.conversions += Number(row.metrics?.conversions || 0);
+        k.conversions_value += Number(row.metrics?.conversionsValue || 0);
+        // Quality Score é um retrato do momento, não uma métrica somável —
+        // guarda o valor mais recente não-nulo em vez de somar.
+        const qs = row.adGroupCriterion?.qualityInfo?.qualityScore;
+        if (qs !== undefined && qs !== null) k.quality_score = qs;
+      }
+
+      const MAX_ROWS = 200;
+      const allKeywords = Array.from(keywordMap.values())
+        .map((k) => ({
+          ...k,
+          ctr: k.impressions > 0 ? (k.clicks / k.impressions) * 100 : 0,
+          cpc: k.clicks > 0 ? k.spend / k.clicks : 0,
+          cost_per_conversion: k.conversions > 0 ? k.spend / k.conversions : 0,
+        }))
+        .sort((a, b) => b.spend - a.spend);
+
+      return new Response(JSON.stringify({
+        keywords: allKeywords.slice(0, MAX_ROWS),
+        truncated: allKeywords.length > MAX_ROWS,
+        total: allKeywords.length,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ==================== SEARCH TERMS ====================
+    if (action === "search_terms") {
+      const query = `
+        SELECT
+          campaign.name, ad_group.name,
+          search_term_view.search_term, search_term_view.status,
+          metrics.impressions, metrics.clicks, metrics.cost_micros,
+          metrics.conversions, metrics.conversions_value
+        FROM search_term_view
+        WHERE segments.date BETWEEN '${since}' AND '${until}'
+      `;
+      const rows = await gaqlQuery(accessToken, customerId, loginCustomerId, developerToken, query);
+
+      // NONE = termo não gerenciado (candidato a negativa); ADDED = já é
+      // palavra-chave; EXCLUDED/ADDED_EXCLUDED = já é negativa em algum lugar.
+      const statusMap: Record<string, string> = {
+        NONE: "none", ADDED: "added", EXCLUDED: "excluded", ADDED_EXCLUDED: "excluded",
+      };
+
+      const termMap = new Map<string, any>();
+      for (const row of rows) {
+        const term = row.searchTermView?.searchTerm;
+        const adGroupName = row.adGroup?.name || "";
+        if (!term) continue;
+        const key = `${term}::${adGroupName}`;
+        if (!termMap.has(key)) {
+          termMap.set(key, {
+            term,
+            status: statusMap[row.searchTermView?.status] || "none",
+            campaign_name: row.campaign?.name || "",
+            ad_group_name: adGroupName,
+            impressions: 0, clicks: 0, spend: 0, conversions: 0, conversions_value: 0,
+          });
+        }
+        const t = termMap.get(key)!;
+        t.impressions += Number(row.metrics?.impressions || 0);
+        t.clicks += Number(row.metrics?.clicks || 0);
+        t.spend += microsToAmount(row.metrics?.costMicros);
+        t.conversions += Number(row.metrics?.conversions || 0);
+        t.conversions_value += Number(row.metrics?.conversionsValue || 0);
+      }
+
+      const MAX_ROWS = 200;
+      const allTerms = Array.from(termMap.values()).sort((a, b) => b.spend - a.spend);
+
+      return new Response(JSON.stringify({
+        search_terms: allTerms.slice(0, MAX_ROWS),
+        truncated: allTerms.length > MAX_ROWS,
+        total: allTerms.length,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ==================== IMPRESSION SHARE ====================
+    if (action === "impression_share") {
+      const query = `
+        SELECT
+          campaign.id, campaign.name, campaign.advertising_channel_type,
+          metrics.search_impression_share,
+          metrics.search_budget_lost_impression_share,
+          metrics.search_rank_lost_impression_share
+        FROM campaign
+        WHERE segments.date BETWEEN '${since}' AND '${until}'
+          AND campaign.status != 'REMOVED'
+      `;
+      const rows = await gaqlQuery(accessToken, customerId, loginCustomerId, developerToken, query);
+
+      // Impression share só é significativa pra campanhas de Pesquisa —
+      // Display/PMax/Vídeo não reportam essas métricas de forma útil.
+      const campaigns = rows
+        .filter((row) => row.campaign?.advertisingChannelType === "SEARCH")
+        .map((row) => ({
+          id: row.campaign.id,
+          name: row.campaign.name,
+          impression_share: Number(row.metrics?.searchImpressionShare || 0) * 100,
+          lost_to_budget: Number(row.metrics?.searchBudgetLostImpressionShare || 0) * 100,
+          lost_to_rank: Number(row.metrics?.searchRankLostImpressionShare || 0) * 100,
+        }))
+        .sort((a, b) => a.impression_share - b.impression_share);
+
+      return new Response(JSON.stringify({ campaigns }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ==================== DEVICE BREAKDOWN ====================
+    if (action === "device_breakdown") {
+      const query = `
+        SELECT
+          segments.device,
+          metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions
+        FROM customer
+        WHERE segments.date BETWEEN '${since}' AND '${until}'
+      `;
+      const rows = await gaqlQuery(accessToken, customerId, loginCustomerId, developerToken, query);
+
+      const deviceLabels: Record<string, string> = {
+        MOBILE: "Celular", DESKTOP: "Computador", TABLET: "Tablet",
+        CONNECTED_TV: "Smart TV", OTHER: "Outro",
+      };
+
+      const deviceMap = new Map<string, any>();
+      for (const row of rows) {
+        const device = row.segments?.device;
+        if (!device) continue;
+        if (!deviceMap.has(device)) {
+          deviceMap.set(device, {
+            device: deviceLabels[device] || device,
+            impressions: 0, clicks: 0, spend: 0, conversions: 0,
+          });
+        }
+        const d = deviceMap.get(device)!;
+        d.impressions += Number(row.metrics?.impressions || 0);
+        d.clicks += Number(row.metrics?.clicks || 0);
+        d.spend += microsToAmount(row.metrics?.costMicros);
+        d.conversions += Number(row.metrics?.conversions || 0);
+      }
+
+      const devices = Array.from(deviceMap.values()).sort((a, b) => b.spend - a.spend);
+
+      return new Response(JSON.stringify({ devices }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ==================== CONVERSION BREAKDOWN ====================
+    if (action === "conversion_breakdown") {
+      const query = `
+        SELECT
+          segments.conversion_action_name,
+          metrics.conversions, metrics.conversions_value
+        FROM customer
+        WHERE segments.date BETWEEN '${since}' AND '${until}'
+      `;
+      const rows = await gaqlQuery(accessToken, customerId, loginCustomerId, developerToken, query);
+
+      const actionMap = new Map<string, any>();
+      for (const row of rows) {
+        const name = row.segments?.conversionActionName;
+        if (!name) continue;
+        if (!actionMap.has(name)) {
+          actionMap.set(name, { action_name: name, conversions: 0, conversions_value: 0 });
+        }
+        const a = actionMap.get(name)!;
+        a.conversions += Number(row.metrics?.conversions || 0);
+        a.conversions_value += Number(row.metrics?.conversionsValue || 0);
+      }
+
+      const actions = Array.from(actionMap.values()).sort((a, b) => b.conversions - a.conversions);
+
+      return new Response(JSON.stringify({ actions }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     return new Response(JSON.stringify({ error: "Ação não reconhecida" }), {
