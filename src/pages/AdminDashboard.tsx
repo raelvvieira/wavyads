@@ -149,8 +149,9 @@ export default function AdminDashboard() {
         setPendingAccounts(event.data.accounts);
         setSyncingClientId(null);
       }
-      if (event.data?.type === 'GOOGLE_ADS_OAUTH_CALLBACK' && event.data?.accounts) {
-        setPendingGoogleAccounts(event.data.accounts);
+      if (event.data?.type === 'GOOGLE_ADS_OAUTH_CALLBACK') {
+        setPendingGoogleAccounts(event.data.accounts || []);
+        setGoogleListError(event.data.error || null);
         setSyncingGoogleClientId(null);
       }
     };
