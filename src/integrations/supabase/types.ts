@@ -202,7 +202,6 @@ export type Database = {
           google_ads_customer_id: string | null
           google_ads_customer_name: string | null
           google_ads_last_sync_at: string | null
-          google_ads_login_customer_id: string | null
           google_ads_refresh_token: string | null
           google_ads_synced: boolean
           google_ads_token_expires_at: string | null
@@ -223,7 +222,6 @@ export type Database = {
           google_ads_customer_id?: string | null
           google_ads_customer_name?: string | null
           google_ads_last_sync_at?: string | null
-          google_ads_login_customer_id?: string | null
           google_ads_refresh_token?: string | null
           google_ads_synced?: boolean
           google_ads_token_expires_at?: string | null
@@ -244,7 +242,6 @@ export type Database = {
           google_ads_customer_id?: string | null
           google_ads_customer_name?: string | null
           google_ads_last_sync_at?: string | null
-          google_ads_login_customer_id?: string | null
           google_ads_refresh_token?: string | null
           google_ads_synced?: boolean
           google_ads_token_expires_at?: string | null
