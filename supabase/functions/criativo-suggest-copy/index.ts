@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const AI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 
 const SYSTEM = `Você é copywriter sênior de criativos publicitários. Sua tarefa é escrever um RASCUNHO inicial curto de copy bruta (2-4 linhas) que o anunciante poderá editar. Use as referências visuais, mood e design system fornecidos para inferir o segmento, tom e oferta provável. Se houver conteúdo extraído do site/produto do anunciante, BASEIE A OFERTA NELE — não invente dados que não estejam nesse conteúdo. Português brasileiro, natural, sem listar tópicos, sem aspas, sem títulos. Apenas o texto corrido como se o anunciante estivesse descrevendo o que quer anunciar. NUNCA invente dados específicos como datas, preços ou nomes próprios — se não houver evidência clara, mantenha vago e plausível.`;
 
@@ -14,8 +14,8 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY não configurada");
 
     const { analysis, language, urlContext, initialPrompt, additionalInstructions } = await req.json();
 
@@ -51,11 +51,11 @@ Com base apenas no prompt e nas orientações acima, escreva um rascunho curto d
     const response = await fetch(AI_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gemini-2.5-flash",
         messages: [
           { role: "system", content: SYSTEM },
           { role: "user", content: userPrompt },
@@ -69,14 +69,9 @@ Com base apenas no prompt e nas orientações acima, escreva um rascunho curto d
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos de IA esgotados." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
       const t = await response.text();
-      console.error("AI error", response.status, t);
-      throw new Error(`AI gateway: ${response.status}`);
+      console.error("Gemini error", response.status, t);
+      throw new Error(`Gemini: ${response.status}`);
     }
 
     const data = await response.json();

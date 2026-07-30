@@ -6,7 +6,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const AI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+const PROMPT_MODEL = "gemini-3-flash-preview";
 const GEMINI_MODEL = "gemini-3.1-flash-image-preview";
 
 const SYSTEM_BUILDER = `You are a surgical photo-edit prompt writer for an image-generation model. Your job is to convert short user feedback into a precise, IMPERATIVE edit instruction that applies EVERY change the user asked for — additive AND subtractive — while preserving everything else with pixel-level fidelity.
@@ -63,9 +64,7 @@ async function resolveImageParts(originalImage: string): Promise<{ mime: string;
   throw new Error("originalImage deve ser data URL base64 ou URL http(s)");
 }
 
-async function buildEditPrompt(userFeedback: string, originalPrompt: string, lang: string): Promise<string> {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
+async function buildEditPrompt(userFeedback: string, originalPrompt: string, lang: string, apiKey: string): Promise<string> {
   const userMsg = `User feedback (in ${lang === "en" ? "English" : lang === "es" ? "Spanish" : "Portuguese (Brazil)"}):
 """
 ${userFeedback}
@@ -80,9 +79,9 @@ Write the surgical edit instruction now.`;
 
   const r = await fetch(AI_URL, {
     method: "POST",
-    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
+      model: PROMPT_MODEL,
       messages: [
         { role: "system", content: SYSTEM_BUILDER },
         { role: "user", content: userMsg },
@@ -92,7 +91,6 @@ Write the surgical edit instruction now.`;
   if (!r.ok) {
     const t = await r.text();
     if (r.status === 429) throw new Error("Limite de uso atingido.");
-    if (r.status === 402) throw new Error("Créditos de IA esgotados.");
     throw new Error(`Prompt builder: ${r.status} ${t.slice(0, 200)}`);
   }
   const data = await r.json();
@@ -115,7 +113,7 @@ serve(async (req) => {
       });
     }
 
-    const editPrompt = await buildEditPrompt(userFeedback, originalPrompt || "", language || "pt-BR");
+    const editPrompt = await buildEditPrompt(userFeedback, originalPrompt || "", language || "pt-BR", GEMINI_API_KEY);
 
     const ref = await resolveImageParts(originalImage);
 

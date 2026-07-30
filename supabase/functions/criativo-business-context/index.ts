@@ -6,14 +6,14 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const AI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY não configurada");
 
     const { mood = [], referencias = [], evita = [], copy = {}, rawCopy = "", language = "pt-BR" } = await req.json();
 
@@ -39,9 +39,9 @@ Devolva apenas o texto final, sem prefixos, sem marcação, sem aspas.`;
 
     const resp = await fetch(AI_URL, {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "gemini-3-flash-preview",
         messages: [
           { role: "system", content: "Você é estrategista de marca. Responde curto, específico, sem floreio." },
           { role: "user", content: userMsg },
@@ -51,18 +51,13 @@ Devolva apenas o texto final, sem prefixos, sem marcação, sem aspas.`;
 
     if (!resp.ok) {
       const t = await resp.text();
-      console.error("AI gateway error", resp.status, t);
+      console.error("Gemini error", resp.status, t);
       if (resp.status === 429) {
         return new Response(JSON.stringify({ error: "Limite de uso atingido. Tente novamente em instantes." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (resp.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos de IA esgotados." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      throw new Error(`AI gateway: ${resp.status}`);
+      throw new Error(`Gemini: ${resp.status}`);
     }
 
     const data = await resp.json();
