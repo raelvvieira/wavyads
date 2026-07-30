@@ -1,14 +1,14 @@
 // Social Mídia Studio — extrai copy de um post viral
 // Reel: transcrição via Apify (invideoiq/video-transcriber)
-// Carrossel / Post: OCR via Gemini (visão → texto, gateway Lovable)
+// Carrossel / Post: OCR via Gemini (visão → texto, chamada direta)
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// OCR por IA (mesmo gateway/modelo de visão já usado em criativo-analyze-refs).
-const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const OCR_MODEL = "google/gemini-2.5-flash";
+// OCR por IA — chamada direta ao Gemini via camada de compatibilidade OpenAI.
+const AI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+const OCR_MODEL = "gemini-2.5-flash";
 const OCR_SYSTEM =
   "Você é um motor de OCR. Transcreva fielmente TODO o texto visível na imagem, na ordem natural de leitura (de cima para baixo). Devolva SOMENTE o texto, sem comentários, sem aspas, sem descrever a imagem. Se não houver nenhum texto legível, devolva uma string vazia.";
 
@@ -287,7 +287,7 @@ Deno.serve(async (req) => {
 
   try {
     const APIFY_TOKEN = Deno.env.get("APIFY_TOKEN");
-    const OCR_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const OCR_KEY = Deno.env.get("GEMINI_API_KEY");
     const { item } = await req.json();
     if (!item || typeof item !== "object") {
       return new Response(JSON.stringify({ error: "item é obrigatório" }), {
