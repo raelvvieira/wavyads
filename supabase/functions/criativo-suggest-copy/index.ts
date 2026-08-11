@@ -10,6 +10,57 @@ const AI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/com
 
 const SYSTEM = `Você é copywriter sênior de criativos publicitários. Sua tarefa é escrever um RASCUNHO inicial curto de copy bruta (2-4 linhas) que o anunciante poderá editar. Use as referências visuais, mood e design system fornecidos para inferir o segmento, tom e oferta provável. Se houver conteúdo extraído do site/produto do anunciante, BASEIE A OFERTA NELE — não invente dados que não estejam nesse conteúdo. Português brasileiro, natural, sem listar tópicos, sem aspas, sem títulos. Apenas o texto corrido como se o anunciante estivesse descrevendo o que quer anunciar. NUNCA invente dados específicos como datas, preços ou nomes próprios — se não houver evidência clara, mantenha vago e plausível.`;
 
+// Criativo Rápido: o anunciante escolheu uma copy salva como REFERÊNCIA de
+// tom/estrutura/estilo — não como texto final. Aqui a tarefa é ler o DNA
+// dessa copy (tom, estrutura, recursos retóricos) e devolver 4 variações
+// novas que soam com a mesma voz, mas com ângulo e conteúdo diferentes.
+const REFERENCE_SYSTEM = `Você é copywriter sênior de criativos publicitários, especialista em replicar o DNA de uma copy vencedora em variações novas.
+
+Antes de escrever, leia a copy de referência com atenção a:
+- Tom (formal, casual, urgente, inspiracional, direto, aspiracional...)
+- Estrutura (tem gancho de abertura? corpo? fechamento tipo CTA? frases curtas ou narrativa corrida? usa 2ª pessoa "você"? pergunta retórica? exclamação?)
+- Recursos retóricos específicos (números, contraste, promessa, escassez, prova social...)
+
+Gere 4 variações NOVAS que preservam esse mesmo tom/estrutura/estilo, cada uma com um ângulo diferente:
+1. "Direto/Benefício" — foco no benefício mais claro e direto.
+2. "Urgência/Escassez" — gatilho de tempo, vagas ou condição limitada.
+3. "Curiosidade/Hook" — abre um loop, pergunta provocativa ou afirmação inesperada.
+4. "Prova/Autoridade" — credenciais, números, certificações, autoridade.
+
+Regras: 2-4 linhas por variação, português brasileiro, mesmo segmento/oferta implícito na referência. NUNCA invente dados novos (datas, preços, nomes próprios) que não estejam na referência. Nenhuma variação pode ser uma paráfrase quase-literal da referência — todas devem soar como a mesma voz de marca, mas com conteúdo genuinamente novo.`;
+
+const VARIATIONS_TOOL = {
+  type: "function",
+  function: {
+    name: "emit_variations",
+    description: "Devolve 4 variações novas de copy, preservando o tom/estrutura da referência",
+    parameters: {
+      type: "object",
+      properties: {
+        variations: {
+          type: "array",
+          minItems: 4,
+          maxItems: 4,
+          items: {
+            type: "object",
+            properties: {
+              angulo: {
+                type: "string",
+                enum: ["Direto/Benefício", "Urgência/Escassez", "Curiosidade/Hook", "Prova/Autoridade"],
+              },
+              texto: { type: "string", description: "Copy nova de 2-4 linhas, nesse ângulo" },
+            },
+            required: ["angulo", "texto"],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["variations"],
+      additionalProperties: false,
+    },
+  },
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -18,9 +69,60 @@ serve(async (req) => {
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY não configurada");
 
     const { analysis, language, urlContext, initialPrompt, additionalInstructions, referenceCopy, tema } = await req.json();
-
     const lang = language === "en" ? "English" : language === "es" ? "Spanish" : "Portuguese (Brazil)";
 
+    // ==================== CRIATIVO RÁPIDO: 4 variações a partir de uma copy de referência ====================
+    if (referenceCopy) {
+      const userPrompt = `Idioma dos textos: ${lang}
+${tema ? `Tema/segmento: ${tema}\n` : ""}
+Copy de referência (já usada por este cliente antes — leia tom, estrutura e estilo; NÃO repita literalmente):
+"""
+${String(referenceCopy).slice(0, 1500)}
+"""
+
+Gere as 4 variações pedidas.`;
+
+      const response = await fetch(AI_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${GEMINI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gemini-2.5-flash",
+          messages: [
+            { role: "system", content: REFERENCE_SYSTEM },
+            { role: "user", content: userPrompt },
+          ],
+          tools: [VARIATIONS_TOOL],
+          tool_choice: { type: "function", function: { name: "emit_variations" } },
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          return new Response(JSON.stringify({ error: "Limite de uso atingido." }), {
+            status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const t = await response.text();
+        console.error("Gemini error", response.status, t);
+        throw new Error(`Gemini: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+      if (!toolCall) throw new Error("IA não retornou variações estruturadas");
+      const parsed = JSON.parse(toolCall.function.arguments);
+      const suggestions = Array.isArray(parsed?.variations) ? parsed.variations.slice(0, 4) : [];
+      if (suggestions.length === 0) throw new Error("IA não retornou variações");
+
+      return new Response(JSON.stringify({ suggestions }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ==================== Fluxo completo: rascunho único a partir de análise/prompt ====================
     const urlBlock = urlContext && (urlContext.title || urlContext.description || urlContext.text)
       ? `\n\nConteúdo extraído do site/produto fornecido pelo anunciante (USE COMO BASE PRINCIPAL):
 Título: ${urlContext.title || "(sem título)"}
@@ -35,19 +137,7 @@ Trecho: ${(urlContext.text || "").slice(0, 3500)}`
       ? `\nOrientações adicionais: ${(additionalInstructions as string[]).join("; ")}`
       : "";
 
-    // Criativo Rápido: o anunciante escolheu uma copy salva como REFERÊNCIA de
-    // tom/tema — não como texto final. Aqui a tarefa muda de "criar do zero"
-    // pra "reescrever uma variação nova, melhor, no mesmo sentido".
-    const userPrompt = referenceCopy
-      ? `Idioma: ${lang}
-${tema ? `Tema/segmento desta copy: ${tema}\n` : ""}
-Copy de referência (já usada por este cliente antes, mesmo tema/sentido — NÃO é pra repetir literalmente):
-"""
-${String(referenceCopy).slice(0, 1500)}
-"""
-
-Escreva uma copy NOVA (2-4 linhas), no mesmo sentido/tema/oferta da referência acima, mas com um ângulo, gatilho ou frase de abertura diferente — melhor que a original, não uma paráfrase palavra por palavra. Mantenha o mesmo segmento/oferta implícito na referência; não invente dados novos (datas, preços, nomes) que não estejam nela. Apenas o texto corrido, sem prefixos, sem aspas, sem listas.`
-      : analysis
+    const userPrompt = analysis
       ? `Idioma: ${lang}
 Mood adjetivos: ${(analysis.mood?.adjetivos || []).join(", ")}
 Referências visuais: ${(analysis.mood?.referencias || []).join(", ")}

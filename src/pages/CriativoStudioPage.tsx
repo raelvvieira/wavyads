@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ImageDropzone } from '@/components/criativo/ImageDropzone';
 import { StepIndicator } from '@/components/criativo/StepIndicator';
 import { StyleGalleryDialog } from '@/components/criativo/StyleGalleryDialog';
-import { QuickCreativeDialog, type ClientCopyBankEntry, type ClientIntelligenceArt } from '@/components/criativo/QuickCreativeDialog';
+import { QuickCreativeDialog, type ClientCopyBankEntry, type ClientIntelligenceArt, type QuickCopyVariation } from '@/components/criativo/QuickCreativeDialog';
 import { cn } from '@/lib/utils';
 import { recordAiUsage } from '@/lib/aiUsageTracker';
 import {
@@ -1654,18 +1654,19 @@ export default function CriativoStudioPage() {
   }, [step, analysis]);
 
   // Criativo Rápido: transforma uma copy salva (referência de tom/tema) numa
-  // variação nova — nunca devolve o texto literal escolhido. Lança em caso de
-  // falha pro QuickCreativeDialog decidir o fallback (colar o texto original).
-  const suggestQuickCopyFromReference = async (entry: ClientCopyBankEntry): Promise<string> => {
+  // variação nova — nunca devolve o texto literal escolhido. Devolve 4
+  // opções (ângulos diferentes, mesmo tom/estrutura da referência). Lança em
+  // caso de falha pro QuickCreativeDialog decidir o fallback.
+  const suggestQuickCopyFromReference = async (entry: ClientCopyBankEntry): Promise<QuickCopyVariation[]> => {
     const { data, error } = await supabase.functions.invoke('criativo-suggest-copy', {
       body: { referenceCopy: entry.copy_text, tema: entry.tema, language },
     });
     if (error) throw new Error(await extractFunctionErrorMessage(error));
     if ((data as any)?.error) throw new Error((data as any).error);
     recordAiUsage('text-flash');
-    const suggestion = ((data as any)?.suggestion || '').trim();
-    if (!suggestion) throw new Error('IA não retornou sugestão');
-    return suggestion;
+    const suggestions = ((data as any)?.suggestions || []) as QuickCopyVariation[];
+    if (!suggestions.length) throw new Error('IA não retornou variações');
+    return suggestions;
   };
 
   const fetchProductUrl = async () => {
