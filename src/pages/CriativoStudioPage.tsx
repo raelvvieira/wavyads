@@ -1653,6 +1653,21 @@ export default function CriativoStudioPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, analysis]);
 
+  // Criativo Rápido: transforma uma copy salva (referência de tom/tema) numa
+  // variação nova — nunca devolve o texto literal escolhido. Lança em caso de
+  // falha pro QuickCreativeDialog decidir o fallback (colar o texto original).
+  const suggestQuickCopyFromReference = async (entry: ClientCopyBankEntry): Promise<string> => {
+    const { data, error } = await supabase.functions.invoke('criativo-suggest-copy', {
+      body: { referenceCopy: entry.copy_text, tema: entry.tema, language },
+    });
+    if (error) throw new Error(await extractFunctionErrorMessage(error));
+    if ((data as any)?.error) throw new Error((data as any).error);
+    recordAiUsage('text-flash');
+    const suggestion = ((data as any)?.suggestion || '').trim();
+    if (!suggestion) throw new Error('IA não retornou sugestão');
+    return suggestion;
+  };
+
   const fetchProductUrl = async () => {
     const url = productUrl.trim();
     if (!url) return;
@@ -2026,6 +2041,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
                 logoImage: logoImage[0] || null,
                 storyReference: aspect === 'square' ? (base?.image ?? storyImage) : null,
               },
+              timeout: 90_000,
             });
             if (ge) throw new Error(await extractFunctionErrorMessage(ge));
       if ((gd as any)?.error) throw new Error((gd as any).error);
@@ -2087,6 +2103,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
           logoImage: logoImage[0] || null,
           storyReference: null,
         },
+        timeout: 90_000,
       });
       if (error) throw new Error(await extractFunctionErrorMessage(error));
       if ((data as any)?.error) throw new Error((data as any).error);
@@ -2148,6 +2165,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
           logoImage: logoImage[0] || null,
           storyReference: storyImage,
         },
+        timeout: 90_000,
       });
       if (error) throw new Error(await extractFunctionErrorMessage(error));
       if ((data as any)?.error) throw new Error((data as any).error);
@@ -4011,6 +4029,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
         copyBank={clientCopyBank}
         intelligenceArts={clientIntelligenceArts}
         onGenerate={runQuickCreative}
+        onSuggestFromReference={suggestQuickCopyFromReference}
       />
     </div>
   );

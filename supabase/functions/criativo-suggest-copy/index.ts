@@ -17,7 +17,7 @@ serve(async (req) => {
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY não configurada");
 
-    const { analysis, language, urlContext, initialPrompt, additionalInstructions } = await req.json();
+    const { analysis, language, urlContext, initialPrompt, additionalInstructions, referenceCopy, tema } = await req.json();
 
     const lang = language === "en" ? "English" : language === "es" ? "Spanish" : "Portuguese (Brazil)";
 
@@ -35,7 +35,19 @@ Trecho: ${(urlContext.text || "").slice(0, 3500)}`
       ? `\nOrientações adicionais: ${(additionalInstructions as string[]).join("; ")}`
       : "";
 
-    const userPrompt = analysis
+    // Criativo Rápido: o anunciante escolheu uma copy salva como REFERÊNCIA de
+    // tom/tema — não como texto final. Aqui a tarefa muda de "criar do zero"
+    // pra "reescrever uma variação nova, melhor, no mesmo sentido".
+    const userPrompt = referenceCopy
+      ? `Idioma: ${lang}
+${tema ? `Tema/segmento desta copy: ${tema}\n` : ""}
+Copy de referência (já usada por este cliente antes, mesmo tema/sentido — NÃO é pra repetir literalmente):
+"""
+${String(referenceCopy).slice(0, 1500)}
+"""
+
+Escreva uma copy NOVA (2-4 linhas), no mesmo sentido/tema/oferta da referência acima, mas com um ângulo, gatilho ou frase de abertura diferente — melhor que a original, não uma paráfrase palavra por palavra. Mantenha o mesmo segmento/oferta implícito na referência; não invente dados novos (datas, preços, nomes) que não estejam nela. Apenas o texto corrido, sem prefixos, sem aspas, sem listas.`
+      : analysis
       ? `Idioma: ${lang}
 Mood adjetivos: ${(analysis.mood?.adjetivos || []).join(", ")}
 Referências visuais: ${(analysis.mood?.referencias || []).join(", ")}
