@@ -218,8 +218,8 @@ export default function ClientDashboard() {
   const { data: metaPreviousInsights } = useMetaInsightsPrevious(clientId, platform === 'meta' && isMetaSynced, timeRange);
   const { data: metaAds, isLoading: metaAdsLoading, error: metaAdsError } = useMetaAds(clientId, platform === 'meta' && isMetaSynced, timeRange);
   // Google Ads hooks
-  const { data: googleCampaigns, isLoading: googleCampaignsLoading } = useGoogleAdsCampaigns(clientId, platform === 'google' && isGoogleSynced, timeRange);
-  const { data: googleInsights, isLoading: googleInsightsLoading } = useGoogleAdsInsights(clientId, platform === 'google' && isGoogleSynced, timeRange);
+  const { data: googleCampaigns, isLoading: googleCampaignsLoading, error: googleCampaignsError } = useGoogleAdsCampaigns(clientId, platform === 'google' && isGoogleSynced, timeRange);
+  const { data: googleInsights, isLoading: googleInsightsLoading, error: googleInsightsError } = useGoogleAdsInsights(clientId, platform === 'google' && isGoogleSynced, timeRange);
   const { data: googlePreviousInsights } = useGoogleAdsInsightsPrevious(clientId, platform === 'google' && isGoogleSynced, timeRange);
   const { data: keywordsData, isLoading: keywordsLoading } = useGoogleAdsKeywords(
     clientId, platform === 'google' && isGoogleSynced && googleSubTab === 'keywords', timeRange
@@ -251,6 +251,9 @@ export default function ClientDashboard() {
   const metaTokenInvalid = platform === 'meta' && [metaCampaignsError, metaInsightsError, metaAdsError].some(
     (e: any) => e?.name === 'MetaTokenInvalid'
   );
+  const googleAdsError = platform === 'google'
+    ? ((googleCampaignsError as any)?.message || (googleInsightsError as any)?.message || null)
+    : null;
   const isLoading = clientLoading || (isSynced && !metaTokenInvalid && (campaignsLoading || insightsLoading));
 
   // Listen for popup message
@@ -778,6 +781,20 @@ export default function ClientDashboard() {
                   </button>
                 )}
               </div>
+            </GlassCard>
+          )}
+
+          {googleAdsError && (
+            <GlassCard className="border border-destructive/40 bg-destructive/5 p-4 sm:p-5 animate-fade-in">
+              <h3 className="text-sm sm:text-base font-semibold text-foreground">
+                Não consegui carregar os dados do Google Ads
+              </h3>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                {googleAdsError}
+                {isAdmin
+                  ? ' Se o erro mencionar conta gerenciadora/MCC ou permissão, revincule a conta certa em "Trocar conta do Google" no painel de clientes do admin.'
+                  : ' Avise o gestor da conta.'}
+              </p>
             </GlassCard>
           )}
 
