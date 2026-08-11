@@ -116,13 +116,13 @@ export function QuickCreativeDialog({
               </div>
             ) : (
               <>
-                {/* Referências — lista compacta, uma linha cada */}
+                {/* Referências — cards retangulares compactos, texto legível */}
                 <div>
-                  <p className="mb-2 text-[11px] font-medium text-white/40">Copy de referência</p>
+                  <p className="mb-2 text-xs font-medium text-white/50">Copy de referência</p>
                   {copyBank.length === 0 ? (
-                    <p className="text-xs text-white/35">Nenhuma copy salva ainda — escreva a sua abaixo.</p>
+                    <p className="text-sm text-white/35">Nenhuma copy salva ainda — escreva a sua abaixo.</p>
                   ) : (
-                    <div className="space-y-1.5">
+                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                       {copyBank.map((entry) => (
                         <button
                           key={entry.id}
@@ -130,21 +130,23 @@ export function QuickCreativeDialog({
                           disabled={suggesting}
                           onClick={() => pickCopy(entry)}
                           className={cn(
-                            'flex w-full items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50',
+                            'flex flex-col gap-1.5 rounded-xl border p-3.5 text-left transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50',
                             selectedCopyId === entry.id
                               ? 'border-accent/60 bg-accent/[0.07] ring-1 ring-accent/30'
                               : 'border-white/10 bg-white/[0.02] hover:border-white/25 hover:bg-white/[0.04]',
                           )}
                         >
-                          {entry.tema && (
-                            <span className="shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/50">{entry.tema}</span>
-                          )}
-                          <p className="truncate text-xs text-white/70">{entry.copy_text}</p>
-                          {selectedCopyId === entry.id && (
-                            suggesting
-                              ? <Loader2 className="ml-auto h-3.5 w-3.5 shrink-0 animate-spin text-accent" />
-                              : <Check className="ml-auto h-3.5 w-3.5 shrink-0 text-accent" />
-                          )}
+                          <div className="flex min-h-[18px] items-center gap-2">
+                            {entry.tema && (
+                              <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/55">{entry.tema}</span>
+                            )}
+                            {selectedCopyId === entry.id && (
+                              suggesting
+                                ? <Loader2 className="ml-auto h-3.5 w-3.5 shrink-0 animate-spin text-accent" />
+                                : <Check className="ml-auto h-3.5 w-3.5 shrink-0 text-accent" />
+                            )}
+                          </div>
+                          <p className="text-sm leading-relaxed text-white/80 line-clamp-3">{entry.copy_text}</p>
                         </button>
                       ))}
                     </div>
@@ -154,13 +156,13 @@ export function QuickCreativeDialog({
                 {/* Sugestões — grid 2x2, o card inteiro é a seleção */}
                 {(suggesting || variations.length > 0) && (
                   <div>
-                    <p className="mb-2 text-[11px] font-medium text-white/40">
+                    <p className="mb-2 text-xs font-medium text-white/50">
                       {suggesting ? 'Escrevendo variações...' : 'Escolha uma variação'}
                     </p>
                     <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                       {suggesting
                         ? Array.from({ length: 4 }).map((_, i) => (
-                            <Skeleton key={i} className="h-24 rounded-xl bg-white/5" />
+                            <Skeleton key={i} className="h-28 rounded-xl bg-white/5" />
                           ))
                         : variations.map((v, i) => (
                             <button
@@ -168,17 +170,17 @@ export function QuickCreativeDialog({
                               type="button"
                               onClick={() => pickVariation(i)}
                               className={cn(
-                                'flex flex-col gap-1.5 rounded-xl border p-3 text-left transition-all duration-200',
+                                'flex flex-col gap-1.5 rounded-xl border p-3.5 text-left transition-all duration-200',
                                 selectedVariationIdx === i
                                   ? 'border-accent/60 bg-accent/[0.07] ring-1 ring-accent/30'
                                   : 'border-white/10 bg-white/[0.02] hover:border-white/25 hover:bg-white/[0.04]',
                               )}
                             >
                               <div className="flex items-center justify-between gap-2">
-                                <span className="text-[10px] uppercase tracking-wide text-white/40">{v.angulo}</span>
+                                <span className="text-xs font-medium uppercase tracking-wide text-white/50">{v.angulo}</span>
                                 {selectedVariationIdx === i && <Check className="h-3.5 w-3.5 shrink-0 text-accent" />}
                               </div>
-                              <p className="text-sm leading-relaxed text-white/85 line-clamp-4">{v.texto}</p>
+                              <p className="text-[15px] leading-relaxed text-white/90 line-clamp-4">{v.texto}</p>
                             </button>
                           ))}
                     </div>
@@ -187,7 +189,7 @@ export function QuickCreativeDialog({
 
                 {/* Ajuste fino / escrita livre */}
                 <div>
-                  <p className="mb-2 text-[11px] font-medium text-white/40">
+                  <p className="mb-2 text-xs font-medium text-white/50">
                     {selectedVariationIdx !== null ? 'Sua copy' : 'Ou escreva a sua'}
                   </p>
                   <Textarea
@@ -196,14 +198,14 @@ export function QuickCreativeDialog({
                     disabled={suggesting}
                     rows={3}
                     placeholder="Escreva ou cole uma copy..."
-                    className="resize-none border-white/10 bg-white/[0.02] text-sm"
+                    className="resize-none border-white/10 bg-white/[0.02] text-[15px]"
                   />
                 </div>
 
                 {/* Estilo visual — opcional, escondido por padrão */}
                 {intelligenceArts.length > 0 && (
                   <details className="group rounded-xl border border-white/10 bg-white/[0.02] open:pb-3">
-                    <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2.5 text-[11px] font-medium text-white/40">
+                    <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2.5 text-xs font-medium text-white/50">
                       <span>Estilo visual {selectedArt ? '· 1 selecionado' : '(opcional)'}</span>
                       <ChevronDown className="h-3.5 w-3.5 text-white/30 transition-transform group-open:rotate-180" />
                     </summary>
