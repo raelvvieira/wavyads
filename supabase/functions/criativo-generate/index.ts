@@ -50,6 +50,24 @@ function parseDataUrl(
   }
 }
 
+// Nenhuma fetch() externa tinha timeout — se o EvoLink (ou o Storage) aceita
+// a conexão e nunca responde, a chamada travava pra sempre e a tela do
+// usuário ficava "Gerando..." indefinidamente, sem erro nenhum. AbortSignal
+// transforma esse travamento num erro limpo, que já cai no catch principal
+// da função (linha ~475) e vira uma resposta de erro normal.
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number): Promise<Response> {
+  try {
+    return await fetch(url, { ...options, signal: AbortSignal.timeout(timeoutMs) });
+  } catch (e) {
+    if (e instanceof DOMException && e.name === "TimeoutError") {
+      let host = url;
+      try { host = new URL(url).hostname; } catch { /* mantém url bruta */ }
+      throw new Error(`Tempo limite (${Math.round(timeoutMs / 1000)}s) ao chamar ${host}`);
+    }
+    throw e;
+  }
+}
+
 function safeJsonParse(text: string): any | null {
   try {
     return JSON.parse(text);
@@ -90,7 +108,7 @@ function buildProviderErrorResponse(status: number, body: string): Response {
 }
 
 async function fetchUrlToBase64DataUrl(url: string): Promise<string> {
-  const r = await fetch(url);
+  const r = await fetchWithTimeout(url, {}, 20_000);
   if (!r.ok) {
     throw new Error(`Falha ao baixar imagem do EvoLink (${r.status})`);
   }
@@ -119,12 +137,12 @@ const MAX_REFERENCE_IMAGE_BYTES = 9.5 * 1024 * 1024; // EvoLink recusa acima de 
 // processing failed" — então confirmamos aqui, logo após o upload.
 async function verifyUrlPubliclyAccessible(url: string): Promise<void> {
   try {
-    const head = await fetch(url, { method: "HEAD" });
+    const head = await fetchWithTimeout(url, { method: "HEAD" }, 10_000);
     if (head.ok) return;
   } catch {
     // alguns hosts recusam HEAD — cai pro GET abaixo antes de desistir
   }
-  const get = await fetch(url, { headers: { Range: "bytes=0-0" } });
+  const get = await fetchWithTimeout(url, { headers: { Range: "bytes=0-0" } }, 10_000);
   if (!get.ok && get.status !== 206) {
     throw new Error(`status ${get.status}`);
   }
@@ -155,7 +173,7 @@ async function uploadBase64ToEvolink(
     parsed.mime === "image/gif" ? "gif" : "png";
   const filename = `ref-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extFromMime}`;
 
-  const resp = await fetch(`${EVOLINK_FILES_BASE_URL}/files/upload/base64`, {
+  const resp = await fetchWithTimeout(`${EVOLINK_FILES_BASE_URL}/files/upload/base64`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -167,7 +185,7 @@ async function uploadBase64ToEvolink(
       file_name: filename,
       mime_type: parsed.mime,
     }),
-  });
+  }, 20_000);
 
   const respText = await readLoggedText(`EvoLink upload (${label})`, resp);
   if (!resp.ok) {
@@ -272,7 +290,7 @@ async function persistImageToStorage(dataUrl: string): Promise<string | null> {
     parsed.mime === "image/gif" ? "gif" : "png";
   const objectPath = `generated/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
 
-  const uploadResp = await fetch(
+  const uploadResp = await fetchWithTimeout(
     `${supabaseUrl}/storage/v1/object/${STORAGE_BUCKET}/${objectPath}`,
     {
       method: "POST",
@@ -284,6 +302,7 @@ async function persistImageToStorage(dataUrl: string): Promise<string | null> {
       },
       body: parsed.bytes,
     },
+    20_000,
   );
 
   if (!uploadResp.ok) {
@@ -300,10 +319,10 @@ async function waitForTaskImage(
   apiKey: string,
 ): Promise<string> {
   for (let attempt = 1; attempt <= MAX_POLL_ATTEMPTS; attempt++) {
-    const resp = await fetch(`${EVOLINK_BASE_URL}/tasks/${taskId}`, {
+    const resp = await fetchWithTimeout(`${EVOLINK_BASE_URL}/tasks/${taskId}`, {
       method: "GET",
       headers: { Authorization: `Bearer ${apiKey}` },
-    });
+    }, 10_000);
 
     const respText = await readLoggedText(
       `EvoLink task ${attempt}/${MAX_POLL_ATTEMPTS}`,
@@ -428,14 +447,14 @@ serve(async (req) => {
       requestBody.image_urls = imageUrls;
     }
 
-    const createResp = await fetch(`${EVOLINK_BASE_URL}/images/generations`, {
+    const createResp = await fetchWithTimeout(`${EVOLINK_BASE_URL}/images/generations`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${EVOLINK_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(requestBody),
-    });
+    }, 30_000);
 
     const createRespText = await readLoggedText("EvoLink create", createResp);
     if (!createResp.ok) {

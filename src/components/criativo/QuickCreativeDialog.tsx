@@ -30,6 +30,9 @@ interface QuickCreativeDialogProps {
   copyBank: ClientCopyBankEntry[];
   intelligenceArts: ClientIntelligenceArt[];
   onGenerate: (params: { copyText: string; art: ClientIntelligenceArt | null; tema: string | null }) => void;
+  /** Copy salva escolhida é só referência de tom/tema — isso devolve uma
+   * variação NOVA no mesmo sentido, nunca o texto literal. */
+  onSuggestFromReference: (entry: ClientCopyBankEntry) => Promise<string>;
 }
 
 export function QuickCreativeDialog({
@@ -41,11 +44,14 @@ export function QuickCreativeDialog({
   copyBank,
   intelligenceArts,
   onGenerate,
+  onSuggestFromReference,
 }: QuickCreativeDialogProps) {
   const [selectedCopyId, setSelectedCopyId] = useState<string | null>(null);
   const [selectedArtId, setSelectedArtId] = useState<string | null>(null);
   const [copyText, setCopyText] = useState('');
   const [selectedTema, setSelectedTema] = useState<string | null>(null);
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestedFromReference, setSuggestedFromReference] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -53,16 +59,29 @@ export function QuickCreativeDialog({
     setSelectedArtId(null);
     setCopyText('');
     setSelectedTema(null);
+    setSuggesting(false);
+    setSuggestedFromReference(false);
   }, [open]);
 
-  const pickCopy = (entry: ClientCopyBankEntry) => {
+  const pickCopy = async (entry: ClientCopyBankEntry) => {
     setSelectedCopyId(entry.id);
-    setCopyText(entry.copy_text);
     setSelectedTema(entry.tema);
+    setSuggestedFromReference(false);
+    setSuggesting(true);
+    try {
+      const suggestion = await onSuggestFromReference(entry);
+      setCopyText(suggestion);
+      setSuggestedFromReference(true);
+    } catch {
+      // IA indisponível — cai pro texto original em vez de deixar sem copy.
+      setCopyText(entry.copy_text);
+    } finally {
+      setSuggesting(false);
+    }
   };
 
   const selectedArt = intelligenceArts.find((a) => a.id === selectedArtId) || null;
-  const canGenerate = copyText.trim().length > 0 && !generating;
+  const canGenerate = copyText.trim().length > 0 && !generating && !suggesting;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !generating && onOpenChange(v)}>
@@ -99,9 +118,10 @@ export function QuickCreativeDialog({
                         <button
                           key={entry.id}
                           type="button"
+                          disabled={suggesting}
                           onClick={() => pickCopy(entry)}
                           className={cn(
-                            'w-full rounded-2xl border p-3 text-left text-xs transition',
+                            'w-full rounded-2xl border p-3 text-left text-xs transition disabled:cursor-not-allowed disabled:opacity-60',
                             selectedCopyId === entry.id
                               ? 'border-[#EC4899]/60 bg-[#EC4899]/10 ring-1 ring-[#EC4899]/40'
                               : 'border-white/10 bg-white/[0.02] hover:border-white/25',
@@ -109,7 +129,11 @@ export function QuickCreativeDialog({
                         >
                           <div className="mb-1 flex items-center justify-between gap-2">
                             {entry.tema && <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/55">{entry.tema}</span>}
-                            {selectedCopyId === entry.id && <Check className="h-3.5 w-3.5 shrink-0 text-[#EC4899]" />}
+                            {selectedCopyId === entry.id && (
+                              suggesting
+                                ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-[#EC4899]" />
+                                : <Check className="h-3.5 w-3.5 shrink-0 text-[#EC4899]" />
+                            )}
                           </div>
                           <p className="line-clamp-2 whitespace-pre-wrap text-white/75">{entry.copy_text}</p>
                         </button>
@@ -119,12 +143,23 @@ export function QuickCreativeDialog({
                 </div>
 
                 <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/45">Copy que será usada</p>
+                  <div className="mb-2 flex items-center gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-white/45">Copy que será usada</p>
+                    {suggesting && (
+                      <span className="flex items-center gap-1 text-[10px] text-[#EC4899]">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Sugerindo variação nova...
+                      </span>
+                    )}
+                    {!suggesting && suggestedFromReference && (
+                      <span className="text-[10px] text-white/45">Sugestão da IA a partir da referência — edite à vontade</span>
+                    )}
+                  </div>
                   <Textarea
                     value={copyText}
-                    onChange={(e) => { setCopyText(e.target.value); setSelectedCopyId(null); }}
+                    onChange={(e) => { setCopyText(e.target.value); setSelectedCopyId(null); setSuggestedFromReference(false); }}
+                    disabled={suggesting}
                     rows={5}
-                    placeholder="Selecione uma copy salva acima ou escreva/cole uma copy aqui..."
+                    placeholder="Selecione uma copy salva acima (a IA sugere uma variação nova) ou escreva/cole uma copy aqui..."
                   />
                 </div>
 
