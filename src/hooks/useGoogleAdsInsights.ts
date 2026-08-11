@@ -5,8 +5,12 @@ import type { MetaCampaign, MetaInsights, DailyMetric, TimeRange } from './useMe
 export async function fetchGoogleInsights(action: string, clientId: string, timeRange: TimeRange) {
   const { data, error } = await supabase.functions.invoke('google-ads-fetch-insights', {
     body: { action, client_id: clientId, time_range: timeRange },
+    // Sem isso, uma chamada que trava no lado do Google deixava a tela
+    // "carregando" pra sempre (mesmo problema já corrigido no criativo-generate).
+    timeout: 45_000,
   });
   if (error) throw error;
+  if ((data as any)?.error) throw new Error((data as any).error);
   return data;
 }
 

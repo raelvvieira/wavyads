@@ -14,6 +14,23 @@ const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 // (ex.: sincronizado antes dessa coluna existir).
 const WAVY_MANAGER_CUSTOMER_ID = "8125716511";
 
+// Nenhuma fetch() externa desta função tinha timeout — se a API do Google
+// (token endpoint ou googleAds:searchStream) aceitasse a conexão e nunca
+// respondesse, a tela ficava travada em "carregando" pra sempre, sem erro
+// nenhum (mesma classe de bug já corrigida em criativo-generate/index.ts).
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number): Promise<Response> {
+  try {
+    return await fetch(url, { ...options, signal: AbortSignal.timeout(timeoutMs) });
+  } catch (e) {
+    if (e instanceof DOMException && e.name === "TimeoutError") {
+      let host = url;
+      try { host = new URL(url).hostname; } catch { /* mantém url bruta */ }
+      throw new Error(`Tempo limite (${Math.round(timeoutMs / 1000)}s) ao chamar ${host}`);
+    }
+    throw e;
+  }
+}
+
 async function refreshAccessToken(supabase: any, clientRecord: any, clientIdGoogle: string, clientSecretGoogle: string): Promise<string> {
   const now = new Date();
   const expiresAt = clientRecord.google_ads_token_expires_at ? new Date(clientRecord.google_ads_token_expires_at) : null;
@@ -23,7 +40,7 @@ async function refreshAccessToken(supabase: any, clientRecord: any, clientIdGoog
   }
 
   // Refresh
-  const res = await fetch(GOOGLE_TOKEN_URL, {
+  const res = await fetchWithTimeout(GOOGLE_TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -32,7 +49,7 @@ async function refreshAccessToken(supabase: any, clientRecord: any, clientIdGoog
       refresh_token: clientRecord.google_ads_refresh_token,
       grant_type: "refresh_token",
     }),
-  });
+  }, 15_000);
   const data = await res.json();
 
   if (data.error) {
@@ -77,9 +94,10 @@ async function gaqlQuery(
   let lastError = "Falha ao consultar o Google Ads";
 
   for (const headers of attempts) {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `${GOOGLE_ADS_API}/customers/${customerId}/googleAds:searchStream`,
-      { method: "POST", headers, body: JSON.stringify({ query }) }
+      { method: "POST", headers, body: JSON.stringify({ query }) },
+      20_000,
     );
 
     const text = await res.text();
