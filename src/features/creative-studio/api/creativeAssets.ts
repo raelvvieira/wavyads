@@ -216,3 +216,26 @@ export async function listAssetLineage(rootAssetId: string): Promise<CreativeAss
   if (error) throw error;
   return (data ?? []).map(mapAssetRow);
 }
+
+export async function getCreativeAsset(assetId: string): Promise<CreativeAsset | null> {
+  const { data, error } = await supabase
+    .from('creative_assets')
+    .select('*')
+    .eq('id', assetId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? mapAssetRow(data) : null;
+}
+
+/**
+ * Marca como falhas as gerações que ficaram órfãs (aba fechada no meio).
+ * Devolve quantas foram recuperadas.
+ */
+export async function recoverStaleAssets(projectId: string, timeoutMinutes = 10): Promise<number> {
+  const { data, error } = await supabase.rpc('recover_stale_creative_assets', {
+    p_project_id: projectId,
+    p_timeout_minutes: timeoutMinutes,
+  });
+  if (error) throw error;
+  return data ?? 0;
+}

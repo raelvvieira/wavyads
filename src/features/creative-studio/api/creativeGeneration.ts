@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { recordAiUsage } from '@/lib/aiUsageTracker';
-import { createAssetGroup, createCreativeAsset, updateCreativeAsset } from './creativeAssets';
+import { createAssetGroup, createCreativeAsset, getCreativeAsset, updateCreativeAsset } from './creativeAssets';
 import { buildAssetFileName, extractFunctionErrorMessage, uploadDataUrlToAssetStorage } from './storage';
 import { ASPECT_CONFIG, MODEL_OPTIONS } from '../constants/formats';
 import { buildCreativePrompt } from '../lib/promptBuilder';
@@ -395,4 +395,78 @@ export async function generateOriginalAsset({
       return url;
     },
   });
+}
+
+/**
+ * Regera uma arte que falhou, no lugar — a mesma linha volta para
+ * 'generating' e depois 'ready'. Recriar como um asset novo duplicaria o card
+ * no Canvas e quebraria a linhagem de quem já aponta para este id.
+ *
+ * Só é possível porque o prompt fica gravado no próprio asset: nada precisa
+ * ser reconstruído a partir do estado da tela.
+ */
+export async function retryAsset({
+  asset,
+  onStart,
+}: {
+  asset: CreativeAsset;
+  onStart?: () => void;
+}): Promise<CreativeAsset> {
+  if (!asset.prompt) {
+    throw new Error('Esta arte não tem prompt registrado — gere uma nova em vez de retentar');
+  }
+
+  const model = asset.model || DEFAULT_MODEL;
+  const aspect = asset.type === 'resize' ? 'square' : backendAspectOf(asset);
+
+  await updateCreativeAsset(asset.id, { status: 'generating', errorMessage: null });
+  onStart?.();
+
+  try {
+    let rawUrl: string;
+
+    if (asset.type === 'edited') {
+      // Edição precisa da imagem de origem, que é o pai na árvore.
+      const source = asset.parentAssetId
+        ? await getCreativeAsset(asset.parentAssetId)
+        : null;
+      if (!source?.url) throw new Error('A arte de origem desta edição não está mais disponível');
+      const feedback = String(asset.metadata?.feedback ?? '');
+      if (!feedback) throw new Error('O pedido de edição original não foi registrado');
+      rawUrl = await invokeImageFunction(
+        'criativo-edit-image',
+        { originalImage: source.url, userFeedback: feedback, originalPrompt: source.prompt || '', aspect: backendAspectOf(source), language: 'pt-BR' },
+        'editedImageUrl',
+      );
+      recordAiUsage('text-flash');
+    } else {
+      const parent = asset.parentAssetId ? await getCreativeAsset(asset.parentAssetId) : null;
+      rawUrl = await invokeImageFunction(
+        'criativo-generate',
+        {
+          prompt: asset.prompt,
+          aspectRatio: aspect,
+          model,
+          isVariation: asset.type === 'factor',
+          storyReference: asset.type === 'resize' ? parent?.url ?? null : null,
+        },
+        'imageUrl',
+      );
+    }
+    recordImageUsage(model);
+
+    const { url } = await uploadDataUrlToAssetStorage({
+      dataUrl: rawUrl,
+      path: `${asset.projectId}/${asset.type}/${buildAssetFileName(`retry-${asset.id.slice(0, 8)}`)}`,
+    });
+    return await updateCreativeAsset(asset.id, { url, thumbnailUrl: url, status: 'ready', errorMessage: null });
+  } catch (error: any) {
+    const message = error?.message || 'Falha ao regerar';
+    try {
+      await updateCreativeAsset(asset.id, { status: 'failed', errorMessage: message });
+    } catch {
+      /* ignore */
+    }
+    throw new Error(message);
+  }
 }

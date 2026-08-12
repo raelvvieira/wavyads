@@ -6,6 +6,7 @@ import {
   editAsset,
   generateOriginalAsset,
   resizeAssetToSquare,
+  retryAsset,
   type GenerateOriginalInput,
 } from '../api/creativeGeneration';
 import { touchProjectAfterGeneration } from '../api/creativeProjects';
@@ -13,7 +14,7 @@ import { updateCreativeAsset } from '../api/creativeAssets';
 import { useInvalidateCreativeAssets } from './useCreativeAssets';
 import type { CreativeAsset } from '../types/creative';
 
-export type CreativeActionKind = 'create' | 'edit' | 'resize' | 'factor' | 'intelligence';
+export type CreativeActionKind = 'create' | 'edit' | 'resize' | 'factor' | 'intelligence' | 'retry';
 
 export interface UseCreativeActionsResult {
   runningAction: CreativeActionKind | null;
@@ -23,6 +24,7 @@ export interface UseCreativeActionsResult {
   resize: (asset: CreativeAsset) => Promise<boolean>;
   factor: (asset: CreativeAsset) => Promise<boolean>;
   saveToClientIntelligence: (asset: CreativeAsset) => Promise<boolean>;
+  retry: (asset: CreativeAsset) => Promise<boolean>;
 }
 
 export function useCreativeActions(projectId: string | undefined): UseCreativeActionsResult {
@@ -93,10 +95,16 @@ export function useCreativeActions(projectId: string | undefined): UseCreativeAc
     toast({ title: 'Arte salva na inteligência do cliente' });
   }), [run, toast]);
 
+  const retry = useCallback((asset: CreativeAsset) => run('retry', 'regerar a arte', async () => {
+    await retryAsset({ asset, onStart: refresh });
+    toast({ title: 'Arte regerada' });
+  }), [run, refresh, toast]);
+
   return {
     runningAction,
     isRunning: runningAction !== null,
     create,
+    retry,
     edit,
     resize,
     factor,

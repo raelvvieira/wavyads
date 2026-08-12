@@ -6,6 +6,7 @@ import {
   Download,
   Loader2,
   Maximize2,
+  RotateCcw,
   Sparkles,
   Wand2,
 } from 'lucide-react';
@@ -64,6 +65,7 @@ interface AssetInspectorProps {
   onDownload: () => void;
   onOpenFocus: () => void;
   onSaveToIntelligence: () => void;
+  onRetry: () => void;
 }
 
 function AssetInspector({
@@ -78,6 +80,7 @@ function AssetInspector({
   onDownload,
   onOpenFocus,
   onSaveToIntelligence,
+  onRetry,
 }: AssetInspectorProps) {
   const [feedback, setFeedback] = useState('');
   const busy = runningAction !== null;
@@ -107,11 +110,28 @@ function AssetInspector({
       )}
 
       {asset.status === 'failed' && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-[11px] text-destructive">
-          {asset.errorMessage || 'Falha na geração'}
+        <div className="space-y-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
+          <p className="text-[11px] leading-relaxed text-destructive">
+            {asset.errorMessage || 'Falha na geração'}
+          </p>
+          {/* O prompt fica gravado no asset, então regerar não depende de
+              reconstruir nada do estado da tela. */}
+          <button
+            type="button"
+            onClick={onRetry}
+            disabled={busy || !asset.prompt}
+            className={cn(
+              'flex w-full items-center justify-center gap-2 rounded-lg border border-destructive/40 px-3 py-1.5 text-[11px] font-medium text-destructive transition',
+              'hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-40',
+            )}
+          >
+            {runningAction === 'retry' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+            Tentar novamente
+          </button>
         </div>
       )}
 
+      {asset.status !== 'failed' && (
       <div>
         <p className="mb-1.5 text-[11px] text-[var(--studio-text-tertiary)]">O que deseja alterar?</p>
         <textarea
@@ -141,6 +161,7 @@ function AssetInspector({
           A arte atual é preservada — a edição entra como uma versão nova ligada a ela.
         </p>
       </div>
+      )}
 
       <div className="space-y-2">
         <p className="text-[11px] text-[var(--studio-text-tertiary)]">Ações</p>
@@ -196,7 +217,6 @@ export function CreativeInspector({
   label,
   parent,
   parentLabel,
-  createPanel,
   runningAction,
   onEdit,
   onResize,
@@ -204,6 +224,8 @@ export function CreativeInspector({
   onDownload,
   onOpenFocus,
   onSaveToIntelligence,
+  onRetry,
+  createPanel,
 }: Partial<AssetInspectorProps> & { asset: CreativeAsset | null; createPanel: ReactNode }) {
   return (
     <aside className="flex h-full flex-col border-l border-[var(--studio-border)] bg-[var(--studio-surface-1)]">
@@ -221,6 +243,7 @@ export function CreativeInspector({
             onDownload={onDownload ?? (() => {})}
             onOpenFocus={onOpenFocus ?? (() => {})}
             onSaveToIntelligence={onSaveToIntelligence ?? (() => {})}
+            onRetry={onRetry ?? (() => {})}
           />
         ) : (
           createPanel

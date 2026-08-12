@@ -272,6 +272,7 @@ export function CreativeWorkspace() {
             onDownload={() => selectedAsset && download(selectedAsset)}
             onOpenFocus={() => selectedAsset && openFocus(selectedAsset)}
             onSaveToIntelligence={() => selectedAsset && actions.saveToClientIntelligence(selectedAsset)}
+            onRetry={() => selectedAsset && actions.retry(selectedAsset)}
             createPanel={(
               <CreateInspector
                 clients={clientsQuery.data ?? []}

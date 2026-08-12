@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { listProjectAssetGroups, listProjectArtworks } from '../api/creativeAssets';
+import { listProjectAssetGroups, listProjectArtworks, recoverStaleAssets } from '../api/creativeAssets';
 import { useCreativeAssetsRealtime } from './useCreativeAssetsRealtime';
 import { buildArtworkSections } from '../lib/artworkSections';
 import type { CreativeArtworkSections, CreativeAsset, CreativeAssetGroup } from '../types/creative';
@@ -32,6 +32,7 @@ export function useCreativeAssets(projectId: string | undefined): UseCreativeAss
   // Assina as mudanças do projeto: gerações que terminam (aqui ou em outra
   // aba) chegam sozinhas ao Canvas.
   useCreativeAssetsRealtime(projectId);
+  useRecoverStaleAssets(projectId);
 
   const assetsQuery = useQuery({
     queryKey: creativeAssetsQueryKey(projectId),
@@ -63,6 +64,31 @@ export function useCreativeAssets(projectId: string | undefined): UseCreativeAss
       groupsQuery.refetch();
     },
   };
+}
+
+/**
+ * Ao abrir um projeto, fecha as gerações que ficaram órfãs — a aba anterior
+ * pode ter sido fechada no meio, deixando cards "Gerando..." que nunca
+ * virariam nada. Uma vez por projeto por montagem: é higiene de abertura,
+ * não algo para repetir a cada refetch.
+ */
+function useRecoverStaleAssets(projectId: string | undefined) {
+  const queryClient = useQueryClient();
+  const recoveredFor = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!projectId || recoveredFor.current === projectId) return;
+    recoveredFor.current = projectId;
+    recoverStaleAssets(projectId)
+      .then((count) => {
+        if (count > 0) {
+          queryClient.invalidateQueries({ queryKey: creativeAssetsQueryKey(projectId) });
+        }
+      })
+      // Falhar aqui não pode impedir o projeto de abrir: no pior caso os cards
+      // órfãos continuam visíveis até a próxima tentativa.
+      .catch(() => undefined);
+  }, [projectId, queryClient]);
 }
 
 /** Invalida as artes de um projeto depois de gerar/editar/aplicar Fator. */
