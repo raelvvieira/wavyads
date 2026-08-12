@@ -74,7 +74,7 @@ export function WorkspaceComposer({ selectedAssets, busy, onCreate, onEdit }: Wo
           disabled={!enabled || busy}
           placeholder={placeholder}
           className={cn(
-            'max-h-32 min-h-[36px] flex-1 resize-none bg-transparent py-1.5 text-[13px] text-[var(--studio-text)]',
+            'max-h-32 min-h-[36px] flex-1 resize-none bg-transparent py-1.5 text-[14px] text-[var(--studio-text)]',
             'placeholder:text-[var(--studio-text-tertiary)] focus:outline-none disabled:cursor-not-allowed',
           )}
         />
@@ -92,7 +92,7 @@ export function WorkspaceComposer({ selectedAssets, busy, onCreate, onEdit }: Wo
         </button>
       </div>
 
-      <p className="mt-2 px-1 text-[10px] text-[var(--studio-text-tertiary)]">
+      <p className="mt-2 px-1 text-[11px] text-[var(--studio-text-tertiary)]">
         {mode === 'create'
           ? 'Enter gera direto. Para copy exata, formato, logo ou foto de produto, use o painel Criar à direita.'
           : mode === 'edit'

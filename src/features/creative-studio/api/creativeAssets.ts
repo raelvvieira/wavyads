@@ -239,3 +239,35 @@ export async function recoverStaleAssets(projectId: string, timeoutMinutes = 10)
   if (error) throw error;
   return data ?? 0;
 }
+
+export interface GalleryAsset extends CreativeAsset {
+  projectTitle: string | null;
+}
+
+/**
+ * Todas as artes, através de projetos — a visão de galeria do Canvas.
+ * O filtro por cliente é o eixo principal aqui: no dia a dia se pensa "o que
+ * já fizemos para o Dr. Mauro?", não "o que tem no projeto X".
+ */
+export async function listArtworkGallery({
+  clientId,
+  limit = 120,
+}: {
+  clientId?: string | null;
+  limit?: number;
+} = {}): Promise<GalleryAsset[]> {
+  let query = supabase
+    .from('creative_assets')
+    .select('*, creative_projects(title)')
+    .in('type', ARTWORK_ASSET_TYPES as unknown as string[])
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (clientId) query = query.eq('client_id', clientId);
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []).map((row: any) => ({
+    ...mapAssetRow(row),
+    projectTitle: row.creative_projects?.title ?? null,
+  }));
+}

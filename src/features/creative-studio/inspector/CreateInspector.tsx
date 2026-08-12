@@ -25,15 +25,15 @@ const RESOLUTIONS: { id: CreativeResolution; label: string }[] = [
 function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
     <div>
-      <p className="mb-1.5 text-[11px] text-[var(--studio-text-tertiary)]">{label}</p>
+      <p className="mb-1.5 text-[12px] text-[var(--studio-text-tertiary)]">{label}</p>
       {children}
-      {hint && <p className="mt-1 text-[10px] leading-relaxed text-[var(--studio-text-tertiary)]">{hint}</p>}
+      {hint && <p className="mt-1 text-[11px] leading-relaxed text-[var(--studio-text-tertiary)]">{hint}</p>}
     </div>
   );
 }
 
 const inputClass = cn(
-  'w-full rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-2)] p-2.5 text-[12px] text-[var(--studio-text)]',
+  'w-full rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-2)] p-2.5 text-[13px] text-[var(--studio-text)]',
   'placeholder:text-[var(--studio-text-tertiary)] focus:border-[var(--studio-accent)] focus:outline-none disabled:opacity-40',
 );
 
@@ -136,10 +136,10 @@ export function CreateInspector({
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--studio-text-secondary)]">
+        <h3 className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--studio-text-secondary)]">
           Criar
         </h3>
-        <p className="mt-1.5 text-[11px] leading-relaxed text-[var(--studio-text-tertiary)]">
+        <p className="mt-1.5 text-[12px] leading-relaxed text-[var(--studio-text-tertiary)]">
           Descreva o negócio e a arte. Depois de gerada, selecione-a no quadro para editar, variar
           ou redimensionar — nada é sobrescrito.
         </p>
@@ -172,7 +172,7 @@ export function CreateInspector({
 
       <div className="rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-2)] p-3">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] text-[var(--studio-text-secondary)]">
+          <span className="text-[12px] text-[var(--studio-text-secondary)]">
             {designSystemSource === 'project' && '✓ Direção visual do projeto'}
             {designSystemSource === 'client' && '✓ Identidade do cliente'}
             {designSystemSource === 'none' && 'Sem direção visual'}
@@ -180,12 +180,12 @@ export function CreateInspector({
           <button
             type="button"
             onClick={onOpenReferences}
-            className="shrink-0 text-[11px] text-[var(--studio-accent)] underline underline-offset-2 hover:brightness-125"
+            className="shrink-0 text-[12px] text-[var(--studio-accent)] underline underline-offset-2 hover:brightness-125"
           >
             {designSystemSource === 'none' ? 'Definir' : 'Ver'}
           </button>
         </div>
-        <p className="mt-1 text-[10px] leading-relaxed text-[var(--studio-text-tertiary)]">
+        <p className="mt-1 text-[11px] leading-relaxed text-[var(--studio-text-tertiary)]">
           {designSystemSource === 'none'
             ? 'Envie referências para a IA extrair paleta, tipografia e composição — é o que mais muda a qualidade.'
             : 'Aplicada automaticamente. O campo abaixo sobrescreve só desta vez.'}
@@ -270,7 +270,7 @@ export function CreateInspector({
         })}
         disabled={!canGenerate}
         className={cn(
-          'flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--studio-accent)] px-3 py-2.5 text-[11px] font-semibold text-white transition',
+          'flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--studio-accent)] px-3 py-2.5 text-[12px] font-semibold text-white transition',
           'hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40',
         )}
       >
