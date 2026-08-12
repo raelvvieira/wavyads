@@ -13,6 +13,17 @@ export default {
       },
     },
     extend: {
+      // Escala tipográfica WAVY.
+      //
+      // O padrão do Tailwind já coincide com a WAVY onde importa: xs 12/16
+      // (rótulo), base 16/24 (card), xl 20/28 (seção) e sm 14/20 (tabela).
+      // Só os tamanhos de display vinham mais apertados que a especificação,
+      // então são os únicos ajustados — mexer nos demais mudaria a densidade
+      // de todas as telas sem ganho nenhum de conformidade.
+      fontSize: {
+        '3xl': ['1.875rem', { lineHeight: '2.375rem' }], // 30/38 — display compacto
+        '4xl': ['2.25rem', { lineHeight: '2.75rem' }],   // 36/44 — display
+      },
       fontFamily: {
         // Fonte única, vinda do token: o body já usa --wavy-font, e deixar o
         // config apontando para outra pilha fazia a utilidade font-sans
