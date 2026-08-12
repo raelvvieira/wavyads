@@ -1,13 +1,12 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
-import {
-  ARTWORK_ASSET_TYPES,
-  type CreativeAsset,
-  type CreativeAssetGroup,
-  type CreativeAssetGroupType,
-  type CreativeAssetStatus,
-  type CreativeAssetType,
-  type FactorAxis,
+import type {
+  CreativeAsset,
+  CreativeAssetGroup,
+  CreativeAssetGroupType,
+  CreativeAssetStatus,
+  CreativeAssetType,
+  FactorAxis,
 } from '../types/creative';
 
 type AssetRow = Database['public']['Tables']['creative_assets']['Row'];
@@ -19,7 +18,7 @@ function asRecord(value: unknown): Record<string, any> {
     : {};
 }
 
-export function mapAssetRow(row: AssetRow): CreativeAsset {
+function mapAssetRow(row: AssetRow): CreativeAsset {
   return {
     id: row.id,
     projectId: row.project_id,
@@ -48,7 +47,7 @@ export function mapAssetRow(row: AssetRow): CreativeAsset {
   };
 }
 
-export function mapGroupRow(row: GroupRow): CreativeAssetGroup {
+function mapGroupRow(row: GroupRow): CreativeAssetGroup {
   return {
     id: row.id,
     projectId: row.project_id,
@@ -63,7 +62,6 @@ export function mapGroupRow(row: GroupRow): CreativeAssetGroup {
 export interface CreateCreativeAssetInput {
   projectId: string;
   type: CreativeAssetType;
-  /** Ausente quando o asset é criado antes da imagem existir (queued/generating). */
   url?: string | null;
   thumbnailUrl?: string | null;
   status?: CreativeAssetStatus;
@@ -124,62 +122,6 @@ export async function createCreativeAsset(input: CreateCreativeAssetInput): Prom
   return mapAssetRow(data);
 }
 
-export interface UpdateCreativeAssetInput {
-  url?: string | null;
-  thumbnailUrl?: string | null;
-  status?: CreativeAssetStatus;
-  errorMessage?: string | null;
-  isClientIntelligence?: boolean;
-  metadata?: Record<string, any>;
-}
-
-export async function updateCreativeAsset(
-  assetId: string,
-  patch: UpdateCreativeAssetInput,
-): Promise<CreativeAsset> {
-  const payload: Database['public']['Tables']['creative_assets']['Update'] = {};
-  if (patch.url !== undefined) payload.url = patch.url;
-  if (patch.thumbnailUrl !== undefined) payload.thumbnail_url = patch.thumbnailUrl;
-  if (patch.status !== undefined) payload.status = patch.status;
-  if (patch.errorMessage !== undefined) payload.error_message = patch.errorMessage;
-  if (patch.isClientIntelligence !== undefined) payload.is_client_intelligence = patch.isClientIntelligence;
-  if (patch.metadata !== undefined) payload.metadata = patch.metadata;
-
-  const { data, error } = await supabase
-    .from('creative_assets')
-    .update(payload)
-    .eq('id', assetId)
-    .select('*')
-    .single();
-
-  if (error) throw error;
-  return mapAssetRow(data);
-}
-
-/** Só as artes produzidas — insumos (referência, logo, produto) ficam de fora. */
-export async function listProjectArtworks(projectId: string): Promise<CreativeAsset[]> {
-  const { data, error } = await supabase
-    .from('creative_assets')
-    .select('*')
-    .eq('project_id', projectId)
-    .in('type', ARTWORK_ASSET_TYPES as unknown as string[])
-    .order('created_at', { ascending: true });
-
-  if (error) throw error;
-  return (data ?? []).map(mapAssetRow);
-}
-
-export async function listProjectAssetGroups(projectId: string): Promise<CreativeAssetGroup[]> {
-  const { data, error } = await supabase
-    .from('creative_asset_groups')
-    .select('*')
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: true });
-
-  if (error) throw error;
-  return (data ?? []).map(mapGroupRow);
-}
-
 export async function createAssetGroup(input: {
   projectId: string;
   type: CreativeAssetGroupType;
@@ -203,71 +145,4 @@ export async function createAssetGroup(input: {
 
   if (error) throw error;
   return mapGroupRow(data);
-}
-
-/** Todas as artes que descendem de uma raiz — uma query, por mais fundo que vá. */
-export async function listAssetLineage(rootAssetId: string): Promise<CreativeAsset[]> {
-  const { data, error } = await supabase
-    .from('creative_assets')
-    .select('*')
-    .eq('root_asset_id', rootAssetId)
-    .order('created_at', { ascending: true });
-
-  if (error) throw error;
-  return (data ?? []).map(mapAssetRow);
-}
-
-export async function getCreativeAsset(assetId: string): Promise<CreativeAsset | null> {
-  const { data, error } = await supabase
-    .from('creative_assets')
-    .select('*')
-    .eq('id', assetId)
-    .maybeSingle();
-  if (error) throw error;
-  return data ? mapAssetRow(data) : null;
-}
-
-/**
- * Marca como falhas as gerações que ficaram órfãs (aba fechada no meio).
- * Devolve quantas foram recuperadas.
- */
-export async function recoverStaleAssets(projectId: string, timeoutMinutes = 10): Promise<number> {
-  const { data, error } = await supabase.rpc('recover_stale_creative_assets', {
-    p_project_id: projectId,
-    p_timeout_minutes: timeoutMinutes,
-  });
-  if (error) throw error;
-  return data ?? 0;
-}
-
-export interface GalleryAsset extends CreativeAsset {
-  projectTitle: string | null;
-}
-
-/**
- * Todas as artes, através de projetos — a visão de galeria do Canvas.
- * O filtro por cliente é o eixo principal aqui: no dia a dia se pensa "o que
- * já fizemos para o Dr. Mauro?", não "o que tem no projeto X".
- */
-export async function listArtworkGallery({
-  clientId,
-  limit = 120,
-}: {
-  clientId?: string | null;
-  limit?: number;
-} = {}): Promise<GalleryAsset[]> {
-  let query = supabase
-    .from('creative_assets')
-    .select('*, creative_projects(title)')
-    .in('type', ARTWORK_ASSET_TYPES as unknown as string[])
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (clientId) query = query.eq('client_id', clientId);
-
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data ?? []).map((row: any) => ({
-    ...mapAssetRow(row),
-    projectTitle: row.creative_projects?.title ?? null,
-  }));
 }

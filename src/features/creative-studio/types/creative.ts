@@ -1,10 +1,9 @@
 // Modelo de domínio do Criativo Studio.
 //
-// A regra que sustenta o Canvas novo: toda imagem é um CreativeAsset
-// independente, e toda transformação (Fator Criativo, edição, resize) cria
-// OUTRO asset ligado ao anterior por parent_asset_id. Nada é sobrescrito.
-// Com isso a UI monta os grupos a partir dos dados, em vez de depender de
-// listas paralelas no state do React.
+// Toda imagem é um CreativeAsset, e toda transformação (Fator Criativo,
+// edição, resize) cria OUTRO asset ligado ao anterior por parent_asset_id —
+// nada é sobrescrito. O vocabulário de `type` e o CHECK do banco andam juntos:
+// mudar um sem o outro faz a gravação falhar.
 
 export type CreativeAspectRatio =
   | '1:1' | '4:5' | '9:16' | '16:9' | '4:3' | '3:4' | '2:3' | '3:2' | '21:9';
@@ -67,25 +66,6 @@ export interface CreativeAssetGroup {
   title: string | null;
   metadata: Record<string, any>;
   createdAt: string;
-}
-
-/** Um lote do Fator Criativo: o grupo, a arte que o originou e as variações. */
-export interface FactorGroupView {
-  group: CreativeAssetGroup | null;
-  parentAssetId: string | null;
-  assets: CreativeAsset[];
-}
-
-/** Formato que o Canvas consome — seções já montadas a partir da linhagem. */
-export interface CreativeArtworkSections {
-  originals: CreativeAsset[];
-  factorGroups: FactorGroupView[];
-  edited: CreativeAsset[];
-  resizes: CreativeAsset[];
-}
-
-export function isArtworkType(type: string): type is ArtworkAssetType {
-  return (ARTWORK_ASSET_TYPES as readonly string[]).includes(type);
 }
 
 export const FACTOR_AXIS_LABELS: Record<FactorAxis, string> = {

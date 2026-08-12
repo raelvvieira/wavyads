@@ -3549,16 +3549,6 @@ export default function CriativoStudioPage() {
                 <Button variant="outline" size="sm" className="rounded-full" onClick={() => handleQuickAction('open-project-history')}>
                   <History className="mr-2 h-3.5 w-3.5" /> Histórico
                 </Button>
-                {/* Workspace novo (Etapas 5-7): rota separada, para comparar as
-                    duas versões sem alterar nada nesta tela. */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full border-[#EC4899]/40 text-[#F9A8D4] hover:bg-[#EC4899]/10"
-                  onClick={() => navigate(currentProjectId ? `/criativo-studio/v2?project=${currentProjectId}` : '/criativo-studio/v2')}
-                >
-                  <Layers className="mr-2 h-3.5 w-3.5" /> Novo workspace
-                </Button>
                 <div className="mx-1 hidden h-5 w-px bg-white/10 sm:block" />
                 <Button variant="ghost" size="sm" className="rounded-full text-white/55 hover:text-white" onClick={reset}>
                   <RotateCcw className="mr-2 h-3.5 w-3.5" /> Novo chat
