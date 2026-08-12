@@ -54,7 +54,7 @@ export function ImpressionShareCard({ campaigns, isLoading }: ImpressionShareCar
           <div key={c.id} className="rounded-lg border border-white/5 bg-white/[0.02] p-3">
             <div className="text-sm font-medium mb-2 truncate">{c.name}</div>
             <div className="flex flex-col sm:flex-row gap-3">
-              <Bar label="Parcela de impressões" value={c.impression_share} colorClass="bg-emerald-400" />
+              <Bar label="Parcela de impressões" value={c.impression_share} colorClass="bg-status-active" />
               <Bar label="Perdido por orçamento" value={c.lost_to_budget} colorClass="bg-amber-400" />
               <Bar label="Perdido por posição" value={c.lost_to_rank} colorClass="bg-red-400" />
             </div>

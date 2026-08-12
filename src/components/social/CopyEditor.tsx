@@ -22,7 +22,7 @@ const TIPO_BADGE: Record<SlideTipo, { label: string; cls: string }> = {
   cover: { label: "CAPA", cls: "bg-accent/20 text-accent border-accent/40" },
   problema: { label: "PROBLEMA", cls: "bg-orange-500/20 text-orange-300 border-orange-500/40" },
   agitacao: { label: "AGITAÇÃO", cls: "bg-red-500/20 text-red-300 border-red-500/40" },
-  solucao: { label: "SOLUÇÃO", cls: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40" },
+  solucao: { label: "SOLUÇÃO", cls: "bg-status-active/20 text-status-active border-status-active/40" },
   lista: { label: "LISTA", cls: "bg-violet-500/20 text-violet-300 border-violet-500/40" },
   prova: { label: "PROVA", cls: "bg-yellow-500/20 text-yellow-300 border-yellow-500/40" },
   cta: { label: "CTA", cls: "bg-blue-500/20 text-blue-300 border-blue-500/40" },

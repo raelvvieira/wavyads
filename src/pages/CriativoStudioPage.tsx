@@ -3409,18 +3409,18 @@ export default function CriativoStudioPage() {
                     {v && (
                       <>
                         <p className="text-sm font-medium">{v.nome}</p>
-                        <div className="rounded-xl bg-black/20 p-2 text-xs text-white/60">
+                        <div className="rounded-xl bg-[var(--wavy-surface-soft)] p-2 text-xs text-white/60">
                           <p><span className="text-white/35">Mudança:</span> {v.estrategia.mudanca}</p>
                           <p><span className="text-white/35">Para quem:</span> {v.estrategia.paraQuem}</p>
                         </div>
-                        <div className="rounded-xl bg-black/20 p-2 text-xs text-white/70">
+                        <div className="rounded-xl bg-[var(--wavy-surface-soft)] p-2 text-xs text-white/70">
                           {v.copy.label && <p className="text-[10px] uppercase tracking-wider text-[#FFB877]">{v.copy.label}</p>}
                           <p className="font-semibold text-white">{v.copy.titulo}</p>
                           {v.copy.subtitulo && <p>{v.copy.subtitulo}</p>}
                           {v.copy.dados && <p className="text-white/45">{v.copy.dados}</p>}
                           <p className="text-[#FFB877]">{v.copy.cta}</p>
                         </div>
-                        <div className="rounded-xl bg-black/20 p-2 text-xs text-white/60">
+                        <div className="rounded-xl bg-[var(--wavy-surface-soft)] p-2 text-xs text-white/60">
                           <p><span className="text-white/35">Hook:</span> {v.descricaoVisual.hook}</p>
                           <p><span className="text-white/35">Composição:</span> {v.descricaoVisual.composicao}</p>
                           {v.descricaoVisual.tom && <p><span className="text-white/35">Tom:</span> {v.descricaoVisual.tom}</p>}
@@ -3454,7 +3454,7 @@ export default function CriativoStudioPage() {
                       </div>
                     )}
                     {sqImg && (
-                      <div className="mt-2 space-y-2 rounded-2xl border border-white/10 bg-black/20 p-2">
+                      <div className="mt-2 space-y-2 rounded-2xl border border-white/10 bg-[var(--wavy-surface-soft)] p-2">
                         <p className="text-[10px] text-white/40">Versão 1080x1080 · veja no quadro abaixo</p>
                         <div className="grid grid-cols-3 gap-2">
                           <Button size="sm" variant="outline" className="rounded-full" onClick={() => download(sqImg, imageFileName(`criativo-fator-${i + 1}-square`))}>Baixar</Button>
@@ -3604,7 +3604,7 @@ export default function CriativoStudioPage() {
                 />
               </div>
               <div className="flex items-center gap-1.5 whitespace-nowrap text-xs text-white/45">
-                <span className={cn('h-1.5 w-1.5 rounded-full', savingProject ? 'animate-pulse bg-amber-400' : 'bg-emerald-400')} />
+                <span className={cn('h-1.5 w-1.5 rounded-full', savingProject ? 'animate-pulse bg-amber-400' : 'bg-status-active')} />
                 {loadingProject ? 'Carregando...' : savingProject ? 'Salvando...' : lastSavedAt ? `Salvo às ${new Date(lastSavedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 'Salva automaticamente'}
               </div>
             </div>
@@ -3637,7 +3637,7 @@ export default function CriativoStudioPage() {
           <section className={cn('flex flex-1 flex-col', currentStage === 'initial' ? 'justify-center py-12' : 'py-6')}>
             {currentStage === 'initial' && (
               <div className="mx-auto w-full max-w-3xl text-center">
-                <p className="mb-4 text-3xl font-semibold tracking-tight">O que vamos criar hoje?</p>
+                <p className="mb-4 text-3xl font-semibold">O que vamos criar hoje?</p>
                 <div className="rounded-[24px] border border-white/10 bg-[#111113] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.35)] focus-within:border-[#FF831E]/70">
                   <Textarea
                     value={initialPrompt}
@@ -3944,7 +3944,7 @@ export default function CriativoStudioPage() {
 
   if (roleLoading) {
     return (
-      <div className="p-6 pt-20 lg:pt-6 space-y-4">
+      <div className="p-6 space-y-4">
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-64" />
       </div>

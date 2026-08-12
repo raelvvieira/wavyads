@@ -46,7 +46,7 @@ export default function ComercialIndexPage() {
 
   if (roleLoading || (!isAdmin && redirecting)) {
     return (
-      <div className="p-6 pt-20 lg:pt-6 flex items-center justify-center min-h-[60vh]">
+      <div className="p-6 flex items-center justify-center min-h-[60vh]">
         <div className="h-8 w-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -54,7 +54,7 @@ export default function ComercialIndexPage() {
 
   if (!isAdmin) {
     return (
-      <div className="p-6 pt-20 lg:pt-6">
+      <div className="p-6">
         <GlassCard>
           <p className="text-sm text-muted-foreground">
             Nenhum cliente vinculado à sua conta.
@@ -65,9 +65,9 @@ export default function ComercialIndexPage() {
   }
 
   return (
-    <div className="p-6 pt-20 lg:pt-6 space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Comercial</h1>
+        <h1 className="text-2xl font-semibold">Comercial</h1>
         <p className="text-sm text-muted-foreground">
           Selecione um cliente para visualizar seus leads e compradores.
         </p>

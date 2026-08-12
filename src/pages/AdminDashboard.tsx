@@ -323,10 +323,10 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="p-6 pt-20 lg:pt-6 space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Clientes</h1>
+          <h1 className="text-2xl font-semibold">Clientes</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Gerencie seus clientes e sincronize com Meta Ads
           </p>

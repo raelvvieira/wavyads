@@ -94,7 +94,7 @@ export function SlideImageCard({
             "text-[10px]",
             image.source === "ai" && "border-accent/40 text-accent",
             image.source === "google" && "border-blue-500/40 text-blue-300",
-            image.source === "pexels" && "border-emerald-500/40 text-emerald-300",
+            image.source === "pexels" && "border-status-active/40 text-status-active",
             image.source === "freepik" && "border-cyan-500/40 text-cyan-300",
             image.source === "freepik-stock" && "border-cyan-500/40 text-cyan-300",
             image.source === "upload" && "border-violet-500/40 text-violet-300",

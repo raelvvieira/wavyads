@@ -2,6 +2,8 @@
 
 Inspect the current stack first. Reuse stable component and chart libraries. For new products build tokens → base → primitives → shell → patterns → pages → motion → QA.
 
+For shell work, copy or adapt `assets/expandable-island/` and follow [islands-navigation.md](islands-navigation.md). Do not improvise a conventional sidebar when this asset can be integrated.
+
 ## CSS
 
 Use `assets/wavy-tokens.css` as reference or drop-in. Components consume semantic variables and variants, not markup-depth selectors or repeated raw colors.
@@ -40,3 +42,5 @@ Create one theme adapter for the chart library: palette, axes, grid, tooltip, le
 Avoid blur on large scrolling containers. Prefer transform/opacity. Lazy-load heavy charts/editors when appropriate. Prevent font layout shift. Put decorative glows in pointer-inert pseudo-elements.
 
 Run project build/tests/lint/typecheck plus `python3 scripts/wavy_audit.py PROJECT`. Treat static findings as leads and pair them with rendered visual, responsive, contrast, reduced-motion, and keyboard checks.
+
+Render and capture the navigation both collapsed and expanded. Code completion without those visual states is insufficient.

@@ -17,12 +17,12 @@ export function MetricCard({ label, value, change, icon: Icon }: MetricCardProps
       <div className="flex items-start justify-between">
         <div className="space-y-2">
           <p className="text-sm text-white/60">{label}</p>
-          <p className="text-3xl font-bold tracking-tight metric-number">{value}</p>
+          <p className="text-3xl font-bold metric-number">{value}</p>
           <div
             className={cn(
               'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium',
               isPositive
-                ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                ? 'bg-status-active/10 text-status-active border border-status-active/20'
                 : 'bg-red-500/10 text-red-400 border border-red-500/20'
             )}
           >

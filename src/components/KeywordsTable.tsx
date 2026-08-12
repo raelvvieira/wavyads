@@ -37,7 +37,7 @@ function qualityScoreClass(score: number | null): string {
   if (score === null) return 'bg-white/5 text-white/40 border-white/10';
   if (score < 4) return 'bg-red-500/10 text-red-400 border-red-500/20';
   if (score < 8) return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-  return 'bg-green-500/10 text-green-400 border-green-500/20';
+  return 'bg-status-active/10 text-status-active border-status-active/20';
 }
 
 function MatchTypeBadge({ matchType }: { matchType: string }) {

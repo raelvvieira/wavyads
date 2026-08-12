@@ -406,7 +406,7 @@ export default function ClientDashboard() {
 
   if (clientLoading) {
     return (
-      <div className="p-6 pt-20 lg:pt-6 flex items-center justify-center min-h-[60vh]">
+      <div className="p-6 flex items-center justify-center min-h-[60vh]">
         <div className="h-8 w-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -414,7 +414,7 @@ export default function ClientDashboard() {
 
   if (!client) {
     return (
-      <div className="p-6 pt-20 lg:pt-6">
+      <div className="p-6">
         <GlassCard className="text-center py-16">
           <p className="text-muted-foreground">Cliente não encontrado</p>
         </GlassCard>
@@ -425,7 +425,7 @@ export default function ClientDashboard() {
   // Account selection modal
   if (pendingAccounts) {
     return (
-      <div className="p-6 pt-20 lg:pt-6 max-w-2xl mx-auto space-y-6 animate-fade-in">
+      <div className="p-6 max-w-2xl mx-auto space-y-6 animate-fade-in">
         <GlassCard>
           <h2 className="text-lg font-semibold mb-2">Selecione a Conta de Anúncios</h2>
           <p className="text-sm text-muted-foreground mb-6">
@@ -464,7 +464,7 @@ export default function ClientDashboard() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-black/60 backdrop-blur-xl px-3 sm:px-6 py-2 sm:py-4 pt-14 lg:pt-4">
+      <header className="glass-island sticky top-0 z-30 rounded-none border-x-0 border-t-0 px-3 sm:px-6 py-2 sm:py-4">
         {/* Top row: back + client identity (always visible) */}
         <div className="flex items-center gap-2 sm:gap-4">
           {isAdmin && (
@@ -505,7 +505,7 @@ export default function ClientDashboard() {
                     : (PRESETS.find(p => p.value === selectedPreset)?.label || 'Filtros')}
                 </button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[85vw] sm:w-96 bg-black/95 border-white/10 backdrop-blur-xl">
+              <SheetContent side="right" className="w-[85vw] sm:w-96 border-white/10 bg-[var(--wavy-surface)]">
                 <SheetHeader>
                   <SheetTitle className="text-left">Filtros</SheetTitle>
                 </SheetHeader>

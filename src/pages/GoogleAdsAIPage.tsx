@@ -21,7 +21,7 @@ function CopyButton({ text }: { text: string }) {
   };
   return (
     <button onClick={handleCopy} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Copiar">
-      {copied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
+      {copied ? <Check className="h-4 w-4 text-status-active" /> : <Copy className="h-4 w-4" />}
     </button>
   );
 }
@@ -393,7 +393,7 @@ export default function GoogleAdsAIPage() {
   };
 
   return (
-    <div className="p-6 pt-20 lg:pt-6 space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Google Ads I.A</h1>

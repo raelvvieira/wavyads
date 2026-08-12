@@ -157,8 +157,8 @@ export default function SettingsPage() {
   const visibleTabs = isAdmin ? tabs : tabs.filter(t => t.id !== 'acessos');
 
   return (
-    <div className="p-6 pt-20 lg:pt-6 space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Configurações</h1>
+    <div className="p-6 space-y-6">
+      <h1 className="text-2xl font-semibold">Configurações</h1>
 
       <div className="flex gap-1 glass rounded-xl p-1 w-fit">
         {visibleTabs.map((tab) => (
