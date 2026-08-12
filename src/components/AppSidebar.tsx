@@ -57,11 +57,15 @@ export function AppSidebar() {
         key={item.to}
         to={item.to}
         onClick={() => setCollapsed(false)}
+        aria-current={isActive ? 'page' : undefined}
         className={cn(
-          'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-300',
+          'flex min-h-[44px] items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium',
+          'transition-[background-color,color] duration-200 ease-[cubic-bezier(0.2,0.8,0.2,1)]',
           isActive
-            ? 'bg-accent/20 border-l-2 border-l-accent text-white'
-            : 'text-white/70 hover:bg-white/5 hover:text-white'
+            // Pílula sólida da marca: estado ativo tem que ser inequívoco,
+            // e o gradiente WAVY é ênfase — cabe exatamente aqui.
+            ? 'bg-[image:var(--wavy-gradient)] text-white shadow-[0_6px_18px_rgba(244,91,32,0.30)]'
+            : 'text-white/70 hover:bg-white/[0.06] hover:text-white'
         )}
       >
         <item.icon className="h-5 w-5" />
@@ -76,8 +80,9 @@ export function AppSidebar() {
     <>
       {!collapsed && (
         <button
-          className="fixed top-4 left-4 z-50 lg:hidden glass rounded-lg p-2"
+          className="fixed top-4 left-4 z-50 lg:hidden glass-island flex h-11 w-11 items-center justify-center rounded-xl"
           onClick={() => setCollapsed(true)}
+          aria-label="Abrir menu de navegação"
         >
           <Menu className="h-5 w-5" />
         </button>
@@ -85,19 +90,21 @@ export function AppSidebar() {
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 flex w-[280px] flex-col border-r border-white/10 transition-transform duration-300',
-          'bg-white/[0.03] backdrop-blur-xl',
+          'fixed inset-y-0 left-0 z-40 flex w-[280px] flex-col border-r border-white/10',
+          'transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]',
+          'bg-[var(--wavy-surface)] lg:bg-[var(--wavy-glass)] lg:backdrop-blur-xl lg:backdrop-saturate-125',
           'lg:translate-x-0',
           collapsed ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
         <div className="flex h-16 items-center gap-3 px-6 border-b border-white/10">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-black overflow-hidden">
+          <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-[var(--wavy-surface-elevated)]">
             <img src={wavyLogo} alt="WAVY" className="h-7 w-7 object-contain" />
           </div>
           <span className="text-lg font-semibold tracking-tight">WAVY Dash</span>
           <button
-            className="ml-auto lg:hidden p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+            className="ml-auto flex h-11 w-11 items-center justify-center rounded-xl text-white/60 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
+            aria-label="Fechar menu de navegação"
             onClick={() => setCollapsed(false)}
           >
             <X className="h-5 w-5" />
@@ -138,7 +145,7 @@ export function AppSidebar() {
             </div>
           )}
 
-          <button onClick={handleLogout} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-white/60 transition-all duration-300 hover:bg-destructive/10 hover:text-destructive">
+          <button onClick={handleLogout} className="flex min-h-[44px] w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-white/60 transition-colors duration-200 hover:bg-destructive/10 hover:text-destructive">
             <LogOut className="h-5 w-5" />
             Sair
           </button>

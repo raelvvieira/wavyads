@@ -3,6 +3,7 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 import { GlassCard } from './GlassCard';
+import { chartSeriesPalette, chartSurface } from '@/lib/chartTheme';
 import { cn } from '@/lib/utils';
 import { formatCurrency, formatNumber } from '@/data/mock';
 import type { DailyMetric } from '@/hooks/useMetaInsights';
@@ -16,14 +17,14 @@ interface LineConfig {
 }
 
 const LINES: LineConfig[] = [
-  { key: 'spend',              label: 'Gasto',             color: '#22c55e', yAxisId: 'currency', format: formatCurrency },
-  { key: 'clicks',             label: 'Cliques',           color: '#06b6d4', yAxisId: 'count',    format: formatNumber },
-  { key: 'impressions',        label: 'Impressões',        color: '#3b82f6', yAxisId: 'count',    format: formatNumber },
-  { key: 'leads',              label: 'Leads',             color: '#f59e0b', yAxisId: 'count',    format: (v) => v.toString() },
-  { key: 'purchases',          label: 'Compras',           color: '#ec4899', yAxisId: 'count',    format: (v) => v.toString() },
-  { key: 'results',            label: 'Resultados',        color: '#14b8a6', yAxisId: 'count',    format: (v) => v.toString() },
-  { key: 'cost_per_result',    label: 'Custo/Resultado',   color: '#a855f7', yAxisId: 'cost', format: formatCurrency },
-  { key: 'cost_per_purchase',  label: 'Custo/Compra',      color: '#f43f5e', yAxisId: 'cost', format: formatCurrency },
+  { key: 'spend',              label: 'Gasto',             color: chartSeriesPalette.spend,           yAxisId: 'currency', format: formatCurrency },
+  { key: 'clicks',             label: 'Cliques',           color: chartSeriesPalette.clicks,          yAxisId: 'count',    format: formatNumber },
+  { key: 'impressions',        label: 'Impressões',        color: chartSeriesPalette.impressions,     yAxisId: 'count',    format: formatNumber },
+  { key: 'leads',              label: 'Leads',             color: chartSeriesPalette.leads,           yAxisId: 'count',    format: (v) => v.toString() },
+  { key: 'purchases',          label: 'Compras',           color: chartSeriesPalette.purchases,       yAxisId: 'count',    format: (v) => v.toString() },
+  { key: 'results',            label: 'Resultados',        color: chartSeriesPalette.results,         yAxisId: 'count',    format: (v) => v.toString() },
+  { key: 'cost_per_result',    label: 'Custo/Resultado',   color: chartSeriesPalette.costPerResult,   yAxisId: 'cost', format: formatCurrency },
+  { key: 'cost_per_purchase',  label: 'Custo/Compra',      color: chartSeriesPalette.costPerPurchase, yAxisId: 'cost', format: formatCurrency },
 ];
 
 const ChartTooltip = ({ active, payload, label }: any) => {
@@ -102,11 +103,11 @@ export function DailyChart({ data }: DailyChartProps) {
               </linearGradient>
             ))}
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-          <XAxis dataKey="date" tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} axisLine={false} tickLine={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke={chartSurface.grid} />
+          <XAxis dataKey="date" tick={{ fill: chartSurface.axisTick, fontSize: chartSurface.axisFontSize }} axisLine={false} tickLine={false} />
           <YAxis
             yAxisId="currency"
-            tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }}
+            tick={{ fill: chartSurface.axisTick, fontSize: chartSurface.axisFontSize }}
             axisLine={false}
             tickLine={false}
             tickFormatter={(v) => `R$${v}`}
@@ -115,7 +116,7 @@ export function DailyChart({ data }: DailyChartProps) {
             <YAxis
               yAxisId="count"
               orientation="right"
-              tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }}
+              tick={{ fill: chartSurface.axisTick, fontSize: chartSurface.axisFontSize }}
               axisLine={false}
               tickLine={false}
               tickFormatter={formatNumber}

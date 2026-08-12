@@ -107,7 +107,7 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(26,205,138,0.08)_0%,_transparent_70%)]" />
+      <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(255,131,30,0.07)_0%,_transparent_70%)]" />
 
       <div className="relative z-10 w-full max-w-md px-6 animate-fade-in">
         <div className="glass rounded-2xl p-8 space-y-8">

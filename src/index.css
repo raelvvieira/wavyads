@@ -1,67 +1,156 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Inter:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* =========================================================================
+   WAVY Fluid Intelligence — camada de tokens
+   =========================================================================
+   Esta é a fonte da verdade. As variáveis do shadcn logo abaixo apenas
+   apontam para cá, então trocar a marca é trocar valores aqui — nenhum
+   componente carrega cor crua.
+
+   O app é dark-only hoje (não existe seletor de tema). Os valores de tema
+   claro ficam registrados no bloco [data-theme="light"] para o dia em que
+   houver um alternador; ligar isso é mudança funcional, não de design.
+   ========================================================================= */
+
 @layer base {
   :root {
-    --background: 0 0% 0%;
-    --foreground: 0 0% 100%;
+    --wavy-brand-orange: #FF831E;
+    --wavy-brand-mid: #F45B20;
+    --wavy-brand-red: #DA2F1E;
+    --wavy-gradient: linear-gradient(135deg, #FF831E 0%, #F45B20 48%, #DA2F1E 100%);
 
-    --card: 0 0% 3%;
-    --card-foreground: 0 0% 100%;
+    /* Superfícies escuras em camadas. Preto puro fica reservado para
+       contraste excepcional — nunca para a tela principal. */
+    --wavy-canvas: #0C0C0E;
+    --wavy-surface: #111113;
+    --wavy-surface-soft: #141416;
+    --wavy-surface-raised: #17171A;
+    --wavy-surface-elevated: #1D1D21;
 
-    --popover: 0 0% 5%;
-    --popover-foreground: 0 0% 100%;
+    --wavy-text: #F7F7F8;
+    --wavy-text-muted: #A1A1AA;
+    --wavy-text-subtle: #71717A;
 
-    --primary: 155 76% 46%;
+    --wavy-border: rgba(255, 255, 255, 0.10);
+    --wavy-border-strong: rgba(255, 255, 255, 0.18);
+    --wavy-focus: #FF9B47;
+
+    /* Vidro só para navegação, barras contextuais e overlays. */
+    --wavy-glass: rgba(24, 24, 28, 0.72);
+    --wavy-glass-border: rgba(255, 255, 255, 0.11);
+    --wavy-shadow-card: 0 10px 28px rgba(0, 0, 0, 0.20);
+    --wavy-shadow-island: 0 18px 50px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+
+    --wavy-font: Geist, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+    --wavy-radius-small: 10px;
+    --wavy-radius-control: 12px;
+    --wavy-radius-large-control: 14px;
+    --wavy-radius-card: 16px;
+    --wavy-radius-feature: 20px;
+    --wavy-radius-island: 24px;
+    --wavy-radius-pill: 999px;
+
+    --wavy-duration-press: 100ms;
+    --wavy-duration-fast: 160ms;
+    --wavy-duration-medium: 240ms;
+    --wavy-duration-panel: 320ms;
+    --wavy-duration-chart: 500ms;
+    --wavy-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --wavy-ease-fluid: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Registrado para uso futuro; nenhum alternador de tema está ligado. */
+  [data-theme='light'] {
+    color-scheme: light;
+    --wavy-canvas: #F5F5F7;
+    --wavy-surface: #FFFFFF;
+    --wavy-surface-soft: #F8F8FA;
+    --wavy-surface-raised: #FFFFFF;
+    --wavy-surface-elevated: #FFFFFF;
+    --wavy-text: #141416;
+    --wavy-text-muted: #68686F;
+    --wavy-text-subtle: #92929A;
+    --wavy-border: rgba(15, 15, 18, 0.09);
+    --wavy-border-strong: rgba(15, 15, 18, 0.16);
+    --wavy-focus: #FF831E;
+    --wavy-glass: rgba(255, 255, 255, 0.78);
+    --wavy-glass-border: rgba(255, 255, 255, 0.84);
+    --wavy-shadow-card: 0 8px 24px rgba(24, 24, 30, 0.06);
+    --wavy-shadow-island: 0 16px 45px rgba(24, 24, 30, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  }
+}
+
+/* =========================================================================
+   Ponte para o shadcn/Tailwind
+   =========================================================================
+   Os nomes das variáveis não mudam — só os valores. É isso que faz as ~280
+   utilidades semânticas já espalhadas pelo código (text-accent, bg-accent,
+   border, ring...) adotarem a marca WAVY sem editar componente nenhum.
+   ========================================================================= */
+
+@layer base {
+  :root {
+    --background: 240 8% 5%;          /* canvas #0C0C0E */
+    --foreground: 240 20% 97%;        /* text #F7F7F8 */
+
+    --card: 240 6% 7%;                /* surface #111113 */
+    --card-foreground: 240 20% 97%;
+
+    --popover: 240 6% 10%;            /* raised #17171A */
+    --popover-foreground: 240 20% 97%;
+
+    --primary: 27 100% 56%;           /* brand orange #FF831E */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 100%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 0 0% 100%;           /* usado com /0.05 no Tailwind */
+    --secondary-foreground: 240 20% 97%;
 
-    --muted: 0 0% 10%;
-    --muted-foreground: 0 0% 60%;
+    --muted: 240 4% 8%;               /* surface-soft #141416 */
+    --muted-foreground: 240 5% 65%;   /* text-muted #A1A1AA */
 
-    --accent: 155 76% 46%;
+    --accent: 27 100% 56%;            /* brand orange */
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 84% 60%;         /* danger #EF4444 */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 100%;
+    --border: 0 0% 100%;              /* usado com /0.1 → rgba(255,255,255,.10) */
     --input: 0 0% 100%;
-    --ring: 155 76% 46%;
+    --ring: 27 100% 64%;              /* focus #FF9B47, mais claro para o escuro */
 
-    --radius: 0.75rem;
+    --radius: 0.75rem;                /* 12px — controle padrão WAVY */
 
-    --sidebar-background: 0 0% 2%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 155 76% 46%;
+    --sidebar-background: 240 6% 7%;
+    --sidebar-foreground: 240 20% 97%;
+    --sidebar-primary: 27 100% 56%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 5%;
-    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-accent: 240 6% 10%;
+    --sidebar-accent-foreground: 240 20% 97%;
     --sidebar-border: 0 0% 100%;
-    --sidebar-ring: 155 76% 46%;
+    --sidebar-ring: 27 100% 64%;
 
-    /* Glass tokens */
-    --glass-bg: rgba(255, 255, 255, 0.05);
-    --glass-bg-hover: rgba(255, 255, 255, 0.08);
-    --glass-bg-active: rgba(255, 255, 255, 0.1);
-    --glass-border: rgba(255, 255, 255, 0.1);
-    --glass-border-hover: rgba(255, 255, 255, 0.15);
-    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-    --glass-blur: blur(20px);
+    /* Compatibilidade: nomes antigos continuam existindo, apontando para WAVY. */
+    --glass-bg: var(--wavy-glass);
+    --glass-bg-hover: rgba(30, 30, 35, 0.78);
+    --glass-bg-active: rgba(36, 36, 42, 0.82);
+    --glass-border: var(--wavy-glass-border);
+    --glass-border-hover: var(--wavy-border-strong);
+    --glass-shadow: var(--wavy-shadow-island);
+    --glass-blur: blur(20px) saturate(125%);
 
-    /* Accent gradient */
-    --gradient-accent: linear-gradient(135deg, #1ACD8A 0%, #17B87C 100%);
-    --gradient-accent-glow: 0 0 20px rgba(26, 205, 138, 0.3);
+    --gradient-accent: var(--wavy-gradient);
+    --gradient-accent-glow: 0 8px 24px rgba(244, 91, 32, 0.28);
 
-    /* Status colors */
-    --status-active: 142 76% 46%;
-    --status-paused: 0 0% 50%;
-    --status-ended: 0 72% 51%;
+    /* Status são semânticos, não de marca: separá-los do laranja evita que
+       "ativo" e "ação primária" se confundam — coisa que o verde antigo fazia. */
+    --status-active: 142 71% 45%;     /* success #22C55E */
+    --status-paused: 240 5% 46%;      /* neutro: pausado não é alerta */
+    --status-ended: 0 84% 60%;        /* danger #EF4444 */
   }
 }
 
@@ -75,77 +164,119 @@
     color: hsl(var(--foreground));
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    font-family: 'SF Pro Display', 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: var(--wavy-font);
+  }
+
+  /* Foco visível em tudo que recebe teclado. Antes só existia em .glass-input,
+     então botões e links navegavam sem indicação nenhuma. */
+  :focus-visible {
+    outline: 2px solid var(--wavy-focus);
+    outline-offset: 2px;
   }
 }
 
 @layer components {
+  /* Card de dados. Apesar do nome histórico, é SÓLIDO de propósito: o padrão
+     WAVY reserva vidro para navegação e overlays, e desfoque atrás de tabela
+     densa custa legibilidade e performance. */
   .glass {
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--glass-shadow);
+    background: var(--wavy-surface-raised);
+    border: 1px solid var(--wavy-border);
+    box-shadow: var(--wavy-shadow-card);
   }
 
   .glass-hover:hover {
-    background: var(--glass-bg-hover);
-    border-color: var(--glass-border-hover);
+    background: var(--wavy-surface-elevated);
+    border-color: var(--wavy-border-strong);
   }
 
-  .glass-input {
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    color: white;
+  /* Vidro de verdade: navegação, barras de ferramentas, filtros e overlays. */
+  .glass-island {
+    background: var(--wavy-glass);
+    border: 1px solid var(--wavy-glass-border);
+    box-shadow: var(--wavy-shadow-island);
     backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+  }
+
+  /* Sem suporte a backdrop-filter, vidro vira superfície opaca em vez de
+     um painel lavado e ilegível. */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass-island {
+      background: var(--wavy-surface-elevated);
+    }
+  }
+
+  /* Campos sólidos, como manda o padrão: texto sobre vidro cansa a leitura. */
+  .glass-input {
+    background: var(--wavy-surface-soft);
+    border: 1px solid var(--wavy-border);
+    color: hsl(var(--foreground));
+    transition: border-color var(--wavy-duration-fast) var(--wavy-ease),
+                box-shadow var(--wavy-duration-fast) var(--wavy-ease);
   }
 
   .glass-input::placeholder {
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--wavy-text-subtle);
   }
 
+  /* O contorno de foco não é suprimido aqui de propósito: o :focus-visible
+     global já desenha o anel, e sobrescrevê-lo deixava quem navega por
+     teclado sem indicação nos campos. A borda muda junto, como reforço. */
   .glass-input:focus {
-    border-color: #1ACD8A;
-    box-shadow: 0 0 0 2px rgba(26, 205, 138, 0.2);
-    outline: none;
+    border-color: var(--wavy-focus);
   }
 
+  /* Ação primária: o gradiente é ênfase, não preenchimento universal. */
   .btn-accent {
-    background: var(--gradient-accent);
-    color: white;
+    background: var(--wavy-gradient);
+    color: #fff;
     border: none;
-    transition: all 0.3s ease;
+    border-radius: var(--wavy-radius-control);
+    transition: transform var(--wavy-duration-fast) var(--wavy-ease),
+                box-shadow var(--wavy-duration-fast) var(--wavy-ease),
+                filter var(--wavy-duration-fast) var(--wavy-ease);
   }
 
   .btn-accent:hover {
-    filter: brightness(1.15);
+    filter: brightness(1.08);
     box-shadow: var(--gradient-accent-glow);
+    transform: translateY(-1px);
+  }
+
+  .btn-accent:active {
+    transform: scale(0.98);
   }
 
   .btn-glass {
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    color: white;
-    transition: all 0.3s ease;
+    background: var(--wavy-surface-raised);
+    border: 1px solid var(--wavy-border);
+    color: hsl(var(--foreground));
+    border-radius: var(--wavy-radius-control);
+    transition: background var(--wavy-duration-fast) var(--wavy-ease),
+                border-color var(--wavy-duration-fast) var(--wavy-ease);
   }
 
   .btn-glass:hover {
-    background: var(--glass-bg-hover);
+    background: var(--wavy-surface-elevated);
+    border-color: var(--wavy-border-strong);
   }
 
   .gradient-text {
-    background: var(--gradient-accent);
+    background: var(--wavy-gradient);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
+  /* Números tabulares: sem isso os KPIs "dançam" quando o valor muda. */
   .metric-number {
-    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
   }
 
   .shimmer {
-    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.05) 50%, transparent 100%);
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%);
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
   }
@@ -156,15 +287,16 @@
   }
 
   .accent-glow {
-    box-shadow: 0 0 30px rgba(26, 205, 138, 0.15);
+    box-shadow: 0 0 30px rgba(255, 131, 30, 0.14);
   }
 
   .accent-glow-hover:hover {
-    box-shadow: 0 0 30px rgba(26, 205, 138, 0.25);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+    border-color: var(--wavy-border-strong);
   }
 }
 
-/* Scrollbar styling */
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -174,10 +306,23 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* Movimento é para explicar mudança de estado — quem pediu menos movimento
+   não deveria receber nenhum enfeite. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

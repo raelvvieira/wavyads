@@ -1351,7 +1351,7 @@ export default function CriativoStudioPage() {
         setAnalysis({
           composicao: template.layout_structure?.visualAnalysis?.composicao || { formato: template.aspect_ratio || '4:5', estrutura: 'Template aplicado', hierarquia: 'Hierarquia preservada do template', silencio: 'Margens e respiro preservados' },
           fotografia: template.layout_structure?.visualAnalysis?.fotografia || { tipo: 'Direção do template', luz: 'Preservar estilo', tratamento: 'Preservar acabamento', integracao: 'Adaptar produto atual' },
-          paleta: template.style_metadata?.palette || { dominante: 'Template', secundaria: '', acento: '#EC4899', saturacao: 'Preservar', hexes: [] },
+          paleta: template.style_metadata?.palette || { dominante: 'Template', secundaria: '', acento: '#FF831E', saturacao: 'Preservar', hexes: [] },
           tipografia: template.style_metadata?.typography || { familiaA: 'Template', familiaB: '', contraste: 'Preservar', alinhamento: 'Preservar' },
           camadas: template.layout_structure?.visualAnalysis?.camadas || ['Estrutura visual do template'],
           hierarquiaVisual: template.layout_structure?.visualAnalysis?.hierarquiaVisual || 'Preservar hierarquia do template',
@@ -2435,7 +2435,7 @@ export default function CriativoStudioPage() {
       onClick={() => handleQuickAction(action.action)}
       className={cn(
         'h-8 rounded-full text-xs',
-        action.variant === 'primary' && 'bg-[#EC4899] text-white hover:bg-[#DB2777]',
+        action.variant === 'primary' && 'bg-[#FF831E] text-white hover:bg-[#DA2F1E]',
         action.variant === 'danger' && 'border-destructive/40 text-destructive hover:text-destructive',
       )}
     >
@@ -2446,8 +2446,8 @@ export default function CriativoStudioPage() {
   const renderCopyCard = (variation: CopyResult, idx: number) => (
     <div key={idx} className="rounded-2xl border border-white/10 bg-white/[0.035] p-3 space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] uppercase tracking-wider text-[#EC4899]">{variation.angulo || `Sugestão ${idx + 1}`}</p>
-        {copyApproved && copySource === 'ai' && selectedVariationIdx === idx && <Check className="h-4 w-4 text-[#EC4899]" />}
+        <p className="text-[11px] uppercase tracking-wider text-[#FF831E]">{variation.angulo || `Sugestão ${idx + 1}`}</p>
+        {copyApproved && copySource === 'ai' && selectedVariationIdx === idx && <Check className="h-4 w-4 text-[#FF831E]" />}
       </div>
       {variation.label && <CopyBlock label="Label" value={variation.label} small uppercase />}
       <CopyBlock label="Título" value={variation.titulo} bold />
@@ -2455,7 +2455,7 @@ export default function CriativoStudioPage() {
       {variation.dados && <CopyBlock label="Dados" value={variation.dados} small />}
       <CopyBlock label="CTA" value={variation.cta} accent />
       {variation.justificativa && <p className="text-[11px] text-white/50">{variation.justificativa}</p>}
-      <Button size="sm" onClick={() => approveAiCopy(idx)} className="w-full rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777]">
+      <Button size="sm" onClick={() => approveAiCopy(idx)} className="w-full rounded-full bg-[#FF831E] text-white hover:bg-[#DA2F1E]">
         Usar esta copy
       </Button>
     </div>
@@ -2494,7 +2494,7 @@ export default function CriativoStudioPage() {
         applyClientLogo(v);
       }}
     >
-      <SelectTrigger className={cn('h-8 w-[140px] rounded-full', selectedClientId && 'ring-1 ring-[#EC4899]')}>
+      <SelectTrigger className={cn('h-8 w-[140px] rounded-full', selectedClientId && 'ring-1 ring-[#FF831E]')}>
         <span className="truncate flex items-center gap-1.5">
           {loadingClientLogo && <Loader2 className="h-3 w-3 animate-spin" />}
           {selectedClientId ? (referenceClients.find((c) => c.id === selectedClientId)?.name || 'Cliente') : 'Cliente'}
@@ -2542,7 +2542,7 @@ export default function CriativoStudioPage() {
             <Pencil className="h-4 w-4 text-white" />
           </button>
           {onSelect && (
-            <button type="button" onClick={(e) => { e.stopPropagation(); onSelect(); }} className="pointer-events-auto rounded-full bg-[#EC4899]/80 p-2 backdrop-blur hover:bg-[#EC4899]" title="Ações desta arte">
+            <button type="button" onClick={(e) => { e.stopPropagation(); onSelect(); }} className="pointer-events-auto rounded-full bg-[#FF831E]/80 p-2 backdrop-blur hover:bg-[#FF831E]" title="Ações desta arte">
               <Settings className="h-4 w-4 text-white" />
             </button>
           )}
@@ -2567,7 +2567,7 @@ export default function CriativoStudioPage() {
     defaultOpen?: boolean;
   }) => (
     <Collapsible defaultOpen={defaultOpen} className="rounded-2xl border border-white/10 bg-white/[0.035]">
-      <CollapsibleTrigger className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-[#F9A8D4]">
+      <CollapsibleTrigger className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-[#FFB877]">
         {title}
         <ChevronDown className="h-3.5 w-3.5 text-white/45" />
       </CollapsibleTrigger>
@@ -2615,7 +2615,7 @@ export default function CriativoStudioPage() {
         <div className="max-h-[calc(100vh-9rem)] overflow-y-auto p-4 space-y-4">
           {rightPanelMode === 'none' && (
             <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-5 text-sm text-white/62">
-              <Sparkles className="mb-3 h-5 w-5 text-[#EC4899]" />
+              <Sparkles className="mb-3 h-5 w-5 text-[#FF831E]" />
               <p className="font-medium text-white/90">O painel contextual aparecerá aqui.</p>
               <p className="mt-1 text-xs">Escolha uma ação na conversa para configurar referências, copy, assets ou geração.</p>
             </div>
@@ -2704,10 +2704,10 @@ export default function CriativoStudioPage() {
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {(template.tags || []).slice(0, 4).map((tag) => <span key={tag} className="rounded-full bg-white/10 px-2 py-1 text-[10px] text-white/55">{tag}</span>)}
-                    <span className="rounded-full bg-[#EC4899]/15 px-2 py-1 text-[10px] text-[#F9A8D4]">{template.usage_count || 0} usos</span>
+                    <span className="rounded-full bg-[#FF831E]/15 px-2 py-1 text-[10px] text-[#FFB877]">{template.usage_count || 0} usos</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <Button size="sm" className="rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777]" onClick={() => applyTemplate(template)}>Usar template</Button>
+                    <Button size="sm" className="rounded-full bg-[#FF831E] text-white hover:bg-[#DA2F1E]" onClick={() => applyTemplate(template)}>Usar template</Button>
                     <Button size="sm" variant="outline" className="rounded-full" onClick={() => { setPreviewTemplate(template); setRightPanelMode('template-detail'); }}>Ver detalhes</Button>
                   </div>
                 </div>
@@ -2733,14 +2733,14 @@ export default function CriativoStudioPage() {
                   ) : (
                     <div
                       className="aspect-[4/5] w-full rounded-2xl"
-                      style={{ background: (detailTemplate.style_metadata as any)?.previewGradient || 'linear-gradient(135deg, #1C1B19 0%, #3A2A2A 55%, #EC4899 100%)' }}
+                      style={{ background: (detailTemplate.style_metadata as any)?.previewGradient || 'linear-gradient(135deg, #1C1B19 0%, #3A2A2A 55%, #FF831E 100%)' }}
                     />
                   )}
                   <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3 text-sm">
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-semibold text-white">{detailTemplate.name}</p>
                       {detailTemplate.is_builtin && (
-                        <span className="shrink-0 rounded-full bg-[#EC4899]/15 px-2 py-0.5 text-[10px] text-[#F9A8D4]">Estilo Wavy</span>
+                        <span className="shrink-0 rounded-full bg-[#FF831E]/15 px-2 py-0.5 text-[10px] text-[#FFB877]">Estilo Wavy</span>
                       )}
                     </div>
                     {detailTemplate.description && <p className="mt-1 text-white/60">{detailTemplate.description}</p>}
@@ -2766,7 +2766,7 @@ export default function CriativoStudioPage() {
                     }, null, 2)}</pre>
                   </PanelFold>
                   <div className="grid grid-cols-2 gap-2">
-                    <Button className="rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777]" onClick={() => applyTemplate(detailTemplate)}>Usar este template</Button>
+                    <Button className="rounded-full bg-[#FF831E] text-white hover:bg-[#DA2F1E]" onClick={() => applyTemplate(detailTemplate)}>Usar este template</Button>
                     <Button variant="outline" className="rounded-full" onClick={() => duplicateTemplate(detailTemplate)}>Duplicar</Button>
                     {!detailTemplate.is_builtin && (
                       <Button variant="ghost" className="rounded-full text-destructive hover:text-destructive" onClick={() => archiveTemplate(detailTemplate.id)}>Arquivar</Button>
@@ -2791,11 +2791,11 @@ export default function CriativoStudioPage() {
 
           {rightPanelMode === 'template-applied' && selectedTemplate && (
             <div className="space-y-3">
-              <div className="rounded-2xl border border-[#EC4899]/30 bg-[#EC4899]/10 p-4">
+              <div className="rounded-2xl border border-[#FF831E]/30 bg-[#FF831E]/10 p-4">
                 <p className="text-sm font-semibold text-white">Template aplicado</p>
                 <p className="mt-1 text-sm text-white/65">{selectedTemplate.name}</p>
               </div>
-              <Button className="w-full rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777]" onClick={() => handleQuickAction('open-paste-copy')}>Inserir copy</Button>
+              <Button className="w-full rounded-full bg-[#FF831E] text-white hover:bg-[#DA2F1E]" onClick={() => handleQuickAction('open-paste-copy')}>Inserir copy</Button>
               <Button className="w-full rounded-full" variant="outline" onClick={() => handleQuickAction('open-assets-product')}>Adicionar produto/pessoa</Button>
               <Button className="w-full rounded-full" variant="outline" onClick={() => setRightPanelMode('template-detail')}>Revisar estrutura</Button>
               <Button className="w-full rounded-full" variant="ghost" onClick={() => handleQuickAction('open-generation-summary')}>Gerar arte</Button>
@@ -2835,7 +2835,7 @@ export default function CriativoStudioPage() {
                 <Label>Negative prompt</Label>
                 <Textarea value={templateForm.negativePrompt} onChange={(e) => setTemplateForm((prev) => ({ ...prev, negativePrompt: e.target.value }))} rows={3} />
               </PanelFold>
-              <Button onClick={saveTemplate} disabled={savingTemplate || !templateForm.name.trim()} className="w-full rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777]">
+              <Button onClick={saveTemplate} disabled={savingTemplate || !templateForm.name.trim()} className="w-full rounded-full bg-[#FF831E] text-white hover:bg-[#DA2F1E]">
                 {savingTemplate ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
                 Salvar template
               </Button>
@@ -2861,7 +2861,7 @@ export default function CriativoStudioPage() {
                   </Select>
                 </div>
               )}
-              <Button onClick={analyzeRefs} disabled={analyzing || refImages.length === 0} className="w-full rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777]">
+              <Button onClick={analyzeRefs} disabled={analyzing || refImages.length === 0} className="w-full rounded-full bg-[#FF831E] text-white hover:bg-[#DA2F1E]">
                 {analyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
                 Analisar referências
               </Button>
@@ -2901,7 +2901,7 @@ export default function CriativoStudioPage() {
                         <button
                           type="button"
                           onClick={() => setSelectedReferenceAssetIds((prev) => selected ? prev.filter((id) => id !== asset.id) : [...prev, asset.id])}
-                          className={cn('w-full overflow-hidden rounded-2xl border bg-white/[0.035]', selected ? 'border-[#EC4899] ring-1 ring-[#EC4899]' : 'border-white/10')}
+                          className={cn('w-full overflow-hidden rounded-2xl border bg-white/[0.035]', selected ? 'border-[#FF831E] ring-1 ring-[#FF831E]' : 'border-white/10')}
                         >
                           <img src={asset.thumbnail_url || asset.url} alt={asset.filename || 'Referência'} className="aspect-square w-full object-cover" />
                         </button>
@@ -2918,7 +2918,7 @@ export default function CriativoStudioPage() {
                 </div>
               )}
               <Button
-                className="w-full rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777]"
+                className="w-full rounded-full bg-[#FF831E] text-white hover:bg-[#DA2F1E]"
                 disabled={selectedReferenceAssetIds.length === 0}
                 onClick={() => {
                   const selectedUrls = referenceAssets.filter((asset) => selectedReferenceAssetIds.includes(asset.id)).map((asset) => asset.url);
@@ -2979,7 +2979,7 @@ export default function CriativoStudioPage() {
                   </PanelFold>
                   <PanelFold title="Mood" defaultOpen>
                     <div className="flex flex-wrap gap-1.5">
-                      {analysis.mood.adjetivos.map((m) => <span key={m} className="rounded-full bg-[#EC4899]/15 px-2 py-1 text-[10px] text-[#F9A8D4]">{m}</span>)}
+                      {analysis.mood.adjetivos.map((m) => <span key={m} className="rounded-full bg-[#FF831E]/15 px-2 py-1 text-[10px] text-[#FFB877]">{m}</span>)}
                     </div>
                     {analysis.mood.referencias.length > 0 && (
                       <p className="pt-1 text-white/55">Referências: {analysis.mood.referencias.join(', ')}</p>
@@ -2998,22 +2998,22 @@ export default function CriativoStudioPage() {
                 </>
               )}
               <Textarea value={editedDoc} onChange={(e) => setEditedDoc(e.target.value)} rows={9} className="font-mono text-xs" placeholder="Design System Document" />
-              <Button onClick={askCopyStep} className="w-full rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777]">Salvar ajustes e continuar</Button>
+              <Button onClick={askCopyStep} className="w-full rounded-full bg-[#FF831E] text-white hover:bg-[#DA2F1E]">Salvar ajustes e continuar</Button>
             </div>
           )}
 
           {rightPanelMode === 'paste-copy' && (
             <div className="space-y-3">
               {suggestedRawCopy && (
-                <div className="rounded-2xl border border-[#EC4899]/30 bg-[#EC4899]/10 p-3 text-sm">
-                  <p className="mb-2 text-[11px] uppercase tracking-wider text-[#F9A8D4]">Copy sugerida pela IA</p>
+                <div className="rounded-2xl border border-[#FF831E]/30 bg-[#FF831E]/10 p-3 text-sm">
+                  <p className="mb-2 text-[11px] uppercase tracking-wider text-[#FFB877]">Copy sugerida pela IA</p>
                   <p className="whitespace-pre-wrap text-white/80">{suggestedRawCopy}</p>
-                  <Button size="sm" onClick={() => setRawCopy(suggestedRawCopy)} className="mt-3 rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777]">Usar sugestão</Button>
+                  <Button size="sm" onClick={() => setRawCopy(suggestedRawCopy)} className="mt-3 rounded-full bg-[#FF831E] text-white hover:bg-[#DA2F1E]">Usar sugestão</Button>
                 </div>
               )}
               <Textarea value={rawCopy} onChange={(e) => setRawCopy(e.target.value)} rows={8} placeholder="Cole ou escreva a copy da arte..." />
               <div className="grid gap-2">
-                <Button onClick={approveOriginalCopy} disabled={!rawCopy.trim()} className="rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777]">Usar esta copy</Button>
+                <Button onClick={approveOriginalCopy} disabled={!rawCopy.trim()} className="rounded-full bg-[#FF831E] text-white hover:bg-[#DA2F1E]">Usar esta copy</Button>
                 <Button variant="outline" onClick={improveCopy} disabled={improving || !rawCopy.trim()} className="rounded-full">
                   {improving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
                   Otimizar com IA
@@ -3025,7 +3025,7 @@ export default function CriativoStudioPage() {
           {rightPanelMode === 'read-url' && (
             <div className="space-y-3">
               <Input type="url" value={productUrl} onChange={(e) => { setProductUrl(e.target.value); setUrlError(null); }} placeholder="https://exemplo.com/produto" />
-              <Button onClick={fetchProductUrl} disabled={urlReading || !productUrl.trim()} className="w-full rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777]">
+              <Button onClick={fetchProductUrl} disabled={urlReading || !productUrl.trim()} className="w-full rounded-full bg-[#FF831E] text-white hover:bg-[#DA2F1E]">
                 {urlReading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Globe className="mr-2 h-4 w-4" />}
                 Ler site
               </Button>
@@ -3049,13 +3049,13 @@ export default function CriativoStudioPage() {
           {rightPanelMode === 'copy-suggestions' && (
             <div className="space-y-3">
               {suggestedRawCopy && (
-                <div className="rounded-2xl border border-[#EC4899]/30 bg-[#EC4899]/10 p-3 text-sm text-white/80">
-                  <p className="mb-1 text-[11px] uppercase tracking-wider text-[#F9A8D4]">Rascunho sugerido</p>
+                <div className="rounded-2xl border border-[#FF831E]/30 bg-[#FF831E]/10 p-3 text-sm text-white/80">
+                  <p className="mb-1 text-[11px] uppercase tracking-wider text-[#FFB877]">Rascunho sugerido</p>
                   {suggestedRawCopy}
                 </div>
               )}
               {copyVariations.length === 0 && (
-                <Button onClick={improveCopy} disabled={improving || !rawCopy.trim()} className="w-full rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777]">
+                <Button onClick={improveCopy} disabled={improving || !rawCopy.trim()} className="w-full rounded-full bg-[#FF831E] text-white hover:bg-[#DA2F1E]">
                   {improving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
                   Gerar 4 sugestões
                 </Button>
@@ -3080,7 +3080,7 @@ export default function CriativoStudioPage() {
                   </div>
                 )}
               </div>
-              <Button onClick={prepareGenerationSummary} className="w-full rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777]">Continuar para geração</Button>
+              <Button onClick={prepareGenerationSummary} className="w-full rounded-full bg-[#FF831E] text-white hover:bg-[#DA2F1E]">Continuar para geração</Button>
             </div>
           )}
 
@@ -3092,7 +3092,7 @@ export default function CriativoStudioPage() {
               </div>
               <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.025] p-8 text-center text-sm text-white/50">Nenhum avatar.</div>
               <Button variant="outline" className="w-full rounded-full" onClick={() => toast({ title: 'Criação de avatar estará disponível em breve.' })}>+ Criar avatar</Button>
-              <Button onClick={prepareGenerationSummary} className="w-full rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777]">Continuar sem avatar</Button>
+              <Button onClick={prepareGenerationSummary} className="w-full rounded-full bg-[#FF831E] text-white hover:bg-[#DA2F1E]">Continuar sem avatar</Button>
             </div>
           )}
 
@@ -3113,7 +3113,7 @@ export default function CriativoStudioPage() {
                 <Info k="Modelo visual" v="GPT Image 2" />
               </div>
               {selectedTemplate && (
-                <div className="rounded-2xl border border-[#EC4899]/30 bg-[#EC4899]/10 p-3 text-xs text-white/70">
+                <div className="rounded-2xl border border-[#FF831E]/30 bg-[#FF831E]/10 p-3 text-xs text-white/70">
                   <p className="font-semibold text-white">Template aplicado</p>
                   <p className="mt-1">{selectedTemplate.name} · {selectedTemplate.category || 'Sem categoria'} · {selectedTemplate.aspect_ratio}</p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
@@ -3145,7 +3145,7 @@ export default function CriativoStudioPage() {
                 <Label className="mb-1.5 block text-[10px] uppercase tracking-wider text-white/38">DO NOT INCLUDE</Label>
                 <Textarea value={negativePrompt} onChange={(e) => setNegativePrompt(e.target.value)} rows={3} placeholder="Uma restrição por linha" />
               </div>
-              <Button onClick={generateSelectedArt} disabled={generating || mainSquareLoading} className="w-full rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777]">
+              <Button onClick={generateSelectedArt} disabled={generating || mainSquareLoading} className="w-full rounded-full bg-[#FF831E] text-white hover:bg-[#DA2F1E]">
                 {generating || mainSquareLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
                 {generating || mainSquareLoading ? 'Gerando arte...' : `Gerar arte ${selectedAspectRatio} em ${selectedResolution}`}
               </Button>
@@ -3155,7 +3155,7 @@ export default function CriativoStudioPage() {
           {rightPanelMode === 'generated-result' && (
             <div className="space-y-3">
               <div className="flex gap-2 text-[10px]">
-                <span className="rounded-full bg-[#EC4899]/15 px-2 py-1 text-[#F9A8D4]">{selectedAspectRatio}</span>
+                <span className="rounded-full bg-[#FF831E]/15 px-2 py-1 text-[#FFB877]">{selectedAspectRatio}</span>
                 <span className="rounded-full bg-white/10 px-2 py-1 text-white/60">{selectedResolution}</span>
                 <span className="rounded-full bg-white/10 px-2 py-1 text-white/60">{language}</span>
                 <span className="rounded-full bg-white/10 px-2 py-1 text-white/60">GPT Image 2</span>
@@ -3188,7 +3188,7 @@ export default function CriativoStudioPage() {
 
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 space-y-2">
                 <div className="flex items-center gap-1.5 text-xs font-medium text-white/80">
-                  <BrainCircuit className="h-3.5 w-3.5 text-[#EC4899]" />
+                  <BrainCircuit className="h-3.5 w-3.5 text-[#FF831E]" />
                   Inteligência do cliente
                 </div>
                 {selectedClientId ? (
@@ -3205,7 +3205,7 @@ export default function CriativoStudioPage() {
                         {savingCopyIntelligence ? (
                           <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
                         ) : copySavedToIntelligence ? (
-                          <BookmarkCheck className="mr-1.5 h-3 w-3 text-[#EC4899]" />
+                          <BookmarkCheck className="mr-1.5 h-3 w-3 text-[#FF831E]" />
                         ) : (
                           <BookmarkPlus className="mr-1.5 h-3 w-3" />
                         )}
@@ -3221,7 +3221,7 @@ export default function CriativoStudioPage() {
                         {savingArtIntelligence ? (
                           <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
                         ) : artSavedToIntelligence ? (
-                          <BookmarkCheck className="mr-1.5 h-3 w-3 text-[#EC4899]" />
+                          <BookmarkCheck className="mr-1.5 h-3 w-3 text-[#FF831E]" />
                         ) : (
                           <BookmarkPlus className="mr-1.5 h-3 w-3" />
                         )}
@@ -3239,7 +3239,7 @@ export default function CriativoStudioPage() {
           {rightPanelMode === 'asset-actions' && selectedAsset && (
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-xs uppercase tracking-wider text-[#F9A8D4]">{selectedAsset.label}</p>
+                <p className="text-xs uppercase tracking-wider text-[#FFB877]">{selectedAsset.label}</p>
                 <span className="rounded-full bg-white/10 px-2 py-1 text-[10px] text-white/60">
                   {selectedAsset.aspect === 'square' ? '1:1' : selectedAspectRatio}
                 </span>
@@ -3297,7 +3297,7 @@ export default function CriativoStudioPage() {
 
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 space-y-2">
                 <div className="flex items-center gap-1.5 text-xs font-medium text-white/80">
-                  <BrainCircuit className="h-3.5 w-3.5 text-[#EC4899]" />
+                  <BrainCircuit className="h-3.5 w-3.5 text-[#FF831E]" />
                   Inteligência do cliente
                 </div>
                 {selectedClientId ? (
@@ -3320,7 +3320,7 @@ export default function CriativoStudioPage() {
                       {savingArtIntelligence ? (
                         <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
                       ) : assetSavedKeys.has(selectedAsset.key) ? (
-                        <BookmarkCheck className="mr-1.5 h-3 w-3 text-[#EC4899]" />
+                        <BookmarkCheck className="mr-1.5 h-3 w-3 text-[#FF831E]" />
                       ) : (
                         <BookmarkPlus className="mr-1.5 h-3 w-3" />
                       )}
@@ -3338,7 +3338,7 @@ export default function CriativoStudioPage() {
             <div className="space-y-3">
               <p className="text-sm text-white/62">Gere 5 variações estratégicas para testar ângulos diferentes no Meta Ads.</p>
               {(!factorVariations || factorLoading) && (
-                <Button onClick={() => applyFatorCriativo()} disabled={factorLoading || (!storyImage && !squareImage)} className="w-full rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777]">
+                <Button onClick={() => applyFatorCriativo()} disabled={factorLoading || (!storyImage && !squareImage)} className="w-full rounded-full bg-[#FF831E] text-white hover:bg-[#DA2F1E]">
                   {factorLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
                   {factorLoading ? `Gerando ${factorProgress}/5...` : 'Aplicar Fator Criativo'}
                 </Button>
@@ -3348,7 +3348,7 @@ export default function CriativoStudioPage() {
                   <p className="mb-2 font-medium text-white">Eixos que serão explorados:</p>
                   <div className="flex flex-wrap gap-1.5">
                     {['Emocional', 'Oferta', 'Persona', 'Hook', 'Estrutura'].map((axis) => (
-                      <span key={axis} className="rounded-full bg-[#EC4899]/15 px-2 py-1 text-[#F9A8D4]">{axis}</span>
+                      <span key={axis} className="rounded-full bg-[#FF831E]/15 px-2 py-1 text-[#FFB877]">{axis}</span>
                     ))}
                   </div>
                 </div>
@@ -3363,7 +3363,7 @@ export default function CriativoStudioPage() {
                 const err = factorErrors[i];
                 return (
                   <div key={i} className="rounded-2xl border border-white/10 bg-white/[0.035] p-3 space-y-2">
-                    <p className="text-[11px] uppercase tracking-wider text-[#EC4899]">#{i + 1} {v?.eixo || 'variação'}</p>
+                    <p className="text-[11px] uppercase tracking-wider text-[#FF831E]">#{i + 1} {v?.eixo || 'variação'}</p>
                     {err && (
                       <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-xs text-destructive">
                         {err}
@@ -3378,11 +3378,11 @@ export default function CriativoStudioPage() {
                           <p><span className="text-white/35">Para quem:</span> {v.estrategia.paraQuem}</p>
                         </div>
                         <div className="rounded-xl bg-black/20 p-2 text-xs text-white/70">
-                          {v.copy.label && <p className="text-[10px] uppercase tracking-wider text-[#F9A8D4]">{v.copy.label}</p>}
+                          {v.copy.label && <p className="text-[10px] uppercase tracking-wider text-[#FFB877]">{v.copy.label}</p>}
                           <p className="font-semibold text-white">{v.copy.titulo}</p>
                           {v.copy.subtitulo && <p>{v.copy.subtitulo}</p>}
                           {v.copy.dados && <p className="text-white/45">{v.copy.dados}</p>}
-                          <p className="text-[#F9A8D4]">{v.copy.cta}</p>
+                          <p className="text-[#FFB877]">{v.copy.cta}</p>
                         </div>
                         <div className="rounded-xl bg-black/20 p-2 text-xs text-white/60">
                           <p><span className="text-white/35">Hook:</span> {v.descricaoVisual.hook}</p>
@@ -3458,7 +3458,7 @@ export default function CriativoStudioPage() {
                 </SelectContent>
               </Select>
               {selectedEditTarget && (
-                <p className="text-xs uppercase tracking-wider text-[#F9A8D4]">{selectedEditTarget.label}</p>
+                <p className="text-xs uppercase tracking-wider text-[#FFB877]">{selectedEditTarget.label}</p>
               )}
               {renderGeneratedThumb(
                 selectedEditTarget?.image || getEditTargetFromKey(selectedEditKey).image,
@@ -3476,7 +3476,7 @@ export default function CriativoStudioPage() {
                   }
                   editArt(target.key, target.image, target.aspect, target.prompt);
                 }}
-                className="w-full rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777]"
+                className="w-full rounded-full bg-[#FF831E] text-white hover:bg-[#DA2F1E]"
               >
                 {editLoadingKey === (selectedEditTarget?.key || selectedEditKey) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Pencil className="mr-2 h-4 w-4" />}
                 Aplicar edição
@@ -3490,7 +3490,7 @@ export default function CriativoStudioPage() {
                 if (versions.length === 0) return null;
                 return (
                   <div className="space-y-3">
-                    <p className="text-xs uppercase tracking-wider text-[#F9A8D4]">Versões editadas</p>
+                    <p className="text-xs uppercase tracking-wider text-[#FFB877]">Versões editadas</p>
                     {versions.map((ed, i) => (
                       <div key={i} className="rounded-2xl border border-white/10 bg-white/[0.035] p-2 space-y-2">
                         <button
@@ -3530,7 +3530,7 @@ export default function CriativoStudioPage() {
   };
 
   const conversationalLayout = (
-    <div className="min-h-screen bg-[#050507] text-white">
+    <div className="min-h-screen bg-[#0C0C0E] text-white">
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] xl:grid-cols-[minmax(0,1fr)_460px]">
 
         <main className="mx-auto flex w-full max-w-4xl flex-col px-4 py-5 sm:px-6 lg:px-8">
@@ -3538,7 +3538,7 @@ export default function CriativoStudioPage() {
             {/* Barra utilitária: identidade do app (discreta) + ações do workspace */}
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-white/45">
-                <Wand2 className="h-4 w-4 text-[#EC4899]" />
+                <Wand2 className="h-4 w-4 text-[#FF831E]" />
                 <span className="text-xs font-semibold uppercase tracking-wider">Criativo Studio</span>
               </div>
               <div className="flex items-center gap-2">
@@ -3583,14 +3583,14 @@ export default function CriativoStudioPage() {
                   onClick={() => handleQuickAction(item.action)}
                   className={cn(
                     'flex items-center gap-2 rounded-full px-3 py-1.5 text-xs transition hover:bg-white/10',
-                    item.current ? 'bg-[#EC4899]/20 text-white ring-1 ring-[#EC4899]/50' : 'text-white/55',
+                    item.current ? 'bg-[#FF831E]/20 text-white ring-1 ring-[#FF831E]/50' : 'text-white/55',
                     item.done && !item.current && 'bg-white/8 text-white/80',
                   )}
                 >
-                  <span className={cn('flex h-4 w-4 items-center justify-center rounded-full text-[9px]', item.done ? 'bg-[#EC4899] text-white' : 'bg-white/10')}>
+                  <span className={cn('flex h-4 w-4 items-center justify-center rounded-full text-[9px]', item.done ? 'bg-[#FF831E] text-white' : 'bg-white/10')}>
                     {item.done ? <Check className="h-2.5 w-2.5" /> : null}
                   </span>
-                  {item.current && <span className="h-1.5 w-1.5 rounded-full bg-[#EC4899] animate-pulse" />}
+                  {item.current && <span className="h-1.5 w-1.5 rounded-full bg-[#FF831E] animate-pulse" />}
                   {item.label}
                   <span className="hidden text-white/35 sm:inline">{item.note}</span>
                 </button>
@@ -3602,7 +3602,7 @@ export default function CriativoStudioPage() {
             {currentStage === 'initial' && (
               <div className="mx-auto w-full max-w-3xl text-center">
                 <p className="mb-4 text-3xl font-semibold tracking-tight">O que vamos criar hoje?</p>
-                <div className="rounded-[24px] border border-white/10 bg-[#111113] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.35)] focus-within:border-[#EC4899]/70">
+                <div className="rounded-[24px] border border-white/10 bg-[#111113] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.35)] focus-within:border-[#FF831E]/70">
                   <Textarea
                     value={initialPrompt}
                     onChange={(e) => setInitialPrompt(e.target.value)}
@@ -3617,7 +3617,7 @@ export default function CriativoStudioPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="rounded-full border-[#EC4899]/40 text-[#F9A8D4] hover:bg-[#EC4899]/10"
+                          className="rounded-full border-[#FF831E]/40 text-[#FFB877] hover:bg-[#FF831E]/10"
                           onClick={openQuickCreative}
                         >
                           <BrainCircuit className="mr-1.5 h-3.5 w-3.5" /> Criativo Rápido
@@ -3653,13 +3653,13 @@ export default function CriativoStudioPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className={cn('rounded-full', selectedTemplate && 'ring-1 ring-[#EC4899]')}
+                        className={cn('rounded-full', selectedTemplate && 'ring-1 ring-[#FF831E]')}
                         onClick={() => handleQuickAction('open-template')}
                       >
                         {selectedTemplate ? `Template: ${selectedTemplate.name.slice(0, 18)}` : 'Template'}
                       </Button>
                     </div>
-                    <Button onClick={startConversation} className="h-10 rounded-full bg-[#EC4899] px-5 text-white hover:bg-[#DB2777]">
+                    <Button onClick={startConversation} className="h-10 rounded-full bg-[#FF831E] px-5 text-white hover:bg-[#DA2F1E]">
                       <Send className="mr-2 h-4 w-4" /> Iniciar
                     </Button>
                   </div>
@@ -3701,7 +3701,7 @@ export default function CriativoStudioPage() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className={cn('rounded-full', selectedTemplate && 'ring-1 ring-[#EC4899]')}
+                    className={cn('rounded-full', selectedTemplate && 'ring-1 ring-[#FF831E]')}
                     onClick={() => handleQuickAction('open-template')}
                   >
                     {selectedTemplate ? `Template: ${selectedTemplate.name.slice(0, 18)}` : 'Template'}
@@ -3709,7 +3709,7 @@ export default function CriativoStudioPage() {
                 </div>
                 {conversationMessages.map((message) => (
                   <div key={message.id} className="flex gap-3">
-                    <div className={cn('mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full', message.role === 'assistant' ? 'bg-[#EC4899]/15 text-[#F9A8D4]' : 'bg-white/10')}>
+                    <div className={cn('mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full', message.role === 'assistant' ? 'bg-[#FF831E]/15 text-[#FFB877]' : 'bg-white/10')}>
                       {message.role === 'assistant' ? <Bot className="h-4 w-4" /> : <User className="h-4 w-4" />}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -3730,7 +3730,7 @@ export default function CriativoStudioPage() {
                 ))}
                 {(analyzing || improving || urlReading || contextLoading || generating || factorLoading || !!editLoadingKey) && (
                   <div className="flex gap-3 text-sm text-white/60">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#EC4899]/15 text-[#F9A8D4]">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FF831E]/15 text-[#FFB877]">
                       <Loader2 className="h-4 w-4 animate-spin" />
                     </div>
                     <div className="rounded-[24px] border border-white/10 bg-[#111113] p-4">
@@ -3796,7 +3796,7 @@ export default function CriativoStudioPage() {
 
                     {(factorLoading || (factorVariations && factorVariations.length > 0)) && (
                       <div className="space-y-3">
-                        <p className="text-[11px] uppercase tracking-wider text-[#F9A8D4]">
+                        <p className="text-[11px] uppercase tracking-wider text-[#FFB877]">
                           Fator Criativo · 5 variações{factorLoading && ` (${factorProgress}/5)`}
                         </p>
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -3807,7 +3807,7 @@ export default function CriativoStudioPage() {
                             const err = factorErrors[i];
                             return (
                               <div key={i} className="space-y-1.5">
-                                <p className="text-[10px] uppercase tracking-wider text-[#EC4899]">#{i + 1} {v?.eixo || 'variação'}</p>
+                                <p className="text-[10px] uppercase tracking-wider text-[#FF831E]">#{i + 1} {v?.eixo || 'variação'}</p>
                                 {img ? renderBoardCard({
                                   url: img,
                                   aspect: 'story',
