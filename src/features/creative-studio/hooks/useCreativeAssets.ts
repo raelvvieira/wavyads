@@ -1,10 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  buildArtworkSections,
-  listProjectAssetGroups,
-  listProjectArtworks,
-} from '../api/creativeAssets';
+import { listProjectAssetGroups, listProjectArtworks } from '../api/creativeAssets';
+import { buildArtworkSections } from '../lib/artworkSections';
 import type { CreativeArtworkSections, CreativeAsset, CreativeAssetGroup } from '../types/creative';
 
 export const creativeAssetsQueryKey = (projectId: string | undefined) =>

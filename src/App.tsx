@@ -15,6 +15,7 @@ import ComercialIndexPage from "@/pages/ComercialIndexPage";
 import CrmPage from "@/pages/CrmPage";
 import GoogleAdsAIPage from "@/pages/GoogleAdsAIPage";
 import CriativoStudioPage from "@/pages/CriativoStudioPage";
+import CreativeStudioV2Page from "@/features/creative-studio/pages/CreativeStudioV2Page";
 import SocialMidiaStudioPage from "@/pages/SocialMidiaStudioPage";
 import SocialTemplateLabPage from "@/pages/SocialTemplateLabPage";
 import MetaCallbackPage from "@/pages/MetaCallbackPage";
@@ -45,6 +46,7 @@ const App = () => (
               <Route path="/crm/:clientId" element={<CrmPage />} />
               <Route path="/google-ads-ai" element={<GoogleAdsAIPage />} />
               <Route path="/criativo-studio" element={<CriativoStudioPage />} />
+              <Route path="/criativo-studio/v2" element={<CreativeStudioV2Page />} />
               <Route path="/social-midia-studio" element={<SocialMidiaStudioPage />} />
               <Route path="/social-template-lab" element={<SocialTemplateLabPage />} />
               <Route path="/configuracoes" element={<SettingsPage />} />
