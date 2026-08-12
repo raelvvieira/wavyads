@@ -1931,6 +1931,9 @@ export default function CriativoStudioPage() {
               body: {
                 prompt: v.promptCompleto,
                 aspectRatio: aspect,
+                // O formato real. Sem ele a function assumia 9:16 para todo
+                // vertical, contradizendo a zona segura calculada aqui.
+                formatRatio: factorRatio,
                 model,
                 isVariation: true,
                 productImages,
@@ -2000,6 +2003,9 @@ export default function CriativoStudioPage() {
         body: {
           prompt,
           aspectRatio: aspect,
+          // O quadrado sai por recreateSquare acima, então aqui é sempre o
+          // formato vertical escolhido no projeto — 4:5 por padrão, não 9:16.
+          formatRatio: selectedAspectRatio,
           model,
           productImages,
           logoImage: logoImage[0] || null,
@@ -2062,6 +2068,7 @@ export default function CriativoStudioPage() {
         body: {
           prompt,
           aspectRatio: 'square',
+          formatRatio: '1:1',
           model,
           isVariation: typeof target === 'number',
           productImages,

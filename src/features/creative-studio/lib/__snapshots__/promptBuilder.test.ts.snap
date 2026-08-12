@@ -9,6 +9,7 @@ Quality target: standard high-quality digital advertising image.
 
 
 [SAFE ZONE]
+LAYOUT RULE — READ FIRST: the top 9.3% and the bottom 9.3% of the image are EMPTY BACKGROUND. No text, no logo, no badge, no button, nothing readable may appear in those bands — they contain only the continuation of the background artwork. Every readable element is grouped together in the band between 9.3% and 90.7% of the image height, and no closer than 9.3% to the left or right edge.
 IMAGERY IS NOT RESTRICTED. The photograph, background, gradient, texture and any purely visual element MUST fill the entire frame, edge to edge, full bleed. Never shrink, letterbox or inset the artwork to respect the margins below. A full-bleed background is preferred.
 THE MESSAGE IS RESTRICTED. Every element that carries meaning — headline, subheadline, body copy, price, date, badge, brand logo and call-to-action — must sit ENTIRELY inside the safe area described below, because the platform UI (profile picture, caption, CTA button, engagement bar) is drawn on top of everything outside it.
 SAFE AREA: keep the top 9.3% and the bottom 9.3% of the frame free of message elements, plus 9.3% on each side. On the nominal 1080x1080 canvas that is the rectangle from x=100 to x=980 and from y=100 to y=980 (880x880px). The percentages are the rule; the pixels are only a reference.
@@ -38,6 +39,7 @@ Quality target: ultra high-resolution 4K advertising image, crisp details, sharp
 DOC: paleta escura, tipografia grotesk
 
 [SAFE ZONE]
+LAYOUT RULE — READ FIRST: the top 18.5% and the bottom 18.5% of the image are EMPTY BACKGROUND. No text, no logo, no badge, no button, nothing readable may appear in those bands — they contain only the continuation of the background artwork. Every readable element is grouped together in the band between 18.5% and 81.5% of the image height, and no closer than 9.3% to the left or right edge.
 IMAGERY IS NOT RESTRICTED. The photograph, background, gradient, texture and any purely visual element MUST fill the entire frame, edge to edge, full bleed. Never shrink, letterbox or inset the artwork to respect the margins below. A full-bleed background is preferred.
 THE MESSAGE IS RESTRICTED. Every element that carries meaning — headline, subheadline, body copy, price, date, badge, brand logo and call-to-action — must sit ENTIRELY inside the safe area described below, because the platform UI (profile picture, caption, CTA button, engagement bar) is drawn on top of everything outside it.
 SAFE AREA: keep the top 18.5% and the bottom 18.5% of the frame free of message elements, plus 9.3% on each side. On the nominal 1080x1350 canvas that is the rectangle from x=100 to x=980 and from y=250 to y=1100 (880x850px). The percentages are the rule; the pixels are only a reference.
@@ -92,10 +94,11 @@ Template visual structure: {"grid":"12col"}
 This structure defines LAYOUT AND STYLE ONLY. Do NOT reuse, reference or render any headline, label, subtitle, CTA or body copy from a previous use of this template. ALL text content for this artwork comes exclusively from the [TEXT BLOCKS] section below, verbatim — adapt only the text, product, references and business context from the current project.
 
 [SAFE ZONE]
+LAYOUT RULE — READ FIRST: the top 9.6% and the bottom 9.6% of the image are EMPTY BACKGROUND. No text, no logo, no badge, no button, nothing readable may appear in those bands — they contain only the continuation of the background artwork. Every readable element is grouped together in the band between 9.6% and 90.4% of the image height, and no closer than 10% to the left or right edge.
 IMAGERY IS NOT RESTRICTED. The photograph, background, gradient, texture and any purely visual element MUST fill the entire frame, edge to edge, full bleed. Never shrink, letterbox or inset the artwork to respect the margins below. A full-bleed background is preferred.
 THE MESSAGE IS RESTRICTED. Every element that carries meaning — headline, subheadline, body copy, price, date, badge, brand logo and call-to-action — must sit ENTIRELY inside the safe area described below, because the platform UI (profile picture, caption, CTA button, engagement bar) is drawn on top of everything outside it.
-SAFE AREA: keep the top 9.6% and the bottom 9.6% of the frame free of message elements, plus 10% on each side. On the nominal 1200x628 canvas that is the rectangle from x=120 to x=1080 and from y=60 to y=568 (960x508px). The percentages are the rule; the pixels are only a reference.
-TYPE SIZE. Size the type against the SAFE BOX (960x508px), not against the full frame — type that looks right relative to the whole canvas reads as small once confined to the safe box. At this canvas width use roughly: headline 71-133px, subheadline 44-62px, body and data 31-40px, call-to-action 40-53px. Text must stay legible on a phone screen.
+SAFE AREA: keep the top 9.6% and the bottom 9.6% of the frame free of message elements, plus 10% on each side. On the nominal 1920x1080 canvas that is the rectangle from x=192 to x=1728 and from y=104 to y=976 (1536x872px). The percentages are the rule; the pixels are only a reference.
+TYPE SIZE. Size the type against the SAFE BOX (1536x872px), not against the full frame — type that looks right relative to the whole canvas reads as small once confined to the safe box. At this canvas width use roughly: headline 114-213px, subheadline 71-100px, body and data 50-64px, call-to-action 64-85px. Text must stay legible on a phone screen.
 LEAVE BREATHING ROOM. Do not push elements right up against the safe boundary — leave visible margin inside it, so edge cropping on some devices never touches the message.
 
 [BRAND LOGO]
@@ -104,7 +107,7 @@ A brand logo is provided as a separate reference. Place it discreetly in a corne
 [DO NOT INCLUDE]
 - sem texto em inglês
 - sem moldura
-- Any headline, body copy, logo, badge or call-to-action outside the safe area (outside x 120-1080, y 60-568 on the nominal canvas)
+- Any headline, body copy, logo, badge or call-to-action outside the safe area (outside x 192-1728, y 104-976 on the nominal canvas)
 - Any text in a language other than Portuguese (Brazil)
 - Misspelled, garbled or fake-looking text
 - Watermarks, signatures, low-resolution artifacts
@@ -122,6 +125,7 @@ Quality target: ultra high-resolution 4K advertising image, crisp details, sharp
 
 
 [SAFE ZONE]
+LAYOUT RULE — READ FIRST: the top 14% and the bottom 35% of the image are EMPTY BACKGROUND. No text, no logo, no badge, no button, nothing readable may appear in those bands — they contain only the continuation of the background artwork. Every readable element is grouped together in the band between 14% and 65% of the image height, and no closer than 6% to the left or right edge.
 IMAGERY IS NOT RESTRICTED. The photograph, background, gradient, texture and any purely visual element MUST fill the entire frame, edge to edge, full bleed. Never shrink, letterbox or inset the artwork to respect the margins below. A full-bleed background is preferred.
 THE MESSAGE IS RESTRICTED. Every element that carries meaning — headline, subheadline, body copy, price, date, badge, brand logo and call-to-action — must sit ENTIRELY inside the safe area described below, because the platform UI (profile picture, caption, CTA button, engagement bar) is drawn on top of everything outside it.
 SAFE AREA: keep the top 14% and the bottom 35% of the frame free of message elements, plus 6% on each side. On the nominal 1080x1920 canvas that is the rectangle from x=65 to x=1015 and from y=269 to y=1248 (950x979px). The percentages are the rule; the pixels are only a reference.
@@ -150,6 +154,7 @@ Quality target: high-resolution polished advertising image with crisp typography
 
 
 [SAFE ZONE]
+LAYOUT RULE — READ FIRST: the top 14% and the bottom 35% of the image are EMPTY BACKGROUND. No text, no logo, no badge, no button, nothing readable may appear in those bands — they contain only the continuation of the background artwork. Every readable element is grouped together in the band between 14% and 65% of the image height, and no closer than 6% to the left or right edge.
 IMAGERY IS NOT RESTRICTED. The photograph, background, gradient, texture and any purely visual element MUST fill the entire frame, edge to edge, full bleed. Never shrink, letterbox or inset the artwork to respect the margins below. A full-bleed background is preferred.
 THE MESSAGE IS RESTRICTED. Every element that carries meaning — headline, subheadline, body copy, price, date, badge, brand logo and call-to-action — must sit ENTIRELY inside the safe area described below, because the platform UI (profile picture, caption, CTA button, engagement bar) is drawn on top of everything outside it.
 SAFE AREA: keep the top 14% and the bottom 35% of the frame free of message elements, plus 6% on each side. On the nominal 1080x1920 canvas that is the rectangle from x=65 to x=1015 and from y=269 to y=1248 (950x979px). The percentages are the rule; the pixels are only a reference.

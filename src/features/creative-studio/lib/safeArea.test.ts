@@ -69,6 +69,28 @@ describe('SAFE_AREAS', () => {
     }
   });
 
+  it('descreve uma tela que realmente tem a proporção do nome', () => {
+    // Foi exatamente esta classe de erro que fez as margens não aparecerem na
+    // arte: as porcentagens eram calculadas para uma tela e a geração era
+    // pedida em outra. Se o canvas de '4:5' não for 4/5, a conta inteira que
+    // sai no prompt está descrevendo um quadro que não existe.
+    // Acumular e comparar a lista inteira faz a falha dizer QUAL formato está
+    // errado e por quanto, em vez de parar no primeiro com dois números soltos.
+    const divergentes = ratios
+      .map((ratio) => {
+        const [w, h] = ratio.split(':').map(Number);
+        const { canvas } = SAFE_AREAS[ratio];
+        const real = canvas.width / canvas.height;
+        const esperado = w / h;
+        return Math.abs(real - esperado) > 0.01
+          ? `${ratio}: canvas ${canvas.width}x${canvas.height} dá ${real.toFixed(3)}, esperado ${esperado.toFixed(3)}`
+          : null;
+      })
+      .filter(Boolean);
+
+    expect(divergentes).toEqual([]);
+  });
+
   it('reserva folga extra no canto inferior direito só do 9:16', () => {
     // É onde curtir/comentar/compartilhar/áudio se empilham.
     expect(SAFE_AREAS['9:16'].bottomRightPct).toBe(40);
@@ -92,8 +114,10 @@ describe('typeScaleFor', () => {
   });
 
   it('escala junto com um canvas mais largo', () => {
-    // 16:9 tem canvas de 1200px, então os mínimos sobem na mesma proporção.
+    // 16:9 tem canvas de 1920px de largura, então os mínimos sobem na mesma
+    // proporção: 64 × (1920/1080) = 114. Proporcionalmente é o mesmo tamanho
+    // que 64px num canvas de 1080 — é disso que o mínimo trata.
     const scale = typeScaleFor(SAFE_AREAS['16:9']);
-    expect(scale.headlineMin).toBe(71);
+    expect(scale.headlineMin).toBe(114);
   });
 });

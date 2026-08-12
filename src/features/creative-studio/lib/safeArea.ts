@@ -38,14 +38,14 @@ export interface SafeArea {
  * Formatos sem posicionamento Meta correspondente (4:3, 3:4, 2:3, 3:2, 21:9).
  * 8% em todas as bordas é conservador o bastante para sobreviver a corte de
  * borda em tela alheia, sem estrangular a composição.
+ *
+ * O canvas é por formato, e não um 1080x1080 para todos: ele é citado no
+ * prompt como referência em pixels, e declarar uma tela quadrada num criativo
+ * 21:9 manda o modelo compor contra um quadro que não existe.
  */
-const GENERIC_SAFE_AREA: SafeArea = {
-  topPct: 8,
-  bottomPct: 8,
-  sidePct: 8,
-  canvas: { width: 1080, height: 1080 },
-  source: 'derivado',
-};
+function genericSafeArea(width: number, height: number): SafeArea {
+  return { topPct: 8, bottomPct: 8, sidePct: 8, canvas: { width, height }, source: 'derivado' };
+}
 
 export const SAFE_AREAS: Record<CreativeAspectRatio, SafeArea> = {
   // Único conjunto publicado pela Meta. Instagram Stories, Instagram Reels,
@@ -79,20 +79,22 @@ export const SAFE_AREAS: Record<CreativeAspectRatio, SafeArea> = {
     source: 'derivado',
     placement: 'Feed quadrado e carrossel',
   },
-  // 60px de topo/base e 120px de lado sobre 1200x628.
+  // Percentuais herdados dos 60px de topo/base e 120px de lado do formato de
+  // preview de link (1200x628). O canvas aqui é 16:9 de verdade — 1200x628 é
+  // 1,91:1, e usá-lo como referência descrevia um quadro que não é este.
   '16:9': {
     topPct: 9.6,
     bottomPct: 9.6,
     sidePct: 10,
-    canvas: { width: 1200, height: 628 },
+    canvas: { width: 1920, height: 1080 },
     source: 'derivado',
     placement: 'Preview de link, coluna direita e in-stream',
   },
-  '4:3': GENERIC_SAFE_AREA,
-  '3:4': GENERIC_SAFE_AREA,
-  '2:3': GENERIC_SAFE_AREA,
-  '3:2': GENERIC_SAFE_AREA,
-  '21:9': GENERIC_SAFE_AREA,
+  '4:3': genericSafeArea(1440, 1080),
+  '3:4': genericSafeArea(1080, 1440),
+  '2:3': genericSafeArea(1080, 1620),
+  '3:2': genericSafeArea(1620, 1080),
+  '21:9': genericSafeArea(1680, 720),
 };
 
 export function safeAreaFor(ratio: CreativeAspectRatio | null | undefined): SafeArea {
