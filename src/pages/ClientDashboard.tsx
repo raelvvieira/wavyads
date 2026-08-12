@@ -438,7 +438,7 @@ export default function ClientDashboard() {
                   key={acc.id}
                   onClick={() => handleSelectAccount({ id: acc.id, name: acc.name })}
                   disabled={selectAccount.isPending}
-                  className="w-full glass rounded-xl p-4 text-left hover:border-accent/50 transition-all flex items-center justify-between group"
+                  className="w-full glass rounded-xl p-4 text-left hover:border-accent/50 transition-colors flex items-center justify-between group"
                 >
                   <div>
                     <p className="text-sm font-medium">{acc.name}</p>
@@ -517,7 +517,7 @@ export default function ClientDashboard() {
                         <button
                           onClick={() => setPlatform('meta')}
                           className={cn(
-                            'flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-all',
+                            'flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
                             platform === 'meta' ? 'btn-accent' : 'text-muted-foreground'
                           )}
                         >
@@ -526,7 +526,7 @@ export default function ClientDashboard() {
                         <button
                           onClick={() => setPlatform('google')}
                           className={cn(
-                            'flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-all',
+                            'flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
                             platform === 'google' ? 'btn-accent' : 'text-muted-foreground'
                           )}
                         >
@@ -544,7 +544,7 @@ export default function ClientDashboard() {
                           key={p.value}
                           onClick={() => handlePresetSelect(p.value)}
                           className={cn(
-                            'rounded-lg px-3 py-2 text-xs font-medium transition-all',
+                            'rounded-lg px-3 py-2 text-xs font-medium transition-colors',
                             selectedPreset === p.value
                               ? 'btn-accent'
                               : 'glass text-muted-foreground hover:text-foreground'
@@ -591,7 +591,7 @@ export default function ClientDashboard() {
               <button
                 onClick={() => setPlatform('meta')}
                 className={cn(
-                  'rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-300',
+                  'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors duration-300',
                   platform === 'meta' ? 'btn-accent' : 'text-muted-foreground hover:text-foreground'
                 )}
               >
@@ -600,7 +600,7 @@ export default function ClientDashboard() {
               <button
                 onClick={() => setPlatform('google')}
                 className={cn(
-                  'rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-300',
+                  'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors duration-300',
                   platform === 'google' ? 'btn-accent' : 'text-muted-foreground hover:text-foreground'
                 )}
               >
@@ -616,7 +616,7 @@ export default function ClientDashboard() {
                   key={p.value}
                   onClick={() => handlePresetSelect(p.value)}
                   className={cn(
-                    'rounded-lg px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium transition-all duration-300',
+                    'rounded-lg px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium transition-colors duration-300',
                     selectedPreset === p.value
                       ? 'btn-accent'
                       : 'glass text-muted-foreground hover:text-foreground hover:bg-white/[0.08]'
@@ -629,7 +629,7 @@ export default function ClientDashboard() {
                   <PopoverTrigger asChild>
                     <button
                       className={cn(
-                        'rounded-lg px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium transition-all duration-300 flex items-center gap-1.5',
+                        'rounded-lg px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium transition-colors duration-300 flex items-center gap-1.5',
                         selectedPreset === 'custom'
                           ? 'btn-accent'
                           : 'glass text-muted-foreground hover:text-foreground hover:bg-white/[0.08]'
@@ -806,7 +806,7 @@ export default function ClientDashboard() {
                   key={tab.value}
                   onClick={() => setGoogleSubTab(tab.value)}
                   className={cn(
-                    'rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-300 whitespace-nowrap',
+                    'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors duration-300 whitespace-nowrap',
                     googleSubTab === tab.value ? 'btn-accent' : 'text-muted-foreground hover:text-foreground'
                   )}
                 >

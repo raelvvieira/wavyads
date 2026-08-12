@@ -67,7 +67,7 @@ export function StyleGalleryDialog({
                 <div
                   key={template.id}
                   className={cn(
-                    'group flex flex-col rounded-2xl border bg-white/[0.02] overflow-hidden transition-all',
+                    'group flex flex-col rounded-2xl border bg-white/[0.02] overflow-hidden transition-colors',
                     isApplied ? 'border-[#FF831E]/60 ring-1 ring-[#FF831E]/40' : 'border-white/10 hover:border-white/25',
                   )}
                 >

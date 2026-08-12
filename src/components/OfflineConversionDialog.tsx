@@ -569,7 +569,7 @@ export function OfflineConversionDialog({
             onClick={() => setMode('single')}
             disabled={bulkRunning}
             className={cn(
-              'rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
+              'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
               mode === 'single'
                 ? 'btn-accent'
                 : 'text-muted-foreground hover:text-foreground',
@@ -582,7 +582,7 @@ export function OfflineConversionDialog({
             onClick={() => setMode('bulk')}
             disabled={submitting}
             className={cn(
-              'rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
+              'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
               mode === 'bulk'
                 ? 'btn-accent'
                 : 'text-muted-foreground hover:text-foreground',

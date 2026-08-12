@@ -12,7 +12,7 @@ export function GlassCard({ children, className, hover = false, ...props }: Glas
     <div
       className={cn(
         // rounded-2xl = 16px, o raio de card do padrão WAVY.
-        // Transição só do que muda: transition-all anima layout à toa.
+        // Transição só do que muda: animar tudo mexe em layout à toa.
         'glass rounded-2xl p-6 transition-[background-color,border-color,box-shadow,transform] duration-200 ease-[cubic-bezier(0.2,0.8,0.2,1)]',
         // Escala em card grande chega a deslocar o conteúdo vizinho;
         // um leve levantar comunica o mesmo sem mexer no layout.

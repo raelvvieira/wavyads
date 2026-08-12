@@ -103,7 +103,7 @@ export default function ComercialIndexPage() {
               onClick={() => navigate(`/comercial/${c.id}`)}
               className="text-left group"
             >
-              <GlassCard className="h-full transition-all duration-300 group-hover:border-accent/40 group-hover:bg-white/[0.04]">
+              <GlassCard className="h-full transition-colors duration-300 group-hover:border-accent/40 group-hover:bg-white/[0.04]">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-lg bg-accent/15 text-accent flex items-center justify-center shrink-0">
                     <Users className="h-5 w-5" />

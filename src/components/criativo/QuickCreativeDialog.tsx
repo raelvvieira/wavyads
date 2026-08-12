@@ -130,7 +130,7 @@ export function QuickCreativeDialog({
                           disabled={suggesting}
                           onClick={() => pickCopy(entry)}
                           className={cn(
-                            'flex flex-col gap-1.5 rounded-xl border p-3.5 text-left transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50',
+                            'flex flex-col gap-1.5 rounded-xl border p-3.5 text-left transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50',
                             selectedCopyId === entry.id
                               ? 'border-accent/60 bg-accent/[0.07] ring-1 ring-accent/30'
                               : 'border-white/10 bg-white/[0.02] hover:border-white/25 hover:bg-white/[0.04]',
@@ -170,7 +170,7 @@ export function QuickCreativeDialog({
                               type="button"
                               onClick={() => pickVariation(i)}
                               className={cn(
-                                'flex flex-col gap-1.5 rounded-xl border p-3.5 text-left transition-all duration-200',
+                                'flex flex-col gap-1.5 rounded-xl border p-3.5 text-left transition-colors duration-200',
                                 selectedVariationIdx === i
                                   ? 'border-accent/60 bg-accent/[0.07] ring-1 ring-accent/30'
                                   : 'border-white/10 bg-white/[0.02] hover:border-white/25 hover:bg-white/[0.04]',
@@ -216,7 +216,7 @@ export function QuickCreativeDialog({
                           type="button"
                           onClick={() => setSelectedArtId((prev) => (prev === art.id ? null : art.id))}
                           className={cn(
-                            'group/art relative aspect-square overflow-hidden rounded-lg border transition-all duration-200',
+                            'group/art relative aspect-square overflow-hidden rounded-lg border transition-colors duration-200',
                             selectedArtId === art.id
                               ? 'border-accent/70 ring-1 ring-accent/40'
                               : 'border-white/10 hover:border-white/30',

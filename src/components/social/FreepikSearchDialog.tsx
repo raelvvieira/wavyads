@@ -71,7 +71,7 @@ export function FreepikSearchDialog({ open, onOpenChange, defaultQuery, onPick }
                 onPick(it.thumbnail);
                 onOpenChange(false);
               }}
-              className="aspect-square rounded-lg overflow-hidden border border-white/10 hover:border-accent/60 transition-all"
+              className="aspect-square rounded-lg overflow-hidden border border-white/10 hover:border-accent/60 transition-colors"
             >
               <img src={it.thumbnail} alt={it.title} className="w-full h-full object-cover" />
             </button>

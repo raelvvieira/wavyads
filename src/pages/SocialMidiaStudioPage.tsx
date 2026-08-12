@@ -295,7 +295,7 @@ export default function SocialMidiaStudioPage() {
                     key={c.id}
                     onClick={() => setSource(c.id)}
                     className={cn(
-                      "glass rounded-xl p-4 text-left transition-all",
+                      "glass rounded-xl p-4 text-left transition-colors",
                       active ? "border-accent/60 bg-accent/10 accent-glow" : "hover:bg-white/5",
                     )}
                   >
@@ -362,7 +362,7 @@ export default function SocialMidiaStudioPage() {
             <p className="text-xs text-white/35 mt-2">Copy, conceito visual, imagens e arte final — tudo automático. Pode levar 2–3 min.</p>
             <div className="mt-6 w-full max-w-md mx-auto h-1.5 bg-white/5 rounded-full overflow-hidden">
               <div
-                className="h-full bg-accent rounded-full transition-all"
+                className="h-full bg-accent rounded-full transition-[width]"
                 style={{ width: `${quickBusy.step === "copy" ? 15 : 20 + (quickBusy.done / Math.max(1, quickBusy.total)) * 80}%` }}
               />
             </div>

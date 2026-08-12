@@ -187,7 +187,7 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
             key={f.value}
             onClick={() => setStatusFilter(f.value)}
             className={cn(
-              'px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-all duration-200 border',
+              'px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-colors duration-200 border',
               statusFilter === f.value
                 ? 'border-white/20 bg-white/10 text-foreground shadow-sm'
                 : 'border-transparent bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06]'

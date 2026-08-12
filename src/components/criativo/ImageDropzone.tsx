@@ -80,7 +80,7 @@ export function ImageDropzone({
         }}
         onClick={() => inputRef.current?.click()}
         className={cn(
-          'border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all',
+          'border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors',
           dragActive
             ? 'border-accent bg-accent/10'
             : 'border-white/10 hover:border-white/20 bg-white/[0.02]',

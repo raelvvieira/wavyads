@@ -90,7 +90,7 @@ export function CreativesGallery({ ads }: CreativesGalleryProps) {
                 key={f.value}
                 onClick={() => { setStatusFilter(f.value); setExpanded(false); }}
                 className={cn(
-                  'px-2.5 py-1 rounded-full text-[11px] font-medium transition-all duration-200 border',
+                  'px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors duration-200 border',
                   statusFilter === f.value
                     ? 'border-white/20 bg-white/10 text-foreground shadow-sm'
                     : 'border-transparent bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06]'
@@ -124,11 +124,11 @@ export function CreativesGallery({ ads }: CreativesGalleryProps) {
             return (
               <div
                 key={ad.id}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all duration-200"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors duration-200"
               >
                 {/* Thumbnail — clickable */}
                 <div
-                  className="w-14 h-14 rounded-lg overflow-hidden bg-white/[0.03] flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary/40 transition-all"
+                  className="w-14 h-14 rounded-lg overflow-hidden bg-white/[0.03] flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary/40 transition-[box-shadow]"
                   onClick={() => imgSrc && setSelectedAd(ad)}
                 >
                   {imgSrc ? (
