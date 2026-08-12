@@ -28,6 +28,7 @@ PRESERVATION RULES (apply to everything NOT mentioned by the user):
 - No quality degradation, no resizing, no cropping, no re-rendering of untouched areas.
 - When removing something, fill the area seamlessly matching the surrounding background/style.
 - When changing text, change ONLY that text, keeping font, size, color, position and language identical.
+- Preserve the safe area: never move, grow or add text, logo, badge or CTA into the margins the original kept clear — the platform UI is drawn there. If a requested change would push a message element outside the safe area, keep it inside and adjust size or wrapping instead.
 - Do not invent new elements that were not asked for.
 
 OUTPUT FORMAT (strict):
@@ -105,7 +106,7 @@ serve(async (req) => {
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY não configurada");
 
-    const { originalImage, userFeedback, originalPrompt, aspect, language } = await req.json();
+    const { originalImage, userFeedback, originalPrompt, aspect, language, aspectRatio, safeZoneBlock } = await req.json();
     if (!originalImage || !userFeedback) {
       return new Response(JSON.stringify({ error: "originalImage e userFeedback obrigatórios" }), {
         status: 400,
@@ -117,11 +118,26 @@ serve(async (req) => {
 
     const ref = await resolveImageParts(originalImage);
 
-    const aspectNote = aspect === "square"
-      ? "Keep the exact 1:1 square framing of the original (1080x1080)."
-      : "Keep the exact 9:16 vertical framing of the original (1080x1920).";
+    // O formato real vem do frontend quando disponível; `aspect` só distingue
+    // story/square, então sem isso um 4:5 era instruído como 9:16.
+    const NOMINAL_CANVAS: Record<string, string> = {
+      "1:1": "1080x1080", "4:5": "1080x1350", "9:16": "1080x1920",
+      "16:9": "1200x628", "4:3": "1440x1080", "3:4": "1080x1440",
+      "2:3": "1080x1620", "3:2": "1620x1080", "21:9": "1680x720",
+    };
+    const ratio = typeof aspectRatio === "string" && NOMINAL_CANVAS[aspectRatio]
+      ? aspectRatio
+      : aspect === "square" ? "1:1" : "9:16";
+    const aspectNote = `Keep the exact ${ratio} framing of the original (${NOMINAL_CANVAS[ratio]}).`;
 
-    const fullPrompt = `CRITICAL: Apply EVERY numbered change in the instructions below. Do not skip any. Subtractive changes (remove / reduce / "menos" / "sem") are AS MANDATORY as additive ones — if you only add new elements without removing the ones the user asked to remove, the edit is a failure.\n\n${editPrompt}\n\n${aspectNote}`;
+    // A safe zone chega pronta do frontend. Depender do originalPrompt não
+    // funciona: ele é truncado em 4000 chars (o bloco pode cair fora) e o
+    // construtor é instruído a NÃO repeti-lo.
+    const safeNote = typeof safeZoneBlock === "string" && safeZoneBlock.trim()
+      ? `\n\n${safeZoneBlock.trim()}`
+      : "";
+
+    const fullPrompt = `CRITICAL: Apply EVERY numbered change in the instructions below. Do not skip any. Subtractive changes (remove / reduce / "menos" / "sem") are AS MANDATORY as additive ones — if you only add new elements without removing the ones the user asked to remove, the edit is a failure.\n\n${editPrompt}\n\n${aspectNote}${safeNote}`;
 
     console.log("[edit-image] userFeedback:", userFeedback);
     console.log("[edit-image] built editPrompt:", editPrompt);

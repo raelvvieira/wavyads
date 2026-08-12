@@ -1,4 +1,5 @@
 import { ASPECT_CONFIG, RESOLUTION_CONFIG } from '../constants/formats';
+import { safeAreaFor, safeRect, typeScaleFor, verticalLift, type SafeArea } from './safeArea';
 import type { BackendAspect, CreativeAspectRatio, CreativeResolution } from '../types/creative';
 
 // Montagem do prompt final de geração. Estava dentro do CriativoStudioPage,
@@ -45,6 +46,66 @@ function languageName(language: string): string {
   if (language === 'pt-BR') return 'Portuguese (Brazil)';
   if (language === 'es') return 'Spanish';
   return 'English';
+}
+
+/** Linha do [DO NOT INCLUDE] que corresponde ao formato de verdade. */
+function safeAreaViolationLine(area: SafeArea): string {
+  const rect = safeRect(area);
+  return `- Any headline, body copy, logo, badge or call-to-action outside the safe area (outside x ${rect.x0}-${rect.x1}, y ${rect.y0}-${rect.y1} on the nominal canvas)`;
+}
+
+/**
+ * Bloco [SAFE ZONE] do prompt.
+ *
+ * A distinção que sustenta este bloco: safe zone restringe a MENSAGEM, não a
+ * imagem. Antes disso, o prompt pedia margem sem dizer para quê, e o modelo
+ * encolhia o fundo junto com o texto — desperdiçando o frame inteiro.
+ */
+export function buildSafeZoneBlock(ratio: CreativeAspectRatio | null | undefined): string {
+  const area = safeAreaFor(ratio);
+  const rect = safeRect(area);
+  const lift = verticalLift(area);
+  const type = typeScaleFor(area);
+  const { width, height } = area.canvas;
+
+  const linhas: string[] = [
+    '[SAFE ZONE]',
+    // 1. A imagem é livre. Vem primeiro porque é o mal-entendido mais caro.
+    'IMAGERY IS NOT RESTRICTED. The photograph, background, gradient, texture and any purely visual element MUST fill the entire frame, edge to edge, full bleed. Never shrink, letterbox or inset the artwork to respect the margins below. A full-bleed background is preferred.',
+    // 2. A mensagem é presa.
+    `THE MESSAGE IS RESTRICTED. Every element that carries meaning — headline, subheadline, body copy, price, date, badge, brand logo and call-to-action — must sit ENTIRELY inside the safe area described below, because the platform UI (profile picture, caption, CTA button, engagement bar) is drawn on top of everything outside it.`,
+    // 3. Números: porcentagem manda, pixel é referência.
+    `SAFE AREA: keep the top ${area.topPct}% and the bottom ${area.bottomPct}% of the frame free of message elements, plus ${area.sidePct}% on each side. On the nominal ${width}x${height} canvas that is the rectangle from x=${rect.x0} to x=${rect.x1} and from y=${rect.y0} to y=${rect.y1} (${rect.width}x${rect.height}px). The percentages are the rule; the pixels are only a reference.`,
+  ];
+
+  // 4. Correção de composição: só entra onde a assimetria é real.
+  if (lift >= 20) {
+    linhas.push(
+      `COMPOSE HIGHER. The safe area is not centred: its vertical midpoint sits ${lift}px ABOVE the centre of the frame. Anything you centre on the canvas will land too low and be covered. Bias the entire text composition upward, into the upper-middle of the frame.`,
+    );
+  }
+
+  // 5. Tipografia medida contra a caixa segura, não contra o frame.
+  linhas.push(
+    `TYPE SIZE. Size the type against the SAFE BOX (${rect.width}x${rect.height}px), not against the full frame — type that looks right relative to the whole canvas reads as small once confined to the safe box. At this canvas width use roughly: headline ${type.headlineMin}-${type.headlineMax}px, subheadline ${type.subheadMin}-${type.subheadMax}px, body and data ${type.bodyMin}-${type.bodyMax}px, call-to-action ${type.ctaMin}-${type.ctaMax}px. Text must stay legible on a phone screen.`,
+  );
+
+  // 6. Folga. O motivo muda: em tela cheia o aparelho corta ou aplica
+  // letterbox; em feed o risco é só o recorte de borda do dispositivo.
+  linhas.push(
+    area.bottomRightPct
+      ? 'LEAVE BREATHING ROOM. Do not push elements right up against the safe boundary. Phones taller than this ratio get the creative zoomed in (cropping whatever falls outside the safe area) or letterboxed, and the advertiser does not control which.'
+      : 'LEAVE BREATHING ROOM. Do not push elements right up against the safe boundary — leave visible margin inside it, so edge cropping on some devices never touches the message.',
+  );
+
+  // 7. Canto inferior direito: barra de engajamento.
+  if (area.bottomRightPct) {
+    linhas.push(
+      `BOTTOM-RIGHT CORNER: reserve ${area.bottomRightPct}% instead of ${area.bottomPct}% on the right-hand side of the lower area — the like, comment, share and audio controls stack there.`,
+    );
+  }
+
+  return linhas.join('\n');
 }
 
 export function buildCreativePrompt(input: CreativePromptInput): string {
@@ -102,9 +163,9 @@ Template visual structure: ${JSON.stringify(template.layoutStructure || {})}
 This structure defines LAYOUT AND STYLE ONLY. Do NOT reuse, reference or render any headline, label, subtitle, CTA or body copy from a previous use of this template. ALL text content for this artwork comes exclusively from the [TEXT BLOCKS] section below, verbatim — adapt only the text, product, references and business context from the current project.`
     : '';
 
-  const safe = `[SAFE ZONE]
-${aspectConfig.safeZone}
-${aspect === 'square' ? 'Centered composition optimized for square 1:1 framing.' : ''}`;
+  // Sem aspectRatio explícito, 'story' historicamente significa 9:16.
+  const safeRatio: CreativeAspectRatio = aspectRatio ?? (aspect === 'story' ? '9:16' : '1:1');
+  const safe = buildSafeZoneBlock(safeRatio);
 
   let textBlocks = '';
   if (copy?.source === 'ai') {
@@ -150,7 +211,7 @@ Not: ${mood.evita.join(', ')}.`
 
   const doNot = `[DO NOT INCLUDE]
 ${[...evitaList, ...antiPadroesList, ...userNegatives].join('\n')}
-- Any element within the top or bottom safe zones
+${safeAreaViolationLine(safeAreaFor(safeRatio))}
 - Any text in a language other than ${lang}
 - Misspelled, garbled or fake-looking text
 - Watermarks, signatures, low-resolution artifacts

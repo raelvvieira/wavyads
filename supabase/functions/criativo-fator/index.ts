@@ -41,9 +41,34 @@ Identifique a estrutura do original e use outra. Reescreva toda a copy nessa nov
 ## REGRAS DE DESIGN (DNA da marca preservado)
 
 Em TODAS as 5 variações:
-- Manter paleta de cores, tipografia, logo, glassmorphism e safe zones do criativo original
+- Manter paleta de cores, tipografia, logo e glassmorphism do criativo original
 - Manter idioma do texto da arte
 - Pode variar: composição, dominância de cor, hook visual, intensidade de gradiente
+
+## SAFE ZONE (restrição de composição, não de estilo)
+
+A safe zone alvo vem no BLOCO [SAFE ZONE] AUTORITATIVO da mensagem do usuário.
+Ele é a fonte de verdade — vale mais que o que estiver escrito no prompt
+original, que pode estar desatualizado. Ao COMPOR cada variação:
+
+- A IMAGEM é livre: fundo, foto, gradiente e textura ocupam o frame inteiro,
+  de borda a borda. Safe zone NÃO restringe imagem.
+- A MENSAGEM é presa: headline, subtítulo, corpo, dado, preço, selo, logo e
+  CTA vivem todos dentro do retângulo seguro.
+- Descreva a composição em termos do retângulo seguro, nunca do frame. "Título
+  grande centralizado no frame" é um erro de composição quando a zona inferior
+  é maior que a superior — o texto nasce baixo demais e a interface da Meta o
+  cobre. Diga "centralizado na área segura" e, quando o bloco indicar para
+  compor mais alto, componha mais alto.
+- O hook visual do EIXO 4 pode e deve sangrar até a borda quando for imagem.
+  Só o hook do tipo "Texto como hook dominante" fica preso à área segura — e
+  nesse caso ele domina ocupando a LARGURA da área segura, não a do frame.
+- Menos elementos de mensagem, maiores. A área segura é bem menor que o frame;
+  copy que caberia no frame inteiro não cabe nela de forma legível.
+
+Esse bloco deve ser copiado LITERALMENTE, palavra por palavra, para dentro de
+cada promptCompleto, substituindo qualquer bloco de safe zone que exista no
+prompt original.
 
 ## REGRAS DE VARIAÇÃO GENUÍNA
 
@@ -55,7 +80,7 @@ Variação superficial (só mudar cor/fonte) NÃO conta. Cada variação deve se
 Para cada um dos 5 criativos, gere:
 - copy estruturada nova (label, titulo, subtitulo, dados, cta) — em PT-BR/EN/ES conforme o original
 - descrição visual (hook, composição, tom, diferença vs original)
-- promptCompleto: PROMPT INTEIRO PRONTO para o gerador de imagem Nano Banana, no MESMO formato do prompt original (com blocos [INTRODUCTION], [DESIGN SYSTEM], [SAFE ZONE], [TEXT BLOCKS], [MOOD], [DO NOT INCLUDE], etc.). Reaproveite TUDO do original (design system, safe zones, logo, idioma, do not include) e modifique APENAS os blocos que refletem o eixo desta variação. O prompt deve ser autossuficiente para o modelo de imagem.`;
+- promptCompleto: PROMPT INTEIRO PRONTO para o gerador de imagem Nano Banana, no MESMO formato do prompt original (com blocos [INTRODUCTION], [DESIGN SYSTEM], [SAFE ZONE], [TEXT BLOCKS], [MOOD], [DO NOT INCLUDE], etc.). Reaproveite TUDO do original (design system, logo, idioma, do not include) e modifique APENAS os blocos que refletem o eixo desta variação — exceto a safe zone, que vem do bloco autoritativo e substitui a do original. O prompt deve ser autossuficiente para o modelo de imagem.`;
 
 interface Body {
   originalPrompt: string;
@@ -63,6 +88,10 @@ interface Body {
   businessContext?: string;
   language?: string;
   aspect: "story" | "square";
+  /** Formato real do lote ("9:16", "4:5", ...). `aspect` só distingue vertical de quadrado. */
+  aspectRatio?: string;
+  /** Bloco de safe zone montado no cliente — fonte de verdade da restrição. */
+  safeZoneBlock?: string;
 }
 
 serve(async (req) => {
@@ -82,6 +111,22 @@ serve(async (req) => {
 
     const langName = body.language === "en" ? "English" : body.language === "es" ? "Spanish" : "Portuguese (Brazil)";
 
+    // O cliente sabe o formato exato (4:5, 9:16, 16:9...); `aspect` só separa
+    // vertical de quadrado. Sem o ratio real, chamar todo vertical de 9:16
+    // instrui o enquadramento errado — o mesmo bug que a edição tinha.
+    const ratioLabel = body.aspectRatio
+      ? body.aspectRatio
+      : body.aspect === "story"
+        ? "9:16 vertical"
+        : "1:1 square";
+
+    // Fonte de verdade da restrição. O cliente ainda reanexa este mesmo bloco
+    // ao promptCompleto que volta daqui; aqui ele serve para o modelo COMPOR
+    // ciente da área segura, não só para ficar preso a ela depois.
+    const safeZoneSection = body.safeZoneBlock
+      ? `\nBLOCO [SAFE ZONE] AUTORITATIVO — componha ciente dele e copie-o literalmente para dentro de cada promptCompleto:\n"""\n${body.safeZoneBlock}\n"""\n`
+      : "";
+
     const userMsg = `PROMPT ORIGINAL DO CRIATIVO APROVADO (use como base e fonte de verdade do DNA visual):
 """
 ${body.originalPrompt}
@@ -90,8 +135,8 @@ ${body.originalPrompt}
 CONTEXTO DO NEGÓCIO: ${body.businessContext || "(não fornecido — infira do prompt acima)"}
 COPY APROVADA ATUAL: ${JSON.stringify(body.copy || {})}
 IDIOMA OBRIGATÓRIO DOS TEXTOS NA ARTE: ${langName}
-ASPECT RATIO ALVO PARA AS 5 VARIAÇÕES: ${body.aspect === "story" ? "9:16 vertical (1080x1920)" : "1:1 square (1080x1080)"}
-
+ASPECT RATIO ALVO PARA AS 5 VARIAÇÕES: ${ratioLabel}
+${safeZoneSection}
 Aplique a skill FATOR CRIATIVO. Gere EXATAMENTE 5 variações na ordem dos 5 eixos (1=emocional, 2=oferta, 3=persona, 4=hook, 5=estrutura). Cada promptCompleto deve estar pronto para alimentar o Nano Banana e produzir uma imagem coerente com a marca original.`;
 
     const tool = {
