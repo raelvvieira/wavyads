@@ -144,10 +144,10 @@ function CrmClientView({ clientId }: { clientId: string }) {
   };
 
   return (
-    <div className="flex h-full flex-col p-4 pt-20 lg:p-6 lg:pt-6">
+    <div className="flex h-full flex-col p-4 lg:p-6">
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="flex-1 min-w-[200px]">
-          <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+          <h1 className="flex items-center gap-2 text-2xl font-semibold">
             <Contact className="h-6 w-6 text-accent" />
             CRM {client?.name && <span className="font-normal text-muted-foreground">· {client.name}</span>}
           </h1>
@@ -219,7 +219,7 @@ function CrmClientView({ clientId }: { clientId: string }) {
           </Button>
         </GlassCard>
       ) : (
-        <div className="relative flex-1 overflow-hidden rounded-2xl border border-white/10 bg-black/20">
+        <div className="relative flex-1 overflow-hidden rounded-2xl border border-white/10 bg-[var(--wavy-surface-soft)]">
           <iframe
             key={effectiveUrl}
             src={effectiveUrl}
@@ -273,7 +273,7 @@ function CrmIndex() {
 
   if (roleLoading || (!isAdmin && redirecting)) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center p-6 pt-20 lg:pt-6">
+      <div className="flex min-h-[60vh] items-center justify-center p-6">
         <Loader2 className="h-8 w-8 animate-spin text-accent" />
       </div>
     );
@@ -281,16 +281,16 @@ function CrmIndex() {
 
   if (!isAdmin) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center p-6 pt-20 text-center lg:pt-6">
+      <div className="flex min-h-[60vh] items-center justify-center p-6 text-center">
         <p className="text-sm text-white/60">Nenhum cliente vinculado à sua conta.</p>
       </div>
     );
   }
 
   return (
-    <div className="p-4 pt-20 lg:p-6 lg:pt-6">
+    <div className="p-4 lg:p-6">
       <div className="mb-5">
-        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+        <h1 className="flex items-center gap-2 text-2xl font-semibold">
           <Contact className="h-6 w-6 text-accent" /> CRM
         </h1>
         <p className="text-sm text-white/50">Escolha o cliente para abrir o CRM (EVO) dele.</p>

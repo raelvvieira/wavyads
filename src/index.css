@@ -47,13 +47,33 @@
 
     --wavy-font: Geist, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
+    /* Tipografia por papel. Um título grande com o espaçamento do corpo fica
+       frouxo; um rótulo pequeno com o espaçamento do título fica apertado.
+       Por isso tracking e leading variam com o tamanho, em vez de existir um
+       letter-spacing global aplicado a tudo. */
+    --wavy-tracking-display: -0.022em;
+    --wavy-tracking-title: -0.014em;
+    --wavy-tracking-body: -0.002em;
+    --wavy-tracking-label: 0.012em;
+    --wavy-tracking-caps: 0.06em;
+    --wavy-leading-display: 1.08;
+    --wavy-leading-title: 1.18;
+    --wavy-leading-body: 1.5;
+    --wavy-leading-label: 1.32;
+
     --wavy-radius-small: 10px;
     --wavy-radius-control: 12px;
     --wavy-radius-large-control: 14px;
     --wavy-radius-card: 16px;
     --wavy-radius-feature: 20px;
-    --wavy-radius-island: 24px;
+    --wavy-radius-island: 26px;
     --wavy-radius-pill: 999px;
+
+    /* Geometria do shell. A navegação flutua sobre a tela em vez de fazer
+       parede: a distância das bordas é o que a torna uma ilha. */
+    --wavy-nav-collapsed: 72px;
+    --wavy-nav-expanded: 248px;
+    --wavy-shell-gutter: 16px;
 
     --wavy-duration-press: 100ms;
     --wavy-duration-fast: 160ms;
@@ -176,6 +196,139 @@
 }
 
 @layer components {
+  /* ---------------------------------------------------------------------
+     Tipografia
+     ---------------------------------------------------------------------
+     Tracking e leading por papel vivem na escala `fontSize` do Tailwind
+     (tailwind.config.ts) — utilidades vencem a camada de componentes na
+     cascata, então declarar espaçamento aqui seria descartado em silêncio
+     sempre que o elemento também tivesse `text-*`.
+
+     Sobra para cá só o que a escala de tamanho não expressa. */
+
+  .wavy-display,
+  .wavy-title {
+    font-optical-sizing: auto;
+  }
+
+  /* ---------------------------------------------------------------------
+     Shell: ilha de navegação flutuante
+     ---------------------------------------------------------------------
+     A tela é contínua e a navegação flutua sobre ela. O que faz disso uma
+     ilha, e não uma barra lateral recolorida, é a distância das bordas —
+     por isso as posições vêm de `--wavy-shell-gutter` e nunca de `inset-y-0`. */
+  .wavy-nav-island {
+    position: fixed;
+    left: var(--wavy-shell-gutter);
+    top: var(--wavy-shell-gutter);
+    /* Altura pelo conteúdo, não pela viewport. Esticar de ponta a ponta com
+       sete destinos devolve o painel à condição de parede — só que agora com
+       cantos arredondados. O teto impede o estouro quando a lista cresce. */
+    max-height: calc(100vh - 2 * var(--wavy-shell-gutter));
+    z-index: 40;
+    width: var(--wavy-nav-collapsed);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+    overflow: hidden;
+    border-radius: var(--wavy-radius-island);
+    /* Vidro de verdade: translucidez, desfoque, luz na borda e elevação.
+       O gradiente sutil no topo é o que dá espessura óptica ao painel. */
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.018)),
+      var(--wavy-glass);
+    border: 1px solid var(--wavy-glass-border);
+    box-shadow:
+      0 24px 70px rgba(0, 0, 0, 0.42),
+      0 2px 12px rgba(0, 0, 0, 0.24),
+      inset 0 1px 0 rgba(255, 255, 255, 0.10);
+    backdrop-filter: blur(24px) saturate(135%);
+    -webkit-backdrop-filter: blur(24px) saturate(135%);
+    transition: width var(--wavy-duration-panel) var(--wavy-ease-fluid);
+    will-change: width;
+  }
+
+  .wavy-nav-island[data-expanded='true'] {
+    width: var(--wavy-nav-expanded);
+  }
+
+  /* O rótulo entra depois que a largura já começou a abrir. Revelar junto
+     faz o texto aparecer espremido e depois "esticar". */
+  .wavy-nav-label {
+    opacity: 0;
+    transform: translateX(-6px);
+    white-space: nowrap;
+    transition:
+      opacity var(--wavy-duration-fast) var(--wavy-ease),
+      transform var(--wavy-duration-medium) var(--wavy-ease-fluid);
+  }
+
+  .wavy-nav-island[data-expanded='true'] .wavy-nav-label {
+    opacity: 1;
+    transform: none;
+    transition-delay: 70ms;
+  }
+
+  /* Vidro só refrata se houver algo atrás. A tela é lisa, então um brilho
+     contido da marca fica atrás da ilha — inerte ao ponteiro e longe de
+     qualquer texto denso. */
+  .wavy-shell::before {
+    content: '';
+    position: fixed;
+    left: -180px;
+    top: -120px;
+    width: 640px;
+    height: 720px;
+    z-index: 0;
+    pointer-events: none;
+    background: radial-gradient(
+      closest-side,
+      rgba(255, 131, 30, 0.20),
+      rgba(218, 47, 30, 0.09) 55%,
+      transparent 100%
+    );
+    filter: blur(30px);
+  }
+
+  /* O conteúdo acompanha o estado da ilha em vez de ficar preso a uma
+     largura fixa — é o que evita a colisão quando o menu abre. */
+  .wavy-app-content {
+    padding-left: calc(var(--wavy-shell-gutter) + var(--wavy-nav-collapsed) + 24px);
+    transition: padding-left var(--wavy-duration-panel) var(--wavy-ease-fluid);
+  }
+
+  .wavy-shell[data-nav-expanded='true'] .wavy-app-content {
+    padding-left: calc(var(--wavy-shell-gutter) + var(--wavy-nav-expanded) + 28px);
+  }
+
+  /* Abaixo do breakpoint a ilha lateral sai de cena e vira uma ilha inferior
+     com os destinos primários. Encolher a barra do desktop não é o padrão. */
+  @media (max-width: 1023px) {
+    .wavy-nav-island,
+    .wavy-nav-island[data-expanded='true'] {
+      left: 12px;
+      right: 12px;
+      top: auto;
+      bottom: calc(12px + env(safe-area-inset-bottom));
+      width: auto;
+      height: 68px;
+      flex-direction: row;
+      gap: 4px;
+      padding: 8px 10px;
+    }
+
+    .wavy-shell::before {
+      display: none;
+    }
+
+    .wavy-app-content,
+    .wavy-shell[data-nav-expanded='true'] .wavy-app-content {
+      padding-left: 0;
+      padding-bottom: 96px;
+    }
+  }
+
   /* Card de dados. Apesar do nome histórico, é SÓLIDO de propósito: o padrão
      WAVY reserva vidro para navegação e overlays, e desfoque atrás de tabela
      densa custa legibilidade e performance. */
@@ -296,6 +449,18 @@
   }
 }
 
+@layer utilities {
+  /* Micro-rótulo em caixa alta. Maiúsculas coladas em 9–11px viram um bloco
+     cinza ilegível, então aqui o tracking ABRE em vez de fechar — o oposto
+     do que a escala de tamanho faz nesse corpo. Mora em `utilities` porque
+     precisa vencer o letter-spacing que vem junto com o `text-*`. */
+  .wavy-caps {
+    letter-spacing: var(--wavy-tracking-caps);
+    line-height: var(--wavy-leading-label);
+    text-transform: uppercase;
+  }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
@@ -315,7 +480,8 @@
 }
 
 /* Movimento é para explicar mudança de estado — quem pediu menos movimento
-   não deveria receber nenhum enfeite. */
+   não deveria receber nenhum enfeite. O estado final continua correto: só a
+   duração cai, então a ilha ainda abre e fecha, sem animar. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -324,5 +490,37 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Três preferências distintas, tratadas separadamente: quem reduz
+   transparência não necessariamente reduz movimento. */
+@media (prefers-reduced-transparency: reduce) {
+  .wavy-nav-island,
+  .glass-island {
+    background: var(--wavy-surface-elevated);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .wavy-shell::before {
+    display: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .wavy-nav-island,
+  .glass-island {
+    border-color: var(--wavy-border-strong);
+    box-shadow: none;
+  }
+
+  .wavy-nav-item[data-active='true'] {
+    outline: 2px solid var(--wavy-focus);
+    outline-offset: -2px;
+  }
+
+  :focus-visible {
+    outline-width: 3px;
   }
 }

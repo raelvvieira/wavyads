@@ -256,14 +256,14 @@ export default function SocialMidiaStudioPage() {
 
 
   return (
-    <div className="container mx-auto px-4 lg:px-6 pt-20 lg:pt-6 pb-10 max-w-7xl">
+    <div className="container mx-auto px-4 lg:px-6 pb-10 max-w-7xl">
       <header className="mb-6">
         <div className="flex items-center gap-3 mb-2">
           <div className="h-10 w-10 rounded-xl bg-accent/15 flex items-center justify-center">
             <PlayCircle className="h-5 w-5 text-accent" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Social Mídia Studio</h1>
+            <h1 className="text-2xl font-semibold">Social Mídia Studio</h1>
             <p className="text-sm text-white/50">Pipeline viral → conteúdo pronto</p>
           </div>
         </div>

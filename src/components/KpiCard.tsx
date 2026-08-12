@@ -21,7 +21,7 @@ interface MetricDef {
 }
 
 export const METRIC_DEFS: Record<MetricKey, MetricDef> = {
-  spend:             { label: 'Total Gasto',     icon: DollarSign,   format: formatCurrency,            color: 'bg-emerald-500' },
+  spend:             { label: 'Total Gasto',     icon: DollarSign,   format: formatCurrency,            color: 'bg-status-active' },
   impressions:       { label: 'Impressões',      icon: Eye,          format: formatNumber,              color: 'bg-blue-500' },
   reach:             { label: 'Alcance',         icon: Users,        format: formatNumber,              color: 'bg-violet-500' },
   clicks:            { label: 'Cliques',         icon: MousePointer, format: formatNumber,              color: 'bg-cyan-500' },
@@ -103,13 +103,13 @@ export function KpiCard({ metricKey, value, previousValue, onChangeMetric }: Kpi
           <div className="flex items-center sm:items-start justify-between gap-2">
             <div className="space-y-1 sm:space-y-1.5 min-w-0 flex-1">
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium leading-tight line-clamp-2 sm:min-h-[24px]">{def.label}</p>
-              <p className="text-base sm:text-lg md:text-xl lg:text-xl xl:text-xl 2xl:text-2xl font-bold tracking-tight metric-number tabular-nums leading-tight break-words">{def.format(value)}</p>
+              <p className="text-base sm:text-lg md:text-xl lg:text-xl xl:text-xl 2xl:text-2xl font-bold metric-number tabular-nums leading-tight break-words">{def.format(value)}</p>
               {changePercent != null && (
                 <div
                   className={cn(
                     'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold border',
                     isPositive
-                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                      ? 'bg-status-active/10 text-status-active border-status-active/20'
                       : 'bg-red-500/10 text-red-400 border-red-500/20'
                   )}
                 >

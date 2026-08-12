@@ -27,7 +27,7 @@ const COLUMNS: Column[] = [
 const STATUS_CONFIG: Record<GoogleAdsSearchTerm['status'], { label: string; className: string }> = {
   none: { label: 'Não gerenciado', className: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
   added: { label: 'Já é palavra-chave', className: 'bg-white/5 text-white/50 border-white/10' },
-  excluded: { label: 'Excluído (negativa)', className: 'bg-green-500/10 text-green-400 border-green-500/20' },
+  excluded: { label: 'Excluído (negativa)', className: 'bg-status-active/10 text-status-active border-status-active/20' },
 };
 
 function StatusPill({ status }: { status: GoogleAdsSearchTerm['status'] }) {

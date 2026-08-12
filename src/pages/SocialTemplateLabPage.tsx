@@ -148,7 +148,7 @@ export function SocialTemplateLabContent() {
   };
 
   return (
-    <main className="mx-auto w-full max-w-[1480px] px-4 pb-12 pt-20 lg:px-6 lg:pt-6">
+    <main className="mx-auto w-full max-w-[1480px] px-4 pb-12 pt-6 lg:px-6">
       <header className="mb-5 flex flex-col gap-4 border-b border-white/10 pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex items-start gap-3">
           <button
@@ -168,7 +168,7 @@ export function SocialTemplateLabContent() {
           </div>
         </div>
 
-        <div className="inline-flex w-fit items-center gap-2 rounded-lg border border-emerald-400/20 bg-emerald-400/5 px-3 py-2 text-xs text-emerald-300">
+        <div className="inline-flex w-fit items-center gap-2 rounded-lg border border-status-active/20 bg-status-active/5 px-3 py-2 text-xs text-status-active">
           <ShieldCheck className="h-4 w-4" /> Pipeline de producao intacto
         </div>
       </header>

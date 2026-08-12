@@ -102,7 +102,7 @@ function formatBRL(v: number | null) {
 function StatusBadge({ status, error }: { status: string; error?: string | null }) {
   if (status === 'sent') {
     return (
-      <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+      <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-status-active/15 text-status-active border border-status-active/30">
         <CheckCircle2 className="h-3 w-3" /> Enviado
       </span>
     );
@@ -358,17 +358,17 @@ export default function ComercialPage() {
 
   if (roleLoading) {
     return (
-      <div className="p-6 pt-20 lg:pt-6 flex items-center justify-center min-h-[60vh]">
+      <div className="p-6 flex items-center justify-center min-h-[60vh]">
         <div className="h-8 w-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 pt-20 lg:pt-6 space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h1 className="text-2xl font-semibold">
             Comercial {client?.name && <span className="text-muted-foreground font-normal">· {client.name}</span>}
           </h1>
           <p className="text-sm text-muted-foreground">

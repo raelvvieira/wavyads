@@ -56,15 +56,21 @@ interface ConversionFunnelProps {
   onChangeStages?: (next: { s4: BottomStageOption; s5: BottomStageOption; s6: BottomStageOption }) => void;
 }
 
-// Green gradient from dark (top) to light (bottom) — 6 stages
-const STAGE_GREENS = [
-  { bg: 'rgba(255,131,30,0.06)', border: 'rgba(255,131,30,0.30)' },
-  { bg: 'rgba(255,131,30,0.10)', border: 'rgba(255,131,30,0.38)' },
-  { bg: 'rgba(255,131,30,0.14)', border: 'rgba(255,131,30,0.46)' },
-  { bg: 'rgba(255,131,30,0.18)', border: 'rgba(255,131,30,0.55)' },
-  { bg: 'rgba(255,131,30,0.22)', border: 'rgba(255,131,30,0.65)' },
-  { bg: 'rgba(255,131,30,0.27)', border: 'rgba(255,131,30,0.75)' },
-];
+// Rampa de intensidade da laranja da marca: o funil fica mais forte conforme
+// desce. Derivada do token — o hex cravado aqui era a última cor de marca
+// solta no chrome do app. (O nome antigo dizia "greens", herança do verde
+// anterior; a cor mudou e o nome não.)
+const STAGE_INTENSITIES = [
+  { fill: 6, edge: 30 },
+  { fill: 10, edge: 38 },
+  { fill: 14, edge: 46 },
+  { fill: 18, edge: 55 },
+  { fill: 22, edge: 65 },
+  { fill: 27, edge: 75 },
+].map(({ fill, edge }) => ({
+  bg: `color-mix(in srgb, var(--wavy-brand-orange) ${fill}%, transparent)`,
+  border: `color-mix(in srgb, var(--wavy-brand-orange) ${edge}%, transparent)`,
+}));
 
 function getStoredStage(key: string, fallback: BottomStageOption): BottomStageOption {
   try {
@@ -179,7 +185,7 @@ export function ConversionFunnel({
         {stages.map((stage, i) => {
           const widthPercent = Math.max(20, (stage.value / maxValue) * 100);
           const rate = rates[i];
-          const green = STAGE_GREENS[i];
+          const intensity = STAGE_INTENSITIES[i];
           const isCustomizable = i === 3 || i === 4 || i === 5;
           const pos: 4 | 5 | 6 = i === 3 ? 4 : i === 4 ? 5 : 6;
           const currentStage = i === 3 ? stage4 : i === 4 ? stage5 : stage6;
@@ -188,8 +194,8 @@ export function ConversionFunnel({
             <div key={`${stage.label}-${i}`} className="w-full flex flex-col items-center">
               {i > 0 && rate !== null && (
                 <div className="flex items-center gap-2 py-1.5">
-                  <ArrowDown className="h-4 w-4 text-emerald-400/60" />
-                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                  <ArrowDown className="h-4 w-4 text-status-active/60" />
+                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border bg-status-active/20 text-status-active border-status-active/30">
                     {rate.toFixed(1)}%
                   </span>
                 </div>
@@ -200,8 +206,8 @@ export function ConversionFunnel({
                 style={{
                   width: `${widthPercent}%`,
                   minWidth: '160px',
-                  background: green.bg,
-                  borderLeftColor: green.border,
+                  background: intensity.bg,
+                  borderLeftColor: intensity.border,
                 }}
               >
                 {isCustomizable

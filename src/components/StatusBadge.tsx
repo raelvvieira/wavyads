@@ -4,7 +4,7 @@ import { CampaignStatus } from '@/types';
 const statusConfig: Record<CampaignStatus, { label: string; className: string }> = {
   active: {
     label: 'Ativa',
-    className: 'bg-green-500/10 text-green-400 border-green-500/20',
+    className: 'bg-status-active/10 text-status-active border-status-active/20',
   },
   paused: {
     label: 'Pausada',

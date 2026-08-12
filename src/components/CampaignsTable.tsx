@@ -156,7 +156,7 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
 
   const getTags = (c: MetaCampaign) => {
     const tags: { label: string; className: string }[] = [];
-    if (c.id === bestCplId) tags.push({ label: 'Melhor CPL', className: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' });
+    if (c.id === bestCplId) tags.push({ label: 'Melhor CPL', className: 'bg-status-active/20 text-status-active border-status-active/30' });
     if (c.id === worstCplId) tags.push({ label: 'Pior CPL', className: 'bg-red-500/20 text-red-400 border-red-500/30' });
     if (c.id === mostLeadsId) tags.push({ label: 'Mais Leads', className: 'bg-blue-500/20 text-blue-400 border-blue-500/30' });
     if ((c.purchases || 0) > 0) tags.push({ label: 'Venda', className: 'bg-amber-500/20 text-amber-400 border-amber-500/30' });
@@ -166,14 +166,14 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
   const getCplClass = (cpr: number) => {
     const avgCpr = totals.cost_per_result;
     if (!cpr || !avgCpr) return '';
-    if (cpr < avgCpr * 0.8) return 'bg-emerald-500/10';
+    if (cpr < avgCpr * 0.8) return 'bg-status-active/10';
     if (cpr > avgCpr * 1.2) return 'bg-red-500/10';
     return '';
   };
 
   const getRoasClass = (roas: number) => {
     if (!roas) return 'text-muted-foreground';
-    if (roas >= 2) return 'text-emerald-400';
+    if (roas >= 2) return 'text-status-active';
     if (roas >= 1) return 'text-amber-400';
     return 'text-red-400';
   };

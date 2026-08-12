@@ -148,7 +148,7 @@ export function CreativesGallery({ ads }: CreativesGalleryProps) {
                   <div className="flex sm:hidden items-center gap-3 mt-1.5 text-[10px]">
                     <span className="text-muted-foreground">Gasto: <span className="font-semibold text-foreground metric-number">{formatCurrency(ad.spend)}</span></span>
                     <span className="text-muted-foreground">Compras: <span className="font-semibold text-foreground metric-number">{ad.purchases || 0}</span></span>
-                    <span className="text-muted-foreground">ROAS: <span className={cn('font-semibold metric-number', !ad.purchase_roas ? 'text-muted-foreground' : ad.purchase_roas >= 2 ? 'text-emerald-400' : ad.purchase_roas >= 1 ? 'text-amber-400' : 'text-red-400')}>{ad.purchase_roas ? ad.purchase_roas.toFixed(2) + 'x' : '—'}</span></span>
+                    <span className="text-muted-foreground">ROAS: <span className={cn('font-semibold metric-number', !ad.purchase_roas ? 'text-muted-foreground' : ad.purchase_roas >= 2 ? 'text-status-active' : ad.purchase_roas >= 1 ? 'text-amber-400' : 'text-red-400')}>{ad.purchase_roas ? ad.purchase_roas.toFixed(2) + 'x' : '—'}</span></span>
                   </div>
                 </div>
 
@@ -178,7 +178,7 @@ export function CreativesGallery({ ads }: CreativesGalleryProps) {
                   </div>
                   <div className="text-center">
                     <span className="text-[10px] text-muted-foreground block">ROAS</span>
-                    <span className={cn('font-semibold metric-number', !ad.purchase_roas ? 'text-muted-foreground' : ad.purchase_roas >= 2 ? 'text-emerald-400' : ad.purchase_roas >= 1 ? 'text-amber-400' : 'text-red-400')}>
+                    <span className={cn('font-semibold metric-number', !ad.purchase_roas ? 'text-muted-foreground' : ad.purchase_roas >= 2 ? 'text-status-active' : ad.purchase_roas >= 1 ? 'text-amber-400' : 'text-red-400')}>
                       {ad.purchase_roas ? ad.purchase_roas.toFixed(2) + 'x' : '—'}
                     </span>
                   </div>
