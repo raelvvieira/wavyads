@@ -1,0 +1,159 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`buildCreativePrompt > adiciona o bloco de consistência quando o quadrado tem Story de referência 1`] = `
+"[INTRODUCTION]
+Create a 1:1 perfect square Instagram post, 1080x1080px advertisement image for a professional brand.
+Quality target: standard high-quality digital advertising image.
+
+[DESIGN SYSTEM]
+
+
+[SAFE ZONE]
+Top safe zone: keep 120px from the top edge clear of important text. Bottom safe zone: keep 120px from the bottom edge clear.
+Centered composition optimized for square 1:1 framing.
+
+[VISUAL CONSISTENCY — CRITICAL]
+A reference Story version of this same creative is attached as the FIRST image. The square version MUST replicate its EXACT color palette, lighting, color grading, photographic treatment, typography choices and overall mood. Only the framing/composition changes to fit a 1:1 square. Treat that Story as the visual ground truth — do NOT shift hues, saturation, contrast or styling.
+
+[DO NOT INCLUDE]
+
+- Any element within the top or bottom safe zones
+- Any text in a language other than Portuguese (Brazil)
+- Misspelled, garbled or fake-looking text
+- Watermarks, signatures, low-resolution artifacts
+- Generic stock-photo aesthetic
+
+All text in the artwork MUST be written in Portuguese (Brazil). Final result: standard high-quality digital advertising image, polished, professional advertising design, sharp typography, brand-grade composition."
+`;
+
+exports[`buildCreativePrompt > monta com copy da IA, mood e anti-padrões 1`] = `
+"[INTRODUCTION]
+Create a 4:5 vertical Instagram feed advertisement, optimized for Meta Ads feed placement advertisement image for clínica de estética premium.
+Quality target: ultra high-resolution 4K advertising image, crisp details, sharp typography, premium finish.
+
+[DESIGN SYSTEM]
+DOC: paleta escura, tipografia grotesk
+
+[SAFE ZONE]
+Keep generous margins on all edges. Avoid placing important text too close to the top or bottom edges.
+
+
+[TEXT BLOCKS]
+All text must be rendered exactly as written, in Portuguese (Brazil), with professional typography and perfect legibility.
+LABEL (top, small uppercase, wide tracking, secondary color): "NOVO"
+MAIN TITLE (dominant, large, primary typeface, high contrast): "Botox Day"
+SUBTITLE (medium, secondary typeface, supports the title): "com naturalidade"
+DATA LINE (small, factual: date/place/price/spots): "12/08"
+CTA (pill or button, accent color, bold): "Agendar"
+
+[MOOD]
+Feels like: Apple, Nike.
+Tone: sofisticado, direto.
+Not: clipart, gradiente neon.
+
+[DO NOT INCLUDE]
+- clipart
+- gradiente neon
+- nada de borda arredondada exagerada
+- Any element within the top or bottom safe zones
+- Any text in a language other than Portuguese (Brazil)
+- Misspelled, garbled or fake-looking text
+- Watermarks, signatures, low-resolution artifacts
+- Generic stock-photo aesthetic
+
+All text in the artwork MUST be written in Portuguese (Brazil). Final result: ultra high-resolution 4K advertising image, crisp details, sharp typography, premium finish, polished, professional advertising design, sharp typography, brand-grade composition."
+`;
+
+exports[`buildCreativePrompt > monta com template, logo e fotos de produto 1`] = `
+"[INTRODUCTION]
+Create a 16:9 horizontal advertising image advertisement image for a professional brand.
+Quality target: ultra high-resolution 4K advertising image, crisp details, sharp typography, premium finish.
+
+[ATTACHED PHOTOS]
+2 reference image(s) provided showing the product/person/scene that must appear in the composition.
+Preserve their exact likeness. Do NOT alter faces, skin tone, body shape or appearance in any way. Treat the subject as a fixed reference.
+Integrate the subject naturally into the composition described below.
+
+[DESIGN SYSTEM]
+
+
+[TEMPLATE STRUCTURE]
+Use the following reusable template structure as the creative foundation — layout, visual hierarchy, typography rhythm, spacing and composition only.
+Template name: Wavy Editorial
+Template category: Oferta
+Template visual structure: {"grid":"12col"}
+
+This structure defines LAYOUT AND STYLE ONLY. Do NOT reuse, reference or render any headline, label, subtitle, CTA or body copy from a previous use of this template. ALL text content for this artwork comes exclusively from the [TEXT BLOCKS] section below, verbatim — adapt only the text, product, references and business context from the current project.
+
+[SAFE ZONE]
+Keep important text and subjects away from extreme left and right edges. Maintain a centered safe composition area.
+
+
+[BRAND LOGO]
+A brand logo is provided as a separate reference. Place it discreetly in a corner (top-left or bottom-right preferred), small, clean. Do NOT distort, recolor, recreate or redesign it — treat as a fixed brand asset.
+
+[DO NOT INCLUDE]
+- sem texto em inglês
+- sem moldura
+- Any element within the top or bottom safe zones
+- Any text in a language other than Portuguese (Brazil)
+- Misspelled, garbled or fake-looking text
+- Watermarks, signatures, low-resolution artifacts
+- Generic stock-photo aesthetic
+
+All text in the artwork MUST be written in Portuguese (Brazil). Final result: ultra high-resolution 4K advertising image, crisp details, sharp typography, premium finish, polished, professional advertising design, sharp typography, brand-grade composition."
+`;
+
+exports[`buildCreativePrompt > monta o prompt mínimo 1`] = `
+"[INTRODUCTION]
+Create a 9:16 vertical Instagram Story, 1080x1920px advertisement image for a professional brand.
+Quality target: ultra high-resolution 4K advertising image, crisp details, sharp typography, premium finish.
+
+[DESIGN SYSTEM]
+
+
+[SAFE ZONE]
+Top safe zone: keep 280px from the very top edge completely free of any text, graphic or important element. Bottom safe zone: keep 280px from the very bottom edge completely free. This protects against Instagram UI overlays.
+
+
+[DO NOT INCLUDE]
+
+- Any element within the top or bottom safe zones
+- Any text in a language other than Portuguese (Brazil)
+- Misspelled, garbled or fake-looking text
+- Watermarks, signatures, low-resolution artifacts
+- Generic stock-photo aesthetic
+
+All text in the artwork MUST be written in Portuguese (Brazil). Final result: ultra high-resolution 4K advertising image, crisp details, sharp typography, premium finish, polished, professional advertising design, sharp typography, brand-grade composition."
+`;
+
+exports[`buildCreativePrompt > trata a copy do usuário como final e literal 1`] = `
+"[INTRODUCTION]
+Create a 9:16 vertical Instagram Story, 1080x1920px advertisement image for a professional brand.
+Quality target: high-resolution polished advertising image with crisp typography and clean details.
+
+[DESIGN SYSTEM]
+
+
+[SAFE ZONE]
+Top safe zone: keep 280px from the very top edge completely free of any text, graphic or important element. Bottom safe zone: keep 280px from the very bottom edge completely free. This protects against Instagram UI overlays.
+
+
+[TEXT BLOCKS — USER-WRITTEN COPY, FINAL]
+Render ONLY the exact text below as overlay on the creative, in Portuguese (Brazil), professional typography, perfect legibility. Do not paraphrase, shorten, expand or reword it.
+"""
+Linha 1
+Linha 2
+"""
+This is the COMPLETE and FINAL copy — the user wrote it themselves and it must not be changed. Do NOT add any headline, kicker, tagline, subtitle, CTA button, price, offer or any other text that is not written above, even if the composition seems to have room for it or a reference/template suggests one. If the text above has no explicit call-to-action line, do not invent one. Distribute exactly this text across the composition following the typography system and hierarchy from the design system above — do not add new text elements to fill the layout.
+
+[DO NOT INCLUDE]
+
+- Any element within the top or bottom safe zones
+- Any text in a language other than Portuguese (Brazil)
+- Misspelled, garbled or fake-looking text
+- Watermarks, signatures, low-resolution artifacts
+- Generic stock-photo aesthetic
+
+All text in the artwork MUST be written in Portuguese (Brazil). Final result: high-resolution polished advertising image with crisp typography and clean details, polished, professional advertising design, sharp typography, brand-grade composition."
+`;
