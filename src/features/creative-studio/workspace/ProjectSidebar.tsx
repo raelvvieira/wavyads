@@ -5,11 +5,12 @@ import type { WorkspaceSection } from '../store/workspaceStore';
 
 // A navegação interna troca o conteúdo do CENTRO, não do Inspector — essa
 // distinção é o que evita o painel virar um amontoado de modos como no fluxo
-// clássico. Só "Artes" está ligada nesta etapa; as demais entram nas próximas.
+// clássico. Conversa, Assets e Templates ainda vivem só no fluxo clássico e
+// aparecem desabilitadas, sinalizando o destino sem levar a telas vazias.
 const NAV_ITEMS: { id: WorkspaceSection; label: string; icon: typeof Image; ready: boolean }[] = [
   { id: 'artworks', label: 'Artes', icon: Image, ready: true },
   { id: 'conversation', label: 'Conversa', icon: MessageSquare, ready: false },
-  { id: 'references', label: 'Referências', icon: Shapes, ready: false },
+  { id: 'references', label: 'Referências', icon: Shapes, ready: true },
   { id: 'assets', label: 'Assets', icon: Layers, ready: false },
   { id: 'templates', label: 'Templates', icon: Sparkles, ready: false },
 ];
@@ -22,6 +23,7 @@ interface ProjectSidebarProps {
   activeSection: WorkspaceSection;
   onSelectSection: (section: WorkspaceSection) => void;
   artworkCount: number;
+  referenceCount: number;
   onCreateNew: () => void;
 }
 
@@ -33,6 +35,7 @@ export function ProjectSidebar({
   activeSection,
   onSelectSection,
   artworkCount,
+  referenceCount,
   onCreateNew,
 }: ProjectSidebarProps) {
   return (
@@ -69,6 +72,9 @@ export function ProjectSidebar({
               <span className="flex-1 truncate">{item.label}</span>
               {item.id === 'artworks' && artworkCount > 0 && (
                 <span className="text-[10px] tabular-nums text-[var(--studio-text-tertiary)]">{artworkCount}</span>
+              )}
+              {item.id === 'references' && referenceCount > 0 && (
+                <span className="text-[10px] tabular-nums text-[var(--studio-text-tertiary)]">{referenceCount}</span>
               )}
             </button>
           );

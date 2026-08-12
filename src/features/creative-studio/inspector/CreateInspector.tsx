@@ -108,6 +108,9 @@ interface CreateInspectorProps {
   clients: ClientOption[];
   defaults: { aspectRatio: CreativeAspectRatio; resolution: CreativeResolution; clientId: string | null };
   busy: boolean;
+  /** De onde vem a direção visual que será aplicada se o campo abaixo ficar vazio. */
+  designSystemSource: 'project' | 'client' | 'none';
+  onOpenReferences: () => void;
   onGenerate: (values: CreateFormValues) => void;
 }
 
@@ -115,6 +118,8 @@ export function CreateInspector({
   clients,
   defaults,
   busy,
+  designSystemSource,
+  onOpenReferences,
   onGenerate,
 }: CreateInspectorProps) {
   const [businessContext, setBusinessContext] = useState('');
@@ -165,9 +170,31 @@ export function CreateInspector({
         />
       </Field>
 
+      <div className="rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-2)] p-3">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[11px] text-[var(--studio-text-secondary)]">
+            {designSystemSource === 'project' && '✓ Direção visual do projeto'}
+            {designSystemSource === 'client' && '✓ Identidade do cliente'}
+            {designSystemSource === 'none' && 'Sem direção visual'}
+          </span>
+          <button
+            type="button"
+            onClick={onOpenReferences}
+            className="shrink-0 text-[11px] text-[var(--studio-accent)] underline underline-offset-2 hover:brightness-125"
+          >
+            {designSystemSource === 'none' ? 'Definir' : 'Ver'}
+          </button>
+        </div>
+        <p className="mt-1 text-[10px] leading-relaxed text-[var(--studio-text-tertiary)]">
+          {designSystemSource === 'none'
+            ? 'Envie referências para a IA extrair paleta, tipografia e composição — é o que mais muda a qualidade.'
+            : 'Aplicada automaticamente. O campo abaixo sobrescreve só desta vez.'}
+        </p>
+      </div>
+
       <Field
-        label="Direção visual (opcional)"
-        hint="Paleta, tipografia, composição, referências. É o que mais muda a qualidade da arte — sem isso o modelo escolhe sozinho."
+        label="Sobrescrever direção visual (opcional)"
+        hint="Preenchido, substitui a direção visual acima apenas nesta geração."
       >
         <textarea
           value={designSystemDoc}

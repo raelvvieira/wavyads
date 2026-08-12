@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { listProjectAssetGroups, listProjectArtworks } from '../api/creativeAssets';
+import { useCreativeAssetsRealtime } from './useCreativeAssetsRealtime';
 import { buildArtworkSections } from '../lib/artworkSections';
 import type { CreativeArtworkSections, CreativeAsset, CreativeAssetGroup } from '../types/creative';
 
@@ -28,6 +29,10 @@ export interface UseCreativeAssetsResult {
  * das listas paralelas que hoje vivem no state da página.
  */
 export function useCreativeAssets(projectId: string | undefined): UseCreativeAssetsResult {
+  // Assina as mudanças do projeto: gerações que terminam (aqui ou em outra
+  // aba) chegam sozinhas ao Canvas.
+  useCreativeAssetsRealtime(projectId);
+
   const assetsQuery = useQuery({
     queryKey: creativeAssetsQueryKey(projectId),
     queryFn: () => listProjectArtworks(projectId!),

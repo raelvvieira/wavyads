@@ -14,6 +14,8 @@ import { useWorkspace } from '../store/workspaceStore';
 import { sanitizeFileName } from '../api/storage';
 import { ProjectSidebar } from './ProjectSidebar';
 import { WorkspaceComposer } from './WorkspaceComposer';
+import { ReferencesPanel } from '../references/ReferencesPanel';
+import { useCreativeReferences } from '../hooks/useCreativeReferences';
 import { useToast } from '@/hooks/use-toast';
 import type { CreativeAspectRatio, CreativeAsset, CreativeResolution } from '../types/creative';
 
@@ -80,6 +82,7 @@ export function CreativeWorkspace() {
   );
 
   const activeProject = projects.find((project) => project.id === projectId) ?? null;
+  const references = useCreativeReferences(projectId ?? undefined, activeProject?.clientId ?? null);
 
   // Ordem de navegação do modo foco: a mesma que o Canvas desenha.
   const orderedAssets = useMemo(() => [
@@ -135,11 +138,13 @@ export function CreativeWorkspace() {
       resolution: values.resolution,
       businessContext: values.businessContext,
       copyText: values.copyText,
-      designSystemDoc: values.designSystemDoc,
+      // O que o usuário escreveu no painel tem prioridade; sem isso, entra a
+      // direção visual do projeto (ou a identidade do cliente).
+      designSystemDoc: values.designSystemDoc.trim() || references.designSystem.designSystemDoc,
       productImages: values.productImages,
       logoImage: values.logoImage,
     });
-  }, [projectId, createProject, actions]);
+  }, [projectId, createProject, actions, references.designSystem.designSystemDoc]);
 
   return (
     <div className="h-[100dvh] bg-[var(--studio-bg)] text-[var(--studio-text)] [--studio-bg:#09090B] [--studio-surface-1:#0F0F11] [--studio-surface-2:#141416] [--studio-surface-3:#19191C] [--studio-border:rgba(255,255,255,.08)] [--studio-border-hover:rgba(255,255,255,.15)] [--studio-text:rgba(255,255,255,.94)] [--studio-text-secondary:rgba(255,255,255,.62)] [--studio-text-tertiary:rgba(255,255,255,.38)] [--studio-accent:#EC4899]">
@@ -153,6 +158,7 @@ export function CreativeWorkspace() {
             activeSection={activeSection}
             onSelectSection={setActiveSection}
             artworkCount={assets.length}
+            referenceCount={references.projectReferences.length}
             onCreateNew={() => { selectAsset(null); createProject(); }}
           />
         </div>
@@ -200,7 +206,19 @@ export function CreativeWorkspace() {
             // Clicar no vazio limpa a seleção — o Inspector volta para "Criar".
             if (event.target === event.currentTarget) selectAsset(null);
           }}>
-            {viewMode === 'focus' && selectedAsset ? (
+            {activeSection === 'references' ? (
+              <ReferencesPanel
+                projectReferences={references.projectReferences}
+                clientReferences={references.clientReferences}
+                designSystem={references.designSystem}
+                busy={references.busy}
+                hasClient={!!activeProject?.clientId}
+                onUpload={references.upload}
+                onRemove={references.remove}
+                onAnalyze={references.analyze}
+                onSaveManualDoc={references.saveManualDoc}
+              />
+            ) : viewMode === 'focus' && selectedAsset ? (
               <FocusView
                 asset={selectedAsset}
                 label={labelFor(labels, selectedAsset)}
@@ -263,6 +281,8 @@ export function CreativeWorkspace() {
                   clientId: activeProject?.clientId ?? null,
                 }}
                 busy={actions.isRunning}
+                designSystemSource={references.designSystem.source}
+                onOpenReferences={() => { selectAsset(null); setActiveSection('references'); }}
                 onGenerate={generate}
               />
             )}

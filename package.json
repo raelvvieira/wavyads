@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:fase1-extract": "node scripts/test-fase1-extract.js"
+    "test:fase1-extract": "node scripts/test-fase1-extract.js",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

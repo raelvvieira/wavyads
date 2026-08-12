@@ -596,6 +596,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           current_stage: string | null
+          design_system_doc: string | null
           id: string
           initial_prompt: string | null
           language: string
@@ -607,6 +608,7 @@ export type Database = {
           title: string
           updated_at: string
           user_id: string | null
+          visual_analysis: Json | null
         }
         Insert: {
           campaign_id?: string | null
@@ -614,6 +616,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           current_stage?: string | null
+          design_system_doc?: string | null
           id?: string
           initial_prompt?: string | null
           language?: string
@@ -625,6 +628,7 @@ export type Database = {
           title: string
           updated_at?: string
           user_id?: string | null
+          visual_analysis?: Json | null
         }
         Update: {
           campaign_id?: string | null
@@ -632,6 +636,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           current_stage?: string | null
+          design_system_doc?: string | null
           id?: string
           initial_prompt?: string | null
           language?: string
@@ -643,6 +648,7 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string | null
+          visual_analysis?: Json | null
         }
         Relationships: [
           {
