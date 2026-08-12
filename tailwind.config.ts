@@ -14,8 +14,14 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['"SF Pro Display"', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
-        mono: ['"SF Mono"', '"Fira Code"', 'monospace'],
+        // Fonte única, vinda do token: o body já usa --wavy-font, e deixar o
+        // config apontando para outra pilha fazia a utilidade font-sans
+        // renderizar uma fonte diferente do resto do produto.
+        sans: ['var(--wavy-font)'],
+        // Monoespaçado continua existindo de propósito — é usado em editor de
+        // código, textarea de prompt e código hex, onde alinhamento importa.
+        // Pilha do sistema para não custar mais um webfont.
+        mono: ['ui-monospace', 'SFMono-Regular', '"SF Mono"', 'Menlo', 'Consolas', '"Liberation Mono"', 'monospace'],
       },
       colors: {
         border: "hsl(var(--border) / 0.1)",
