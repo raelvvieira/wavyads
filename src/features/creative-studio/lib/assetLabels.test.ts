@@ -65,6 +65,19 @@ describe('buildAssetLabels', () => {
     expect(labels.get('f3')).toBe('Variação 01');
   });
 
+  it('numera por projeto, não continuamente entre projetos', () => {
+    // Na galeria, artes de campanhas diferentes convivem: contar de forma
+    // contínua daria "Arte 03" para a primeira arte de outro cliente.
+    const labels = buildAssetLabels([
+      asset('a', 'original', '2026-01-01', { projectId: 'p1' }),
+      asset('b', 'original', '2026-01-02', { projectId: 'p1' }),
+      asset('c', 'original', '2026-01-03', { projectId: 'p2' }),
+    ]);
+    expect(labels.get('a')).toBe('Arte 01');
+    expect(labels.get('b')).toBe('Arte 02');
+    expect(labels.get('c')).toBe('Arte 01');
+  });
+
   it('numera edições e redimensionadas', () => {
     const labels = buildAssetLabels([
       asset('e1', 'edited', '2026-01-01'),

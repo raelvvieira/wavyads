@@ -3,6 +3,13 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 export type WorkspaceSection = 'artworks' | 'conversation' | 'references' | 'assets' | 'templates';
 export type WorkspaceViewMode = 'grid' | 'focus';
 
+/**
+ * 'gallery' mostra todas as artes através de projetos (filtráveis por
+ * cliente); 'project' mostra a árvore de um projeto só. São visões diferentes
+ * dos mesmos dados, não telas separadas.
+ */
+export type WorkspaceScope = 'gallery' | 'project';
+
 interface WorkspaceState {
   projectId: string | null;
   setProjectId: (id: string | null) => void;
@@ -16,6 +23,13 @@ interface WorkspaceState {
 
   viewMode: WorkspaceViewMode;
   setViewMode: (mode: WorkspaceViewMode) => void;
+
+  scope: WorkspaceScope;
+  setScope: (scope: WorkspaceScope) => void;
+
+  /** Filtro da galeria. Null = todos os clientes. */
+  clientFilter: string | null;
+  setClientFilter: (clientId: string | null) => void;
 
   activeSection: WorkspaceSection;
   setActiveSection: (section: WorkspaceSection) => void;
@@ -34,6 +48,10 @@ export function CreativeWorkspaceProvider({
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<WorkspaceViewMode>('grid');
   const [activeSection, setActiveSection] = useState<WorkspaceSection>('artworks');
+  // Abre na galeria: a pergunta do dia a dia é "o que já fizemos?", e só
+  // depois se entra num projeto específico.
+  const [scope, setScope] = useState<WorkspaceScope>(initialProjectId ? 'project' : 'gallery');
+  const [clientFilter, setClientFilter] = useState<string | null>(null);
 
   const selectAsset = useCallback((id: string | null, options?: { toggle?: boolean }) => {
     if (!id) {
@@ -54,6 +72,8 @@ export function CreativeWorkspaceProvider({
     setProjectIdState(id);
     setSelectedAssetIds([]);
     setViewMode('grid');
+    // Escolher um projeto é justamente pedir para entrar nele.
+    if (id) setScope('project');
   }, []);
 
   const value = useMemo<WorkspaceState>(() => ({
@@ -65,9 +85,13 @@ export function CreativeWorkspaceProvider({
     clearSelection,
     viewMode,
     setViewMode,
+    scope,
+    setScope,
+    clientFilter,
+    setClientFilter,
     activeSection,
     setActiveSection,
-  }), [projectId, setProjectId, selectedAssetIds, selectAsset, clearSelection, viewMode, activeSection]);
+  }), [projectId, setProjectId, selectedAssetIds, selectAsset, clearSelection, viewMode, scope, clientFilter, activeSection]);
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }

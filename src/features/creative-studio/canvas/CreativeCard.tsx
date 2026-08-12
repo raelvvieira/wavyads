@@ -56,14 +56,14 @@ export function CreativeCard({ asset, label, selected, onSelect, onOpenFocus, on
         {pending && (
           <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-[var(--studio-surface-3)]">
             <Loader2 className="h-5 w-5 animate-spin text-[var(--studio-accent)]" />
-            <span className="text-[11px] text-[var(--studio-text-tertiary)]">Gerando...</span>
+            <span className="text-[12px] text-[var(--studio-text-tertiary)]">Gerando...</span>
           </div>
         )}
 
         {failed && (
           <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-3 text-center">
             <AlertTriangle className="h-5 w-5 text-destructive" />
-            <span className="text-[11px] leading-snug text-destructive line-clamp-4">
+            <span className="text-[12px] leading-snug text-destructive line-clamp-4">
               {asset.errorMessage || 'Falha na geração'}
             </span>
           </div>
@@ -76,7 +76,7 @@ export function CreativeCard({ asset, label, selected, onSelect, onOpenFocus, on
         )}
 
         {asset.isClientIntelligence && (
-          <span className="absolute right-2 top-2 rounded-full bg-black/65 px-2 py-0.5 text-[9px] font-medium text-white backdrop-blur">
+          <span className="absolute right-2 top-2 rounded-full bg-black/65 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur">
             Salva
           </span>
         )}
@@ -110,9 +110,9 @@ export function CreativeCard({ asset, label, selected, onSelect, onOpenFocus, on
       </div>
 
       <div className="flex items-baseline justify-between gap-2 px-0.5">
-        <p className="truncate text-[11px] text-[var(--studio-text-secondary)]">{label}</p>
+        <p className="truncate text-[12px] text-[var(--studio-text-secondary)]">{label}</p>
         {asset.aspectRatio && (
-          <span className="shrink-0 text-[10px] text-[var(--studio-text-tertiary)]">{asset.aspectRatio}</span>
+          <span className="shrink-0 text-[11px] text-[var(--studio-text-tertiary)]">{asset.aspectRatio}</span>
         )}
       </div>
     </div>

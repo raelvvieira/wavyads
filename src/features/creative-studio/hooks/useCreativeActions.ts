@@ -33,7 +33,12 @@ export function useCreativeActions(projectId: string | undefined): UseCreativeAc
   const invalidate = useInvalidateCreativeAssets();
   const [runningAction, setRunningAction] = useState<CreativeActionKind | null>(null);
 
-  const refresh = useCallback(() => invalidate(projectId), [invalidate, projectId]);
+  const refresh = useCallback(() => {
+    invalidate(projectId);
+    // A galeria atravessa projetos, então tem chave própria — sem isso a arte
+    // nova só apareceria ao entrar no projeto.
+    queryClient.invalidateQueries({ queryKey: ['creative-gallery'] });
+  }, [invalidate, projectId, queryClient]);
 
   // Toda ação segue a mesma forma: marca o que está rodando, atualiza o Canvas
   // assim que o card 'generating' existe, e revalida no fim — dando certo ou

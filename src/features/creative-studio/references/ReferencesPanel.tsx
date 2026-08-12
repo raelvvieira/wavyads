@@ -17,7 +17,7 @@ async function filesToDataUrls(files: FileList): Promise<string[]> {
 function Chip({ children, tone = 'neutral' }: { children: React.ReactNode; tone?: 'neutral' | 'accent' | 'danger' }) {
   return (
     <span className={cn(
-      'rounded-full px-2 py-0.5 text-[10px]',
+      'rounded-full px-2 py-0.5 text-[11px]',
       tone === 'accent' && 'bg-[var(--studio-accent)]/15 text-[var(--studio-accent)]',
       tone === 'danger' && 'border border-destructive/30 bg-destructive/10 text-destructive',
       tone === 'neutral' && 'bg-white/[0.06] text-[var(--studio-text-secondary)]',
@@ -62,10 +62,10 @@ export function ReferencesPanel({
     <div className="space-y-8">
       <section className="space-y-3">
         <div className="flex items-baseline gap-2">
-          <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--studio-text-secondary)]">
+          <h3 className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--studio-text-secondary)]">
             Referências deste projeto
           </h3>
-          <span className="text-[11px] text-[var(--studio-text-tertiary)]">{projectReferences.length}</span>
+          <span className="text-[12px] text-[var(--studio-text-tertiary)]">{projectReferences.length}</span>
         </div>
 
         <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(140px,100%),1fr))]">
@@ -91,7 +91,7 @@ export function ReferencesPanel({
             )}
           >
             {busy === 'upload' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
-            <span className="text-[10px]">Enviar</span>
+            <span className="text-[11px]">Enviar</span>
             <input
               type="file"
               accept="image/*"
@@ -112,7 +112,7 @@ export function ReferencesPanel({
             disabled={busy !== null || projectReferences.length === 0}
             onClick={() => onAnalyze({ alsoSaveToClient })}
             className={cn(
-              'flex items-center gap-2 rounded-lg bg-[var(--studio-accent)] px-3.5 py-2 text-[11px] font-semibold text-white transition',
+              'flex items-center gap-2 rounded-lg bg-[var(--studio-accent)] px-3.5 py-2 text-[12px] font-semibold text-white transition',
               'hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40',
             )}
           >
@@ -121,7 +121,7 @@ export function ReferencesPanel({
           </button>
 
           {hasClient && (
-            <label className="flex cursor-pointer items-center gap-2 text-[11px] text-[var(--studio-text-secondary)]">
+            <label className="flex cursor-pointer items-center gap-2 text-[12px] text-[var(--studio-text-secondary)]">
               <input
                 type="checkbox"
                 checked={alsoSaveToClient}
@@ -137,11 +137,11 @@ export function ReferencesPanel({
       {clientReferences.length > 0 && (
         <section className="space-y-3">
           <div className="flex items-baseline gap-2">
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--studio-text-secondary)]">
+            <h3 className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--studio-text-secondary)]">
               Base do cliente
             </h3>
-            <span className="text-[11px] text-[var(--studio-text-tertiary)]">{clientReferences.length}</span>
-            <span className="text-[11px] text-[var(--studio-text-tertiary)]">· de outros projetos</span>
+            <span className="text-[12px] text-[var(--studio-text-tertiary)]">{clientReferences.length}</span>
+            <span className="text-[12px] text-[var(--studio-text-tertiary)]">· de outros projetos</span>
           </div>
           <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(120px,100%),1fr))]">
             {clientReferences.map((reference) => (
@@ -155,7 +155,7 @@ export function ReferencesPanel({
 
       <section className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--studio-text-secondary)]">
+          <h3 className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--studio-text-secondary)]">
             Direção visual
           </h3>
           {designSystem.source === 'project' && <Chip tone="accent"><Check className="mr-1 inline h-2.5 w-2.5" />deste projeto</Chip>}
@@ -166,10 +166,10 @@ export function ReferencesPanel({
         {analysis && (
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-2)] p-3">
-              <p className="mb-2 text-[10px] uppercase tracking-wider text-[var(--studio-text-tertiary)]">Paleta</p>
+              <p className="mb-2 text-[11px] uppercase tracking-wider text-[var(--studio-text-tertiary)]">Paleta</p>
               <div className="flex flex-wrap gap-1.5">
                 {(analysis.paleta?.hexes ?? []).map((hex) => (
-                  <span key={hex} className="flex items-center gap-1 rounded-full border border-[var(--studio-border)] px-2 py-0.5 text-[10px] text-[var(--studio-text-secondary)]">
+                  <span key={hex} className="flex items-center gap-1 rounded-full border border-[var(--studio-border)] px-2 py-0.5 text-[11px] text-[var(--studio-text-secondary)]">
                     <span className="h-2.5 w-2.5 rounded-full border border-white/20" style={{ background: hex }} />
                     {hex}
                   </span>
@@ -177,7 +177,7 @@ export function ReferencesPanel({
               </div>
             </div>
             <div className="rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-2)] p-3">
-              <p className="mb-2 text-[10px] uppercase tracking-wider text-[var(--studio-text-tertiary)]">Mood</p>
+              <p className="mb-2 text-[11px] uppercase tracking-wider text-[var(--studio-text-tertiary)]">Mood</p>
               <div className="flex flex-wrap gap-1.5">
                 {(analysis.mood?.adjetivos ?? []).map((item) => <Chip key={item} tone="accent">{item}</Chip>)}
                 {(analysis.mood?.evita ?? []).map((item) => <Chip key={item} tone="danger">evita: {item}</Chip>)}
@@ -192,7 +192,7 @@ export function ReferencesPanel({
           rows={10}
           placeholder="Paleta, tipografia, composição, tratamento fotográfico, o que evitar..."
           className={cn(
-            'w-full resize-y rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-2)] p-3 font-mono text-[11px] leading-relaxed text-[var(--studio-text)]',
+            'w-full resize-y rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-2)] p-3 font-mono text-[12px] leading-relaxed text-[var(--studio-text)]',
             'placeholder:text-[var(--studio-text-tertiary)] focus:border-[var(--studio-accent)] focus:outline-none',
           )}
         />
@@ -202,13 +202,13 @@ export function ReferencesPanel({
             onClick={() => onSaveManualDoc(doc)}
             disabled={doc === designSystem.designSystemDoc}
             className={cn(
-              'rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-2)] px-3 py-2 text-[11px] text-[var(--studio-text-secondary)] transition-colors',
+              'rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-2)] px-3 py-2 text-[12px] text-[var(--studio-text-secondary)] transition-colors',
               'hover:border-[var(--studio-border-hover)] hover:text-[var(--studio-text)] disabled:cursor-not-allowed disabled:opacity-40',
             )}
           >
             Salvar direção visual
           </button>
-          <p className="text-[10px] text-[var(--studio-text-tertiary)]">
+          <p className="text-[11px] text-[var(--studio-text-tertiary)]">
             Aplicada automaticamente em toda arte nova deste projeto.
           </p>
         </div>

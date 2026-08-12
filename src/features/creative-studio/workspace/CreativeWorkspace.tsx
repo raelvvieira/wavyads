@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Grid2x2, LayoutPanelLeft, RotateCcw } from 'lucide-react';
+import { Grid2x2, LayoutGrid, LayoutPanelLeft, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createCreativeProject, listClients, listCreativeProjects } from '../api/creativeProjects';
+import { listArtworkGallery } from '../api/creativeAssets';
+import { GalleryView } from '../canvas/GalleryView';
 import { FocusView, WorkspaceCanvas } from '../canvas/WorkspaceCanvas';
 import { buildAssetLabels, labelFor } from '../lib/assetLabels';
 import { CreativeInspector } from '../inspector/CreativeInspector';
@@ -44,6 +46,10 @@ export function CreativeWorkspace() {
     selectAsset,
     viewMode,
     setViewMode,
+    scope,
+    setScope,
+    clientFilter,
+    setClientFilter,
     activeSection,
     setActiveSection,
   } = useWorkspace();
@@ -63,17 +69,29 @@ export function CreativeWorkspace() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const galleryQuery = useQuery({
+    queryKey: ['creative-gallery', clientFilter],
+    queryFn: () => listArtworkGallery({ clientId: clientFilter }),
+    enabled: scope === 'gallery' && activeSection === 'artworks',
+    staleTime: 30 * 1000,
+  });
+
   const projects = projectsQuery.data ?? [];
   const { assets, sections, isLoading } = useCreativeAssets(projectId ?? undefined);
   const actions = useCreativeActions(projectId ?? undefined);
 
-  // Abrir o workspace sem projeto deixaria o canvas vazio sem motivo aparente.
-  useEffect(() => {
-    if (!projectId && projects.length > 0) setProjectId(projects[0].id);
-  }, [projectId, projects, setProjectId]);
-
-  const assetsById = useMemo(() => new Map(assets.map((asset) => [asset.id, asset])), [assets]);
-  const labels = useMemo(() => buildAssetLabels(assets), [assets]);
+  const galleryAssets = galleryQuery.data ?? [];
+  // O Inspector lê de um mapa só: a arte selecionada pode ter vindo do projeto
+  // aberto ou da galeria, e ele não deveria precisar saber de onde.
+  const assetsById = useMemo(
+    () => new Map<string, CreativeAsset>([...galleryAssets, ...assets].map((asset) => [asset.id, asset])),
+    [assets, galleryAssets],
+  );
+  const labels = useMemo(
+    () => buildAssetLabels([...galleryAssets, ...assets]),
+    [assets, galleryAssets],
+  );
+  const galleryLoading = galleryQuery.isLoading;
   const download = useCallback((asset: CreativeAsset) => downloadAsset(asset, labelFor(labels, asset)), [labels]);
   const selectedAsset = selectedAssetId ? assetsById.get(selectedAssetId) ?? null : null;
   const selectedAssets = useMemo(
@@ -84,13 +102,18 @@ export function CreativeWorkspace() {
   const activeProject = projects.find((project) => project.id === projectId) ?? null;
   const references = useCreativeReferences(projectId ?? undefined, activeProject?.clientId ?? null);
 
-  // Ordem de navegação do modo foco: a mesma que o Canvas desenha.
-  const orderedAssets = useMemo(() => [
-    ...sections.originals,
-    ...sections.factorGroups.flatMap((group) => group.assets),
-    ...sections.edited,
-    ...sections.resizes,
-  ], [sections]);
+  // Ordem de navegação do modo foco: a mesma que está desenhada na tela, que
+  // depende do escopo — na galeria são todas as artes, no projeto é a árvore.
+  const orderedAssets = useMemo<CreativeAsset[]>(() => (
+    scope === 'gallery'
+      ? galleryAssets
+      : [
+          ...sections.originals,
+          ...sections.factorGroups.flatMap((group) => group.assets),
+          ...sections.edited,
+          ...sections.resizes,
+        ]
+  ), [scope, galleryAssets, sections]);
 
   const focusIndex = selectedAsset ? orderedAssets.findIndex((asset) => asset.id === selectedAsset.id) : -1;
 
@@ -129,7 +152,11 @@ export function CreativeWorkspace() {
   // Gerar sem projeto aberto cria um na hora, em vez de barrar o usuário: o
   // projeto é um detalhe de organização, não um pré-requisito de fluxo.
   const generate = useCallback(async (values: CreateFormValues) => {
-    const targetProjectId = projectId ?? await createProject(values);
+    // Na galeria não há projeto "aberto": a arte nova ganha o próprio, com o
+    // nome vindo da descrição. Dentro de um projeto, ela entra nele.
+    const targetProjectId = scope === 'project' && projectId
+      ? projectId
+      : await createProject(values);
     if (!targetProjectId) return;
     await actions.create({
       projectId: targetProjectId,
@@ -144,10 +171,10 @@ export function CreativeWorkspace() {
       productImages: values.productImages,
       logoImage: values.logoImage,
     });
-  }, [projectId, createProject, actions, references.designSystem.designSystemDoc]);
+  }, [scope, projectId, createProject, actions, references.designSystem.designSystemDoc]);
 
   return (
-    <div className="h-[100dvh] bg-[var(--studio-bg)] text-[var(--studio-text)] [--studio-bg:#09090B] [--studio-surface-1:#0F0F11] [--studio-surface-2:#141416] [--studio-surface-3:#19191C] [--studio-border:rgba(255,255,255,.08)] [--studio-border-hover:rgba(255,255,255,.15)] [--studio-text:rgba(255,255,255,.94)] [--studio-text-secondary:rgba(255,255,255,.62)] [--studio-text-tertiary:rgba(255,255,255,.38)] [--studio-accent:#EC4899]">
+    <div className="h-[100dvh] bg-[var(--studio-bg)] text-[var(--studio-text)] [--studio-bg:#09090B] [--studio-surface-1:#0F0F11] [--studio-surface-2:#141416] [--studio-surface-3:#19191C] [--studio-border:rgba(255,255,255,.08)] [--studio-border-hover:rgba(255,255,255,.15)] [--studio-text:rgba(255,255,255,.96)] [--studio-text-secondary:rgba(255,255,255,.78)] [--studio-text-tertiary:rgba(255,255,255,.58)] [--studio-accent:#EC4899]">
       <div className="grid h-full grid-cols-1 lg:grid-cols-[196px_minmax(0,1fr)_336px] xl:grid-cols-[212px_minmax(0,1fr)_376px]">
         <div className="hidden lg:block">
           <ProjectSidebar
@@ -166,13 +193,39 @@ export function CreativeWorkspace() {
         <main className="flex min-h-0 min-w-0 flex-col">
           <header className="flex items-center gap-3 border-b border-[var(--studio-border)] px-5 py-3">
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--studio-text-tertiary)]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--studio-text-tertiary)]">
                 Criativo Studio
               </p>
-              <h1 className="truncate text-sm font-medium text-[var(--studio-text)]">
-                {activeProject?.title || 'Nenhum projeto selecionado'}
+              <h1 className="truncate text-[15px] font-medium text-[var(--studio-text)]">
+                {scope === 'gallery'
+                  ? 'Todas as artes'
+                  : activeProject?.title || 'Nenhum projeto selecionado'}
               </h1>
             </div>
+
+            {/* Voltar para a galeria sem ter que caçar na lista de projetos. */}
+            {scope === 'project' && (
+              <button
+                type="button"
+                onClick={() => { setScope('gallery'); selectAsset(null); }}
+                className="flex items-center gap-1.5 rounded-lg border border-[var(--studio-border)] px-2.5 py-1.5 text-[12px] text-[var(--studio-text-secondary)] transition-colors hover:border-[var(--studio-border-hover)] hover:text-[var(--studio-text)]"
+              >
+                <LayoutGrid className="h-3.5 w-3.5" /> Todas as artes
+              </button>
+            )}
+
+            {scope === 'gallery' && (
+              <select
+                value={clientFilter ?? ''}
+                onChange={(event) => { setClientFilter(event.target.value || null); selectAsset(null); }}
+                className="rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-2)] px-2.5 py-1.5 text-[12px] text-[var(--studio-text-secondary)] focus:border-[var(--studio-accent)] focus:outline-none"
+              >
+                <option value="">Todos os clientes</option>
+                {(clientsQuery.data ?? []).map((client) => (
+                  <option key={client.id} value={client.id}>{client.name}</option>
+                ))}
+              </select>
+            )}
 
             <div className="flex items-center gap-1 rounded-lg border border-[var(--studio-border)] p-0.5">
               {([['grid', Grid2x2], ['focus', LayoutPanelLeft]] as const).map(([mode, Icon]) => (
@@ -196,7 +249,7 @@ export function CreativeWorkspace() {
             <button
               type="button"
               onClick={openClassic}
-              className="flex items-center gap-1.5 rounded-lg border border-[var(--studio-border)] px-2.5 py-1.5 text-[11px] text-[var(--studio-text-secondary)] transition-colors hover:border-[var(--studio-border-hover)] hover:text-[var(--studio-text)]"
+              className="flex items-center gap-1.5 rounded-lg border border-[var(--studio-border)] px-2.5 py-1.5 text-[12px] text-[var(--studio-text-secondary)] transition-colors hover:border-[var(--studio-border-hover)] hover:text-[var(--studio-text)]"
             >
               <RotateCcw className="h-3.5 w-3.5" /> Fluxo clássico
             </button>
@@ -206,7 +259,17 @@ export function CreativeWorkspace() {
             // Clicar no vazio limpa a seleção — o Inspector volta para "Criar".
             if (event.target === event.currentTarget) selectAsset(null);
           }}>
-            {activeSection === 'references' ? (
+            {activeSection === 'artworks' && scope === 'gallery' && viewMode !== 'focus' ? (
+              <GalleryView
+                assets={galleryAssets}
+                isLoading={galleryLoading}
+                selectedAssetIds={selectedAssetIds}
+                onSelect={(asset, options) => selectAsset(asset.id, options)}
+                onOpenFocus={openFocus}
+                onDownload={download}
+                onOpenProject={setProjectId}
+              />
+            ) : activeSection === 'references' ? (
               <ReferencesPanel
                 projectReferences={references.projectReferences}
                 clientReferences={references.clientReferences}
@@ -273,6 +336,7 @@ export function CreativeWorkspace() {
             onOpenFocus={() => selectedAsset && openFocus(selectedAsset)}
             onSaveToIntelligence={() => selectedAsset && actions.saveToClientIntelligence(selectedAsset)}
             onRetry={() => selectedAsset && actions.retry(selectedAsset)}
+            onClose={() => selectAsset(null)}
             createPanel={(
               <CreateInspector
                 clients={clientsQuery.data ?? []}

@@ -44,7 +44,7 @@ export function ProjectSidebar({
         <button
           type="button"
           onClick={onCreateNew}
-          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-[var(--studio-accent)] px-3 py-2 text-[11px] font-semibold text-white transition hover:brightness-110"
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-[var(--studio-accent)] px-3 py-2 text-[12px] font-semibold text-white transition hover:brightness-110"
         >
           <Plus className="h-3.5 w-3.5" /> Criar
         </button>
@@ -61,7 +61,7 @@ export function ProjectSidebar({
               onClick={() => onSelectSection(item.id)}
               title={item.ready ? undefined : 'Chega numa próxima etapa'}
               className={cn(
-                'flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[12px] transition-colors',
+                'flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors',
                 active
                   ? 'bg-[var(--studio-surface-3)] text-[var(--studio-text)]'
                   : 'text-[var(--studio-text-secondary)] hover:bg-white/[0.03]',
@@ -71,10 +71,10 @@ export function ProjectSidebar({
               <item.icon className="h-3.5 w-3.5 shrink-0" />
               <span className="flex-1 truncate">{item.label}</span>
               {item.id === 'artworks' && artworkCount > 0 && (
-                <span className="text-[10px] tabular-nums text-[var(--studio-text-tertiary)]">{artworkCount}</span>
+                <span className="text-[11px] tabular-nums text-[var(--studio-text-tertiary)]">{artworkCount}</span>
               )}
               {item.id === 'references' && referenceCount > 0 && (
-                <span className="text-[10px] tabular-nums text-[var(--studio-text-tertiary)]">{referenceCount}</span>
+                <span className="text-[11px] tabular-nums text-[var(--studio-text-tertiary)]">{referenceCount}</span>
               )}
             </button>
           );
@@ -82,16 +82,16 @@ export function ProjectSidebar({
       </nav>
 
       <div className="min-h-0 flex-1 overflow-y-auto border-t border-[var(--studio-border)] px-2 py-3">
-        <p className="px-1 pb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--studio-text-tertiary)]">
+        <p className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--studio-text-tertiary)]">
           Projetos
         </p>
 
         {isLoading ? (
-          <div className="flex items-center gap-2 px-1 py-2 text-[11px] text-[var(--studio-text-tertiary)]">
+          <div className="flex items-center gap-2 px-1 py-2 text-[12px] text-[var(--studio-text-tertiary)]">
             <Loader2 className="h-3 w-3 animate-spin" /> Carregando...
           </div>
         ) : projects.length === 0 ? (
-          <p className="px-1 text-[11px] leading-relaxed text-[var(--studio-text-tertiary)]">
+          <p className="px-1 text-[12px] leading-relaxed text-[var(--studio-text-tertiary)]">
             Nenhum projeto ainda. Crie um pelo fluxo clássico e ele aparece aqui.
           </p>
         ) : (
@@ -116,8 +116,8 @@ export function ProjectSidebar({
                     )}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[11px] leading-tight">{project.title}</span>
-                    <span className="block truncate text-[10px] text-[var(--studio-text-tertiary)]">
+                    <span className="block truncate text-[12px] leading-tight">{project.title}</span>
+                    <span className="block truncate text-[11px] text-[var(--studio-text-tertiary)]">
                       {new Date(project.updatedAt).toLocaleDateString('pt-BR')}
                     </span>
                   </span>

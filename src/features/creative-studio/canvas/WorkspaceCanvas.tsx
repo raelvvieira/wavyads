@@ -20,11 +20,11 @@ function CreativeSection({
   return (
     <section className="space-y-3">
       <div className="flex items-baseline gap-2">
-        <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--studio-text-secondary)]">
+        <h3 className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--studio-text-secondary)]">
           {title}
         </h3>
-        <span className="text-[11px] text-[var(--studio-text-tertiary)]">{count}</span>
-        {hint && <span className="truncate text-[11px] text-[var(--studio-text-tertiary)]">· {hint}</span>}
+        <span className="text-[12px] text-[var(--studio-text-tertiary)]">{count}</span>
+        {hint && <span className="truncate text-[12px] text-[var(--studio-text-tertiary)]">· {hint}</span>}
       </div>
       {children}
     </section>
