@@ -1,0 +1,15 @@
+interface:
+  display_name: WAVY Design System
+  short_description: Cria, migra e audita interfaces no padrão WAVY
+  default_prompt: Use $apply-wavy-design para criar, migrar ou auditar esta interface
+    conforme o WAVY Design System.
+  brand_color: '#FF831E'
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true

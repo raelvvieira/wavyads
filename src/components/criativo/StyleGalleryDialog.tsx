@@ -17,7 +17,7 @@ interface StyleGalleryDialogProps {
   onOpenMyTemplates: () => void;
 }
 
-const FALLBACK_GRADIENT = 'linear-gradient(135deg, #1C1B19 0%, #3A2A2A 55%, #EC4899 100%)';
+const FALLBACK_GRADIENT = 'linear-gradient(135deg, #1C1B19 0%, #3A2A2A 55%, #FF831E 100%)';
 
 export function StyleGalleryDialog({
   open,
@@ -45,10 +45,10 @@ export function StyleGalleryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden bg-[#0D0D0F] border-white/10 p-0 flex flex-col">
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden bg-[#111113] border-white/10 p-0 flex flex-col">
         <DialogHeader className="p-6 pb-4 border-b border-white/10">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-[#EC4899]" />
+            <Sparkles className="h-5 w-5 text-[#FF831E]" />
             <DialogTitle className="text-xl">Escolher Template</DialogTitle>
           </div>
           <DialogDescription className="text-white/55">
@@ -68,7 +68,7 @@ export function StyleGalleryDialog({
                   key={template.id}
                   className={cn(
                     'group flex flex-col rounded-2xl border bg-white/[0.02] overflow-hidden transition-all',
-                    isApplied ? 'border-[#EC4899]/60 ring-1 ring-[#EC4899]/40' : 'border-white/10 hover:border-white/25',
+                    isApplied ? 'border-[#FF831E]/60 ring-1 ring-[#FF831E]/40' : 'border-white/10 hover:border-white/25',
                   )}
                 >
                   <button
@@ -107,7 +107,7 @@ export function StyleGalleryDialog({
                     <Button
                       size="sm"
                       disabled={isApplying}
-                      className="mt-1 rounded-full bg-[#EC4899] text-white hover:bg-[#DB2777]"
+                      className="mt-1 rounded-full bg-[#FF831E] text-white hover:bg-[#DA2F1E]"
                       onClick={() => handleApply(template)}
                     >
                       {isApplying ? (

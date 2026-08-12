@@ -58,12 +58,12 @@ interface ConversionFunnelProps {
 
 // Green gradient from dark (top) to light (bottom) — 6 stages
 const STAGE_GREENS = [
-  { bg: 'rgba(26,205,138,0.06)', border: 'rgba(26,205,138,0.30)' },
-  { bg: 'rgba(26,205,138,0.10)', border: 'rgba(26,205,138,0.38)' },
-  { bg: 'rgba(26,205,138,0.14)', border: 'rgba(26,205,138,0.46)' },
-  { bg: 'rgba(26,205,138,0.18)', border: 'rgba(26,205,138,0.55)' },
-  { bg: 'rgba(26,205,138,0.22)', border: 'rgba(26,205,138,0.65)' },
-  { bg: 'rgba(26,205,138,0.27)', border: 'rgba(26,205,138,0.75)' },
+  { bg: 'rgba(255,131,30,0.06)', border: 'rgba(255,131,30,0.30)' },
+  { bg: 'rgba(255,131,30,0.10)', border: 'rgba(255,131,30,0.38)' },
+  { bg: 'rgba(255,131,30,0.14)', border: 'rgba(255,131,30,0.46)' },
+  { bg: 'rgba(255,131,30,0.18)', border: 'rgba(255,131,30,0.55)' },
+  { bg: 'rgba(255,131,30,0.22)', border: 'rgba(255,131,30,0.65)' },
+  { bg: 'rgba(255,131,30,0.27)', border: 'rgba(255,131,30,0.75)' },
 ];
 
 function getStoredStage(key: string, fallback: BottomStageOption): BottomStageOption {
