@@ -257,6 +257,57 @@ export type Database = {
         }
         Relationships: []
       }
+      creative_asset_groups: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          metadata: Json
+          parent_asset_id: string | null
+          project_id: string
+          title: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          metadata?: Json
+          parent_asset_id?: string | null
+          project_id: string
+          title?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          metadata?: Json
+          parent_asset_id?: string | null
+          project_id?: string
+          title?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creative_asset_groups_parent_asset_id_fkey"
+            columns: ["parent_asset_id"]
+            isOneToOne: false
+            referencedRelation: "creative_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creative_asset_groups_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "creative_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       creative_assets: {
         Row: {
           aspect_ratio: string | null
@@ -379,57 +430,6 @@ export type Database = {
             columns: ["root_asset_id"]
             isOneToOne: false
             referencedRelation: "creative_assets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      creative_asset_groups: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          id: string
-          metadata: Json
-          parent_asset_id: string | null
-          project_id: string
-          title: string | null
-          type: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          metadata?: Json
-          parent_asset_id?: string | null
-          project_id: string
-          title?: string | null
-          type: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          metadata?: Json
-          parent_asset_id?: string | null
-          project_id?: string
-          title?: string | null
-          type?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "creative_asset_groups_parent_asset_id_fkey"
-            columns: ["parent_asset_id"]
-            isOneToOne: false
-            referencedRelation: "creative_assets"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "creative_asset_groups_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "creative_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -1002,10 +1002,7 @@ export type Database = {
         Returns: boolean
       }
       recover_stale_creative_assets: {
-        Args: {
-          p_project_id?: string | null
-          p_timeout_minutes?: number
-        }
+        Args: { p_project_id?: string; p_timeout_minutes?: number }
         Returns: number
       }
     }
