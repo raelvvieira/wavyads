@@ -1,0 +1,14 @@
+.wavy-nav-island{display:flex;flex-direction:column;gap:10px;background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.018)),var(--wavy-glass);border:1px solid var(--wavy-glass-border);box-shadow:0 24px 70px rgba(0,0,0,.36),0 2px 12px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.1);backdrop-filter:blur(24px) saturate(135%)}
+.wavy-nav-island__brand,.wavy-nav-toggle,.wavy-nav-item{height:48px;display:flex;align-items:center;border-radius:14px}
+.wavy-nav-island__brand{min-width:48px;padding:0 12px}
+.wavy-nav-toggle{position:absolute;right:-12px;top:24px;width:28px;justify-content:center;color:var(--wavy-text);background:var(--wavy-surface-elevated);border:1px solid var(--wavy-border-strong);box-shadow:var(--wavy-shadow-card);cursor:pointer}
+.wavy-nav-list{display:flex;flex:1;flex-direction:column;gap:4px}
+.wavy-nav-item{position:relative;width:100%;padding:0;border:0;color:var(--wavy-text-muted);background:transparent;text-decoration:none;cursor:pointer;overflow:hidden}
+.wavy-nav-item__icon{width:52px;min-width:52px;display:grid;place-items:center;color:currentColor}
+.wavy-nav-item[data-active="true"]{color:var(--wavy-text);background:color-mix(in srgb,var(--wavy-surface-elevated) 88%,var(--wavy-brand-orange) 12%);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 8px 22px rgba(0,0,0,.15)}
+.wavy-nav-item:hover{color:var(--wavy-text);background:color-mix(in srgb,var(--wavy-surface-elevated) 78%,transparent)}
+.wavy-nav-island__footer{margin-top:auto;border-top:1px solid var(--wavy-border);padding-top:10px;overflow:hidden}
+@media(max-width:767px){.wavy-nav-island{left:12px;right:12px;top:auto;bottom:calc(12px + env(safe-area-inset-bottom));width:auto;height:68px;flex-direction:row;padding:8px 10px}.wavy-nav-toggle,.wavy-nav-island__brand,.wavy-nav-island__footer{display:none}.wavy-nav-list{flex-direction:row}.wavy-nav-item{height:52px;justify-content:center}.wavy-nav-item__icon{width:44px;min-width:44px}.wavy-nav-island__label{display:none}.wavy-app-content,.wavy-shell[data-nav-expanded="true"] .wavy-app-content{padding-left:16px;padding-bottom:100px}}
+@media(prefers-reduced-motion:reduce){.wavy-nav-island,.wavy-nav-island__label,.wavy-app-content{transition:none!important}}
+@media(prefers-reduced-transparency:reduce){.wavy-nav-island{background:var(--wavy-surface-elevated);backdrop-filter:none;-webkit-backdrop-filter:none}}
+@media(prefers-contrast:more){.wavy-nav-island{border-color:var(--wavy-border-strong);box-shadow:none}.wavy-nav-item[data-active="true"]{outline:2px solid var(--wavy-focus);outline-offset:-2px}}

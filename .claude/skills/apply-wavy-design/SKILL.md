@@ -17,18 +17,23 @@ Apply **WAVY Fluid Intelligence** as a product system, not a decorative skin. Pr
 6. Prefer clarity over visual effects. A premium result is restrained, spacious, precise, and operational.
 7. Never claim accessibility or visual fidelity from code inspection alone. Render and test when tools permit.
 8. Respect `prefers-reduced-motion`, contrast, keyboard focus, touch target, and responsive requirements.
+9. Treat spatial architecture as mandatory. A recolored conventional full-height sidebar, flat top bar, or uniformly boxed grid is not a WAVY redesign.
+10. Unless product constraints make it impossible, detach primary desktop navigation from viewport edges and implement it as an expandable floating island with visible surrounding canvas.
+11. For any task involving shell, sidebar, navigation, layout, glass, or a full-product redesign, read [islands-navigation.md](references/islands-navigation.md) and use its implementation contract.
+12. For any task involving motion, drawers, sheets, drag/swipe, carousels, resizable panels, theme transitions, or high-craft interaction, read [interaction-craft.md](references/interaction-craft.md). Use physical behavior only where user input or spatial continuity justifies it.
+13. Design for calm, confidence, agency, predictability, and speed. Minimal appearance is not enough when controls are ambiguous, feedback is delayed, or users lose context.
 
 ## Select the mode
 
 ### Create
 
-Use for a new interface or module. Read [foundations.md](references/foundations.md), [tokens.md](references/tokens.md), [components.md](references/components.md), the relevant patterns in [dashboard-crm.md](references/dashboard-crm.md), and [implementation.md](references/implementation.md).
+Use for a new interface or module. Read [foundations.md](references/foundations.md), [tokens.md](references/tokens.md), [components.md](references/components.md), [islands-navigation.md](references/islands-navigation.md), the relevant patterns in [dashboard-crm.md](references/dashboard-crm.md), and [implementation.md](references/implementation.md).
 
 Define information architecture and task hierarchy before styling. Create both light and dark behavior unless the user scopes one theme only.
 
 ### Migrate or redesign
 
-Use for an existing product. Read [migration.md](references/migration.md), [tokens.md](references/tokens.md), [components.md](references/components.md), and [implementation.md](references/implementation.md).
+Use for an existing product. Read [migration.md](references/migration.md), [tokens.md](references/tokens.md), [components.md](references/components.md), [islands-navigation.md](references/islands-navigation.md), and [implementation.md](references/implementation.md).
 
 Inventory the current UI and dependencies first. Establish tokens and shared primitives before performing page-by-page conversion. Work in reversible stages and verify behavior after each stage.
 
@@ -49,11 +54,13 @@ An audit request alone does not authorize code changes. When the user asks to mo
 3. **Map the current system.** Inventory app shell, navigation, page templates, type, colors, spacing, radii, elevations, buttons, inputs, tables, charts, overlays, states, motion, and breakpoints.
 4. **Choose a conversion strategy.** Prefer token-first migration. Never mechanically replace every color or radius without semantic mapping.
 5. **Create the shared foundation.** Install or map semantic tokens from `assets/wavy-tokens.css` or `assets/wavy-tokens.json`.
-6. **Build primitives.** Apply button, field, card, island, navigation, table, modal, tooltip, badge, segmented-control, and focus patterns before page composition.
-7. **Compose product patterns.** Use the shared shell with context-specific density for Dashboard, CRM, Studio, and future modules.
-8. **Apply motion last.** First ensure structure, states, responsiveness, and keyboard behavior work. Then add the Fluid Current motion language.
-9. **Validate.** Run relevant build/tests/lint, the static WAVY audit, responsive checks, keyboard checks, contrast review, reduced-motion checks, and visual comparison.
-10. **Report.** Summarize changed surfaces, preserved behavior, verification, remaining risks, and decisions required.
+6. **Transform the shell spatially.** Replace edge-bound navigation with the WAVY floating-island architecture when applicable. Implement collapsed, expanded, active, hover, focus, mobile, and reduced-motion states before styling pages.
+7. **Build primitives.** Apply button, field, card, island, navigation, table, modal, tooltip, badge, segmented-control, and focus patterns before page composition.
+8. **Compose product patterns.** Use the shared shell with context-specific density for Dashboard, CRM, Studio, and future modules.
+9. **Apply motion last.** First ensure structure, states, responsiveness, and keyboard behavior work. Then add the Fluid Current motion language.
+   For gesture-driven or interruptible surfaces, design interaction behavior together with the component rather than adding canned animation afterward.
+10. **Validate.** Run relevant build/tests/lint, the static WAVY audit, responsive checks, keyboard checks, contrast review, reduced-motion checks, and visual comparison. Reject a flat recolor as incomplete.
+11. **Report.** Summarize changed surfaces, preserved behavior, verification, remaining risks, and decisions required.
 
 ## Non-negotiable acceptance gates
 
@@ -64,9 +71,18 @@ An audit request alone does not authorize code changes. When the user asks to mo
 - Body and secondary text remain readable.
 - Glass does not sit behind dense copy, message bodies, long forms, or data tables.
 - Navigation has accessible names, clear active state, visible focus, and usable responsive modes.
+- Desktop primary navigation is visibly detached from viewport edges by 12–20px, rounded as an island, and supports click expansion unless an explicit constraint is documented.
+- Collapsed navigation is 68–76px wide; expanded navigation is 232–264px wide; icon anchors do not jump during expansion.
+- At least one contextual control cluster per complex screen is composed as a floating island when useful; do not convert every card into glass.
+- Glass surfaces visibly use transparency, blur, edge highlight, and elevation. A merely dark card with a border does not qualify as glass.
 - Cards have semantic hierarchy; avoid indiscriminate cards-inside-cards.
 - Charts use accessible colors, labels/tooltips, and never communicate meaning by color alone.
 - Motion explains state change and remains subtle; reduced-motion disables nonessential animation.
+- Press feedback begins immediately; no component locks input while a transition finishes.
+- Reversible panels, sheets, popovers, and navigation return along the same spatial path and originate from their trigger.
+- Typography uses size-aware tracking and leading; headings, body, labels, and numeric UI are not scaled versions of one identical setting.
+- Reduced transparency and increased contrast receive usable fallbacks in addition to reduced motion.
+- Every important screen answers where the user is, what they can do, and how to return or exit.
 - Key layouts work at 360, 768, 1024, 1440, and wide desktop or agreed breakpoints.
 - Touch targets aim for at least 44×44 CSS pixels; icon-only controls include accessible names.
 - Loading, empty, error, success, disabled, hover, active, focus, selected, and restricted states are designed.
@@ -76,6 +92,8 @@ An audit request alone does not authorize code changes. When the user asks to mo
 - Brand concept and visual principles: [foundations.md](references/foundations.md)
 - Complete visual specification: [tokens.md](references/tokens.md)
 - Component anatomy and states: [components.md](references/components.md)
+- Mandatory floating-island shell, expansion behavior, and implementation: [islands-navigation.md](references/islands-navigation.md)
+- Fluid response, springs, spatial continuity, typography craft, and adaptive accessibility: [interaction-craft.md](references/interaction-craft.md)
 - Dashboard, CRM, charts, AI, and responsive patterns: [dashboard-crm.md](references/dashboard-crm.md)
 - Existing-product conversion: [migration.md](references/migration.md)
 - Audit scorecard and report: [audit.md](references/audit.md)

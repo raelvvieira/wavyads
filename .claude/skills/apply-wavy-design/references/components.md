@@ -4,7 +4,9 @@
 
 Use one shell across products: brand, workspace/client, search/command, period/context, notifications, profile, and module navigation.
 
-Floating side island: 64–72px collapsed, 220–248px expanded, 8–16px viewport offset. Preserve icon position; show labels when expanded and tooltips when collapsed. Active state uses a high-contrast sliding pill with accessible state.
+For every shell or navigation task, follow [islands-navigation.md](islands-navigation.md). A full-height edge-bound sidebar is a legacy structure, not the WAVY target.
+
+Floating side island: 68–76px collapsed, 232–264px expanded, 12–20px viewport offset, 24–28px radius. Expand by click. Preserve icon position; show labels when expanded and tooltips when collapsed. Active state uses a high-contrast sliding pill with accessible state.
 
 Mobile bottom island: 3–5 primary destinations, safe-area spacing, labels, and a More destination for secondary areas.
 

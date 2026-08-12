@@ -16,7 +16,7 @@ Classify every current color as semantic, brand, data series, status, or acciden
 
 0. Run baseline build/tests and capture screenshots.
 1. Introduce semantic tokens for color, type, spacing, radii, elevation, motion, charts.
-2. Convert global shell and responsive navigation.
+2. Convert global shell spatially: remove edge-bound sidebar walls, establish continuous canvas, implement detached expandable navigation island and mobile bottom island. Do this before page-card polish.
 3. Convert shared primitives and all their states.
 4. Convert high-traffic product patterns in slices.
 5. Theme charts and data states.
@@ -29,4 +29,4 @@ Build/tests pass; theme switch has no flash/unreadable state; representative rou
 
 ## Failure modes
 
-Recoloring without hierarchy; global glass; gradient on every action; oversized radii in dense CRM; hiding labels for minimalism; breaking chart semantics; desktop navigation copied to mobile; replacing stable libraries; claiming completion without rendered checks.
+Recoloring without hierarchy; retaining a full-height edge-bound sidebar; calling an opaque bordered panel “glass”; missing click expansion; global glass; gradient on every action; oversized radii in dense CRM; hiding labels for minimalism; breaking chart semantics; desktop navigation copied to mobile; replacing stable libraries; claiming completion without screenshots of collapsed and expanded states.
