@@ -1,19 +1,21 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Grid2x2, LayoutPanelLeft, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { listCreativeProjects } from '../api/creativeProjects';
+import { createCreativeProject, listClients, listCreativeProjects } from '../api/creativeProjects';
 import { FocusView, WorkspaceCanvas } from '../canvas/WorkspaceCanvas';
 import { buildAssetLabels, labelFor } from '../lib/assetLabels';
 import { CreativeInspector } from '../inspector/CreativeInspector';
+import { CreateInspector, type CreateFormValues } from '../inspector/CreateInspector';
 import { useCreativeActions } from '../hooks/useCreativeActions';
 import { useCreativeAssets } from '../hooks/useCreativeAssets';
 import { useWorkspace } from '../store/workspaceStore';
 import { sanitizeFileName } from '../api/storage';
 import { ProjectSidebar } from './ProjectSidebar';
 import { WorkspaceComposer } from './WorkspaceComposer';
-import type { CreativeAsset } from '../types/creative';
+import { useToast } from '@/hooks/use-toast';
+import type { CreativeAspectRatio, CreativeAsset, CreativeResolution } from '../types/creative';
 
 async function downloadAsset(asset: CreativeAsset, label: string) {
   if (!asset.url) return;
@@ -44,10 +46,19 @@ export function CreativeWorkspace() {
     setActiveSection,
   } = useWorkspace();
 
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
   const projectsQuery = useQuery({
     queryKey: ['creative-projects'],
     queryFn: () => listCreativeProjects(),
     staleTime: 60 * 1000,
+  });
+
+  const clientsQuery = useQuery({
+    queryKey: ['creative-studio-clients'],
+    queryFn: listClients,
+    staleTime: 5 * 60 * 1000,
   });
 
   const projects = projectsQuery.data ?? [];
@@ -94,6 +105,42 @@ export function CreativeWorkspace() {
 
   const openClassic = useCallback(() => navigate('/criativo-studio'), [navigate]);
 
+  const createProject = useCallback(async (values?: Partial<CreateFormValues>) => {
+    try {
+      const title = values?.businessContext?.trim().slice(0, 60) || 'Novo criativo';
+      const project = await createCreativeProject({
+        title,
+        clientId: values?.clientId ?? null,
+        aspectRatio: values?.aspectRatio ?? '4:5',
+        resolution: values?.resolution ?? '4K',
+      });
+      await queryClient.invalidateQueries({ queryKey: ['creative-projects'] });
+      setProjectId(project.id);
+      return project.id;
+    } catch (e: any) {
+      toast({ title: 'Erro ao criar projeto', description: e?.message || 'Erro', variant: 'destructive' });
+      return null;
+    }
+  }, [queryClient, setProjectId, toast]);
+
+  // Gerar sem projeto aberto cria um na hora, em vez de barrar o usuário: o
+  // projeto é um detalhe de organização, não um pré-requisito de fluxo.
+  const generate = useCallback(async (values: CreateFormValues) => {
+    const targetProjectId = projectId ?? await createProject(values);
+    if (!targetProjectId) return;
+    await actions.create({
+      projectId: targetProjectId,
+      clientId: values.clientId,
+      aspectRatio: values.aspectRatio,
+      resolution: values.resolution,
+      businessContext: values.businessContext,
+      copyText: values.copyText,
+      designSystemDoc: values.designSystemDoc,
+      productImages: values.productImages,
+      logoImage: values.logoImage,
+    });
+  }, [projectId, createProject, actions]);
+
   return (
     <div className="h-[100dvh] bg-[var(--studio-bg)] text-[var(--studio-text)] [--studio-bg:#09090B] [--studio-surface-1:#0F0F11] [--studio-surface-2:#141416] [--studio-surface-3:#19191C] [--studio-border:rgba(255,255,255,.08)] [--studio-border-hover:rgba(255,255,255,.15)] [--studio-text:rgba(255,255,255,.94)] [--studio-text-secondary:rgba(255,255,255,.62)] [--studio-text-tertiary:rgba(255,255,255,.38)] [--studio-accent:#EC4899]">
       <div className="grid h-full grid-cols-1 lg:grid-cols-[196px_minmax(0,1fr)_336px] xl:grid-cols-[212px_minmax(0,1fr)_376px]">
@@ -106,7 +153,7 @@ export function CreativeWorkspace() {
             activeSection={activeSection}
             onSelectSection={setActiveSection}
             artworkCount={assets.length}
-            onCreateNew={openClassic}
+            onCreateNew={() => { selectAsset(null); createProject(); }}
           />
         </div>
 
@@ -180,8 +227,17 @@ export function CreativeWorkspace() {
           <WorkspaceComposer
             selectedAssets={selectedAssets}
             busy={actions.isRunning}
+            onCreate={(description) => generate({
+              businessContext: description,
+              copyText: '',
+              designSystemDoc: '',
+              aspectRatio: (activeProject?.aspectRatio as CreativeAspectRatio) || '4:5',
+              resolution: (activeProject?.resolution as CreativeResolution) || '4K',
+              clientId: activeProject?.clientId ?? null,
+              productImages: [],
+              logoImage: null,
+            })}
             onEdit={(feedback) => selectedAsset && actions.edit(selectedAsset, feedback)}
-            onOpenClassic={openClassic}
           />
         </main>
 
@@ -198,7 +254,18 @@ export function CreativeWorkspace() {
             onDownload={() => selectedAsset && download(selectedAsset)}
             onOpenFocus={() => selectedAsset && openFocus(selectedAsset)}
             onSaveToIntelligence={() => selectedAsset && actions.saveToClientIntelligence(selectedAsset)}
-            onOpenClassic={openClassic}
+            createPanel={(
+              <CreateInspector
+                clients={clientsQuery.data ?? []}
+                defaults={{
+                  aspectRatio: (activeProject?.aspectRatio as CreativeAspectRatio) || '4:5',
+                  resolution: (activeProject?.resolution as CreativeResolution) || '4K',
+                  clientId: activeProject?.clientId ?? null,
+                }}
+                busy={actions.isRunning}
+                onGenerate={generate}
+              />
+            )}
           />
         </div>
       </div>

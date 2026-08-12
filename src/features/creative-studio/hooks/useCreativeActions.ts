@@ -1,15 +1,24 @@
 import { useCallback, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
-import { applyCreativeFactor, editAsset, resizeAssetToSquare } from '../api/creativeGeneration';
+import {
+  applyCreativeFactor,
+  editAsset,
+  generateOriginalAsset,
+  resizeAssetToSquare,
+  type GenerateOriginalInput,
+} from '../api/creativeGeneration';
+import { touchProjectAfterGeneration } from '../api/creativeProjects';
 import { updateCreativeAsset } from '../api/creativeAssets';
 import { useInvalidateCreativeAssets } from './useCreativeAssets';
 import type { CreativeAsset } from '../types/creative';
 
-export type CreativeActionKind = 'edit' | 'resize' | 'factor' | 'intelligence';
+export type CreativeActionKind = 'create' | 'edit' | 'resize' | 'factor' | 'intelligence';
 
 export interface UseCreativeActionsResult {
   runningAction: CreativeActionKind | null;
   isRunning: boolean;
+  create: (input: Omit<GenerateOriginalInput, 'projectId' | 'onPlaceholder'> & { projectId: string }) => Promise<boolean>;
   edit: (asset: CreativeAsset, feedback: string) => Promise<boolean>;
   resize: (asset: CreativeAsset) => Promise<boolean>;
   factor: (asset: CreativeAsset) => Promise<boolean>;
@@ -18,6 +27,7 @@ export interface UseCreativeActionsResult {
 
 export function useCreativeActions(projectId: string | undefined): UseCreativeActionsResult {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const invalidate = useInvalidateCreativeAssets();
   const [runningAction, setRunningAction] = useState<CreativeActionKind | null>(null);
 
@@ -43,6 +53,17 @@ export function useCreativeActions(projectId: string | undefined): UseCreativeAc
       setRunningAction(null);
     }
   }, [refresh, toast]);
+
+  const create = useCallback((
+    input: Omit<GenerateOriginalInput, 'projectId' | 'onPlaceholder'> & { projectId: string },
+  ) => run('create', 'gerar a arte', async () => {
+    const asset = await generateOriginalAsset({ ...input, onPlaceholder: refresh });
+    // Capa e status do projeto: sem isso a lista lateral fica sem thumbnail e o
+    // projeto segue eternamente "em andamento".
+    await touchProjectAfterGeneration({ projectId: input.projectId, thumbnailUrl: asset.url });
+    queryClient.invalidateQueries({ queryKey: ['creative-projects'] });
+    toast({ title: 'Arte gerada' });
+  }), [run, refresh, toast, queryClient]);
 
   const edit = useCallback((asset: CreativeAsset, feedback: string) => run('edit', 'editar', async () => {
     await editAsset({ asset, feedback, onPlaceholder: refresh });
@@ -75,6 +96,7 @@ export function useCreativeActions(projectId: string | undefined): UseCreativeAc
   return {
     runningAction,
     isRunning: runningAction !== null,
+    create,
     edit,
     resize,
     factor,

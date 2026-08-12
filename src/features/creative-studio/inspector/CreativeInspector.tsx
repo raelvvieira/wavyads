@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   BookmarkCheck,
   BookmarkPlus,
@@ -49,38 +49,6 @@ function ActionButton({
       {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Icon className="h-3.5 w-3.5" />}
       {label}
     </button>
-  );
-}
-
-/** Estado vazio: explica o que o workspace faz e como começar. */
-function CreateInspector({ onOpenClassic }: { onOpenClassic: () => void }) {
-  return (
-    <div className="space-y-5">
-      <div>
-        <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--studio-text-secondary)]">
-          Criar
-        </h3>
-        <p className="mt-2 text-xs leading-relaxed text-[var(--studio-text-tertiary)]">
-          Selecione uma arte no quadro para editá-la, gerar variações ou redimensionar — tudo sem
-          sobrescrever o original.
-        </p>
-      </div>
-
-      <div className="rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-2)] p-4">
-        <p className="text-xs font-medium text-[var(--studio-text)]">Criar uma arte nova</p>
-        <p className="mt-1.5 text-[11px] leading-relaxed text-[var(--studio-text-tertiary)]">
-          A criação do zero ainda usa o fluxo clássico, que monta o prompt a partir da direção
-          visual, da copy e dos assets do projeto. Ela chega aqui na próxima etapa.
-        </p>
-        <button
-          type="button"
-          onClick={onOpenClassic}
-          className="mt-3 w-full rounded-lg bg-[var(--studio-accent)] px-3 py-2 text-[11px] font-semibold text-white transition-colors hover:brightness-110"
-        >
-          Abrir fluxo clássico
-        </button>
-      </div>
-    </div>
   );
 }
 
@@ -228,6 +196,7 @@ export function CreativeInspector({
   label,
   parent,
   parentLabel,
+  createPanel,
   runningAction,
   onEdit,
   onResize,
@@ -235,8 +204,7 @@ export function CreativeInspector({
   onDownload,
   onOpenFocus,
   onSaveToIntelligence,
-  onOpenClassic,
-}: Partial<AssetInspectorProps> & { asset: CreativeAsset | null; onOpenClassic: () => void }) {
+}: Partial<AssetInspectorProps> & { asset: CreativeAsset | null; createPanel: ReactNode }) {
   return (
     <aside className="flex h-full flex-col border-l border-[var(--studio-border)] bg-[var(--studio-surface-1)]">
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
@@ -255,7 +223,7 @@ export function CreativeInspector({
             onSaveToIntelligence={onSaveToIntelligence ?? (() => {})}
           />
         ) : (
-          <CreateInspector onOpenClassic={onOpenClassic} />
+          createPanel
         )}
       </div>
     </aside>

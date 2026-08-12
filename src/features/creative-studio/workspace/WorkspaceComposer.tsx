@@ -1,51 +1,66 @@
 import { useEffect, useState } from 'react';
-import { ArrowUp, Loader2 } from 'lucide-react';
+import { ArrowUp, Loader2, Sparkles, Wand2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CreativeAsset } from '../types/creative';
 
 interface WorkspaceComposerProps {
   selectedAssets: CreativeAsset[];
   busy: boolean;
+  onCreate: (description: string) => void;
   onEdit: (feedback: string) => void;
-  onOpenClassic: () => void;
 }
 
 /**
  * Composer contextual: o mesmo campo muda de significado conforme a seleção.
- * Nada selecionado = criar; uma arte selecionada = alterar aquela arte.
- * É o que aproxima a tela de um workspace de IA em vez de um formulário.
+ * Nada selecionado = criar uma arte nova; uma arte selecionada = alterar
+ * aquela arte. É o que aproxima a tela de um workspace de IA em vez de um
+ * formulário com um botão por operação.
  */
-export function WorkspaceComposer({ selectedAssets, busy, onEdit, onOpenClassic }: WorkspaceComposerProps) {
+export function WorkspaceComposer({ selectedAssets, busy, onCreate, onEdit }: WorkspaceComposerProps) {
   const [value, setValue] = useState('');
+
   const single = selectedAssets.length === 1 ? selectedAssets[0] : null;
-  const canEdit = !!single && single.status === 'ready' && !!single.url;
+  const mode: 'create' | 'edit' | 'batch' = selectedAssets.length === 0
+    ? 'create'
+    : selectedAssets.length > 1
+      ? 'batch'
+      : 'edit';
+
+  const editable = !!single && single.status === 'ready' && !!single.url;
+  const enabled = mode === 'create' || (mode === 'edit' && editable);
 
   // Some junto com a seleção: o texto era sobre aquela arte.
-  useEffect(() => { setValue(''); }, [selectedAssets.map((a) => a.id).join(',')]);
+  useEffect(() => { setValue(''); }, [selectedAssets.map((asset) => asset.id).join(',')]);
 
-  const placeholder = selectedAssets.length === 0
-    ? 'Selecione uma arte no quadro para alterá-la com IA...'
-    : selectedAssets.length > 1
-      ? `${selectedAssets.length} artes selecionadas — ações em lote chegam na próxima etapa`
-      : canEdit
+  const placeholder = mode === 'create'
+    ? 'Descreva a arte que você quer criar...'
+    : mode === 'batch'
+      ? `${selectedAssets.length} artes selecionadas — ações em lote chegam numa próxima etapa`
+      : editable
         ? 'Peça uma alteração nesta arte...'
         : 'Esta arte ainda não está pronta para edição';
 
   const submit = () => {
     const text = value.trim();
-    if (!text || !canEdit || busy) return;
-    onEdit(text);
+    if (!text || !enabled || busy) return;
+    if (mode === 'create') onCreate(text);
+    else onEdit(text);
     setValue('');
   };
+
+  const Icon = mode === 'create' ? Sparkles : Wand2;
 
   return (
     <div className="border-t border-[var(--studio-border)] bg-[var(--studio-surface-1)] px-4 py-3">
       <div
         className={cn(
-          'flex items-end gap-2 rounded-xl border bg-[var(--studio-surface-2)] p-2 transition-colors',
-          canEdit ? 'border-[var(--studio-border)] focus-within:border-[var(--studio-accent)]' : 'border-[var(--studio-border)]',
+          'flex items-end gap-2 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-2)] p-2 transition-colors',
+          enabled && 'focus-within:border-[var(--studio-accent)]',
         )}
       >
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center text-[var(--studio-text-tertiary)]">
+          <Icon className="h-4 w-4" />
+        </span>
         <textarea
           value={value}
           onChange={(event) => setValue(event.target.value)}
@@ -56,17 +71,18 @@ export function WorkspaceComposer({ selectedAssets, busy, onEdit, onOpenClassic 
             }
           }}
           rows={1}
-          disabled={!canEdit || busy}
+          disabled={!enabled || busy}
           placeholder={placeholder}
           className={cn(
-            'max-h-32 min-h-[36px] flex-1 resize-none bg-transparent px-2 py-1.5 text-[13px] text-[var(--studio-text)]',
+            'max-h-32 min-h-[36px] flex-1 resize-none bg-transparent py-1.5 text-[13px] text-[var(--studio-text)]',
             'placeholder:text-[var(--studio-text-tertiary)] focus:outline-none disabled:cursor-not-allowed',
           )}
         />
         <button
           type="button"
           onClick={submit}
-          disabled={!canEdit || busy || value.trim().length === 0}
+          disabled={!enabled || busy || value.trim().length === 0}
+          title={mode === 'create' ? 'Gerar arte' : 'Aplicar alteração'}
           className={cn(
             'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--studio-accent)] text-white transition',
             'hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-30',
@@ -76,16 +92,13 @@ export function WorkspaceComposer({ selectedAssets, busy, onEdit, onOpenClassic 
         </button>
       </div>
 
-      {selectedAssets.length === 0 && (
-        <p className="mt-2 px-1 text-[10px] text-[var(--studio-text-tertiary)]">
-          Para criar uma arte do zero, o fluxo clássico ainda monta o prompt a partir da direção
-          visual e da copy —{' '}
-          <button type="button" onClick={onOpenClassic} className="underline underline-offset-2 hover:text-[var(--studio-text-secondary)]">
-            abrir agora
-          </button>
-          .
-        </p>
-      )}
+      <p className="mt-2 px-1 text-[10px] text-[var(--studio-text-tertiary)]">
+        {mode === 'create'
+          ? 'Enter gera direto. Para copy exata, formato, logo ou foto de produto, use o painel Criar à direita.'
+          : mode === 'edit'
+            ? 'A arte atual é preservada — a alteração entra como uma versão nova ligada a ela.'
+            : 'Clique numa única arte para editá-la.'}
+      </p>
     </div>
   );
 }

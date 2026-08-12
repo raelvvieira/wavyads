@@ -35,6 +35,7 @@ import {
   createAssetGroup,
   createCreativeAsset,
 } from '@/features/creative-studio/api/creativeAssets';
+import { buildCreativePrompt } from '@/features/creative-studio/lib/promptBuilder';
 import {
   Sparkles,
   Wand2,
@@ -1741,111 +1742,38 @@ export default function CriativoStudioPage() {
     }
   };
 
+  // A montagem em si vive em lib/promptBuilder.ts, compartilhada com o
+  // workspace novo. Aqui só traduzimos o state desta tela para a entrada dela.
   const buildFinalPrompt = (
     aspect: 'story' | 'square',
     options?: { selectedAspectRatio?: CreativeAspectRatio; selectedResolution?: CreativeResolution },
-  ) => {
-    const aspectConfig = options?.selectedAspectRatio
-      ? ASPECT_CONFIG[options.selectedAspectRatio]
-      : aspect === 'story'
-      ? ASPECT_CONFIG['9:16']
-      : ASPECT_CONFIG['1:1'];
-    const resolutionConfig = options?.selectedResolution
-      ? RESOLUTION_CONFIG[options.selectedResolution]
-      : RESOLUTION_CONFIG['4K'];
-    const dims = aspectConfig.promptDims;
-    const safeZone = aspectConfig.safeZone;
-
-    const intro = `[INTRODUCTION]
-Create a ${dims} advertisement image for ${businessContext.trim() || 'a professional brand'}.
-Quality target: ${resolutionConfig.promptQuality}.`;
-
-    const photoBlock = productImages.length > 0
-      ? `[ATTACHED PHOTOS]
-${productImages.length} reference image(s) provided showing the product/person/scene that must appear in the composition.
-${preserveFaces ? 'Preserve their exact likeness. Do NOT alter faces, skin tone, body shape or appearance in any way. Treat the subject as a fixed reference.' : ''}
-Integrate the subject naturally into the composition described below.`
-      : '';
-
-    const designSystem = editedDoc || analysis?.designSystemDoc || '';
-    // IMPORTANTE: nunca injetar aqui copy_structure/base_prompt do template —
-    // ambos podem conter texto literal (headline, CTA, etc.) do projeto em que
-    // o template foi salvo originalmente, e o modelo de imagem pode renderizar
-    // esse texto antigo junto com a copy atual. O template deve influenciar
-    // apenas LAYOUT/ESTILO; todo o texto vem exclusivamente do bloco
-    // [TEXT BLOCKS] abaixo, montado a partir da copy do projeto atual.
-    const templateBlock = selectedTemplate
-      ? `[TEMPLATE STRUCTURE]
-Use the following reusable template structure as the creative foundation — layout, visual hierarchy, typography rhythm, spacing and composition only.
-Template name: ${selectedTemplate.name}
-Template category: ${selectedTemplate.category || 'not specified'}
-Template visual structure: ${JSON.stringify(selectedTemplate.layout_structure || {})}
-
-This structure defines LAYOUT AND STYLE ONLY. Do NOT reuse, reference or render any headline, label, subtitle, CTA or body copy from a previous use of this template. ALL text content for this artwork comes exclusively from the [TEXT BLOCKS] section below, verbatim — adapt only the text, product, references and business context from the current project.`
-      : '';
-
-    const safe = `[SAFE ZONE]
-${safeZone}
-${aspect === 'square' ? 'Centered composition optimized for square 1:1 framing.' : ''}`;
-
-    // Text blocks from selected copy
-    let textBlocks = '';
-    if (copySource === 'ai' && selectedCopy) {
-      const parts: string[] = [];
-      if (selectedCopy.label) parts.push(`LABEL (top, small uppercase, wide tracking, secondary color): "${selectedCopy.label}"`);
-      if (selectedCopy.titulo) parts.push(`MAIN TITLE (dominant, large, primary typeface, high contrast): "${selectedCopy.titulo}"`);
-      if (selectedCopy.subtitulo) parts.push(`SUBTITLE (medium, secondary typeface, supports the title): "${selectedCopy.subtitulo}"`);
-      if (selectedCopy.dados) parts.push(`DATA LINE (small, factual: date/place/price/spots): "${selectedCopy.dados}"`);
-      if (selectedCopy.cta) parts.push(`CTA (pill or button, accent color, bold): "${selectedCopy.cta}"`);
-      textBlocks = `[TEXT BLOCKS]
-All text must be rendered exactly as written, in ${language === 'pt-BR' ? 'Portuguese (Brazil)' : language === 'es' ? 'Spanish' : 'English'}, with professional typography and perfect legibility.
-${parts.join('\n')}`;
-    } else if (copySource === 'original' && rawCopy.trim()) {
-      textBlocks = `[TEXT BLOCKS — USER-WRITTEN COPY, FINAL]
-Render ONLY the exact text below as overlay on the creative, in ${language === 'pt-BR' ? 'Portuguese (Brazil)' : language === 'es' ? 'Spanish' : 'English'}, professional typography, perfect legibility. Do not paraphrase, shorten, expand or reword it.
-"""
-${rawCopy.trim()}
-"""
-This is the COMPLETE and FINAL copy — the user wrote it themselves and it must not be changed. Do NOT add any headline, kicker, tagline, subtitle, CTA button, price, offer or any other text that is not written above, even if the composition seems to have room for it or a reference/template suggests one. If the text above has no explicit call-to-action line, do not invent one. Distribute exactly this text across the composition following the typography system and hierarchy from the design system above — do not add new text elements to fill the layout.`;
-    }
-
-    const logoBlock = logoImage.length > 0
-      ? `[BRAND LOGO]
-A brand logo is provided as a separate reference. Place it discreetly in a corner (top-left or bottom-right preferred), small, clean. Do NOT distort, recolor, recreate or redesign it — treat as a fixed brand asset.`
-      : '';
-
-    const moodBlock = analysis?.mood
-      ? `[MOOD]
-Feels like: ${analysis.mood.referencias.join(', ') || 'professional advertising'}.
-Tone: ${analysis.mood.adjetivos.join(', ')}.
-Not: ${analysis.mood.evita.join(', ')}.`
-      : '';
-
-    const userNegatives = negativePrompt.trim()
-      ? negativePrompt.split('\n').map((l) => `- ${l.trim().replace(/^-+\s*/, '')}`).filter((l) => l.length > 2)
-      : [];
-    const evitaList = analysis?.mood.evita.map((e) => `- ${e}`) || [];
-    const antiPadroesList = analysis?.antiPadroes?.map((e) => `- ${e}`) || [];
-
-    const doNot = `[DO NOT INCLUDE]
-${[...evitaList, ...antiPadroesList, ...userNegatives].join('\n')}
-- Any element within the top or bottom safe zones
-- Any text in a language other than ${language === 'pt-BR' ? 'Portuguese (Brazil)' : language === 'es' ? 'Spanish' : 'English'}
-- Misspelled, garbled or fake-looking text
-- Watermarks, signatures, low-resolution artifacts
-- Generic stock-photo aesthetic`;
-
-    const closing = `All text in the artwork MUST be written in ${language === 'pt-BR' ? 'Portuguese (Brazil)' : language === 'es' ? 'Spanish' : 'English'}. Final result: ${resolutionConfig.promptQuality}, polished, professional advertising design, sharp typography, brand-grade composition.`;
-
-    const consistency = aspect === 'square' && storyImage
-      ? `[VISUAL CONSISTENCY — CRITICAL]
-A reference Story version of this same creative is attached as the FIRST image. The square version MUST replicate its EXACT color palette, lighting, color grading, photographic treatment, typography choices and overall mood. Only the framing/composition changes to fit a 1:1 square. Treat that Story as the visual ground truth — do NOT shift hues, saturation, contrast or styling.`
-      : '';
-
-    return [intro, photoBlock, '[DESIGN SYSTEM]\n' + designSystem, templateBlock, safe, consistency, logoBlock, textBlocks, moodBlock, doNot, closing]
-      .filter(Boolean)
-      .join('\n\n');
-  };
+  ) => buildCreativePrompt({
+    aspect,
+    aspectRatio: options?.selectedAspectRatio ?? null,
+    resolution: options?.selectedResolution ?? null,
+    language,
+    businessContext,
+    designSystemDoc: editedDoc || analysis?.designSystemDoc || '',
+    copy: copySource === 'ai' && selectedCopy
+      ? { source: 'ai', blocks: selectedCopy }
+      : copySource === 'original' && rawCopy.trim()
+        ? { source: 'original', text: rawCopy }
+        : null,
+    productImageCount: productImages.length,
+    preserveFaces,
+    hasLogo: logoImage.length > 0,
+    hasStoryReference: !!storyImage,
+    template: selectedTemplate
+      ? {
+          name: selectedTemplate.name,
+          category: selectedTemplate.category,
+          layoutStructure: selectedTemplate.layout_structure,
+        }
+      : null,
+    mood: analysis?.mood ?? null,
+    antiPadroes: analysis?.antiPadroes ?? null,
+    negativePrompt,
+  });
 
   const buildFinalPromptForSelectedAspect = () => {
     const backendAspect = getBackendAspectFromSelectedRatio(selectedAspectRatio);

@@ -1,13 +1,16 @@
 import { supabase } from '@/integrations/supabase/client';
+import { recordAiUsage } from '@/lib/aiUsageTracker';
 import { createAssetGroup, createCreativeAsset, updateCreativeAsset } from './creativeAssets';
 import { buildAssetFileName, extractFunctionErrorMessage, uploadDataUrlToAssetStorage } from './storage';
-import { ASPECT_CONFIG } from '../constants/formats';
+import { ASPECT_CONFIG, MODEL_OPTIONS } from '../constants/formats';
+import { buildCreativePrompt } from '../lib/promptBuilder';
 import {
   normalizeFactorAxis,
   type ArtworkAssetType,
   type BackendAspect,
   type CreativeAsset,
   type CreativeAspectRatio,
+  type CreativeResolution,
   type FactorAxis,
 } from '../types/creative';
 
@@ -38,6 +41,9 @@ async function runDerivation({
   metadata,
   invoke,
   onPlaceholder,
+  resolution,
+  model,
+  clientId,
 }: {
   projectId: string;
   parentAsset: CreativeAsset | null;
@@ -51,6 +57,9 @@ async function runDerivation({
   invoke: () => Promise<string>;
   /** Chamado assim que o card 'generating' existe, para o Canvas já mostrá-lo. */
   onPlaceholder?: () => void;
+  resolution?: string | null;
+  model?: string | null;
+  clientId?: string | null;
 }): Promise<CreativeAsset> {
   const placeholder = await createCreativeAsset({
     projectId,
@@ -60,10 +69,10 @@ async function runDerivation({
     groupId: groupId ?? null,
     factorAxis: factorAxis ?? null,
     aspectRatio,
-    resolution: parentAsset?.resolution ?? null,
+    resolution: resolution ?? parentAsset?.resolution ?? null,
     prompt,
-    model: parentAsset?.model ?? DEFAULT_MODEL,
-    clientId: parentAsset?.clientId ?? null,
+    model: model ?? parentAsset?.model ?? DEFAULT_MODEL,
+    clientId: clientId ?? parentAsset?.clientId ?? null,
     metadata: metadata ?? {},
   });
   onPlaceholder?.();
@@ -101,6 +110,10 @@ async function invokeImageFunction(
   return url as string;
 }
 
+function recordImageUsage(model: string) {
+  recordAiUsage(MODEL_OPTIONS.find((option) => option.id === model)?.usage || 'image-gemini-flash-2');
+}
+
 /** Editar cria uma arte filha — a original nunca é sobrescrita. */
 export async function editAsset({
   asset,
@@ -128,11 +141,16 @@ export async function editAsset({
     onPlaceholder,
     // A edge function aceita URL http(s) direto, então a signed URL do asset
     // serve como entrada sem precisar converter para base64 no navegador.
-    invoke: () => invokeImageFunction(
-      'criativo-edit-image',
-      { originalImage: asset.url, userFeedback: feedback, originalPrompt: asset.prompt || '', aspect, language },
-      'editedImageUrl',
-    ),
+    invoke: async () => {
+      const url = await invokeImageFunction(
+        'criativo-edit-image',
+        { originalImage: asset.url, userFeedback: feedback, originalPrompt: asset.prompt || '', aspect, language },
+        'editedImageUrl',
+      );
+      recordAiUsage('text-flash');
+      recordImageUsage(asset.model || DEFAULT_MODEL);
+      return url;
+    },
   });
 }
 
@@ -157,17 +175,21 @@ export async function resizeAssetToSquare({
     factorAxis: asset.factorAxis,
     metadata: { source_asset_id: asset.id, square: true },
     onPlaceholder,
-    invoke: () => invokeImageFunction(
-      'criativo-generate',
-      {
-        prompt: asset.prompt,
-        aspectRatio: 'square',
-        model: asset.model || DEFAULT_MODEL,
-        isVariation: asset.type === 'factor',
-        storyReference: asset.url,
-      },
-      'imageUrl',
-    ),
+    invoke: async () => {
+      const url = await invokeImageFunction(
+        'criativo-generate',
+        {
+          prompt: asset.prompt,
+          aspectRatio: 'square',
+          model: asset.model || DEFAULT_MODEL,
+          isVariation: asset.type === 'factor',
+          storyReference: asset.url,
+        },
+        'imageUrl',
+      );
+      recordImageUsage(asset.model || DEFAULT_MODEL);
+      return url;
+    },
   });
 }
 
@@ -218,6 +240,7 @@ export async function applyCreativeFactor({
   });
   if (error) throw new Error(await extractFunctionErrorMessage(error));
   if ((data as any)?.error) throw new Error((data as any).error);
+  recordAiUsage('text-flash');
 
   const variations = ((data as any)?.variations ?? []) as FactorVariationPayload[];
   if (variations.length === 0) throw new Error('O Fator Criativo não devolveu variações');
@@ -260,17 +283,21 @@ export async function applyCreativeFactor({
             estrategia: variation.estrategia,
           },
           onPlaceholder,
-          invoke: () => invokeImageFunction(
-            'criativo-generate',
-            {
-              prompt: variation.promptCompleto,
-              aspectRatio: aspect,
-              model: asset.model || DEFAULT_MODEL,
-              isVariation: true,
-              storyReference: aspect === 'square' ? asset.url : null,
-            },
-            'imageUrl',
-          ),
+          invoke: async () => {
+            const url = await invokeImageFunction(
+              'criativo-generate',
+              {
+                prompt: variation.promptCompleto,
+                aspectRatio: aspect,
+                model: asset.model || DEFAULT_MODEL,
+                isVariation: true,
+                storyReference: aspect === 'square' ? asset.url : null,
+              },
+              'imageUrl',
+            );
+            recordImageUsage(asset.model || DEFAULT_MODEL);
+            return url;
+          },
         });
       } catch (e: any) {
         failures.push({ eixo: variation.eixo, message: e?.message || 'Erro' });
@@ -280,4 +307,92 @@ export async function applyCreativeFactor({
   );
 
   return { groupId, assets: results.filter(Boolean) as CreativeAsset[], failures };
+}
+
+export interface GenerateOriginalInput {
+  projectId: string;
+  clientId?: string | null;
+  aspectRatio: CreativeAspectRatio;
+  resolution: CreativeResolution;
+  model?: string;
+  language?: string;
+  businessContext?: string;
+  /** Copy escrita pelo usuário, renderizada verbatim na arte. */
+  copyText?: string;
+  designSystemDoc?: string;
+  negativePrompt?: string;
+  preserveFaces?: boolean;
+  /** Data URLs ou URLs http — a edge function aceita os dois. */
+  productImages?: string[];
+  logoImage?: string | null;
+  onPlaceholder?: () => void;
+}
+
+/**
+ * Cria uma arte do zero. Usa o MESMO buildCreativePrompt do fluxo clássico, e
+ * grava o prompt no asset — é isso que depois permite gerar 1080 e aplicar o
+ * Fator Criativo sobre ela sem precisar reconstruir contexto nenhum.
+ */
+export async function generateOriginalAsset({
+  projectId,
+  clientId = null,
+  aspectRatio,
+  resolution,
+  model = DEFAULT_MODEL,
+  language = 'pt-BR',
+  businessContext = '',
+  copyText = '',
+  designSystemDoc = '',
+  negativePrompt = '',
+  preserveFaces = true,
+  productImages = [],
+  logoImage = null,
+  onPlaceholder,
+}: GenerateOriginalInput): Promise<CreativeAsset> {
+  const aspect = ASPECT_CONFIG[aspectRatio]?.backendAspect ?? 'story';
+
+  const prompt = buildCreativePrompt({
+    aspect,
+    aspectRatio,
+    resolution,
+    language,
+    businessContext,
+    designSystemDoc,
+    copy: copyText.trim() ? { source: 'original', text: copyText } : null,
+    productImageCount: productImages.length,
+    preserveFaces,
+    hasLogo: !!logoImage,
+    hasStoryReference: false,
+    negativePrompt,
+  });
+
+  return runDerivation({
+    projectId,
+    parentAsset: null,
+    type: 'original',
+    fileBaseName: `criativo-principal-${aspectRatio}`,
+    aspectRatio,
+    resolution,
+    model,
+    clientId,
+    prompt,
+    metadata: { businessContext, copyText, createdFrom: 'workspace-v2' },
+    onPlaceholder,
+    invoke: async () => {
+      const url = await invokeImageFunction(
+        'criativo-generate',
+        {
+          prompt,
+          aspectRatio: aspect,
+          model,
+          productImages,
+          logoImage,
+          storyReference: null,
+        },
+        'imageUrl',
+      );
+      recordImageUsage(model);
+      return url;
+    },
+  });
 }
