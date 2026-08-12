@@ -14,11 +14,27 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { ImageDropzone } from '@/components/criativo/ImageDropzone';
-import { StepIndicator } from '@/components/criativo/StepIndicator';
 import { StyleGalleryDialog } from '@/components/criativo/StyleGalleryDialog';
 import { QuickCreativeDialog, type ClientCopyBankEntry, type ClientIntelligenceArt, type QuickCopyVariation } from '@/components/criativo/QuickCreativeDialog';
 import { cn } from '@/lib/utils';
 import { recordAiUsage } from '@/lib/aiUsageTracker';
+import {
+  ASPECT_CONFIG,
+  MODEL_OPTIONS,
+  RESOLUTION_CONFIG,
+  getBackendAspectFromSelectedRatio,
+  type GeminiModel,
+} from '@/features/creative-studio/constants/formats';
+import {
+  normalizeFactorAxis,
+  type CreativeAspectRatio,
+  type CreativeAssetType,
+  type CreativeResolution,
+} from '@/features/creative-studio/types/creative';
+import {
+  createAssetGroup,
+  createCreativeAsset,
+} from '@/features/creative-studio/api/creativeAssets';
 import {
   Sparkles,
   Wand2,
@@ -197,114 +213,6 @@ type TemplateSource = {
   editFeedback?: string;
 };
 
-type CreativeAspectRatio = '1:1' | '4:5' | '9:16' | '16:9' | '4:3' | '3:4' | '2:3' | '3:2' | '21:9';
-type CreativeResolution = '1K' | '2K' | '4K';
-type BackendAspect = 'story' | 'square';
-
-const ASPECT_CONFIG: Record<CreativeAspectRatio, {
-  label: string;
-  title: string;
-  promptDims: string;
-  safeZone: string;
-  backendAspect: BackendAspect;
-  recommendedUse: string;
-}> = {
-  '1:1': {
-    label: '1:1',
-    title: 'Quadrado',
-    promptDims: '1:1 perfect square Instagram post, 1080x1080px',
-    safeZone: 'Top safe zone: keep 120px from the top edge clear of important text. Bottom safe zone: keep 120px from the bottom edge clear.',
-    backendAspect: 'square',
-    recommendedUse: 'Feed, carrossel e posts quadrados',
-  },
-  '4:5': {
-    label: '4:5',
-    title: 'Feed vertical',
-    promptDims: '4:5 vertical Instagram feed advertisement, optimized for Meta Ads feed placement',
-    safeZone: 'Keep generous margins on all edges. Avoid placing important text too close to the top or bottom edges.',
-    backendAspect: 'story',
-    recommendedUse: 'Feed vertical com maior ocupação de tela',
-  },
-  '9:16': {
-    label: '9:16',
-    title: 'Story/Reels',
-    promptDims: '9:16 vertical Instagram Story, 1080x1920px',
-    safeZone: 'Top safe zone: keep 280px from the very top edge completely free of any text, graphic or important element. Bottom safe zone: keep 280px from the very bottom edge completely free. This protects against Instagram UI overlays.',
-    backendAspect: 'story',
-    recommendedUse: 'Stories, Reels e tela cheia',
-  },
-  '16:9': {
-    label: '16:9',
-    title: 'Horizontal',
-    promptDims: '16:9 horizontal advertising image',
-    safeZone: 'Keep important text and subjects away from extreme left and right edges. Maintain a centered safe composition area.',
-    backendAspect: 'story',
-    recommendedUse: 'YouTube, banners e apresentações',
-  },
-  '4:3': {
-    label: '4:3',
-    title: 'Horizontal clássico',
-    promptDims: '4:3 horizontal advertising image',
-    safeZone: 'Keep important text within a centered safe composition area. Avoid text too close to all edges.',
-    backendAspect: 'story',
-    recommendedUse: 'Criativos horizontais compactos',
-  },
-  '3:4': {
-    label: '3:4',
-    title: 'Vertical clássico',
-    promptDims: '3:4 vertical advertising image',
-    safeZone: 'Keep important text within a centered safe composition area. Maintain generous top and bottom margins.',
-    backendAspect: 'story',
-    recommendedUse: 'Criativos verticais',
-  },
-  '2:3': {
-    label: '2:3',
-    title: 'Poster vertical',
-    promptDims: '2:3 vertical poster-style advertising image',
-    safeZone: 'Keep generous margins on top and bottom. Avoid placing CTA too close to the lower edge.',
-    backendAspect: 'story',
-    recommendedUse: 'Poster e anúncio vertical',
-  },
-  '3:2': {
-    label: '3:2',
-    title: 'Foto horizontal',
-    promptDims: '3:2 horizontal advertising image',
-    safeZone: 'Keep important text away from the extreme edges. Maintain visual weight near the center.',
-    backendAspect: 'story',
-    recommendedUse: 'Imagem horizontal editorial',
-  },
-  '21:9': {
-    label: '21:9',
-    title: 'Cinemático',
-    promptDims: '21:9 ultra-wide cinematic advertising image',
-    safeZone: 'Keep main subjects and text in the central safe area. Avoid edge-critical content.',
-    backendAspect: 'story',
-    recommendedUse: 'Banner cinematográfico',
-  },
-};
-
-const RESOLUTION_CONFIG: Record<CreativeResolution, {
-  label: string;
-  promptQuality: string;
-}> = {
-  '1K': {
-    label: '1K',
-    promptQuality: 'standard high-quality digital advertising image',
-  },
-  '2K': {
-    label: '2K',
-    promptQuality: 'high-resolution polished advertising image with crisp typography and clean details',
-  },
-  '4K': {
-    label: '4K',
-    promptQuality: 'ultra high-resolution 4K advertising image, crisp details, sharp typography, premium finish',
-  },
-};
-
-function getBackendAspectFromSelectedRatio(ratio: CreativeAspectRatio): BackendAspect {
-  return ASPECT_CONFIG[ratio]?.backendAspect || 'story';
-}
-
 function getLegacyStepFromStage(stage: CurrentStage) {
   if (['references', 'reference-review'].includes(stage)) return 0;
   if (stage === 'copy') return 1;
@@ -345,18 +253,6 @@ async function extractFunctionErrorMessage(error: any): Promise<string> {
   return error?.message || 'Erro desconhecido';
 }
 
-type GeminiModel = 'gemini-2.5-flash-image' | 'gemini-3.1-flash-image-preview' | 'gemini-3-pro-image-preview';
-const MODEL_OPTIONS: { id: GeminiModel; name: string; desc: string; usage: 'image-gemini-flash' | 'image-gemini-flash-2' | 'image-gemini-pro' }[] = [
-  { id: 'gemini-2.5-flash-image', name: 'Nano Banana', desc: 'Rápido e barato', usage: 'image-gemini-flash' },
-  { id: 'gemini-3.1-flash-image-preview', name: 'Nano Banana 2', desc: 'Rápido com qualidade Pro (recomendado)', usage: 'image-gemini-flash-2' },
-  { id: 'gemini-3-pro-image-preview', name: 'Nano Banana Pro', desc: 'Máxima qualidade, mais lento', usage: 'image-gemini-pro' },
-];
-
-const LANGUAGES = [
-  { id: 'pt-BR', label: 'Português (BR)' },
-  { id: 'en', label: 'English' },
-  { id: 'es', label: 'Español' },
-] as const;
 
 export default function CriativoStudioPage() {
   const { isAdmin, isLoading: roleLoading } = useRole();
@@ -485,6 +381,10 @@ export default function CriativoStudioPage() {
   };
   const [factorVariations, setFactorVariations] = useState<FactorVariation[] | null>(null);
   const [factorImages, setFactorImages] = useState<(string | null)[]>([]);
+  // Ids dos assets das variações — sem eles o 1080 e a edição de um Fator
+  // nasceriam órfãos, quebrando a árvore justamente onde ela é mais útil.
+  const [factorAssetIds, setFactorAssetIds] = useState<(string | null)[]>([null, null, null, null, null]);
+  const [factorSquareAssetIds, setFactorSquareAssetIds] = useState<(string | null)[]>([null, null, null, null, null]);
   const [factorErrors, setFactorErrors] = useState<(string | null)[]>([]);
   const [factorLoading, setFactorLoading] = useState(false);
   const [factorProgress, setFactorProgress] = useState(0);
@@ -506,6 +406,30 @@ export default function CriativoStudioPage() {
   const [editPanelKey, setEditPanelKey] = useState<string | null>(null);
   const [editFeedback, setEditFeedback] = useState('');
   const [editLoadingKey, setEditLoadingKey] = useState<string | null>(null);
+
+  // Traduz a chave que a UI usa para identificar uma arte no quadro
+  // ('main:story', 'f2:square', 'edit:main:story#1') no id do asset
+  // correspondente, para que a próxima derivação saiba de quem descende.
+  const assetIdForKey = (key: string): string | null => {
+    if (key === 'main:story') return mainStoryAssetId;
+    if (key === 'main:square') return mainSquareAssetId;
+
+    const factor = key.match(/^f(\d+):(story|square)$/);
+    if (factor) {
+      const index = Number(factor[1]);
+      return (factor[2] === 'square' ? factorSquareAssetIds[index] : factorAssetIds[index]) ?? null;
+    }
+
+    // Re-edição: 'edit:{chaveDeOrigem}#{indice}' aponta para a versão editada,
+    // não para a arte que a originou — encadeia v1 → v2 → v3.
+    const edited = key.match(/^edit:(.+)#(\d+)$/);
+    if (edited) {
+      const version = editedVersions[edited[1]]?.[Number(edited[2])];
+      return version?.assetId ?? null;
+    }
+
+    return null;
+  };
 
   useEffect(() => {
     if (!roleLoading && !isAdmin) navigate('/dashboard');
@@ -929,6 +853,18 @@ export default function CriativoStudioPage() {
     }
   };
 
+  // Linhagem: toda arte derivada (fator, edição, resize) nasce apontando para a
+  // arte que a originou. É o que permite ao Canvas remontar os grupos a partir
+  // do banco, em vez de depender das listas paralelas do state.
+  type AssetLineage = {
+    parentAssetId?: string | null;
+    groupId?: string | null;
+    factorAxis?: string | null;
+    aspectRatio?: string | null;
+    resolution?: string | null;
+    prompt?: string | null;
+  };
+
   const saveAssetRecord = async ({
     type,
     url,
@@ -936,33 +872,35 @@ export default function CriativoStudioPage() {
     filename,
     clientId,
     isClientIntelligence,
+    lineage,
   }: {
-    type: string;
+    type: CreativeAssetType;
     url: string;
     metadata?: Record<string, any>;
     filename?: string;
     clientId?: string;
     isClientIntelligence?: boolean;
+    lineage?: AssetLineage;
   }) => {
     const projectId = currentProjectId || await createCreativeProject();
-    const userId = await getCurrentUserId();
-    const { data, error } = await db
-      .from('creative_assets')
-      .insert({
-        project_id: projectId,
-        type,
-        url,
-        thumbnail_url: url,
-        filename,
-        metadata,
-        created_by: userId,
-        client_id: clientId || null,
-        is_client_intelligence: isClientIntelligence || false,
-      })
-      .select('id')
-      .single();
-    if (error) throw error;
-    return data.id as string;
+    const asset = await createCreativeAsset({
+      projectId,
+      type,
+      url,
+      filename,
+      metadata,
+      clientId: clientId || null,
+      isClientIntelligence: isClientIntelligence || false,
+      parentAssetId: lineage?.parentAssetId ?? null,
+      groupId: lineage?.groupId ?? null,
+      factorAxis: normalizeFactorAxis(lineage?.factorAxis),
+      aspectRatio: lineage?.aspectRatio ?? null,
+      resolution: lineage?.resolution ?? null,
+      prompt: lineage?.prompt ?? null,
+      negativePrompt: negativePrompt || null,
+      model,
+    });
+    return asset.id;
   };
 
   const persistImageAsset = async ({
@@ -972,13 +910,15 @@ export default function CriativoStudioPage() {
     metadata = {},
     filename,
     clientId,
+    lineage,
   }: {
     imageUrl: string;
     folder: string;
-    type: string;
+    type: CreativeAssetType;
     metadata?: Record<string, any>;
     filename: string;
     clientId?: string;
+    lineage?: AssetLineage;
   }) => {
     try {
       const projectId = currentProjectId || await createCreativeProject();
@@ -986,7 +926,7 @@ export default function CriativoStudioPage() {
       const path = `${userId || 'admin'}/${projectId}/${folder}/${filename}`;
       const { url, path: storedPath } = await uploadDataUrlToStorage({ dataUrl: imageUrl, path });
       const storedFilename = storedPath.split('/').pop() || filename;
-      const assetId = await saveAssetRecord({ type, url, metadata, filename: storedFilename, clientId });
+      const assetId = await saveAssetRecord({ type, url, metadata, filename: storedFilename, clientId, lineage });
       return { url, assetId };
     } catch (e: any) {
       toast({ title: 'Aviso: imagem não foi salva no Storage', description: e?.message || 'O fluxo continua normalmente.' });
@@ -994,37 +934,11 @@ export default function CriativoStudioPage() {
     }
   };
 
-  const saveCreativeOutput = async ({
-    type,
-    imageUrl,
-    prompt,
-    metadata = {},
-    assetId,
-    aspectRatio,
-  }: {
-    type: 'main' | 'square' | 'factor' | 'edited';
-    imageUrl: string;
-    prompt?: string;
-    metadata?: Record<string, any>;
-    assetId?: string | null;
-    aspectRatio?: string;
-  }) => {
-    try {
-      const projectId = currentProjectId || await createCreativeProject();
-      await db.from('creative_outputs').insert({
-        project_id: projectId,
-        asset_id: assetId || null,
-        type,
-        aspect_ratio: aspectRatio || selectedAspectRatio,
-        resolution: selectedResolution,
-        image_url: imageUrl,
-        prompt,
-        metadata,
-      });
-    } catch (e: any) {
-      toast({ title: 'Aviso: output não foi registrado', description: e?.message || 'A imagem foi mantida na tela.' });
-    }
-  };
+  // creative_outputs era uma segunda tabela descrevendo as mesmas imagens de
+  // creative_assets — a fragmentação que impedia o Canvas de ler tudo de um
+  // lugar só. Agora aspect_ratio/resolution/prompt/linhagem moram no próprio
+  // asset. A tabela antiga fica no banco só porque creative_templates ainda a
+  // referencia por FK, mas ninguém escreve nela.
 
   const saveCopyVariationRecord = async (variation: Partial<CopyResult> & { rawCopy?: string }, source: 'original' | 'ai' | 'factor', selected = false) => {
     try {
@@ -1141,7 +1055,7 @@ export default function CriativoStudioPage() {
         if (error) throw error;
       } else {
         await saveAssetRecord({
-          type: 'generated',
+          type: 'original',
           url,
           clientId: selectedClientId,
           metadata,
@@ -1245,8 +1159,8 @@ export default function CriativoStudioPage() {
   // prompt. Só cria o projeto aqui (aguardado) e espera currentProjectId se
   // confirmar num próximo render antes de chamar generateSelectedArt(); se
   // esse projectId fosse só lido dentro de generate() nesse mesmo tick, o
-  // closure ainda veria null e persistImageAsset/saveCreativeOutput criariam
-  // dois projetos em paralelo.
+  // closure ainda veria null e cada gravação de asset criaria um projeto
+  // próprio, em paralelo.
   useEffect(() => {
     if (quickCreativeTrigger === 0) return;
     (async () => {
@@ -1729,14 +1643,14 @@ export default function CriativoStudioPage() {
         type: 'edited',
         filename: imageFileName(`criativo-edit-${key}`),
         metadata: { feedback, source_key: key, original_prompt: originalPrompt },
-      });
-      await saveCreativeOutput({
-        type: 'edited',
-        imageUrl: persisted.url,
-        prompt: originalPrompt,
-        assetId: persisted.assetId,
-        aspectRatio: aspect === 'square' ? '1:1' : selectedAspectRatio,
-        metadata: { feedback, source_key: key },
+        // Editar não destrói a arte anterior: cria uma nova filha dela. Isso é
+        // o que torna possível um histórico de versões navegável mais à frente.
+        lineage: {
+          parentAssetId: assetIdForKey(key),
+          aspectRatio: aspect === 'square' ? '1:1' : selectedAspectRatio,
+          resolution: selectedResolution,
+          prompt: originalPrompt,
+        },
       });
       const url = persisted.url;
       setEditedVersions((prev) => ({
@@ -1998,16 +1912,22 @@ A reference Story version of this same creative is attached as the FIRST image. 
   // Sem `base` → aplica o Fator sobre a arte principal (comportamento antigo).
   // Com `base` → reaplica o Fator a partir de uma imagem/variação escolhida no
   // quadro, usando o prompt e a copy dela como semente das 5 novas variações.
-  const applyFatorCriativo = async (base?: { image: string; aspect: 'story' | 'square'; prompt: string; copy?: any }) => {
+  const applyFatorCriativo = async (base?: { image: string; aspect: 'story' | 'square'; prompt: string; copy?: any; assetId?: string | null }) => {
     if (!base?.image && !storyImage && !squareImage) return;
     const aspect: 'story' | 'square' = base?.aspect ?? (storyImage ? 'story' : 'square');
+    // A arte que originou este lote. Sem ela as 5 variações virariam raízes
+    // soltas e o Canvas não saberia dizer "Fator Criativo · baseado na Arte X".
+    const baseAssetId = base?.assetId ?? (aspect === 'square' ? mainSquareAssetId : mainStoryAssetId);
     setFactorLoading(true);
     setFactorVariations(null);
     setFactorImages([null, null, null, null, null]);
+    setFactorAssetIds([null, null, null, null, null]);
     setFactorErrors([null, null, null, null, null]);
     setFactorSquareImages([null, null, null, null, null]);
+    setFactorSquareAssetIds([null, null, null, null, null]);
     setFactorSquareLoading([false, false, false, false, false]);
     setFactorProgress(0);
+    let groupId: string | null = null;
     try {
       const originalPrompt = base?.prompt ?? buildFinalPrompt(aspect, {
         selectedAspectRatio: aspect === 'square' ? '1:1' : selectedAspectRatio,
@@ -2028,6 +1948,23 @@ A reference Story version of this same creative is attached as the FIRST image. 
       recordAiUsage('text-flash');
       const variations = (data as any).variations as FactorVariation[];
       setFactorVariations(variations);
+
+      // Um grupo por lote: é o que dá título e origem à seção no Canvas.
+      // Se falhar, as variações ainda nascem ligadas ao pai — só perdem o
+      // agrupamento explícito, então não vale abortar a geração inteira.
+      try {
+        const projectId = currentProjectId || await createCreativeProject();
+        const group = await createAssetGroup({
+          projectId,
+          type: 'factor',
+          parentAssetId: baseAssetId,
+          title: 'Fator Criativo',
+          metadata: { aspect, axes: variations.map((v) => v.eixo) },
+        });
+        groupId = group.id;
+      } catch {
+        groupId = null;
+      }
 
       await Promise.all(
         variations.map(async (v, i) => {
@@ -2055,13 +1992,19 @@ A reference Story version of this same creative is attached as the FIRST image. 
               filename: imageFileName(`criativo-fator-${i + 1}-${v.eixo || 'story'}`),
               metadata: { eixo: v.eixo, nome: v.nome, variation_index: i, copy: v.copy, descricaoVisual: v.descricaoVisual, promptCompleto: v.promptCompleto },
               clientId: selectedClientId || undefined,
+              lineage: {
+                parentAssetId: baseAssetId,
+                groupId,
+                factorAxis: v.eixo,
+                aspectRatio: aspect === 'square' ? '1:1' : selectedAspectRatio,
+                resolution: selectedResolution,
+                prompt: v.promptCompleto,
+              },
             });
-            await saveCreativeOutput({
-              type: 'factor',
-              imageUrl: persisted.url,
-              prompt: v.promptCompleto,
-              assetId: persisted.assetId,
-              metadata: { eixo: v.eixo, nome: v.nome, variation_index: i, copy: v.copy, descricaoVisual: v.descricaoVisual },
+            setFactorAssetIds((prev) => {
+              const next = [...prev];
+              next[i] = persisted.assetId;
+              return next;
             });
             setFactorImages((prev) => {
               const next = [...prev];
@@ -2114,23 +2057,18 @@ A reference Story version of this same creative is attached as the FIRST image. 
       const persisted = await persistImageAsset({
         imageUrl: rawUrl,
         folder: 'generated',
-        type: 'generated',
+        type: 'original',
         filename: imageFileName(`criativo-principal-${selectedAspectRatio}`),
         metadata: { aspectRatio: selectedAspectRatio, resolution: selectedResolution },
         clientId: selectedClientId || undefined,
-      });
-      await saveCreativeOutput({
-        type: 'main',
-        imageUrl: persisted.url,
-        prompt,
-        assetId: persisted.assetId,
-        aspectRatio: selectedAspectRatio,
+        // Arte principal é raiz da própria árvore — sem pai.
+        lineage: { aspectRatio: selectedAspectRatio, resolution: selectedResolution, prompt },
       });
       setMainStoryAssetId(persisted.assetId);
       setStoryImage(persisted.url);
       setCurrentStage('result');
       setRightPanelMode('generated-result');
-      addAssistantMessage('Arte criada. Quer ajustar, baixar ou gerar variaÃ§Ãµes estratÃ©gicas?', [
+      addAssistantMessage('Arte criada. Quer ajustar, baixar ou gerar variações estratégicas?', [
         { label: 'Editar com IA', action: 'open-edit-image', variant: 'secondary' },
         { label: 'Aplicar Fator Criativo', action: 'open-creative-factor', variant: 'primary' },
         { label: 'Ver resultado', action: 'open-generated-result', variant: 'secondary' },
@@ -2173,27 +2111,30 @@ A reference Story version of this same creative is attached as the FIRST image. 
       const usageType = MODEL_OPTIONS.find((m) => m.id === model)?.usage || 'image-gemini-flash-2';
       recordAiUsage(usageType);
       const rawUrl = (data as any).imageUrl as string;
+      // A versão 1080 é uma derivação da arte de origem, não uma arte nova:
+      // nasce como 'resize' apontando para ela.
+      const parentAssetId = typeof target === 'number' ? factorAssetIds[target] : mainStoryAssetId;
       const persisted = await persistImageAsset({
         imageUrl: rawUrl,
         folder: typeof target === 'number' ? 'factor' : 'generated',
-        type: typeof target === 'number' ? 'factor' : 'generated',
+        type: 'resize',
         filename: imageFileName(typeof target === 'number' ? `criativo-fator-${target + 1}-square` : 'criativo-square'),
         metadata: { target, aspectRatio: '1:1', resolution: selectedResolution },
         clientId: selectedClientId || undefined,
-      });
-      await saveCreativeOutput({
-        type: target === 'main' ? 'square' : 'factor',
-        imageUrl: persisted.url,
-        prompt,
-        assetId: persisted.assetId,
-        aspectRatio: '1:1',
-        metadata: typeof target === 'number' ? { variation_index: target, square: true } : { square: true },
+        lineage: {
+          parentAssetId,
+          factorAxis: typeof target === 'number' ? factorVariations?.[target]?.eixo : null,
+          aspectRatio: '1:1',
+          resolution: selectedResolution,
+          prompt,
+        },
       });
       const url = persisted.url;
       if (target === 'main') {
         setMainSquareAssetId(persisted.assetId);
         setSquareImage(url);
       } else {
+        setFactorSquareAssetIds((prev) => prev.map((v, i) => (i === target ? persisted.assetId : v)));
         setFactorSquareImages((prev) => prev.map((v, i) => (i === target ? url : v)));
       }
       toast({ title: 'Quadrado 1080 gerado' });
@@ -2523,6 +2464,8 @@ A reference Story version of this same creative is attached as the FIRST image. 
     setFactorSquareLoading([false, false, false, false, false]);
     setFactorVariations(null);
     setFactorImages([]);
+    setFactorAssetIds([null, null, null, null, null]);
+    setFactorSquareAssetIds([null, null, null, null, null]);
     setFactorErrors([]);
     setFactorLoading(false);
     setFactorProgress(0);
@@ -3397,7 +3340,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
                   disabled={factorLoading}
                   onClick={() => {
                     setRightPanelMode('creative-factor');
-                    applyFatorCriativo({ image: selectedAsset.url, aspect: selectedAsset.aspect, prompt: selectedAsset.prompt, copy: selectedAsset.copy });
+                    applyFatorCriativo({ image: selectedAsset.url, aspect: selectedAsset.aspect, prompt: selectedAsset.prompt, copy: selectedAsset.copy, assetId: selectedAsset.assetId });
                   }}
                 >
                   <Sparkles className="mr-2 h-3 w-3" />Fator
@@ -4046,864 +3989,6 @@ A reference Story version of this same creative is attached as the FIRST image. 
 
   return conversationalLayout;
 
-  return (
-    <div className="p-3 sm:p-6 pt-20 lg:pt-6 space-y-4 sm:space-y-5 max-w-6xl mx-auto">
-      <header className="flex items-start justify-between gap-3 flex-wrap">
-        <div className="min-w-0">
-          <h1 className="text-lg sm:text-2xl font-bold flex items-center gap-2">
-            <Wand2 className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />
-            Criativo Studio
-          </h1>
-          <p className="text-[11px] sm:text-xs text-white/60 mt-1">
-            Referências → Copy → Produto → Arte.
-          </p>
-        </div>
-        <Button variant="ghost" size="sm" onClick={reset} className="h-8 px-2 sm:px-3">
-          <RotateCcw className="h-3.5 w-3.5 sm:mr-2" />
-          <span className="hidden sm:inline">Recomeçar</span>
-        </Button>
-      </header>
-
-      <StepIndicator
-        steps={['Referências', 'Copywriting', 'Produto', 'Gerar arte']}
-        shortSteps={['Refs', 'Copy', 'Produto', 'Arte']}
-        current={step}
-        completed={completed}
-        onJump={(i) => setStep(i)}
-      />
-
-      {/* STEP 1 */}
-      {step === 0 && (
-        <GlassCard className="space-y-4">
-          <div>
-            <h2 className="text-base font-semibold flex items-center gap-2">
-              <Palette className="h-4 w-4 text-accent" />
-              1. Referências visuais
-            </h2>
-            <p className="text-xs text-white/60 mt-1">
-              A IA decodifica as 8 dimensões: composição, fotografia, paleta, tipografia, camadas, hierarquia, espaço e mood.
-            </p>
-          </div>
-
-          <ImageDropzone
-            images={refImages}
-            onChange={setRefImages}
-            label="Solte, clique ou cole imagens de referência"
-            maxImages={6}
-          />
-
-          <div className="flex gap-3">
-            <Button size="sm" onClick={analyzeRefs} disabled={analyzing || refImages.length === 0}>
-              {analyzing ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-2" />}
-              Analisar referências
-            </Button>
-            {analysis && (
-              <Button size="sm" variant="outline" onClick={() => setStep(1)}>
-                Avançar <ChevronRight className="h-3.5 w-3.5 ml-1" />
-              </Button>
-            )}
-          </div>
-
-          {analysis && (
-            <div className="space-y-4 pt-4 border-t border-white/10">
-              <div className="grid sm:grid-cols-2 gap-3 text-xs">
-                <Section label="Composição">
-                  <Info k="Formato" v={analysis.composicao.formato} />
-                  <Info k="Estrutura" v={analysis.composicao.estrutura} />
-                  <Info k="Hierarquia" v={analysis.composicao.hierarquia} />
-                  <Info k="Silêncio" v={analysis.composicao.silencio} />
-                </Section>
-                <Section label="Fotografia">
-                  <Info k="Tipo" v={analysis.fotografia.tipo} />
-                  <Info k="Luz" v={analysis.fotografia.luz} />
-                  <Info k="Tratamento" v={analysis.fotografia.tratamento} />
-                  <Info k="Integração" v={analysis.fotografia.integracao} />
-                </Section>
-                <Section label="Tipografia">
-                  <Info k="Família A" v={analysis.tipografia.familiaA} />
-                  {analysis.tipografia.familiaB && <Info k="Família B" v={analysis.tipografia.familiaB} />}
-                  <Info k="Contraste" v={analysis.tipografia.contraste} />
-                  <Info k="Alinhamento" v={analysis.tipografia.alinhamento} />
-                </Section>
-                <Section label="Paleta">
-                  <Info k="Saturação" v={analysis.paleta.saturacao} />
-                  <div className="flex flex-wrap gap-1.5 mt-1">
-                    {analysis.paleta.hexes.map((c) => (
-                      <div key={c} className="flex items-center gap-1 glass px-1.5 py-0.5 rounded">
-                        <div className="w-3 h-3 rounded border border-white/10" style={{ background: c }} />
-                        <span className="text-[10px] font-mono">{c}</span>
-                      </div>
-                    ))}
-                  </div>
-                </Section>
-              </div>
-
-              <Section label="Camadas (de baixo para cima)">
-                <ol className="space-y-1 text-xs text-white/80 list-decimal list-inside">
-                  {analysis.camadas.map((l, i) => <li key={i}>{l}</li>)}
-                </ol>
-              </Section>
-
-              <div className="grid sm:grid-cols-3 gap-3">
-                <Section label="Mood">
-                  <p className="text-xs text-white/80">{analysis.mood.adjetivos.join(' · ')}</p>
-                </Section>
-                <Section label="Referências">
-                  <p className="text-xs text-white/80">{analysis.mood.referencias.join(', ')}</p>
-                </Section>
-                <Section label="Evita">
-                  <div className="flex flex-wrap gap-1">
-                    {analysis.mood.evita.map((e) => (
-                      <span key={e} className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/15 text-destructive border border-destructive/30">
-                        {e}
-                      </span>
-                    ))}
-                  </div>
-                </Section>
-              </div>
-
-              <div>
-                <p className="text-[10px] uppercase tracking-wider text-white/40 mb-2">
-                  Design System Document (em inglês — vai direto pro prompt; editável)
-                </p>
-                <Textarea
-                  value={editedDoc}
-                  onChange={(e) => setEditedDoc(e.target.value)}
-                  rows={8}
-                  className="font-mono text-[11px]"
-                />
-              </div>
-            </div>
-          )}
-        </GlassCard>
-      )}
-
-      {/* STEP 2 */}
-      {step === 1 && (
-        <GlassCard className="space-y-4">
-          <div>
-            <h2 className="text-base font-semibold">2. Copywriting</h2>
-            <p className="text-xs text-white/60 mt-1">
-              Escreva sua copy. A IA devolve em 5 blocos visuais (label, título, subtítulo, dados, CTA). Você escolhe entre a sua original ou a sugestão.
-            </p>
-          </div>
-
-          {/* URL do site/produto (opcional) */}
-          <div className="space-y-1.5">
-            <Label className="text-[10px] uppercase tracking-wider text-white/40 flex items-center gap-1.5">
-              <Globe className="h-3 w-3" /> URL do site ou produto (opcional)
-            </Label>
-            <div className="flex gap-2">
-              <Input
-                type="url"
-                placeholder="https://exemplo.com/produto"
-                value={productUrl}
-                onChange={(e) => { setProductUrl(e.target.value); setUrlError(null); }}
-                disabled={urlReading}
-                className="text-[13px] sm:text-sm"
-              />
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={fetchProductUrl}
-                disabled={urlReading || !productUrl.trim()}
-                className="shrink-0"
-              >
-                {urlReading
-                  ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                  : <Globe className="h-3.5 w-3.5 mr-1.5" />}
-                {urlContext ? 'Reler' : 'Ler site'}
-              </Button>
-            </div>
-            {urlReading && (
-              <p className="text-[11px] text-white/50 flex items-center gap-1.5">
-                <Loader2 className="h-3 w-3 animate-spin" /> Lendo conteúdo do site…
-              </p>
-            )}
-            {urlContext && !urlReading && (
-              <p className="text-[11px] text-accent flex items-center gap-1.5">
-                <Check className="h-3 w-3" /> Site lido — usado como base da sugestão
-                {urlContext.title ? ` · ${urlContext.title.slice(0, 60)}` : ''}
-              </p>
-            )}
-            {urlError && !urlReading && (
-              <p className="text-[11px] text-destructive">{urlError}</p>
-            )}
-          </div>
-
-          {/* Sugestão da IA + botão prominente */}
-          {suggestedRawCopy && (
-            <div className="rounded-lg border border-accent/30 bg-accent/5 p-3 space-y-2">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <span className="text-[10px] uppercase tracking-wider text-accent font-semibold flex items-center gap-1.5">
-                  <Sparkles className="h-3 w-3" /> Copy sugerida pela IA
-                </span>
-                <div className="flex gap-1.5">
-                  <Button
-                    size="sm"
-                    onClick={() => setRawCopy(suggestedRawCopy)}
-                    className="bg-accent text-black hover:bg-accent/90 h-7 text-[11px]"
-                  >
-                    <Check className="h-3 w-3 mr-1" /> Usar copy sugerida
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => generateSuggestedCopy(urlContext)}
-                    disabled={suggestingCopy}
-                    className="h-7 text-[11px]"
-                  >
-                    {suggestingCopy
-                      ? <Loader2 className="h-3 w-3 animate-spin" />
-                      : <RefreshCw className="h-3 w-3" />}
-                  </Button>
-                </div>
-              </div>
-              <p className="text-[12px] text-white/80 leading-relaxed whitespace-pre-wrap">{suggestedRawCopy}</p>
-            </div>
-          )}
-
-          <div>
-            <Label className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5 block">
-              Sua copy (editável)
-            </Label>
-            <Textarea
-              placeholder={suggestedRawCopy || 'Ex: Estamos vendendo curso de kitesurf em Floripa, foco em iniciantes…'}
-              value={rawCopy}
-              onChange={(e) => setRawCopy(e.target.value)}
-              rows={5}
-              className="text-sm"
-            />
-          </div>
-
-          {suggestingCopy && !suggestedRawCopy && (
-            <p className="text-[11px] text-white/40 flex items-center gap-1.5">
-              <Loader2 className="h-3 w-3 animate-spin" /> Gerando uma sugestão prévia{urlContext ? ' com base no site' : ' baseada nas suas referências'}…
-            </p>
-          )}
-
-          <div className="flex gap-3 flex-wrap">
-            <Button size="sm" onClick={improveCopy} disabled={improving}>
-              {improving ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-2" />}
-              {copyVariations.length > 0 ? 'Refazer 4 sugestões' : 'Sugerir 4 versões otimizadas'}
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setStep(0)}>
-              <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Voltar
-            </Button>
-          </div>
-
-          {(copyVariations.length > 0 || rawCopy.trim()) && (
-            <div className="space-y-3 pt-2">
-              {rawCopy.trim() && (
-                <CopyOptionCard
-                  title="Sua copy original"
-                  selected={copyApproved && copySource === 'original'}
-                  onSelect={() => {
-                    setCopySource('original');
-                    setSelectedVariationIdx(null);
-                    setCopyApproved(true);
-                    setStep(2);
-                  }}
-                >
-                  <p className="text-xs text-white/80 whitespace-pre-wrap">{rawCopy}</p>
-                </CopyOptionCard>
-              )}
-
-              {copyVariations.length > 0 && (
-                <div className="grid md:grid-cols-2 gap-3">
-                  {copyVariations.map((variation, idx) => (
-                    <CopyOptionCard
-                      key={idx}
-                      title={`Sugestão ${idx + 1}${variation.angulo ? ` — ${variation.angulo}` : ''}`}
-                      accent
-                      selected={copyApproved && copySource === 'ai' && selectedVariationIdx === idx}
-                      onSelect={() => {
-                        setCopySource('ai');
-                        setSelectedVariationIdx(idx);
-                        setCopyApproved(true);
-                        setStep(2);
-                      }}
-                    >
-                      {variation.label && <CopyBlock label="Label" value={variation.label} small uppercase />}
-                      <CopyBlock label="Título" value={variation.titulo} bold />
-                      {variation.subtitulo && <CopyBlock label="Subtítulo" value={variation.subtitulo} />}
-                      {variation.dados && <CopyBlock label="Dados" value={variation.dados} small />}
-                      <CopyBlock label="CTA" value={variation.cta} accent />
-                      {variation.justificativa && (
-                        <p className="text-[11px] text-white/50 italic pt-1 border-t border-white/10">
-                          {variation.justificativa}
-                        </p>
-                      )}
-                    </CopyOptionCard>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </GlassCard>
-      )}
-
-      {/* STEP 3 */}
-      {step === 2 && (
-        <GlassCard className="space-y-5">
-          <div>
-            <h2 className="text-base font-semibold">3. Logo, produto e cenário</h2>
-            <p className="text-xs text-white/60 mt-1">
-              Carregue o logo da marca e imagens reais de produto/pessoa/cenário. Ambos opcionais.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-[10px] uppercase tracking-wider text-white/40">Logo da marca (opcional, 1 imagem)</p>
-            <p className="text-[11px] text-white/50">
-              A IA vai posicionar o logo discretamente em um canto, sem distorcer ou recolorir.
-            </p>
-            <ImageDropzone
-              images={logoImage}
-              onChange={setLogoImage}
-              label="Solte, clique ou cole o logo (PNG transparente preferível)"
-              maxImages={1}
-            />
-          </div>
-
-          <div className="space-y-2 pt-3 border-t border-white/10">
-            <p className="text-[10px] uppercase tracking-wider text-white/40">Produto, pessoa ou cenário (opcional)</p>
-            <p className="text-[11px] text-white/50">
-              Imagens reais que devem aparecer no criativo (rosto, produto, ambiente).
-            </p>
-            <ImageDropzone
-              images={productImages}
-              onChange={setProductImages}
-              label="Solte, clique ou cole imagens do produto/pessoa"
-              maxImages={6}
-            />
-            {productImages.length > 0 && (
-              <div className="flex items-center gap-3 pt-2">
-                <Switch id="preserve" checked={preserveFaces} onCheckedChange={setPreserveFaces} />
-                <Label htmlFor="preserve" className="text-xs cursor-pointer">
-                  Preservar rostos / identidade exatamente como nas referências
-                </Label>
-              </div>
-            )}
-          </div>
-
-          <div className="flex gap-3">
-            <Button size="sm" onClick={() => setStep(3)}>
-              Avançar <ChevronRight className="h-3.5 w-3.5 ml-1" />
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setStep(1)}>
-              <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Voltar
-            </Button>
-          </div>
-        </GlassCard>
-      )}
-
-      {/* STEP 4 */}
-      {step === 3 && (
-        <GlassCard className="space-y-4">
-          <div>
-            <h2 className="text-base font-semibold">4. Gerar criativo</h2>
-            <p className="text-xs text-white/60 mt-1">
-              Renderiza copy, fotos e logo direto na imagem. Comece pelo Story 1080x1920 e depois recrie em quadrado.
-            </p>
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between gap-2">
-              <Label htmlFor="biz" className="text-[10px] uppercase tracking-wider text-white/40">
-                Contexto do negócio (gerado pela IA)
-              </Label>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 text-[10px]"
-                onClick={generateBusinessContext}
-                disabled={contextLoading}
-              >
-                {contextLoading
-                  ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                  : <RefreshCw className="h-3 w-3 mr-1" />}
-                Regenerar
-              </Button>
-            </div>
-            <Textarea
-              id="biz"
-              placeholder={contextLoading ? 'Gerando contexto a partir da análise e copy…' : 'Será preenchido automaticamente. Você pode editar.'}
-              value={businessContext}
-              onChange={(e) => setBusinessContext(e.target.value)}
-              rows={2}
-              className="text-[13px] sm:text-sm"
-            />
-            <p className="text-[10px] text-white/40">A IA cria com base no mood, referências e copy aprovada. Edite se quiser ajustar tom ou nicho.</p>
-          </div>
-
-          <div>
-            <Label className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5 block">
-              Modelo de geração (Google Gemini)
-            </Label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {MODEL_OPTIONS.map((m) => {
-                const active = model === m.id;
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => setModel(m.id)}
-                    className={cn(
-                      'glass rounded-lg px-3 py-2 text-left transition border',
-                      active
-                        ? 'border-accent/60 bg-accent/10 ring-1 ring-accent/40'
-                        : 'border-white/10 hover:border-white/20',
-                    )}
-                  >
-                    <div className={cn('text-sm font-semibold', active ? 'text-accent' : 'text-white')}>
-                      {m.name}
-                    </div>
-                    <div className="text-[10px] text-white/60 leading-tight mt-0.5">{m.desc}</div>
-                  </button>
-                );
-              })}
-            </div>
-            <p className="text-[10px] text-white/40 mt-1.5">
-              As 5 variações do Fator Criativo usam <span className="text-white/70">o mesmo modelo selecionado acima</span>.
-            </p>
-          </div>
-
-          <div>
-            <Label className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5 block">Idioma do texto na arte</Label>
-            <Select value={language} onValueChange={setLanguage}>
-              <SelectTrigger className="text-[13px] sm:text-sm"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {LANGUAGES.map((l) => (
-                  <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-xs">
-                <ChevronDown className={cn('h-3.5 w-3.5 mr-1 transition-transform', advancedOpen && 'rotate-180')} />
-                Opções avançadas (DO NOT INCLUDE)
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-2">
-              <Textarea
-                placeholder="Uma instrução por linha. Ex:&#10;cores neon&#10;sombras pesadas&#10;clip-art genérico"
-                value={negativePrompt}
-                onChange={(e) => setNegativePrompt(e.target.value)}
-                rows={3}
-                className="text-xs font-mono"
-              />
-              <p className="text-[10px] text-white/40 mt-1">
-                Itens que a IA deve evitar. Já incluímos automaticamente o que veio do "Evita" da análise visual.
-              </p>
-            </CollapsibleContent>
-          </Collapsible>
-
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex gap-2 sm:gap-3 flex-wrap">
-              <Button size="sm" onClick={() => generate('story')} disabled={generating} className="flex-1 sm:flex-none">
-                {generating ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> : <Wand2 className="h-3.5 w-3.5 mr-2" />}
-                {storyImage ? 'Gerar Story novamente' : 'Gerar Story (1080x1920)'}
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => setStep(2)}>
-                <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Voltar
-              </Button>
-            </div>
-
-            {storyImage && (
-              <div className="flex flex-col sm:items-end gap-1">
-                <button
-                  type="button"
-                  onClick={() => applyFatorCriativo()}
-                  disabled={factorLoading}
-                  className={cn(
-                    'relative overflow-hidden rounded-lg bg-white text-black px-5 py-2.5 text-sm font-semibold',
-                    'shadow-[0_0_24px_rgba(255,255,255,0.35)] hover:shadow-[0_0_36px_rgba(255,255,255,0.6)]',
-                    'transition-all disabled:opacity-70 disabled:cursor-wait',
-                    'before:absolute before:inset-0 before:bg-[linear-gradient(110deg,transparent_30%,rgba(255,255,255,0.9)_50%,transparent_70%)] before:bg-[length:200%_100%]',
-                    !factorLoading && 'before:animate-[shimmer_2.4s_ease-in-out_infinite]',
-                  )}
-                >
-                  <span className="relative flex items-center gap-2">
-                    {factorLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Gerando {factorProgress}/5…
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-4 w-4" />
-                        Aplicar Fator Criativo
-                      </>
-                    )}
-                  </span>
-                </button>
-                <p className="text-[10px] text-white/40 sm:text-right">
-                  Gera 5 variações estratégicas para alimentar o Andromeda do Meta.
-                </p>
-              </div>
-            )}
-          </div>
-
-          {storyImage && (() => {
-            const mainStoryKey = 'main:story';
-            const mainSquareKey = 'main:square';
-            const mainStoryPrompt = buildFinalPrompt('story', { selectedAspectRatio, selectedResolution });
-            const mainSquarePrompt = buildFinalPrompt('square', { selectedAspectRatio: '1:1', selectedResolution });
-
-            const renderEditPanel = (key: string, originalImage: string, aspect: 'story' | 'square', originalPrompt: string) => {
-              if (editPanelKey !== key) return null;
-              const loading = editLoadingKey === key;
-              return (
-                <div className="rounded-md border border-accent/30 bg-accent/5 p-2 space-y-1.5">
-                  <Textarea
-                    placeholder="Ex.: troque o CTA por 'Comece agora', tire o galho da esquerda…"
-                    value={editFeedback}
-                    onChange={(e) => setEditFeedback(e.target.value)}
-                    rows={3}
-                    className="text-[11px]"
-                    disabled={loading}
-                  />
-                  <div className="flex gap-1.5">
-                    <Button
-                      size="sm"
-                      onClick={() => editArt(key, originalImage, aspect, originalPrompt)}
-                      disabled={loading || !editFeedback.trim()}
-                      className="flex-1 h-7 text-[10px] bg-accent text-black hover:bg-accent/90"
-                    >
-                      {loading
-                        ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                        : <Check className="h-3 w-3 mr-1" />}
-                      Aplicar
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => { setEditPanelKey(null); setEditFeedback(''); }}
-                      disabled={loading}
-                      className="h-7 text-[10px]"
-                    >
-                      Cancelar
-                    </Button>
-                  </div>
-                </div>
-              );
-            };
-
-            const renderEditButton = (key: string) => (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setEditPanelKey(editPanelKey === key ? null : key);
-                  setEditFeedback('');
-                }}
-                className="w-full h-7 text-[10px]"
-              >
-                <Pencil className="h-3 w-3 mr-1" /> Editar com I.A
-              </Button>
-            );
-
-            const renderEditedColumns = (sourceKey: string, aspect: 'story' | 'square', srcLabel: string) =>
-              (editedVersions[sourceKey] || []).map((ed, idx) => (
-                <div key={`${sourceKey}-edit-${idx}`} className="space-y-2 min-w-0">
-                  <p className="text-[9px] uppercase tracking-wider text-accent/80 font-semibold truncate">
-                    ✎ {srcLabel} · edit {idx + 1}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setLightboxUrl(ed.url)}
-                    className={cn(
-                      'group relative block w-full rounded-lg overflow-hidden glass cursor-zoom-in',
-                      aspect === 'story' ? 'aspect-[9/16]' : 'aspect-square',
-                    )}
-                  >
-                    <img src={ed.url} alt="editado" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
-                      <ZoomIn className="h-5 w-5 text-white drop-shadow" />
-                    </div>
-                  </button>
-                  <p className="text-[10px] text-white/50 italic line-clamp-2" title={ed.feedback}>
-                    "{ed.feedback}"
-                  </p>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => download(ed.url, `criativo-edit-${Date.now()}.png`)}
-                    className="w-full h-7 text-[10px]"
-                  >
-                    <Download className="h-3 w-3 mr-1" /> Baixar editada
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => discardEdit(sourceKey, idx)}
-                    className="w-full h-7 text-[10px] text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-3 w-3 mr-1" /> Descartar
-                  </Button>
-                </div>
-              ));
-
-            return (
-              <div className={cn(
-                'grid gap-3 sm:gap-4 pt-2',
-                'grid-cols-2 md:grid-cols-3 lg:grid-cols-6',
-              )}>
-                {/* Main column */}
-                <div className="space-y-2 min-w-0">
-                  <p className="text-[9px] uppercase tracking-wider text-accent font-semibold">
-                    Principal
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setLightboxUrl(storyImage)}
-                    className="group relative block w-full rounded-lg overflow-hidden glass aspect-[9/16] cursor-zoom-in"
-                  >
-                    <img src={storyImage} alt="story" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
-                      <ZoomIn className="h-5 w-5 text-white drop-shadow" />
-                    </div>
-                  </button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => download(storyImage, `criativo-story-${Date.now()}.png`)}
-                    className="w-full h-7 text-[10px]"
-                  >
-                    <Download className="h-3 w-3 mr-1" /> Baixar Story
-                  </Button>
-                  {!squareImage && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => recreateSquare('main')}
-                      disabled={mainSquareLoading}
-                      className="w-full h-7 text-[10px]"
-                    >
-                      {mainSquareLoading
-                        ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                        : <RefreshCw className="h-3 w-3 mr-1" />}
-                      Recriar em 1080x1080
-                    </Button>
-                  )}
-                  {renderEditButton(mainStoryKey)}
-                  {renderEditPanel(mainStoryKey, storyImage, 'story', mainStoryPrompt)}
-                  {(squareImage || mainSquareLoading) && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => squareImage && setLightboxUrl(squareImage)}
-                        disabled={!squareImage}
-                        className={cn(
-                          'group relative block w-full rounded-lg overflow-hidden glass aspect-square',
-                          squareImage ? 'cursor-zoom-in' : 'cursor-default',
-                        )}
-                      >
-                        {squareImage ? (
-                          <>
-                            <img src={squareImage} alt="square" className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
-                              <ZoomIn className="h-5 w-5 text-white drop-shadow" />
-                            </div>
-                          </>
-                        ) : (
-                          <Skeleton className="w-full h-full" />
-                        )}
-                      </button>
-                      {squareImage && (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => download(squareImage, `criativo-square-${Date.now()}.png`)}
-                            className="w-full h-7 text-[10px]"
-                          >
-                            <Download className="h-3 w-3 mr-1" /> Baixar 1080x1080
-                          </Button>
-                          {renderEditButton(mainSquareKey)}
-                          {renderEditPanel(mainSquareKey, squareImage, 'square', mainSquarePrompt)}
-                        </>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {/* Edições da principal (story) */}
-                {renderEditedColumns(mainStoryKey, 'story', 'Principal')}
-                {/* Edições da principal (square) */}
-                {squareImage && renderEditedColumns(mainSquareKey, 'square', 'Principal 1:1')}
-
-                {/* Fator Criativo columns */}
-                {(factorVariations || factorLoading) && Array.from({ length: 5 }).flatMap((_, i) => {
-                  const v = factorVariations?.[i];
-                  const img = factorImages[i];
-                  const err = factorErrors[i];
-                  const sqImg = factorSquareImages[i];
-                  const sqLoading = factorSquareLoading[i];
-                  const stKey = `f${i}:story`;
-                  const sqKey = `f${i}:square`;
-                  const stPrompt = v?.promptCompleto || '';
-
-                  const column = (
-                    <div key={`f${i}`} className="space-y-2 min-w-0">
-                      <p className="text-[9px] uppercase tracking-wider text-accent font-semibold truncate">
-                        #{i + 1} {v?.eixo || '...'}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => img && setLightboxUrl(img)}
-                        disabled={!img}
-                        className={cn(
-                          'group relative block w-full rounded-lg overflow-hidden glass aspect-[9/16]',
-                          img ? 'cursor-zoom-in' : 'cursor-default',
-                        )}
-                      >
-                        {img ? (
-                          <>
-                            <img src={img} alt={v?.nome || `variação ${i + 1}`} className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
-                              <ZoomIn className="h-5 w-5 text-white drop-shadow" />
-                            </div>
-                          </>
-                        ) : err ? (
-                          <div className="absolute inset-0 flex items-center justify-center p-2 text-[10px] text-destructive text-center">
-                            Erro ao gerar
-                          </div>
-                        ) : (
-                          <Skeleton className="w-full h-full" />
-                        )}
-                      </button>
-                      {v && (
-                        <p className="text-[10px] text-white/70 font-medium truncate" title={v.nome}>
-                          {v.nome}
-                        </p>
-                      )}
-                      {img && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => download(img, `fator-${i + 1}-${v?.eixo}-${Date.now()}.png`)}
-                          className="w-full h-7 text-[10px]"
-                        >
-                          <Download className="h-3 w-3 mr-1" /> Baixar Story
-                        </Button>
-                      )}
-                      {img && !sqImg && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => recreateSquare(i)}
-                          disabled={sqLoading}
-                          className="w-full h-7 text-[10px]"
-                        >
-                          {sqLoading
-                            ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                            : <RefreshCw className="h-3 w-3 mr-1" />}
-                          Recriar em 1080x1080
-                        </Button>
-                      )}
-                      {img && (
-                        <>
-                          {renderEditButton(stKey)}
-                          {renderEditPanel(stKey, img, 'story', stPrompt)}
-                        </>
-                      )}
-                      {(sqImg || sqLoading) && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => sqImg && setLightboxUrl(sqImg)}
-                            disabled={!sqImg}
-                            className={cn(
-                              'group relative block w-full rounded-lg overflow-hidden glass aspect-square',
-                              sqImg ? 'cursor-zoom-in' : 'cursor-default',
-                            )}
-                          >
-                            {sqImg ? (
-                              <>
-                                <img src={sqImg} alt={`variação ${i + 1} 1080`} className="w-full h-full object-cover" />
-                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                  <ZoomIn className="h-5 w-5 text-white drop-shadow" />
-                                </div>
-                              </>
-                            ) : (
-                              <Skeleton className="w-full h-full" />
-                            )}
-                          </button>
-                          {sqImg && (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => download(sqImg, `fator-${i + 1}-square-${Date.now()}.png`)}
-                                className="w-full h-7 text-[10px]"
-                              >
-                                <Download className="h-3 w-3 mr-1" /> Baixar 1080x1080
-                              </Button>
-                              {renderEditButton(sqKey)}
-                              {renderEditPanel(sqKey, sqImg, 'square', stPrompt)}
-                            </>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  );
-
-                  return [
-                    column,
-                    ...renderEditedColumns(stKey, 'story', `#${i + 1}`),
-                    ...(sqImg ? renderEditedColumns(sqKey, 'square', `#${i + 1} 1:1`) : []),
-                  ];
-                })}
-              </div>
-            );
-          })()}
-        </GlassCard>
-      )}
-
-      <Dialog open={!!lightboxUrl} onOpenChange={(o) => !o && setLightboxUrl(null)}>
-        <DialogContent className="max-w-[95vw] sm:max-w-[90vw] max-h-[95vh] p-0 bg-black/95 border-white/10 overflow-hidden">
-          {lightboxUrl && (
-            <div className="relative flex items-center justify-center w-full h-full">
-              <img
-                src={lightboxUrl}
-                alt="preview"
-                className="max-w-full max-h-[88vh] object-contain"
-              />
-              <button
-                onClick={() => setLightboxUrl(null)}
-                className="absolute top-3 right-3 bg-black/60 hover:bg-black/80 rounded-full p-2 backdrop-blur"
-                aria-label="Fechar"
-              >
-                <X className="h-4 w-4 text-white" />
-              </button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => download(lightboxUrl, `criativo-${Date.now()}.png`)}
-                className="absolute bottom-3 right-3 bg-black/60 hover:bg-black/80 backdrop-blur"
-              >
-                <Download className="h-3.5 w-3.5 mr-2" /> Baixar
-              </Button>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-function Section({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <p className="text-[10px] uppercase tracking-wider text-accent font-semibold">{label}</p>
-      <div className="space-y-1">{children}</div>
-    </div>
-  );
 }
 
 function Info({ k, v }: { k: string; v: string }) {
@@ -4924,36 +4009,6 @@ function AntiPadroesList({ items }: { items: string[] }) {
         </li>
       ))}
     </ul>
-  );
-}
-
-function CopyOptionCard({
-  title, children, selected, onSelect, accent,
-}: {
-  title: string; children: React.ReactNode; selected: boolean; onSelect: () => void; accent?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        'rounded-xl p-4 border space-y-2 flex flex-col',
-        accent ? 'bg-accent/5 border-accent/20' : 'bg-white/5 border-white/10',
-        selected && 'ring-2 ring-accent',
-      )}
-    >
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-white/80">{title}</p>
-        {selected && <Check className="h-3.5 w-3.5 text-accent" />}
-      </div>
-      <div className="space-y-2 flex-1">{children}</div>
-      <Button
-        size="sm"
-        variant={selected ? 'default' : 'outline'}
-        onClick={onSelect}
-        className={cn('w-full mt-2', selected && 'bg-accent text-black hover:bg-accent/90')}
-      >
-        {selected ? 'Selecionada' : 'Usar essa'}
-      </Button>
-    </div>
   );
 }
 
