@@ -1001,6 +1001,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      recover_stale_creative_assets: {
+        Args: { p_project_id?: string; p_timeout_minutes?: number }
+        Returns: number
+      }
     }
     Enums: {
       app_role: "admin" | "client"
