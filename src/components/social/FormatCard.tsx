@@ -55,7 +55,7 @@ export function FormatCard({ template, selected, onSelect }: Props) {
       type="button"
       onClick={onSelect}
       className={cn(
-        "group rounded-xl border p-3 text-left transition-all duration-200 flex flex-col gap-2.5",
+        "group rounded-xl border p-3 text-left transition-colors duration-200 flex flex-col gap-2.5",
         selected
           ? "border-accent/60 bg-accent/[0.07] ring-1 ring-accent/30"
           : "border-white/10 bg-white/[0.02] hover:border-white/25 hover:bg-white/[0.04]",

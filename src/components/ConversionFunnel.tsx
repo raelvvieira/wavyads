@@ -196,7 +196,7 @@ export function ConversionFunnel({
               )}
 
               <div
-                className="relative rounded-xl py-3 px-4 text-center transition-all duration-300 border-l-4"
+                className="relative rounded-xl py-3 px-4 text-center transition-colors duration-300 border-l-4"
                 style={{
                   width: `${widthPercent}%`,
                   minWidth: '160px',

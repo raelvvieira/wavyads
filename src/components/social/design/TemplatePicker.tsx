@@ -27,7 +27,7 @@ export function TemplatePicker({ value, onChange }: Props) {
           key={o.id}
           onClick={() => onChange(o.id)}
           className={cn(
-            "glass rounded-xl p-2.5 text-left transition-all",
+            "glass rounded-xl p-2.5 text-left transition-colors",
             value === o.id ? "border-accent/60 bg-accent/10 accent-glow" : "hover:bg-white/5",
           )}
         >

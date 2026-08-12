@@ -170,7 +170,7 @@ export default function ResetPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="btn-accent w-full rounded-xl py-3 text-sm font-semibold transition-all duration-300 disabled:opacity-50"
+              className="btn-accent w-full rounded-xl py-3 text-sm font-semibold disabled:opacity-50"
             >
               {loading ? 'Salvando...' : 'Definir senha e entrar'}
             </button>

@@ -464,7 +464,7 @@ export default function AdminDashboard() {
           {clients.map((client) => (
             <GlassCard
               key={client.id}
-              className="relative transition-all duration-300 hover:border-accent/50 hover:shadow-lg hover:shadow-accent/5 animate-fade-in"
+              className="relative transition-[border-color,box-shadow] duration-300 hover:border-accent/50 hover:shadow-lg hover:shadow-accent/5 animate-fade-in"
             >
               {/* Action buttons */}
               <div className="absolute top-4 right-4 flex items-center gap-1 z-10">
@@ -670,7 +670,7 @@ export default function AdminDashboard() {
                 key={acc.id}
                 onClick={() => handlePickAccount(acc)}
                 disabled={selectAccount.isPending}
-                className="w-full text-left glass rounded-xl p-4 hover:border-accent/50 hover:bg-white/5 transition-all disabled:opacity-50"
+                className="w-full text-left glass rounded-xl p-4 hover:border-accent/50 hover:bg-white/5 transition-colors disabled:opacity-50"
               >
                 <p className="font-medium text-sm">{acc.name}</p>
                 {acc.business_name && (
@@ -715,7 +715,7 @@ export default function AdminDashboard() {
                 onClick={() => handlePickGoogleAccount(acc)}
                 disabled={selectGoogleAccount.isPending || acc.manager}
                 title={acc.manager ? 'Conta gerenciadora (MCC) não possui campanhas' : undefined}
-                className="w-full text-left glass rounded-xl p-4 hover:border-accent/50 hover:bg-white/5 transition-all disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                className="w-full text-left glass rounded-xl p-4 hover:border-accent/50 hover:bg-white/5 transition-colors disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed"
               >
                 <p className="font-medium text-sm">
                   {acc.name}

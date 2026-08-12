@@ -77,7 +77,7 @@ export function DailyChart({ data }: DailyChartProps) {
             key={l.key}
             onClick={() => toggle(l.key)}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 border',
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors duration-200 border',
               activeLines.has(l.key)
                 ? 'border-white/20 bg-white/10 text-foreground shadow-sm'
                 : 'border-transparent bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06]',
