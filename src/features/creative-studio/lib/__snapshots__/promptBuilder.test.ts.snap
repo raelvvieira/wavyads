@@ -9,15 +9,18 @@ Quality target: standard high-quality digital advertising image.
 
 
 [SAFE ZONE]
-Top safe zone: keep 120px from the top edge clear of important text. Bottom safe zone: keep 120px from the bottom edge clear.
-Centered composition optimized for square 1:1 framing.
+IMAGERY IS NOT RESTRICTED. The photograph, background, gradient, texture and any purely visual element MUST fill the entire frame, edge to edge, full bleed. Never shrink, letterbox or inset the artwork to respect the margins below. A full-bleed background is preferred.
+THE MESSAGE IS RESTRICTED. Every element that carries meaning — headline, subheadline, body copy, price, date, badge, brand logo and call-to-action — must sit ENTIRELY inside the safe area described below, because the platform UI (profile picture, caption, CTA button, engagement bar) is drawn on top of everything outside it.
+SAFE AREA: keep the top 9.3% and the bottom 9.3% of the frame free of message elements, plus 9.3% on each side. On the nominal 1080x1080 canvas that is the rectangle from x=100 to x=980 and from y=100 to y=980 (880x880px). The percentages are the rule; the pixels are only a reference.
+TYPE SIZE. Size the type against the SAFE BOX (880x880px), not against the full frame — type that looks right relative to the whole canvas reads as small once confined to the safe box. At this canvas width use roughly: headline 64-120px, subheadline 40-56px, body and data 28-36px, call-to-action 36-48px. Text must stay legible on a phone screen.
+LEAVE BREATHING ROOM. Do not push elements right up against the safe boundary — leave visible margin inside it, so edge cropping on some devices never touches the message.
 
 [VISUAL CONSISTENCY — CRITICAL]
 A reference Story version of this same creative is attached as the FIRST image. The square version MUST replicate its EXACT color palette, lighting, color grading, photographic treatment, typography choices and overall mood. Only the framing/composition changes to fit a 1:1 square. Treat that Story as the visual ground truth — do NOT shift hues, saturation, contrast or styling.
 
 [DO NOT INCLUDE]
 
-- Any element within the top or bottom safe zones
+- Any headline, body copy, logo, badge or call-to-action outside the safe area (outside x 100-980, y 100-980 on the nominal canvas)
 - Any text in a language other than Portuguese (Brazil)
 - Misspelled, garbled or fake-looking text
 - Watermarks, signatures, low-resolution artifacts
@@ -35,8 +38,11 @@ Quality target: ultra high-resolution 4K advertising image, crisp details, sharp
 DOC: paleta escura, tipografia grotesk
 
 [SAFE ZONE]
-Keep generous margins on all edges. Avoid placing important text too close to the top or bottom edges.
-
+IMAGERY IS NOT RESTRICTED. The photograph, background, gradient, texture and any purely visual element MUST fill the entire frame, edge to edge, full bleed. Never shrink, letterbox or inset the artwork to respect the margins below. A full-bleed background is preferred.
+THE MESSAGE IS RESTRICTED. Every element that carries meaning — headline, subheadline, body copy, price, date, badge, brand logo and call-to-action — must sit ENTIRELY inside the safe area described below, because the platform UI (profile picture, caption, CTA button, engagement bar) is drawn on top of everything outside it.
+SAFE AREA: keep the top 18.5% and the bottom 18.5% of the frame free of message elements, plus 9.3% on each side. On the nominal 1080x1350 canvas that is the rectangle from x=100 to x=980 and from y=250 to y=1100 (880x850px). The percentages are the rule; the pixels are only a reference.
+TYPE SIZE. Size the type against the SAFE BOX (880x850px), not against the full frame — type that looks right relative to the whole canvas reads as small once confined to the safe box. At this canvas width use roughly: headline 64-120px, subheadline 40-56px, body and data 28-36px, call-to-action 36-48px. Text must stay legible on a phone screen.
+LEAVE BREATHING ROOM. Do not push elements right up against the safe boundary — leave visible margin inside it, so edge cropping on some devices never touches the message.
 
 [TEXT BLOCKS]
 All text must be rendered exactly as written, in Portuguese (Brazil), with professional typography and perfect legibility.
@@ -55,7 +61,7 @@ Not: clipart, gradiente neon.
 - clipart
 - gradiente neon
 - nada de borda arredondada exagerada
-- Any element within the top or bottom safe zones
+- Any headline, body copy, logo, badge or call-to-action outside the safe area (outside x 100-980, y 250-1100 on the nominal canvas)
 - Any text in a language other than Portuguese (Brazil)
 - Misspelled, garbled or fake-looking text
 - Watermarks, signatures, low-resolution artifacts
@@ -86,8 +92,11 @@ Template visual structure: {"grid":"12col"}
 This structure defines LAYOUT AND STYLE ONLY. Do NOT reuse, reference or render any headline, label, subtitle, CTA or body copy from a previous use of this template. ALL text content for this artwork comes exclusively from the [TEXT BLOCKS] section below, verbatim — adapt only the text, product, references and business context from the current project.
 
 [SAFE ZONE]
-Keep important text and subjects away from extreme left and right edges. Maintain a centered safe composition area.
-
+IMAGERY IS NOT RESTRICTED. The photograph, background, gradient, texture and any purely visual element MUST fill the entire frame, edge to edge, full bleed. Never shrink, letterbox or inset the artwork to respect the margins below. A full-bleed background is preferred.
+THE MESSAGE IS RESTRICTED. Every element that carries meaning — headline, subheadline, body copy, price, date, badge, brand logo and call-to-action — must sit ENTIRELY inside the safe area described below, because the platform UI (profile picture, caption, CTA button, engagement bar) is drawn on top of everything outside it.
+SAFE AREA: keep the top 9.6% and the bottom 9.6% of the frame free of message elements, plus 10% on each side. On the nominal 1200x628 canvas that is the rectangle from x=120 to x=1080 and from y=60 to y=568 (960x508px). The percentages are the rule; the pixels are only a reference.
+TYPE SIZE. Size the type against the SAFE BOX (960x508px), not against the full frame — type that looks right relative to the whole canvas reads as small once confined to the safe box. At this canvas width use roughly: headline 71-133px, subheadline 44-62px, body and data 31-40px, call-to-action 40-53px. Text must stay legible on a phone screen.
+LEAVE BREATHING ROOM. Do not push elements right up against the safe boundary — leave visible margin inside it, so edge cropping on some devices never touches the message.
 
 [BRAND LOGO]
 A brand logo is provided as a separate reference. Place it discreetly in a corner (top-left or bottom-right preferred), small, clean. Do NOT distort, recolor, recreate or redesign it — treat as a fixed brand asset.
@@ -95,7 +104,7 @@ A brand logo is provided as a separate reference. Place it discreetly in a corne
 [DO NOT INCLUDE]
 - sem texto em inglês
 - sem moldura
-- Any element within the top or bottom safe zones
+- Any headline, body copy, logo, badge or call-to-action outside the safe area (outside x 120-1080, y 60-568 on the nominal canvas)
 - Any text in a language other than Portuguese (Brazil)
 - Misspelled, garbled or fake-looking text
 - Watermarks, signatures, low-resolution artifacts
@@ -113,12 +122,17 @@ Quality target: ultra high-resolution 4K advertising image, crisp details, sharp
 
 
 [SAFE ZONE]
-Top safe zone: keep 280px from the very top edge completely free of any text, graphic or important element. Bottom safe zone: keep 280px from the very bottom edge completely free. This protects against Instagram UI overlays.
-
+IMAGERY IS NOT RESTRICTED. The photograph, background, gradient, texture and any purely visual element MUST fill the entire frame, edge to edge, full bleed. Never shrink, letterbox or inset the artwork to respect the margins below. A full-bleed background is preferred.
+THE MESSAGE IS RESTRICTED. Every element that carries meaning — headline, subheadline, body copy, price, date, badge, brand logo and call-to-action — must sit ENTIRELY inside the safe area described below, because the platform UI (profile picture, caption, CTA button, engagement bar) is drawn on top of everything outside it.
+SAFE AREA: keep the top 14% and the bottom 35% of the frame free of message elements, plus 6% on each side. On the nominal 1080x1920 canvas that is the rectangle from x=65 to x=1015 and from y=269 to y=1248 (950x979px). The percentages are the rule; the pixels are only a reference.
+COMPOSE HIGHER. The safe area is not centred: its vertical midpoint sits 202px ABOVE the centre of the frame. Anything you centre on the canvas will land too low and be covered. Bias the entire text composition upward, into the upper-middle of the frame.
+TYPE SIZE. Size the type against the SAFE BOX (950x979px), not against the full frame — type that looks right relative to the whole canvas reads as small once confined to the safe box. At this canvas width use roughly: headline 64-120px, subheadline 40-56px, body and data 28-36px, call-to-action 36-48px. Text must stay legible on a phone screen.
+LEAVE BREATHING ROOM. Do not push elements right up against the safe boundary. Phones taller than this ratio get the creative zoomed in (cropping whatever falls outside the safe area) or letterboxed, and the advertiser does not control which.
+BOTTOM-RIGHT CORNER: reserve 40% instead of 35% on the right-hand side of the lower area — the like, comment, share and audio controls stack there.
 
 [DO NOT INCLUDE]
 
-- Any element within the top or bottom safe zones
+- Any headline, body copy, logo, badge or call-to-action outside the safe area (outside x 65-1015, y 269-1248 on the nominal canvas)
 - Any text in a language other than Portuguese (Brazil)
 - Misspelled, garbled or fake-looking text
 - Watermarks, signatures, low-resolution artifacts
@@ -136,8 +150,13 @@ Quality target: high-resolution polished advertising image with crisp typography
 
 
 [SAFE ZONE]
-Top safe zone: keep 280px from the very top edge completely free of any text, graphic or important element. Bottom safe zone: keep 280px from the very bottom edge completely free. This protects against Instagram UI overlays.
-
+IMAGERY IS NOT RESTRICTED. The photograph, background, gradient, texture and any purely visual element MUST fill the entire frame, edge to edge, full bleed. Never shrink, letterbox or inset the artwork to respect the margins below. A full-bleed background is preferred.
+THE MESSAGE IS RESTRICTED. Every element that carries meaning — headline, subheadline, body copy, price, date, badge, brand logo and call-to-action — must sit ENTIRELY inside the safe area described below, because the platform UI (profile picture, caption, CTA button, engagement bar) is drawn on top of everything outside it.
+SAFE AREA: keep the top 14% and the bottom 35% of the frame free of message elements, plus 6% on each side. On the nominal 1080x1920 canvas that is the rectangle from x=65 to x=1015 and from y=269 to y=1248 (950x979px). The percentages are the rule; the pixels are only a reference.
+COMPOSE HIGHER. The safe area is not centred: its vertical midpoint sits 202px ABOVE the centre of the frame. Anything you centre on the canvas will land too low and be covered. Bias the entire text composition upward, into the upper-middle of the frame.
+TYPE SIZE. Size the type against the SAFE BOX (950x979px), not against the full frame — type that looks right relative to the whole canvas reads as small once confined to the safe box. At this canvas width use roughly: headline 64-120px, subheadline 40-56px, body and data 28-36px, call-to-action 36-48px. Text must stay legible on a phone screen.
+LEAVE BREATHING ROOM. Do not push elements right up against the safe boundary. Phones taller than this ratio get the creative zoomed in (cropping whatever falls outside the safe area) or letterboxed, and the advertiser does not control which.
+BOTTOM-RIGHT CORNER: reserve 40% instead of 35% on the right-hand side of the lower area — the like, comment, share and audio controls stack there.
 
 [TEXT BLOCKS — USER-WRITTEN COPY, FINAL]
 Render ONLY the exact text below as overlay on the creative, in Portuguese (Brazil), professional typography, perfect legibility. Do not paraphrase, shorten, expand or reword it.
@@ -149,7 +168,7 @@ This is the COMPLETE and FINAL copy — the user wrote it themselves and it must
 
 [DO NOT INCLUDE]
 
-- Any element within the top or bottom safe zones
+- Any headline, body copy, logo, badge or call-to-action outside the safe area (outside x 65-1015, y 269-1248 on the nominal canvas)
 - Any text in a language other than Portuguese (Brazil)
 - Misspelled, garbled or fake-looking text
 - Watermarks, signatures, low-resolution artifacts

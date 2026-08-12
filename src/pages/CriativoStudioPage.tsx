@@ -35,7 +35,7 @@ import {
   createAssetGroup,
   createCreativeAsset,
 } from '@/features/creative-studio/api/creativeAssets';
-import { buildCreativePrompt } from '@/features/creative-studio/lib/promptBuilder';
+import { buildCreativePrompt, buildSafeZoneBlock } from '@/features/creative-studio/lib/promptBuilder';
 import {
   Sparkles,
   Wand2,
@@ -1623,6 +1623,9 @@ export default function CriativoStudioPage() {
 
   const editArt = async (key: string, originalImage: string, aspect: 'story' | 'square', originalPrompt: string) => {
     const feedback = editFeedback.trim();
+    // Uma arte quadrada é sempre 1:1; uma vertical mantém o formato escolhido
+    // no projeto (4:5, 9:16, ...), que é o que a safe zone precisa saber.
+    const editRatio: CreativeAspectRatio = aspect === 'square' ? '1:1' : selectedAspectRatio;
     if (!feedback) {
       toast({ title: 'Descreva a edição', variant: 'destructive' });
       return;
@@ -1631,7 +1634,20 @@ export default function CriativoStudioPage() {
     try {
       const originalImageData = await imageUrlToDataUrl(originalImage);
       const { data, error } = await supabase.functions.invoke('criativo-edit-image', {
-        body: { originalImage: originalImageData, userFeedback: feedback, originalPrompt, aspect, language },
+        body: {
+          originalImage: originalImageData,
+          userFeedback: feedback,
+          originalPrompt,
+          aspect,
+          language,
+          // O formato real: `aspect` só distingue story/square, então sem isto
+          // a edição de um 4:5 era instruída como 9:16.
+          aspectRatio: editRatio,
+          // Enviado pronto porque a function não pode contar com o
+          // originalPrompt: ele é truncado em 4000 chars e o construtor do
+          // prompt de edição é instruído a não repeti-lo.
+          safeZoneBlock: buildSafeZoneBlock(editRatio),
+        },
       });
       if (error) throw new Error(await extractFunctionErrorMessage(error));
       if ((data as any)?.error) throw new Error((data as any).error);
@@ -1862,6 +1878,11 @@ export default function CriativoStudioPage() {
         selectedResolution,
       });
       const baseCopy = base?.copy ?? (copySource === 'ai' ? selectedCopy : { rawCopy });
+      // O mesmo bloco vai duas vezes: aqui, para o modelo COMPOR as variações
+      // já cientes da área segura, e depois anexado ao promptCompleto que ele
+      // devolve, para garantir a restrição mesmo se ele ignorar a instrução.
+      const factorRatio: CreativeAspectRatio = aspect === 'square' ? '1:1' : selectedAspectRatio;
+      const safeBlockForFactor = buildSafeZoneBlock(factorRatio);
       const { data, error } = await supabase.functions.invoke('criativo-fator', {
         body: {
           originalPrompt,
@@ -1869,12 +1890,21 @@ export default function CriativoStudioPage() {
           businessContext,
           language,
           aspect,
+          aspectRatio: factorRatio,
+          safeZoneBlock: safeBlockForFactor,
         },
       });
       if (error) throw new Error(await extractFunctionErrorMessage(error));
       if ((data as any)?.error) throw new Error((data as any).error);
       recordAiUsage('text-flash');
-      const variations = (data as any).variations as FactorVariation[];
+      const rawVariations = (data as any).variations as FactorVariation[];
+      // Cinto de segurança: promptCompleto é texto livre e não é validado.
+      // Anexar o bloco no fim garante a restrição independentemente do que o
+      // modelo escreveu — e instrução no fim do prompt domina.
+      const variations = rawVariations.map((v) => ({
+        ...v,
+        promptCompleto: `${v.promptCompleto}\n\n${safeBlockForFactor}`,
+      }));
       setFactorVariations(variations);
 
       // Um grupo por lote: é o que dá título e origem à seção no Canvas.
@@ -2018,9 +2048,15 @@ export default function CriativoStudioPage() {
       setFactorSquareImages((prev) => prev.map((v, i) => (i === target ? null : v)));
     }
     try {
+      // A variação do Fator foi escrita para o formato original (vertical).
+      // Reaproveitar o prompt dela sem corrigir faria a arte quadrada nascer
+      // com a zona segura de Story — margem inferior de 35% num 1:1.
+      const variationPrompt = factorVariations?.[target]?.promptCompleto;
       const prompt = target === 'main'
         ? buildFinalPrompt('square', { selectedAspectRatio: '1:1', selectedResolution })
-        : factorVariations?.[target]?.promptCompleto;
+        : variationPrompt
+          ? `${variationPrompt}\n\n[FRAMING OVERRIDE — THIS RENDER IS 1:1]\nThis render is a 1:1 square (1080x1080). Ignore every framing and safe-zone instruction stated earlier in this prompt; the block below replaces them.\n\n${buildSafeZoneBlock('1:1')}`
+          : undefined;
       if (!prompt) throw new Error('Prompt não disponível');
       const { data, error } = await supabase.functions.invoke('criativo-generate', {
         body: {
