@@ -68,9 +68,16 @@ export function buildSafeZoneBlock(ratio: CreativeAspectRatio | null | undefined
   const type = typeScaleFor(area);
   const { width, height } = area.canvas;
 
+  // Faixas em que nada legível pode entrar, em porcentagem da altura.
+  const bandaTexto = { topo: area.topPct, base: 100 - area.bottomPct };
+
   const linhas: string[] = [
     '[SAFE ZONE]',
-    // 1. A imagem é livre. Vem primeiro porque é o mal-entendido mais caro.
+    // 0. A regra em termos de composição, não de especificação. Modelo de
+    //    imagem posiciona muito melhor a partir de "esta faixa fica vazia" do
+    //    que de "mantenha 14% livres" — e o que vem primeiro pesa mais.
+    `LAYOUT RULE — READ FIRST: the top ${area.topPct}% and the bottom ${area.bottomPct}% of the image are EMPTY BACKGROUND. No text, no logo, no badge, no button, nothing readable may appear in those bands — they contain only the continuation of the background artwork. Every readable element is grouped together in the band between ${bandaTexto.topo}% and ${bandaTexto.base}% of the image height, and no closer than ${area.sidePct}% to the left or right edge.`,
+    // 1. A imagem é livre. Vem cedo porque é o mal-entendido mais caro.
     'IMAGERY IS NOT RESTRICTED. The photograph, background, gradient, texture and any purely visual element MUST fill the entire frame, edge to edge, full bleed. Never shrink, letterbox or inset the artwork to respect the margins below. A full-bleed background is preferred.',
     // 2. A mensagem é presa.
     `THE MESSAGE IS RESTRICTED. Every element that carries meaning — headline, subheadline, body copy, price, date, badge, brand logo and call-to-action — must sit ENTIRELY inside the safe area described below, because the platform UI (profile picture, caption, CTA button, engagement bar) is drawn on top of everything outside it.`,

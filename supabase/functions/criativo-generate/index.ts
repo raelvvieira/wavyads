@@ -8,7 +8,13 @@ const corsHeaders = {
 
 interface GenerateBody {
   prompt: string;
+  /** Legado: só distingue vertical de quadrado. */
   aspectRatio: "story" | "square";
+  /**
+   * Formato real do projeto ("4:5", "9:16", "1:1", ...). Sem isto, todo
+   * vertical era tratado como 9:16 — inclusive o 4:5, que é o padrão do app.
+   */
+  formatRatio?: string;
   model?: string;
   quality?: "low" | "medium" | "high";
   isVariation?: boolean;
@@ -23,6 +29,39 @@ const EVOLINK_FILES_BASE_URL = "https://files-api.evolink.ai/api/v1";
 const MODEL_NAME = "gpt-image-2";
 const MAX_POLL_ATTEMPTS = 40;
 const POLL_INTERVAL_MS = 1500;
+
+/**
+ * Formato real → o que o modelo precisa ouvir e o que o provedor precisa
+ * receber.
+ *
+ * Antes, todo vertical virava "9:16, 1080x1920" na primeira linha do prompt e
+ * `size: "2:3"` na chamada. Como o formato padrão do app é 4:5, o pedido saía
+ * com três telas diferentes ao mesmo tempo: a introdução falava de 4:5, a zona
+ * segura tinha porcentagens de 4:5, e a linha OUTPUT FORMAT — a primeira, em
+ * caixa alta — dizia 9:16. Nenhuma margem sobrevive a isso, porque a conta que
+ * o modelo faz é contra o quadro errado.
+ *
+ * `size` é o valor pedido ao EvoLink; `sizeFallback` cobre o caso de o
+ * provedor não aceitar aquela razão (a documentação não está acessível daqui,
+ * então a descoberta é em tempo de execução).
+ */
+const FORMAT_SPECS: Record<string, { label: string; canvas: string; size: string; sizeFallback?: string }> = {
+  "1:1":  { label: "perfect 1:1 square",      canvas: "1080x1080", size: "1:1" },
+  "4:5":  { label: "vertical 4:5",            canvas: "1080x1350", size: "4:5",  sizeFallback: "2:3" },
+  "9:16": { label: "vertical 9:16",           canvas: "1080x1920", size: "9:16", sizeFallback: "2:3" },
+  "16:9": { label: "horizontal 16:9",         canvas: "1920x1080", size: "16:9", sizeFallback: "3:2" },
+  "4:3":  { label: "horizontal 4:3",          canvas: "1440x1080", size: "4:3",  sizeFallback: "3:2" },
+  "3:4":  { label: "vertical 3:4",            canvas: "1080x1440", size: "3:4",  sizeFallback: "2:3" },
+  "2:3":  { label: "vertical 2:3",            canvas: "1080x1620", size: "2:3" },
+  "3:2":  { label: "horizontal 3:2",          canvas: "1620x1080", size: "3:2" },
+  "21:9": { label: "ultra-wide 21:9",         canvas: "1680x720",  size: "21:9", sizeFallback: "3:2" },
+};
+
+/** Erro do provedor que parece recusa de parâmetro, e não falha de infra. */
+function looksLikeInvalidParameter(status: number, body: string): boolean {
+  if (status !== 400 && status !== 422) return false;
+  return /size|aspect|ratio|dimension|invalid|unsupported/i.test(body);
+}
 
 class ProviderHttpError extends Error {
   status: number;
@@ -382,10 +421,13 @@ serve(async (req) => {
     }
 
     const isStory = aspectRatio === "story";
-    const aspectInstruction = isStory
-      ? "OUTPUT FORMAT: vertical 9:16 aspect ratio, 1080x1920px Instagram Story format. Render all text elements in Portuguese Brazil."
-      : "OUTPUT FORMAT: perfect 1:1 square aspect ratio, 1080x1080px Instagram post format. Render all text elements in Portuguese Brazil.";
-    const size = isStory ? "2:3" : "1:1";
+    // O formato real manda; `aspect` só sobrou como padrão para pedidos
+    // antigos, que não enviavam formatRatio.
+    const spec = (body.formatRatio && FORMAT_SPECS[body.formatRatio]) ||
+      FORMAT_SPECS[isStory ? "9:16" : "1:1"];
+    const aspectInstruction =
+      `OUTPUT FORMAT: ${spec.label} aspect ratio, ${spec.canvas}px. Render all text elements in Portuguese Brazil.`;
+    const size = spec.size;
     const quality = body.quality ?? "low";
     const resolution = mapResolution(quality);
 
@@ -447,16 +489,31 @@ serve(async (req) => {
       requestBody.image_urls = imageUrls;
     }
 
-    const createResp = await fetchWithTimeout(`${EVOLINK_BASE_URL}/images/generations`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${EVOLINK_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
-    }, 30_000);
+    const postCreate = (payload: Record<string, unknown>) =>
+      fetchWithTimeout(`${EVOLINK_BASE_URL}/images/generations`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${EVOLINK_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      }, 30_000);
 
-    const createRespText = await readLoggedText("EvoLink create", createResp);
+    let createResp = await postCreate(requestBody);
+    let createRespText = await readLoggedText("EvoLink create", createResp);
+
+    // A razão correta é pedida primeiro. Se o provedor não aceitar aquele
+    // valor, cai para o que já era usado antes, em vez de derrubar a geração
+    // inteira — é o que permite corrigir a tela sem confirmar a documentação,
+    // que não é acessível deste ambiente.
+    if (!createResp.ok && spec.sizeFallback && looksLikeInvalidParameter(createResp.status, createRespText)) {
+      console.warn(
+        `EvoLink recusou size="${spec.size}" (${createResp.status}); repetindo com "${spec.sizeFallback}".`,
+      );
+      createResp = await postCreate({ ...requestBody, size: spec.sizeFallback });
+      createRespText = await readLoggedText("EvoLink create (fallback)", createResp);
+    }
+
     if (!createResp.ok) {
       return buildProviderErrorResponse(createResp.status, createRespText);
     }
