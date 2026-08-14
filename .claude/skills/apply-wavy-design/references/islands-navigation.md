@@ -22,7 +22,7 @@ Use a continuous app canvas. Place a compact brand mark separately at top-left o
 
 - left: 12–20px;
 - top: 88–112px when a small header exists, or 16–24px for a self-contained island;
-- bottom: 16–24px or use content-driven height with max-height;
+- bottom: 16–24px, matching the top offset — the island runs the full side of the screen and adapts to any viewport height;
 - collapsed width: 68–76px;
 - expanded width: 232–264px;
 - radius: 24–28px;
@@ -31,20 +31,38 @@ Use a continuous app canvas. Place a compact brand mark separately at top-left o
 - z-index high enough to float, below dialogs/toasts;
 - never use `height: 100vh` together with zero edge offsets.
 
+Set the height with paired `top` and `bottom` offsets, never `height: 100vh`. Mobile browsers change viewport height as the address bar hides, and `100vh` overflows the screen. Content-driven height is a fallback for a genuinely tiny menu, not the default: with a normal set of destinations it leaves the island floating halfway down the side, which reads as unfinished rather than deliberate.
+
+Give the destination list `min-height: 0` and its own scroll inside the flex column. Without it, a long list pushes footer utilities out of the island instead of scrolling.
+
 The canvas may show a restrained ambient orange-red glow behind or near the island so blur is perceptible. Do not place noise or glow behind dense text.
 
 ## Expansion behavior
 
-Use an explicit toggle button with `aria-expanded` and accessible label. Expansion occurs on click, not hover. Optional hover preview must never be the only access to labels.
+Use an explicit toggle button with `aria-expanded` and accessible label. The click toggle is mandatory and must always exist. Hover preview is a welcome addition on top of it, never a replacement: pointer hover is unavailable to keyboard and touch, so labels reachable only by hovering are labels some users can never read.
 
 - Preserve the x-position of icons.
 - Animate width 260–320ms with fluid easing.
 - Reveal labels using opacity plus small x translation after width begins.
 - Slide the active background between items where framework permits.
 - Store preference locally only if useful; do not override responsive behavior.
-- Escape may collapse when focus is inside the navigation.
-- Tooltips appear only while collapsed.
-- The content region must adapt through a CSS variable or layout state without overlapping important content.
+- Escape collapses when focus is inside the navigation — and must clear *every* open state, not just the pinned one, or Escape appears to do nothing while the island stays open from hover.
+- Tooltips appear only while the labels are hidden. Once any state reveals labels, tooltips are duplicate noise.
+- Keyboard focus entering the island reveals labels the same way hover does.
+
+### Two states, one width
+
+Model the pinned toggle and the hover preview as separate state, then drive the width from either being active. They differ only in persistence: the preview retracts when the pointer leaves, the pinned state waits for another click.
+
+**The content region must track the visible width, including during hover preview.** Letting the preview overlay the page looks like it avoids layout churn, but it buries whatever sits beneath the open island — the first column of a multi-column screen simply disappears while the pointer rests on the menu. Push the content for every state that widens the island, and animate the offset with the same duration and easing as the width so the two move as one.
+
+Audit for elements that escape that offset — anything `position: fixed`, `width: 100vw`, or otherwise anchored to the viewport instead of the content container will still slide under the island.
+
+### Pointer guard
+
+Exclude touch explicitly rather than testing for mouse. `pointerType === 'mouse'` fails closed in any environment that does not report a type, disabling hover entirely; pens hover legitimately too. Test `pointerType !== 'touch'`. On touch, `pointerenter` arrives together with the tap on a destination, so an unguarded preview flashes open on every tap.
+
+Make the leave handler unconditional: an enter without a matching guarded leave strands the island open.
 
 Preferred state model: `collapsed`, `expanded`, and responsive `mobile`. Never create separate navigation trees with divergent permissions or routes.
 
@@ -114,8 +132,10 @@ Capture at least one desktop screenshot in collapsed state, one in expanded stat
 ## Acceptance checklist
 
 - [ ] Island detached from viewport boundaries.
+- [ ] Island spans the full side via paired top/bottom offsets, not `100vh`.
 - [ ] Collapsed and expanded states implemented and captured.
 - [ ] Click toggle and `aria-expanded` present.
+- [ ] Hover preview, if present, pushes content rather than covering it — verified on a multi-column screen.
 - [ ] Fixed icon anchors and readable labels.
 - [ ] Glass includes transparency, blur, border highlight, and shadow.
 - [ ] Content offset tracks island state without overlap.

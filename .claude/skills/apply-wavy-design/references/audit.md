@@ -20,6 +20,7 @@ A critical accessibility/workflow failure remains a blocker regardless of averag
 
 - Correct theme layers, white light mode, charcoal dark mode, restrained gradient/glass/glow.
 - Desktop navigation is detached from edges, visibly floating, expandable by click, and captured collapsed/expanded. An opaque full-height sidebar fails the structural WAVY gate.
+- The island spans the full side of the screen through paired top/bottom offsets, and no state of it covers page content — check a multi-column screen with the menu open, hover preview included.
 - Glass visibly combines translucency, backdrop blur, border highlight, shadow, and contextual layering; a tinted rectangle with border is insufficient.
 - Contextual tools form purposeful content-sized islands rather than scattered pills or one rigid top bar.
 - Obvious primary task, clear global/local navigation, correct density, no nested-card excess.
