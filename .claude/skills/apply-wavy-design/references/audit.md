@@ -19,6 +19,7 @@ A critical accessibility/workflow failure remains a blocker regardless of averag
 ## Checklist
 
 - Correct theme layers, white light mode, charcoal dark mode, restrained gradient/glass/glow.
+- Light theme is hue-neutral and genuinely white — no ambient glow tinting the canvas, no warm tint on surfaces, no deep drop shadows smudging white. Saturated brand and status colors are darkened enough to read as text.
 - Desktop navigation is detached from edges, visibly floating, expandable by click, and captured collapsed/expanded. An opaque full-height sidebar fails the structural WAVY gate.
 - The island spans the full side of the screen through paired top/bottom offsets, and no state of it covers page content — check a multi-column screen with the menu open, hover preview included.
 - Glass visibly combines translucency, backdrop blur, border highlight, shadow, and contextual layering; a tinted rectangle with border is insufficient.

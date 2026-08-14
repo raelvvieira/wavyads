@@ -10,6 +10,20 @@ Use semantic variables instead of raw values in components. Map an existing syst
 - Dark: canvas `#0C0C0E`, surface `#111113`, soft `#141416`, raised `#17171A`, elevated `#1D1D21`, text `#F7F7F8`, muted `#A1A1AA`, subtle `#71717A`, border `rgba(255,255,255,.10)`.
 - Starting status colors: success `#22C55E`, warning `#F59E0B`, danger `#EF4444`, info `#3B82F6`; verify contrast in context.
 
+### The two themes are not mirrors
+
+Values that work on charcoal frequently fail on white, in ways that are easy to miss because nothing errors. Treat these four as separate per-theme tokens rather than shared constants:
+
+**Saturated colors.** The brand orange and the starting status colors are illegible as text on white — `#FF831E` gives about 2.2:1 and `#22C55E` about 2.3:1. Light theme needs darkened variants that pass both as text on white and as a fill with white text on top. Leave the brand *gradient* alone: it is where vibrancy matters and its text is always white.
+
+**Elevation.** A deep dark drop shadow reads as depth on charcoal and as a smudge on white. Light theme separates with a thin inset outline or a delicate shadow, not a deep projection.
+
+**Warm tints.** A surface mixed with a low percentage of the brand color is a discreet warm accent on charcoal and visibly peach on white. Give the light theme a neutral tint and let the brand rail or border carry the accent.
+
+**Ambient glow.** The atmospheric glow behind glass is a dark-theme device. Over a white canvas it tints the whole page and reads as cream — the beige the standard forbids. Remove it in light theme rather than lowering its opacity; at any strength that is still visible, it is still tinting.
+
+Keep the light canvas hue-neutral. A canvas carrying a hue at low saturation looks tinted the moment it sits next to a true-white surface.
+
 ## Typography
 
 Use `Geist, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif`. Use tabular figures for KPIs.
