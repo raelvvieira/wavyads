@@ -221,10 +221,11 @@
     position: fixed;
     left: var(--wavy-shell-gutter);
     top: var(--wavy-shell-gutter);
-    /* Altura pelo conteúdo, não pela viewport. Esticar de ponta a ponta com
-       sete destinos devolve o painel à condição de parede — só que agora com
-       cantos arredondados. O teto impede o estouro quando a lista cresce. */
-    max-height: calc(100vh - 2 * var(--wavy-shell-gutter));
+    /* Acompanha a lateral inteira, com a mesma folga em cima e embaixo — é a
+       folga que a mantém ilha, não a altura. `bottom` em vez de `height:100vh`
+       porque a barra de endereço do navegador mexe na altura da viewport e
+       100vh estoura para fora da tela. */
+    bottom: var(--wavy-shell-gutter);
     z-index: 40;
     width: var(--wavy-nav-collapsed);
     display: flex;
