@@ -90,6 +90,10 @@ Tracking and leading vary by role:
 
 Use `clamp()` for display typography where fluid scaling helps. Prefer `rem` for type and text-related spacing so browser text scaling does not break layout. Use weight, size, spacing, and contrast together instead of size alone.
 
+Attach tracking and leading to the **size scale itself**, not to a parallel set of role classes. In a utility framework the size utility also sets `line-height`, and utilities are emitted after the component layer — so a `line-height` declared on a `.role-title` class loses silently to the `text-3xl` on the same element, and the page looks untouched for a reason nothing in the code reveals. Baking the values into the scale makes the correct spacing arrive with the size, and every existing call site inherits it without being edited.
+
+Two consequences worth checking after that change: a generic tightening utility applied at call sites (`tracking-tight` and equivalents) now double-applies and fights the scale, so remove it; and an uppercase micro-label needs tracking that *opens* against the scale, which means that one rule does belong in the utility layer so it wins.
+
 ## Adaptive accessibility
 
 Treat these preferences independently:
