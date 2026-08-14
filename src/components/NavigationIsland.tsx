@@ -46,10 +46,9 @@ type NavItem = {
  */
 export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (expanded: boolean) => void }) {
   // `expanded` é o estado fixado pelo botão; `previewing` é a espiada do
-  // ponteiro. Separados de propósito: a espiada abre a ilha POR CIMA do
-  // conteúdo, sem empurrar a página. Reflowar o dashboard inteiro toda vez que
-  // o mouse encosta no menu é desconfortável — e o clique continua existindo
-  // para quem quer o menu aberto de verdade, inclusive por teclado.
+  // ponteiro. Os dois abrem a ilha e afastam o conteúdo do mesmo jeito — nada
+  // da página pode ficar atrás do menu. A diferença é só a permanência: a
+  // espiada volta quando o mouse sai, o fixado só volta no clique.
   const [expanded, setExpanded] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -96,11 +95,14 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
   const isItemActive = (to: string) =>
     location.pathname === to || (to === '/dashboard' && location.pathname.startsWith('/dashboard'));
 
-  // O shell afasta o conteúdo conforme o estado da ilha. Notificar por efeito,
-  // e não dentro do updater do useState, porque o updater pode ser reexecutado.
+  // O shell afasta o conteúdo sempre que a ilha estiver larga — inclusive na
+  // espiada. Antes só o estado fixado avisava, e a ilha aberta pelo mouse
+  // passava por cima do conteúdo, escondendo o que estivesse embaixo.
+  // Notificar por efeito, e não dentro do updater do useState, porque o
+  // updater pode ser reexecutado.
   useEffect(() => {
-    onExpandedChange?.(expanded);
-  }, [expanded, onExpandedChange]);
+    onExpandedChange?.(showLabels);
+  }, [showLabels, onExpandedChange]);
 
   // Escape recolhe quando o foco está dentro da navegação — saída previsível
   // para quem navega por teclado e abriu o menu sem querer.

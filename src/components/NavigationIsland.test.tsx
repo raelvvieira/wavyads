@@ -90,9 +90,10 @@ describe('NavigationIsland', () => {
     expect(desktopIsland().getAttribute('data-expanded')).toBe('false');
   });
 
-  it('espia com o mouse: abre a ilha sem empurrar o conteúdo', () => {
-    // A espiada mostra os rótulos por cima da página. Se ela avisasse o shell,
-    // o dashboard inteiro reflowaria toda vez que o mouse encostasse no menu.
+  it('a espiada afasta o conteúdo, igual ao menu fixado', () => {
+    // Este é o ponto: a ilha aberta pelo mouse não pode passar por cima da
+    // página. Se o shell não for avisado na espiada, o conteúdo fica atrás
+    // do menu — foi exatamente o que aconteceu no Criativo Studio.
     const onExpandedChange = vi.fn();
     render(
       <Shell path="/dashboard">
@@ -106,10 +107,11 @@ describe('NavigationIsland', () => {
     // borbulham, e o React sintetiza os dois a partir de over/out na raiz.
     pointer(island, 'pointerover', 'mouse');
     expect(island.getAttribute('data-expanded')).toBe('true');
-    expect(onExpandedChange).toHaveBeenLastCalledWith(false);
+    expect(onExpandedChange).toHaveBeenLastCalledWith(true);
 
     pointer(island, 'pointerout', 'mouse');
     expect(island.getAttribute('data-expanded')).toBe('false');
+    expect(onExpandedChange).toHaveBeenLastCalledWith(false);
   });
 
   it('não espia por toque', () => {
