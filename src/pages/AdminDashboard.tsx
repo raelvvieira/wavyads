@@ -781,7 +781,12 @@ export default function AdminDashboard() {
                 { clientId: accessClientId, name: accessName.trim(), email: accessEmail.trim() },
                 {
                   onSuccess: (data: any) => {
-                    toast({ title: 'Acesso concedido!', description: data?.message || 'O usuário receberá um email.' });
+                    // Reenvio não é concessão: dizer "acesso concedido" quando
+                    // o acesso já existia esconde o que de fato aconteceu.
+                    toast({
+                      title: data?.resent ? 'Email reenviado' : 'Acesso concedido!',
+                      description: data?.message || 'O usuário receberá um email.',
+                    });
                     setAccessDialogOpen(false);
                   },
                   onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
