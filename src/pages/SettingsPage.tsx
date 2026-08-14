@@ -214,7 +214,7 @@ export default function SettingsPage() {
                 </div>
                 <label className="relative inline-flex cursor-pointer">
                   <input type="checkbox" defaultChecked={i === 0} className="sr-only peer" />
-                  <div className="w-11 h-6 rounded-full glass peer-checked:bg-accent transition-colors peer-focus:ring-2 peer-focus:ring-accent/30 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-transform peer-checked:after:translate-x-full" />
+                  <div className="w-11 h-6 rounded-full glass peer-checked:bg-accent transition-colors peer-focus:ring-2 peer-focus:ring-accent/30 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-brand after:rounded-full after:h-5 after:w-5 after:transition-transform peer-checked:after:translate-x-full" />
                 </label>
               </div>
             ))}

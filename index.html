@@ -28,6 +28,22 @@
   <meta name="twitter:description" content="Dashboard de gestão de tráfego e funil de vendas da WAVY Marketing">
 </head>
 
+  <script>
+    // Estampa o tema antes da primeira pintura. Se isto rodasse só no React,
+    // a tela apareceria escura por um instante e depois viraria clara.
+    (function () {
+      try {
+        var p = localStorage.getItem('wavy-theme');
+        var resolved = (p === 'light' || p === 'dark')
+          ? p
+          : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+        document.documentElement.setAttribute('data-theme', resolved);
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+
   <body translate="no" class="notranslate">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

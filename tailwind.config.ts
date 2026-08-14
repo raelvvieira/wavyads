@@ -47,6 +47,19 @@ export default {
         mono: ['ui-monospace', 'SFMono-Regular', '"SF Mono"', 'Menlo', 'Consolas', '"Liberation Mono"', 'monospace'],
       },
       colors: {
+        // `white` deixa de ser #fff literal e passa a ser a TINTA do tema.
+        //
+        // O app tem ~700 utilidades `text-white/60`, `bg-white/[0.06]` e
+        // `border-white/10` — todas usando branco como tinta sobre o fundo
+        // escuro, que é justamente o que precisa inverter no tema claro.
+        // Remapear aqui faz todas virarem quase-preto no claro de uma vez,
+        // sem tocar em nenhum componente. Os templates de criativo não são
+        // afetados: eles pintam com `style` inline, não com utilidades.
+        //
+        // Para quando branco tem que continuar branco — texto sobre
+        // preenchimento saturado da marca — existe `on-brand` abaixo.
+        white: "hsl(var(--wavy-ink) / <alpha-value>)",
+        "on-brand": "#FFFFFF",
         border: "hsl(var(--border) / 0.1)",
         input: "hsl(var(--input) / 0.1)",
         ring: "hsl(var(--ring))",
