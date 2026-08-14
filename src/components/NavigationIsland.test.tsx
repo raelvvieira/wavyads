@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { act, render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { NavigationIsland } from './NavigationIsland';
@@ -28,6 +28,16 @@ function renderAt(path: string) {
       <NavigationIsland />
     </Shell>
   );
+}
+
+// jsdom não implementa PointerEvent, então `fireEvent.pointerOver(el, {
+// pointerType })` entrega o tipo vazio. Montar o evento à mão é o que permite
+// testar a distinção mouse/toque, que é justamente a regra em questão.
+function pointer(el: Element, type: 'pointerover' | 'pointerout', pointerType: string) {
+  const ev: any = new Event(type, { bubbles: true, cancelable: true });
+  ev.pointerType = pointerType;
+  if (type === 'pointerout') ev.relatedTarget = document.body;
+  fireEvent(el, ev);
 }
 
 // Há duas ilhas montadas ao mesmo tempo (a lateral do desktop e a inferior do
@@ -73,9 +83,53 @@ describe('NavigationIsland', () => {
     fireEvent.click(toggle);
     expect(desktopIsland().getAttribute('data-expanded')).toBe('true');
 
-    toggle.focus();
+    // O foco precisa ser real: o handler de Escape checa document.activeElement.
+    // Envolvido em act porque focar dispara o onFocus da ilha, que muda estado.
+    act(() => toggle.focus());
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(desktopIsland().getAttribute('data-expanded')).toBe('false');
+  });
+
+  it('espia com o mouse: abre a ilha sem empurrar o conteúdo', () => {
+    // A espiada mostra os rótulos por cima da página. Se ela avisasse o shell,
+    // o dashboard inteiro reflowaria toda vez que o mouse encostasse no menu.
+    const onExpandedChange = vi.fn();
+    render(
+      <Shell path="/dashboard">
+        <NavigationIsland onExpandedChange={onExpandedChange} />
+      </Shell>
+    );
+    const island = document.querySelector('aside[data-expanded]')!;
+    expect(island.getAttribute('data-expanded')).toBe('false');
+
+    // pointerOver/pointerOut, e não pointerEnter/Leave: enter e leave não
+    // borbulham, e o React sintetiza os dois a partir de over/out na raiz.
+    pointer(island, 'pointerover', 'mouse');
+    expect(island.getAttribute('data-expanded')).toBe('true');
+    expect(onExpandedChange).toHaveBeenLastCalledWith(false);
+
+    pointer(island, 'pointerout', 'mouse');
+    expect(island.getAttribute('data-expanded')).toBe('false');
+  });
+
+  it('não espia por toque', () => {
+    // Em toque o pointerenter chega junto com o toque no destino; abrir aí
+    // faria a ilha piscar aberta a cada toque.
+    renderAt('/dashboard');
+    const island = desktopIsland();
+    pointer(island, 'pointerover', 'touch');
+    expect(island.getAttribute('data-expanded')).toBe('false');
+  });
+
+  it('a espiada não desfaz o menu fixado ao sair o mouse', () => {
+    renderAt('/dashboard');
+    const island = desktopIsland();
+    fireEvent.click(screen.getAllByRole('button', { name: /expandir menu/i })[0]);
+    expect(island.getAttribute('data-expanded')).toBe('true');
+
+    pointer(island, 'pointerover', 'mouse');
+    pointer(island, 'pointerout', 'mouse');
+    expect(desktopIsland().getAttribute('data-expanded')).toBe('true');
   });
 
   it('avisa o shell a cada mudança, para o conteúdo se afastar junto', () => {

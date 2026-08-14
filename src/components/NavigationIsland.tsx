@@ -45,8 +45,15 @@ type NavItem = {
  * é a forma.
  */
 export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (expanded: boolean) => void }) {
+  // `expanded` é o estado fixado pelo botão; `previewing` é a espiada do
+  // ponteiro. Separados de propósito: a espiada abre a ilha POR CIMA do
+  // conteúdo, sem empurrar a página. Reflowar o dashboard inteiro toda vez que
+  // o mouse encosta no menu é desconfortável — e o clique continua existindo
+  // para quem quer o menu aberto de verdade, inclusive por teclado.
   const [expanded, setExpanded] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const showLabels = expanded || previewing;
 
   const islandRef = useRef<HTMLElement>(null);
   const location = useLocation();
@@ -98,15 +105,19 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
   // Escape recolhe quando o foco está dentro da navegação — saída previsível
   // para quem navega por teclado e abriu o menu sem querer.
   useEffect(() => {
-    if (!expanded) return;
+    if (!showLabels) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
       const active = document.activeElement;
-      if (active instanceof Node && islandRef.current?.contains(active)) setExpanded(false);
+      if (!(active instanceof Node) || !islandRef.current?.contains(active)) return;
+      // Fecha os dois: recolher só o fixado deixaria a ilha aberta pela
+      // espiada, e o Escape não teria surtido efeito visível.
+      setExpanded(false);
+      setPreviewing(false);
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [expanded]);
+  }, [showLabels]);
 
   const renderItem = (item: NavItem) => {
     const active = isItemActive(item.to);
@@ -143,8 +154,9 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
       </NavLink>
     );
 
-    // Tooltip só faz sentido recolhido: expandido o rótulo já está na tela.
-    return expanded ? (
+    // Tooltip só faz sentido recolhido. Com a espiada do ponteiro o rótulo já
+    // está na tela, e mostrar os dois ao mesmo tempo é ruído.
+    return showLabels ? (
       <div key={item.to}>{link}</div>
     ) : (
       <Tooltip key={item.to} delayDuration={200}>
@@ -174,9 +186,26 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
       {/* ---------- Desktop: ilha lateral ---------- */}
       <aside
         ref={islandRef}
-        data-expanded={expanded}
+        data-expanded={showLabels}
         aria-label="Navegação principal"
         className="wavy-nav-island hidden lg:flex"
+        // Toque não espia: lá o `pointerenter` chega junto com o toque e a ilha
+        // abriria sozinha ao tocar num destino. O teste é por exclusão, e não
+        // por `=== 'mouse'`, porque caneta também paira — e porque um ambiente
+        // sem PointerEvent reporta o tipo vazio, e ali o certo é se comportar
+        // como mouse em vez de perder o hover inteiro.
+        onPointerEnter={(e) => {
+          if (e.pointerType !== 'touch') setPreviewing(true);
+        }}
+        // Sair sempre fecha, qualquer que seja o ponteiro: um `enter` sem o
+        // `leave` correspondente deixaria a ilha presa aberta.
+        onPointerLeave={() => setPreviewing(false)}
+        // Tabular para dentro da ilha revela os rótulos pelo mesmo caminho:
+        // quem navega por teclado não depende de hover para ler o menu.
+        onFocus={() => setPreviewing(true)}
+        onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setPreviewing(false);
+        }}
       >
         <div className="flex h-12 items-center">
           <span className="flex w-[52px] min-w-[52px] items-center justify-center">
@@ -187,7 +216,9 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
           <span className="wavy-nav-label wavy-title text-base font-semibold">WAVY Dash</span>
         </div>
 
-        <nav className="flex flex-col gap-1 overflow-y-auto overflow-x-hidden" aria-label="Seções">
+        {/* min-h-0 é o que deixa a lista encolher e rolar dentro do flex; sem
+            ele, muitos destinos empurrariam as utilidades para fora da ilha. */}
+        <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden" aria-label="Seções">
           {clientItems.map(renderItem)}
 
           {visibleAdminItems.length > 0 && (
@@ -208,7 +239,7 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
             grupo próprio abaixo do divisor — antes o botão de expandir ficava
             acima da lista e era lido como se fosse mais um item de menu. */}
         <div className="mt-auto space-y-1 border-t border-white/10 pt-2">
-          {expanded && usageBlock}
+          {showLabels && usageBlock}
 
           <button
             type="button"
@@ -223,7 +254,7 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
             <span className="wavy-nav-label text-xs">Recolher</span>
           </button>
 
-          {expanded ? (
+          {showLabels ? (
             <button
               onClick={handleLogout}
               className="flex h-12 w-full items-center rounded-[14px] text-sm font-medium text-white/60 transition-colors duration-200 hover:bg-destructive/10 hover:text-destructive"
