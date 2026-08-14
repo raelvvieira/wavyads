@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { useAiUsage } from '@/lib/aiUsageTracker';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import wavyLogo from '@/assets/wavy-logo.png';
 
 type NavItem = {
@@ -211,7 +212,7 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
       >
         <div className="flex h-12 items-center">
           <span className="flex w-[52px] min-w-[52px] items-center justify-center">
-            <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-[10px] bg-[var(--wavy-surface-elevated)]">
+            <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-[10px] bg-[var(--wavy-brand-chip)]">
               <img src={wavyLogo} alt="WAVY" className="h-7 w-7 object-contain" />
             </span>
           </span>
@@ -242,6 +243,8 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
             acima da lista e era lido como se fosse mais um item de menu. */}
         <div className="mt-auto space-y-1 border-t border-white/10 pt-2">
           {showLabels && usageBlock}
+
+          <ThemeToggle showLabels={showLabels} />
 
           <button
             type="button"
@@ -354,6 +357,8 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
               ))}
 
               {usageBlock}
+
+              <ThemeToggle showLabels />
 
               <button
                 onClick={handleLogout}

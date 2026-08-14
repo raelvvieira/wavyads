@@ -11,13 +11,24 @@
    apontam para cá, então trocar a marca é trocar valores aqui — nenhum
    componente carrega cor crua.
 
-   O app é dark-only hoje (não existe seletor de tema). Os valores de tema
-   claro ficam registrados no bloco [data-theme="light"] para o dia em que
-   houver um alternador; ligar isso é mudança funcional, não de design.
+   Dois temas. `:root` carrega o escuro, que é o padrão histórico do produto;
+   `[data-theme="light"]` sobrescreve. Quem estampa o atributo no <html> é o
+   hook useTheme, e um script inline no index.html faz isso antes da primeira
+   pintura para não haver piscada.
    ========================================================================= */
 
 @layer base {
   :root {
+    color-scheme: dark;
+
+    /* Tinta do primeiro plano em componentes HSL do Tailwind.
+       É o token que faz as ~700 utilidades `text-white/60`, `bg-white/[0.06]`
+       e `border-white/10` já espalhadas pelo código funcionarem nos dois
+       temas: elas usam branco como TINTA sobre o fundo, e tinta é exatamente
+       o que inverte. No claro isto vira quase-preto e o mesmo
+       `hover:bg-white/[0.06]` continua sendo o véu sutil correto. */
+    --wavy-ink: 0 0% 100%;
+
     --wavy-brand-orange: #FF831E;
     --wavy-brand-mid: #F45B20;
     --wavy-brand-red: #DA2F1E;
@@ -44,6 +55,22 @@
     --wavy-glass-border: rgba(255, 255, 255, 0.11);
     --wavy-shadow-card: 0 10px 28px rgba(0, 0, 0, 0.20);
     --wavy-shadow-island: 0 18px 50px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+
+    /* Material da ilha de navegação, por tema. No escuro o brilho por cima
+       dá espessura ao vidro; no claro o mesmo truque lavaria o painel. */
+    --wavy-nav-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.018));
+    --wavy-nav-shadow:
+      0 24px 70px rgba(0, 0, 0, 0.42),
+      0 2px 12px rgba(0, 0, 0, 0.24),
+      inset 0 1px 0 rgba(255, 255, 255, 0.10);
+    --wavy-glow-strength: 0.20;
+    --wavy-scrollbar: rgba(255, 255, 255, 0.12);
+    --wavy-scrollbar-hover: rgba(255, 255, 255, 0.22);
+    --wavy-shimmer: rgba(255, 255, 255, 0.05);
+
+    /* Chip da marca. Escuro nos DOIS temas: a logo é clara, e sobre a
+       superfície branca do tema claro ela simplesmente sumia. */
+    --wavy-brand-chip: #1D1D21;
 
     --wavy-font: Geist, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
@@ -84,9 +111,12 @@
     --wavy-ease-fluid: cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  /* Registrado para uso futuro; nenhum alternador de tema está ligado. */
   [data-theme='light'] {
     color-scheme: light;
+
+    /* Tinta invertida: quase-preto, nunca preto puro. */
+    --wavy-ink: 240 5% 8%;
+
     --wavy-canvas: #F5F5F7;
     --wavy-surface: #FFFFFF;
     --wavy-surface-soft: #F8F8FA;
@@ -102,6 +132,19 @@
     --wavy-glass-border: rgba(255, 255, 255, 0.84);
     --wavy-shadow-card: 0 8px 24px rgba(24, 24, 30, 0.06);
     --wavy-shadow-island: 0 16px 45px rgba(24, 24, 30, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+
+    --wavy-nav-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.62));
+    --wavy-nav-shadow:
+      0 24px 64px rgba(24, 24, 30, 0.13),
+      0 2px 10px rgba(24, 24, 30, 0.06),
+      inset 0 1px 0 #fff;
+    /* O brilho ambiente some quase por completo: sobre branco ele viraria
+       uma mancha suja em vez de atmosfera. */
+    --wavy-glow-strength: 0.07;
+    --wavy-scrollbar: rgba(15, 15, 18, 0.18);
+    --wavy-scrollbar-hover: rgba(15, 15, 18, 0.30);
+    --wavy-shimmer: rgba(15, 15, 18, 0.06);
+    --wavy-brand-chip: #1D1D21;
   }
 }
 
@@ -172,6 +215,59 @@
     --status-paused: 240 5% 46%;      /* neutro: pausado não é alerta */
     --status-ended: 0 84% 60%;        /* danger #EF4444 */
   }
+
+  /* Mesmos nomes, valores do tema claro.
+     Os coloridos não são só "os mesmos com fundo trocado": laranja #FF831E
+     sobre branco dá 2,2:1 e verde #22C55E dá 2,3:1 — ilegíveis como texto.
+     No claro eles escurecem o suficiente para passar como texto E como
+     preenchimento com texto branco em cima. O gradiente da marca fica
+     intocado: é onde a vibração importa, e ali o texto é sempre branco. */
+  [data-theme='light'] {
+    --background: 240 9% 96%;         /* canvas #F5F5F7 */
+    --foreground: 240 5% 8%;          /* text #141416 */
+
+    --card: 0 0% 100%;                /* surface #FFFFFF */
+    --card-foreground: 240 5% 8%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 5% 8%;
+
+    --primary: 18 88% 43%;            /* laranja escurecido, legível */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 5% 8%;           /* usado com /0.05 → véu sutil escuro */
+    --secondary-foreground: 240 5% 8%;
+
+    --muted: 240 14% 98%;             /* surface-soft #F8F8FA */
+    --muted-foreground: 240 3% 42%;   /* text-muted #68686F */
+
+    --accent: 18 88% 43%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 74% 42%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 5% 8%;              /* usado com /0.1 → borda fina escura */
+    --input: 240 5% 8%;
+    --ring: 18 88% 43%;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 240 5% 8%;
+    --sidebar-primary: 18 88% 43%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 14% 98%;
+    --sidebar-accent-foreground: 240 5% 8%;
+    --sidebar-border: 240 5% 8%;
+    --sidebar-ring: 18 88% 43%;
+
+    --glass-bg-hover: rgba(255, 255, 255, 0.86);
+    --glass-bg-active: rgba(255, 255, 255, 0.92);
+    --gradient-accent-glow: 0 8px 24px rgba(244, 91, 32, 0.22);
+
+    --status-active: 142 72% 29%;     /* verde escuro: legível sobre branco */
+    --status-paused: 240 4% 40%;
+    --status-ended: 0 74% 42%;
+  }
 }
 
 @layer base {
@@ -236,14 +332,9 @@
     border-radius: var(--wavy-radius-island);
     /* Vidro de verdade: translucidez, desfoque, luz na borda e elevação.
        O gradiente sutil no topo é o que dá espessura óptica ao painel. */
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.018)),
-      var(--wavy-glass);
+    background: var(--wavy-nav-sheen), var(--wavy-glass);
     border: 1px solid var(--wavy-glass-border);
-    box-shadow:
-      0 24px 70px rgba(0, 0, 0, 0.42),
-      0 2px 12px rgba(0, 0, 0, 0.24),
-      inset 0 1px 0 rgba(255, 255, 255, 0.10);
+    box-shadow: var(--wavy-nav-shadow);
     backdrop-filter: blur(24px) saturate(135%);
     -webkit-backdrop-filter: blur(24px) saturate(135%);
     transition: width var(--wavy-duration-panel) var(--wavy-ease-fluid);
@@ -285,8 +376,8 @@
     pointer-events: none;
     background: radial-gradient(
       closest-side,
-      rgba(255, 131, 30, 0.20),
-      rgba(218, 47, 30, 0.09) 55%,
+      rgb(255 131 30 / var(--wavy-glow-strength)),
+      rgb(218 47 30 / calc(var(--wavy-glow-strength) * 0.45)) 55%,
       transparent 100%
     );
     filter: blur(30px);
@@ -430,7 +521,7 @@
   }
 
   .shimmer {
-    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%);
+    background: linear-gradient(90deg, transparent 0%, var(--wavy-shimmer) 50%, transparent 100%);
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
   }
@@ -445,7 +536,7 @@
   }
 
   .accent-glow-hover:hover {
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+    box-shadow: var(--wavy-shadow-card);
     border-color: var(--wavy-border-strong);
   }
 }
@@ -472,12 +563,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--wavy-scrollbar);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.22);
+  background: var(--wavy-scrollbar-hover);
 }
 
 /* Movimento é para explicar mudança de estado — quem pediu menos movimento

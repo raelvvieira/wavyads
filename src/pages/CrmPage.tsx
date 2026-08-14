@@ -182,7 +182,7 @@ function CrmClientView({ clientId }: { clientId: string }) {
               placeholder="https://crm-cliente.seudominio.com"
               className="min-w-[240px] flex-1"
             />
-            <Button onClick={saveUrl} disabled={saving} className="rounded-full bg-accent text-white hover:bg-accent/90">
+            <Button onClick={saveUrl} disabled={saving} className="rounded-full bg-accent text-on-brand hover:bg-accent/90">
               {saving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Save className="mr-1.5 h-4 w-4" />}
               Salvar
             </Button>
@@ -214,7 +214,7 @@ function CrmClientView({ clientId }: { clientId: string }) {
         <GlassCard className="flex flex-1 flex-col items-center justify-center gap-3 p-10 text-center">
           <ExternalLink className="h-8 w-8 text-white/30" />
           <p className="text-sm text-white/70">Este CRM não permite abrir embutido aqui.</p>
-          <Button className="rounded-full bg-accent text-white hover:bg-accent/90" onClick={() => window.open(effectiveUrl, '_blank', 'noopener')}>
+          <Button className="rounded-full bg-accent text-on-brand hover:bg-accent/90" onClick={() => window.open(effectiveUrl, '_blank', 'noopener')}>
             <ExternalLink className="mr-1.5 h-4 w-4" /> Abrir CRM em nova aba
           </Button>
         </GlassCard>
