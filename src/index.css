@@ -72,6 +72,12 @@
        superfície branca do tema claro ela simplesmente sumia. */
     --wavy-brand-chip: #1D1D21;
 
+    /* Cápsula do item ativo. No escuro, superfície elevada com um toque da
+       marca e sombra funda; no claro o mesmo toque vira pêssego e a sombra
+       funda suja o branco — então lá é cinza neutro com contorno fino. */
+    --wavy-nav-active-bg: color-mix(in srgb, var(--wavy-surface-elevated) 88%, var(--wavy-brand-orange) 12%);
+    --wavy-nav-active-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 22px rgba(0, 0, 0, 0.18);
+
     --wavy-font: Geist, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
     /* Tipografia por papel. Um título grande com o espaçamento do corpo fica
@@ -117,7 +123,7 @@
     /* Tinta invertida: quase-preto, nunca preto puro. */
     --wavy-ink: 240 5% 8%;
 
-    --wavy-canvas: #F5F5F7;
+    --wavy-canvas: #FAFAFA;
     --wavy-surface: #FFFFFF;
     --wavy-surface-soft: #F8F8FA;
     --wavy-surface-raised: #FFFFFF;
@@ -138,13 +144,16 @@
       0 24px 64px rgba(24, 24, 30, 0.13),
       0 2px 10px rgba(24, 24, 30, 0.06),
       inset 0 1px 0 #fff;
-    /* O brilho ambiente some quase por completo: sobre branco ele viraria
-       uma mancha suja em vez de atmosfera. */
-    --wavy-glow-strength: 0.07;
+    /* Sem brilho ambiente. Sobre branco, mesmo a 7%, o laranja tinge a tela
+       inteira e o resultado lê como bege — o oposto do "genuinamente branco"
+       que o padrão pede. Atmosfera é recurso de tema escuro. */
+    --wavy-glow-strength: 0;
     --wavy-scrollbar: rgba(15, 15, 18, 0.18);
     --wavy-scrollbar-hover: rgba(15, 15, 18, 0.30);
     --wavy-shimmer: rgba(15, 15, 18, 0.06);
     --wavy-brand-chip: #1D1D21;
+    --wavy-nav-active-bg: #EFEFF2;
+    --wavy-nav-active-shadow: inset 0 0 0 1px rgba(15, 15, 18, 0.07);
   }
 }
 
@@ -223,7 +232,7 @@
      preenchimento com texto branco em cima. O gradiente da marca fica
      intocado: é onde a vibração importa, e ali o texto é sempre branco. */
   [data-theme='light'] {
-    --background: 240 9% 96%;         /* canvas #F5F5F7 */
+    --background: 0 0% 98%;           /* canvas #FAFAFA — neutro, sem matiz */
     --foreground: 240 5% 8%;          /* text #141416 */
 
     --card: 0 0% 100%;                /* surface #FFFFFF */
@@ -587,6 +596,10 @@
 
 /* Três preferências distintas, tratadas separadamente: quem reduz
    transparência não necessariamente reduz movimento. */
+[data-theme='light'] .wavy-shell::before {
+  display: none;
+}
+
 @media (prefers-reduced-transparency: reduce) {
   .wavy-nav-island,
   .glass-island {

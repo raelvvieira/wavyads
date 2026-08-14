@@ -136,7 +136,7 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
             // Cápsula de alto contraste com um traço da marca. Preencher a
             // linha inteira com o gradiente reservaria para a navegação a
             // ênfase que pertence à ação primária da página.
-            ? 'bg-[color-mix(in_srgb,var(--wavy-surface-elevated)_88%,var(--wavy-brand-orange)_12%)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_8px_22px_rgba(0,0,0,0.18)]'
+            ? 'bg-[var(--wavy-nav-active-bg)] text-white shadow-[var(--wavy-nav-active-shadow)]'
             : 'text-white/65 hover:bg-white/[0.06] hover:text-white'
         )}
       >
@@ -216,8 +216,18 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
               <img src={wavyLogo} alt="WAVY" className="h-7 w-7 object-contain" />
             </span>
           </span>
-          <span className="wavy-nav-label wavy-title text-base font-semibold">WAVY Dash</span>
+          <span className="wavy-nav-label wavy-title flex-1 text-base font-semibold">WAVY Dash</span>
+          {/* Ao lado da marca, no topo: é preferência de exibição, não
+              destino nem utilidade de sessão. Recolhido não há espaço, e a
+              linha compacta abaixo assume. */}
+          {showLabels && <ThemeToggle className="wavy-nav-label mr-1" />}
         </div>
+
+        {!showLabels && (
+          <div className="flex justify-center">
+            <ThemeToggle />
+          </div>
+        )}
 
         {/* min-h-0 é o que deixa a lista encolher e rolar dentro do flex; sem
             ele, muitos destinos empurrariam as utilidades para fora da ilha. */}
@@ -243,8 +253,6 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
             acima da lista e era lido como se fosse mais um item de menu. */}
         <div className="mt-auto space-y-1 border-t border-white/10 pt-2">
           {showLabels && usageBlock}
-
-          <ThemeToggle showLabels={showLabels} />
 
           <button
             type="button"
@@ -310,7 +318,7 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
                 'wavy-nav-item flex h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[14px] px-1',
                 'transition-colors duration-200',
                 active
-                  ? 'bg-[color-mix(in_srgb,var(--wavy-surface-elevated)_88%,var(--wavy-brand-orange)_12%)] text-white'
+                  ? 'bg-[var(--wavy-nav-active-bg)] text-white'
                   : 'text-white/60'
               )}
             >
@@ -347,7 +355,7 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
                     'flex min-h-[44px] items-center gap-3 rounded-[14px] px-4 text-sm font-medium',
                     'transition-colors duration-200',
                     isItemActive(item.to)
-                      ? 'bg-[color-mix(in_srgb,var(--wavy-surface-elevated)_88%,var(--wavy-brand-orange)_12%)] text-white'
+                      ? 'bg-[var(--wavy-nav-active-bg)] text-white'
                       : 'text-white/70 hover:bg-white/[0.06] hover:text-white'
                   )}
                 >
@@ -358,7 +366,10 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
 
               {usageBlock}
 
-              <ThemeToggle showLabels />
+              <div className="flex items-center justify-between rounded-[14px] px-4 py-2">
+                <span className="text-sm font-medium text-white/70">Tema</span>
+                <ThemeToggle />
+              </div>
 
               <button
                 onClick={handleLogout}
