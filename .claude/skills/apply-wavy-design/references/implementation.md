@@ -41,6 +41,16 @@ Verify arbitrary values reached the output too. A malformed one (`duration-[--to
 
 Create one theme adapter for the chart library: palette, axes, grid, tooltip, legend, focus, and motion. Use `Intl.NumberFormat('pt-BR', ...)` for Brazilian locale where appropriate.
 
+## Theme switching
+
+Stamp the resolved theme on the root element from an inline script before first paint. Applied only from the app framework, the page renders in the default theme and visibly flips once the app mounts.
+
+Set `color-scheme` per theme. It themes native selects, scrollbars, and form controls for free, and lets you delete the per-theme hacks usually found on `<option>` and similar elements.
+
+Model the preference as *unset* until the user chooses, not as a third "system" mode in the control. While unset, follow `prefers-color-scheme` live, including changes during the session; the first explicit choice takes over permanently. That keeps the system-following behavior for people who never touch the control, without spending a third button on it — and it means someone who picked light is never surprised by nightfall.
+
+Offer a single control that shows the **destination**, not the current state: a sun in dark theme, because that is where the click leads. Place it with display preferences, not with session utilities like sign-out.
+
 ## Performance and QA
 
 Avoid blur on large scrolling containers. Prefer transform/opacity. Lazy-load heavy charts/editors when appropriate. Prevent font layout shift. Put decorative glows in pointer-inert pseudo-elements.
