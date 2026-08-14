@@ -1,32 +1,30 @@
 import { useCallback, useEffect, useState } from 'react';
 
-export type ThemePreference = 'system' | 'light' | 'dark';
 export type ResolvedTheme = 'light' | 'dark';
 
 export const THEME_STORAGE_KEY = 'wavy-theme';
 
 /**
- * Preferência de tema.
+ * Tema da interface: claro ou escuro.
  *
- * Três valores, não dois: "sistema" é uma escolha legítima e diferente de
- * "claro" — quem está em sistema acompanha o aparelho quando ele vira à
- * noite, quem escolheu claro não vira nunca.
+ * O controle é binário. Enquanto ninguém escolheu nada, o app acompanha a
+ * preferência do sistema — inclusive se ela mudar durante o uso. A partir da
+ * primeira escolha explícita, o sistema deixa de mandar: quem apertou "claro"
+ * não quer que anoiteça sozinho.
  *
- * O atributo vive no <html> e é estampado por um script inline no
- * index.html antes da primeira pintura. Este hook cuida do resto: reage à
- * troca do sistema enquanto a preferência for 'system', persiste a escolha
- * e sincroniza entre abas.
+ * O atributo vive no <html>. Um script inline no index.html o estampa antes
+ * da primeira pintura para não haver piscada.
  */
 
-function readStored(): ThemePreference {
+function readStored(): ResolvedTheme | null {
   try {
     const v = localStorage.getItem(THEME_STORAGE_KEY);
-    if (v === 'light' || v === 'dark' || v === 'system') return v;
+    if (v === 'light' || v === 'dark') return v;
   } catch {
     // localStorage bloqueado (navegação privativa, cookies negados) não é
     // motivo para o app não abrir — só significa não lembrar a escolha.
   }
-  return 'system';
+  return null;
 }
 
 function systemTheme(): ResolvedTheme {
@@ -35,49 +33,45 @@ function systemTheme(): ResolvedTheme {
     : 'dark';
 }
 
-export function resolveTheme(preference: ThemePreference): ResolvedTheme {
-  return preference === 'system' ? systemTheme() : preference;
-}
-
-/** Estampa o tema resolvido. O CSS só conhece 'light' e 'dark'. */
-export function applyTheme(resolved: ResolvedTheme) {
-  document.documentElement.setAttribute('data-theme', resolved);
+/** Estampa o tema. O CSS só conhece 'light' e 'dark'. */
+export function applyTheme(theme: ResolvedTheme) {
+  document.documentElement.setAttribute('data-theme', theme);
 }
 
 export function useTheme() {
-  const [preference, setPreferenceState] = useState<ThemePreference>(readStored);
-  const [resolved, setResolved] = useState<ResolvedTheme>(() => resolveTheme(readStored()));
+  const [stored, setStored] = useState<ResolvedTheme | null>(readStored);
+  const [theme, setTheme] = useState<ResolvedTheme>(() => readStored() ?? systemTheme());
 
   useEffect(() => {
-    const next = resolveTheme(preference);
-    setResolved(next);
+    const next = stored ?? systemTheme();
+    setTheme(next);
     applyTheme(next);
-  }, [preference]);
+  }, [stored]);
 
-  // Enquanto a preferência for 'system', seguir o aparelho em tempo real.
+  // Sem escolha explícita, seguir o aparelho em tempo real.
   useEffect(() => {
-    if (preference !== 'system') return;
+    if (stored) return;
     const mq = window.matchMedia('(prefers-color-scheme: light)');
     const onChange = () => {
       const next = systemTheme();
-      setResolved(next);
+      setTheme(next);
       applyTheme(next);
     };
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
-  }, [preference]);
+  }, [stored]);
 
   // Duas abas abertas não deveriam discordar sobre o tema.
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key === THEME_STORAGE_KEY) setPreferenceState(readStored());
+      if (e.key === THEME_STORAGE_KEY) setStored(readStored());
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  const setPreference = useCallback((next: ThemePreference) => {
-    setPreferenceState(next);
+  const setPreference = useCallback((next: ResolvedTheme) => {
+    setStored(next);
     try {
       localStorage.setItem(THEME_STORAGE_KEY, next);
     } catch {
@@ -85,5 +79,9 @@ export function useTheme() {
     }
   }, []);
 
-  return { preference, resolved, setPreference };
+  const toggle = useCallback(() => {
+    setPreference((stored ?? systemTheme()) === 'light' ? 'dark' : 'light');
+  }, [stored, setPreference]);
+
+  return { theme, setPreference, toggle };
 }
