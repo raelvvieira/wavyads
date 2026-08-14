@@ -17,6 +17,7 @@ import { ImageDropzone } from '@/components/criativo/ImageDropzone';
 import { StyleGalleryDialog } from '@/components/criativo/StyleGalleryDialog';
 import { QuickCreativeDialog, type ClientCopyBankEntry, type ClientIntelligenceArt, type QuickCopyVariation } from '@/components/criativo/QuickCreativeDialog';
 import { cn } from '@/lib/utils';
+import { extractFunctionErrorMessage } from '@/lib/functionError';
 import { recordAiUsage } from '@/lib/aiUsageTracker';
 import {
   ASPECT_CONFIG,
@@ -241,18 +242,6 @@ function withCorrectExtension(path: string, mime: string): string {
 // supabase.functions.invoke() só expõe uma mensagem genérica
 // ("Edge Function returned a non-2xx status code") no `error` — o motivo
 // real vem no corpo da resposta, acessível via error.context (a Response).
-async function extractFunctionErrorMessage(error: any): Promise<string> {
-  const context = error?.context;
-  if (context && typeof context.json === 'function') {
-    try {
-      const body = await context.json();
-      if (body?.error || body?.detail || body?.message) return body.error || body.detail || body.message;
-    } catch {
-      // corpo não é JSON válido — mantém a mensagem genérica
-    }
-  }
-  return error?.message || 'Erro desconhecido';
-}
 
 
 export default function CriativoStudioPage() {

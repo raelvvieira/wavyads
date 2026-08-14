@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { extractFunctionErrorMessage } from '@/lib/functionError';
 
 export interface ClientUser {
   id: string;
@@ -30,7 +31,9 @@ export function useAddClientUser() {
       const { data, error } = await supabase.functions.invoke('add-client-user', {
         body: { clientId: input.clientId, name: input.name, email: input.email },
       });
-      if (error) throw error;
+      // O erro cru traz só "Edge Function returned a non-2xx status code";
+      // o motivo de verdade está no corpo da resposta.
+      if (error) throw new Error(await extractFunctionErrorMessage(error));
       if (data?.error) throw new Error(data.error);
       return data;
     },

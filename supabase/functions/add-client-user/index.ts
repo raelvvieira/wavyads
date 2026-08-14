@@ -6,6 +6,41 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+/**
+ * Procura o usuário por email percorrendo as páginas.
+ *
+ * `listUsers()` sem argumento devolve só a primeira página (50 usuários).
+ * Passado esse número, um email já existente deixa de ser encontrado, a
+ * função tenta criar o usuário de novo e o erro que chega é "email já
+ * cadastrado" — que soa como problema do email, e não de paginação.
+ */
+async function findUserByEmail(adminClient: any, email: string) {
+  const alvo = email.toLowerCase();
+  const perPage = 200;
+  for (let page = 1; page <= 50; page++) {
+    const { data, error } = await adminClient.auth.admin.listUsers({ page, perPage });
+    if (error) throw error;
+    const users = data?.users ?? [];
+    const found = users.find((u: any) => u.email?.toLowerCase() === alvo);
+    if (found) return found;
+    if (users.length < perPage) return null;
+  }
+  return null;
+}
+
+/** Link novo de definição de senha, válido para quem ainda não tem uma. */
+async function buildRecoveryLink(adminClient: any, email: string): Promise<string | undefined> {
+  const { data } = await adminClient.auth.admin.generateLink({
+    type: "recovery",
+    email,
+    options: { redirectTo: "https://dashboard.wavydigital.com.br/reset-password" },
+  });
+  const tokenHash = data?.properties?.hashed_token;
+  return tokenHash
+    ? `https://dashboard.wavydigital.com.br/reset-password?token_hash=${tokenHash}&type=recovery`
+    : data?.properties?.action_link;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -81,20 +116,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if user already exists in auth
-    const { data: existingUsers } = await adminClient.auth.admin.listUsers();
-    const existingUser = existingUsers?.users?.find(
-      (u: any) => u.email?.toLowerCase() === email.toLowerCase()
-    );
+    const existingUser = await findUserByEmail(adminClient, email);
 
     let userId: string;
-    let isNewUser = false;
     let recoveryLink: string | undefined;
+    // Reenvio: o acesso já existia e este pedido só repete o email.
+    let isResend = false;
 
     if (existingUser) {
       userId = existingUser.id;
 
-      // Check if already linked to this client
       const { data: existingLink } = await adminClient
         .from("client_users")
         .select("id")
@@ -102,15 +133,18 @@ Deno.serve(async (req) => {
         .eq("user_id", userId)
         .maybeSingle();
 
-      if (existingLink) {
-        return new Response(
-          JSON.stringify({ error: "Este usuário já tem acesso a este dashboard" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      // Antes isto era um beco sem saída: erro 400 e nenhuma forma de
+      // reenviar o convite. Quem nunca definiu senha ficava travado, porque
+      // o único caminho que dispara email era o de criar usuário novo.
+      if (existingLink) isResend = true;
+
+      // Sem primeiro login, a pessoa não tem senha — mandar "entre com suas
+      // credenciais" seria mandá-la fazer algo impossível. Link novo, então.
+      if (!existingUser.last_sign_in_at) {
+        recoveryLink = await buildRecoveryLink(adminClient, email);
       }
     } else {
-      // Create new user
-      isNewUser = true;
+      // Usuário novo: criar e mandar o link de definição de senha.
       const tempPassword = crypto.randomUUID() + "Aa1!";
       const { data: newUser, error: createError } =
         await adminClient.auth.admin.createUser({
@@ -128,17 +162,7 @@ Deno.serve(async (req) => {
       }
 
       userId = newUser.user.id;
-
-      // Generate recovery link for new user - build direct link to bypass redirect allowlist
-      const { data: linkData } = await adminClient.auth.admin.generateLink({
-        type: "recovery",
-        email,
-        options: { redirectTo: "https://dashboard.wavydigital.com.br/reset-password" },
-      });
-      const tokenHash = linkData?.properties?.hashed_token;
-      recoveryLink = tokenHash
-        ? `https://dashboard.wavydigital.com.br/reset-password?token_hash=${tokenHash}&type=recovery`
-        : linkData?.properties?.action_link;
+      recoveryLink = await buildRecoveryLink(adminClient, email);
     }
 
     // Ensure client role exists
@@ -153,20 +177,23 @@ Deno.serve(async (req) => {
       await adminClient.from("user_roles").insert({ user_id: userId, role: "client" });
     }
 
-    // Insert into client_users
-    const { error: linkError } = await adminClient
-      .from("client_users")
-      .insert({ client_id: clientId, user_id: userId });
+    // No reenvio o vínculo já existe; inserir de novo violaria a unicidade.
+    if (!isResend) {
+      const { error: linkError } = await adminClient
+        .from("client_users")
+        .insert({ client_id: clientId, user_id: userId });
 
-    if (linkError) {
-      return new Response(
-        JSON.stringify({ error: linkError.message }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      if (linkError) {
+        return new Response(
+          JSON.stringify({ error: linkError.message }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // Send email via Resend
-    const emailHtml = isNewUser
+    const precisaDefinirSenha = Boolean(recoveryLink);
+    const emailHtml = precisaDefinirSenha
       ? `<!DOCTYPE html>
 <html lang="pt-BR">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
@@ -213,7 +240,7 @@ Deno.serve(async (req) => {
   </table>
 </body></html>`;
 
-    await fetch("https://api.resend.com/emails", {
+    const emailResp = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -222,19 +249,47 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         from: "Wavy Dashboard <contato@wavydigital.com.br>",
         to: [email],
-        subject: isNewUser ? "ACESSO AO WAVY DASHBOARD" : "NOVO ACESSO NO WAVY DASHBOARD",
+        subject: precisaDefinirSenha ? "ACESSO AO WAVY DASHBOARD" : "NOVO ACESSO NO WAVY DASHBOARD",
         html: emailHtml,
       }),
     });
 
+    // A resposta do Resend era descartada: se o envio falhasse, o admin via
+    // "acesso concedido" e ficava esperando um email que nunca saiu. O acesso
+    // em si já está gravado, então o erro fala do email, não do acesso.
+    if (!emailResp.ok) {
+      const detalhe = await emailResp.text();
+      console.error("Resend falhou:", emailResp.status, detalhe.slice(0, 400));
+      return new Response(
+        JSON.stringify({
+          error: isResend
+            ? `Não consegui reenviar o email (${emailResp.status}). O acesso continua válido.`
+            : `Acesso concedido, mas o email não saiu (${emailResp.status}). Reenvie pelo mesmo botão.`,
+        }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const message = isResend
+      ? (precisaDefinirSenha
+          ? "Este usuário já tinha acesso — reenviamos o link para criar a senha"
+          : "Este usuário já tinha acesso — reenviamos o email de acesso")
+      : precisaDefinirSenha
+        ? "Convite enviado por email"
+        : "Acesso concedido";
+
     return new Response(
-      JSON.stringify({ success: true, message: isNewUser ? "Convite enviado por email" : "Acesso concedido" }),
+      JSON.stringify({ success: true, resent: isResend, message }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
     console.error("add-client-user error:", err);
+    // A rota inteira é restrita a admin, então devolver o motivo aqui não
+    // expõe nada a terceiros — e sem ele quem está no suporte só recebe
+    // "erro interno" e não tem por onde começar.
+    const detalhe = err instanceof Error ? err.message : String(err);
     return new Response(
-      JSON.stringify({ error: "Erro interno do servidor" }),
+      JSON.stringify({ error: `Erro ao conceder acesso: ${detalhe.slice(0, 300)}` }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
