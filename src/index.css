@@ -107,6 +107,11 @@
     --wavy-nav-collapsed: 72px;
     --wavy-nav-expanded: 248px;
     --wavy-shell-gutter: 16px;
+    /* Padding superior das páginas (p-6). O alternador se ancora nele para
+       nascer na mesma linha das ações da página. */
+    --wavy-page-pad: 24px;
+    /* Largura da faixa reservada à direita: alternador + folga dos dois lados. */
+    --wavy-page-utility-gap: 56px;
 
     --wavy-duration-press: 100ms;
     --wavy-duration-fast: 160ms;
@@ -396,7 +401,25 @@
      largura fixa — é o que evita a colisão quando o menu abre. */
   .wavy-app-content {
     padding-left: calc(var(--wavy-shell-gutter) + var(--wavy-nav-collapsed) + 24px);
+    /* Faixa reservada para o alternador de tema no canto superior direito.
+       Sem ela, um botão fixo ali passaria por cima da ação primária da
+       página — que costuma ser exatamente o que fica naquele canto. Reservar
+       no shell resolve para toda página de uma vez, inclusive as que ainda
+       não existem, em vez de acertar caso a caso. */
+    padding-right: var(--wavy-page-utility-gap);
     transition: padding-left var(--wavy-duration-panel) var(--wavy-ease-fluid);
+  }
+
+  /* Alinha com a primeira linha de ações da página. Essa linha costuma ter
+     título + subtítulo à esquerda (54px), então seu centro fica em
+     `--wavy-page-pad` + 27px; o alternador tem 36px e desce 9px para os
+     centros baterem. Em página sem subtítulo a diferença é de 6px, que não
+     se percebe — alinhar ao caso comum vale mais que acertar cada tela. */
+  .wavy-theme-anchor {
+    position: fixed;
+    top: calc(var(--wavy-page-pad) + 9px);
+    right: var(--wavy-shell-gutter);
+    z-index: 45;
   }
 
   .wavy-shell[data-nav-expanded='true'] .wavy-app-content {
@@ -427,6 +450,14 @@
     .wavy-shell[data-nav-expanded='true'] .wavy-app-content {
       padding-left: 0;
       padding-bottom: 96px;
+      /* Sem faixa reservada aqui: 56px de um viewport de 360 é 15% da
+         largura, caro demais por um controle de preferência. No mobile ele
+         volta para a folha "Mais", onde não custa espaço de conteúdo. */
+      padding-right: 0;
+    }
+
+    .wavy-theme-anchor {
+      display: none;
     }
   }
 

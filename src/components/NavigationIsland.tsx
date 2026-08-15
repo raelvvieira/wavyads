@@ -216,18 +216,8 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
               <img src={wavyLogo} alt="WAVY" className="h-7 w-7 object-contain" />
             </span>
           </span>
-          <span className="wavy-nav-label wavy-title flex-1 text-base font-semibold">WAVY Dash</span>
-          {/* Ao lado da marca, no topo: é preferência de exibição, não
-              destino nem utilidade de sessão. Recolhido não há espaço, e a
-              linha compacta abaixo assume. */}
-          {showLabels && <ThemeToggle className="wavy-nav-label mr-1" />}
+          <span className="wavy-nav-label wavy-title text-base font-semibold">WAVY Dash</span>
         </div>
-
-        {!showLabels && (
-          <div className="flex justify-center">
-            <ThemeToggle />
-          </div>
-        )}
 
         {/* min-h-0 é o que deixa a lista encolher e rolar dentro do flex; sem
             ele, muitos destinos empurrariam as utilidades para fora da ilha. */}
@@ -366,6 +356,9 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
 
               {usageBlock}
 
+              {/* No desktop este controle vive no canto superior direito da
+                  página; no mobile aquele canto é estreito demais para
+                  reservar espaço, então ele fica aqui. */}
               <div className="flex items-center justify-between rounded-[14px] px-4 py-2">
                 <span className="text-sm font-medium text-white/70">Tema</span>
                 <ThemeToggle />
