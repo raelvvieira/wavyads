@@ -31,7 +31,8 @@ export function ThemeToggle({ className }: { className?: string }) {
           <Icon className="h-[18px] w-[18px]" />
         </button>
       </TooltipTrigger>
-      <TooltipContent side="right" sideOffset={12}>
+      {/* Abre para a esquerda: encostado na borda direita, "right" sairia da tela. */}
+      <TooltipContent side="left" sideOffset={10}>
         Tema {goingTo}
       </TooltipContent>
     </Tooltip>

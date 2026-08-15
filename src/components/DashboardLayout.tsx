@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { NavigationIsland } from './NavigationIsland';
+import { ThemeToggle } from './ThemeToggle';
 
 /**
  * Shell do app.
@@ -19,6 +20,12 @@ export function DashboardLayout() {
       data-nav-expanded={navExpanded}
     >
       <NavigationIsland onExpandedChange={setNavExpanded} />
+      {/* Canto superior direito, na linha das ações da página. O shell reserva
+          a faixa (`--wavy-page-utility-gap`) para que nenhuma página passe por
+          baixo dele — inclusive as que ainda não existem. */}
+      <div className="wavy-theme-anchor">
+        <ThemeToggle />
+      </div>
       {/* z-10 mantém o conteúdo acima do brilho ambiente da tela. */}
       <div className="wavy-app-content relative z-10 min-h-screen">
         <Outlet />
