@@ -140,7 +140,7 @@ interface SelectedAsset {
   assetId?: string | null;
   factorIndex?: number | null;
   factorVariation?: any;
-  isEdited?: boolean;   // arte que veio da edição com I.A. (não regenera 1080)
+  isEdited?: boolean;   // arte que veio da edição com I.A.
 }
 
 type ConversationAction = {
@@ -381,6 +381,11 @@ export default function CriativoStudioPage() {
   const [factorSquareImages, setFactorSquareImages] = useState<(string | null)[]>([null, null, null, null, null]);
   const [factorSquareLoading, setFactorSquareLoading] = useState<boolean[]>([false, false, false, false, false]);
   const [mainSquareLoading, setMainSquareLoading] = useState(false);
+  // Versão 1080 de uma arte que não ocupa um dos dois lugares fixos (principal
+  // e variações do Fator) — o caso da arte editada. Chaveado pela key do
+  // asset para que edições diferentes não disputem o mesmo lugar.
+  const [assetSquares, setAssetSquares] = useState<Record<string, { url: string; assetId: string | null }>>({});
+  const [assetSquareLoadingKey, setAssetSquareLoadingKey] = useState<string | null>(null);
   const [selectedEditKey, setSelectedEditKey] = useState<string>('main:story');
   const [selectedEditTarget, setSelectedEditTarget] = useState<{
     key: string;
@@ -2106,6 +2111,68 @@ export default function CriativoStudioPage() {
     }
   };
 
+  /**
+   * Versão 1080x1080 de uma arte que não é a principal nem uma variação do
+   * Fator — na prática, a arte que voltou de uma edição.
+   *
+   * `recreateSquare` não serve aqui: ele reconstrói o prompt da origem, então
+   * usá-lo numa arte editada devolveria o quadrado da arte ORIGINAL e jogaria
+   * a edição fora. Era por isso que o botão ficava escondido nesse caso.
+   *
+   * Aqui a própria imagem editada vai como referência visual, e o prompt é o
+   * dela mais o override de enquadramento — o quadrado sai da arte que está
+   * na tela, com a edição preservada.
+   */
+  const recreateSquareFromAsset = async (asset: SelectedAsset) => {
+    setAssetSquareLoadingKey(asset.key);
+    try {
+      const prompt = `${asset.prompt}\n\n[FRAMING OVERRIDE — THIS RENDER IS 1:1]\nThis render is a 1:1 square (1080x1080). Ignore every framing and safe-zone instruction stated earlier in this prompt; the block below replaces them.\n\n${buildSafeZoneBlock('1:1')}`;
+
+      const { data, error } = await supabase.functions.invoke('criativo-generate', {
+        body: {
+          prompt,
+          aspectRatio: 'square',
+          formatRatio: '1:1',
+          model,
+          productImages,
+          logoImage: logoImage[0] || null,
+          // A arte de origem é a referência: sem ela o modelo recomporia a
+          // cena do zero e a edição pedida não apareceria no quadrado.
+          aspectReference: asset.url,
+        },
+        timeout: 90_000,
+      });
+      if (error) throw new Error(await extractFunctionErrorMessage(error));
+      if ((data as any)?.error) throw new Error((data as any).error);
+      recordAiUsage(MODEL_OPTIONS.find((m) => m.id === model)?.usage || 'image-gemini-flash-2');
+
+      const persisted = await persistImageAsset({
+        imageUrl: (data as any).imageUrl as string,
+        folder: 'generated',
+        type: 'resize',
+        filename: imageFileName(sanitizeFileName(`${asset.label}-square`)),
+        metadata: { aspectRatio: '1:1', resolution: selectedResolution, fromKey: asset.key },
+        clientId: selectedClientId || undefined,
+        lineage: {
+          parentAssetId: asset.assetId ?? null,
+          aspectRatio: '1:1',
+          resolution: selectedResolution,
+          prompt,
+        },
+      });
+
+      setAssetSquares((prev) => ({
+        ...prev,
+        [asset.key]: { url: persisted.url, assetId: persisted.assetId },
+      }));
+      toast({ title: 'Quadrado 1080 gerado' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao gerar quadrado', description: e.message, variant: 'destructive' });
+    } finally {
+      setAssetSquareLoadingKey(null);
+    }
+  };
+
   const download = async (url: string, name: string) => {
     try {
       const blob = await (await fetch(url)).blob();
@@ -2430,6 +2497,11 @@ export default function CriativoStudioPage() {
     setFactorLoading(false);
     setFactorProgress(0);
     setMainSquareLoading(false);
+    // As keys de asset se repetem entre projetos ('main:story', 'edit:...#0'),
+    // então sem limpar aqui o quadrado de um projeto anterior reapareceria
+    // debaixo de uma arte nova.
+    setAssetSquares({});
+    setAssetSquareLoadingKey(null);
     setEditedVersions({});
     setEditPanelKey(null);
     setEditFeedback('');
@@ -3281,14 +3353,27 @@ export default function CriativoStudioPage() {
                 <Button variant="outline" className="rounded-full" onClick={() => download(selectedAsset.url, imageFileName(sanitizeFileName(selectedAsset.label)))}>
                   <Download className="mr-2 h-3 w-3" />Baixar
                 </Button>
-                {selectedAsset.aspect === 'story' && !selectedAsset.isEdited && (
+                {selectedAsset.aspect === 'story' && (
                   <Button
                     variant="outline"
                     className="rounded-full"
-                    disabled={selectedAsset.factorIndex != null ? factorSquareLoading[selectedAsset.factorIndex] : mainSquareLoading}
-                    onClick={() => recreateSquare(selectedAsset.factorIndex != null ? selectedAsset.factorIndex : 'main')}
+                    disabled={
+                      selectedAsset.isEdited
+                        ? assetSquareLoadingKey === selectedAsset.key
+                        : selectedAsset.factorIndex != null
+                          ? factorSquareLoading[selectedAsset.factorIndex]
+                          : mainSquareLoading
+                    }
+                    onClick={() =>
+                      // A arte editada precisa do caminho que parte dela mesma;
+                      // as outras duas continuam usando seus lugares fixos.
+                      selectedAsset.isEdited
+                        ? recreateSquareFromAsset(selectedAsset)
+                        : recreateSquare(selectedAsset.factorIndex != null ? selectedAsset.factorIndex : 'main')
+                    }
                   >
-                    <RefreshCw className="mr-2 h-3 w-3" />1080
+                    <RefreshCw className="mr-2 h-3 w-3" />
+                    {selectedAsset.isEdited && assetSquareLoadingKey === selectedAsset.key ? 'Gerando...' : '1080'}
                   </Button>
                 )}
                 <Button variant="outline" className="rounded-full" onClick={() => openEditTarget({ key: selectedAsset.key, image: selectedAsset.url, aspect: selectedAsset.aspect, prompt: selectedAsset.prompt, label: selectedAsset.label })}>
@@ -3326,6 +3411,33 @@ export default function CriativoStudioPage() {
                   <Layers className="mr-2 h-3 w-3" /> Template
                 </Button>
               </div>
+
+              {/* O quadrado derivado desta arte. Sem isto ele nasceria salvo
+                  no projeto mas invisível para quem acabou de pedi-lo. */}
+              {assetSquares[selectedAsset.key] && (
+                <div className="space-y-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                  <p className="wavy-caps text-[10px] font-medium text-white/45">Versão 1080x1080</p>
+                  {renderGeneratedThumb(assetSquares[selectedAsset.key].url, 'square', `${selectedAsset.label} · 1080`)}
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="rounded-full"
+                      onClick={() => download(assetSquares[selectedAsset.key].url, imageFileName(sanitizeFileName(`${selectedAsset.label}-1080`)))}
+                    >
+                      <Download className="mr-2 h-3 w-3" />Baixar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="rounded-full"
+                      onClick={() => setLightboxUrl(assetSquares[selectedAsset.key].url)}
+                    >
+                      <ZoomIn className="mr-2 h-3 w-3" />Preview
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 space-y-2">
                 <div className="flex items-center gap-1.5 text-xs font-medium text-white/80">
