@@ -40,7 +40,6 @@ export function StudioShellPreview() {
     <div className="studio-page">
       <StudioPreviewBanner onOpenCurrent={() => {}} />
       <CreativeStudioShell
-      projectName="Campanha de Verão 2026"
       clientName={clients.find((c) => c.id === clientId)?.name ?? null}
       clientId={clientId}
       clients={clients}
@@ -56,7 +55,6 @@ export function StudioShellPreview() {
       onRemoveFilter={() => {}}
       onClearFilters={() => setQuery('')}
       onOpenFilters={() => {}}
-      onOpenProjects={() => {}}
       onOpenHistory={() => {}}
       onNewProject={() => {}}
       command={command}

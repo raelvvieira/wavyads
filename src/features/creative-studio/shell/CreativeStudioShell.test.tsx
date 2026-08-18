@@ -10,7 +10,6 @@ function montar(patch: Partial<CreativeStudioShellProps> = {}) {
   const onAssetAction = vi.fn();
   const onSubmitCommand = vi.fn();
   const props: CreativeStudioShellProps = {
-    projectName: 'Campanha de Verão',
     clientName: 'Boutique Aurora',
     clientId: 'c1',
     clients: [{ id: 'c1', name: 'Boutique Aurora' }],
@@ -26,7 +25,6 @@ function montar(patch: Partial<CreativeStudioShellProps> = {}) {
     onRemoveFilter: vi.fn(),
     onClearFilters: vi.fn(),
     onOpenFilters: vi.fn(),
-    onOpenProjects: vi.fn(),
     onOpenHistory: vi.fn(),
     onNewProject: vi.fn(),
     command: '',

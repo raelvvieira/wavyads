@@ -1,4 +1,4 @@
-import { ChevronDown, History, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
+import { History, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StudioClientSelector, type StudioClientOption } from './StudioClientSelector';
 
@@ -8,7 +8,6 @@ export interface StudioFilterChip {
 }
 
 interface StudioTopBarProps {
-  projectName: string;
   clientName: string | null;
   clientId: string | null;
   clients: StudioClientOption[];
@@ -18,7 +17,6 @@ interface StudioTopBarProps {
   filters: StudioFilterChip[];
   onRemoveFilter: (id: string) => void;
   onOpenFilters: () => void;
-  onOpenProjects: () => void;
   onOpenHistory: () => void;
   onNewProject: () => void;
 }
@@ -26,15 +24,18 @@ interface StudioTopBarProps {
 /**
  * Barra contextual superior.
  *
- * Responde às três perguntas que a tela precisa responder sempre: em que
- * projeto estou, de que cliente ele é, e como saio daqui. Por isso o par
- * projeto/cliente é o gatilho de troca — e não um título decorativo com um
- * seletor escondido em outro canto.
+ * O canto esquerdo já foi dois botões empilhados — um para trocar de
+ * projeto, sem nada por trás; outro, o de cliente, que já funcionava. Um
+ * gatilho quebrado ao lado de um que funciona lê como os dois quebrados.
+ * Ficou só o `StudioClientSelector`, que herdou o destaque visual do que
+ * saiu. A noção de projeto não sumiu da tela: o chip "Só este projeto" (em
+ * `filters`) continua mostrando e permitindo sair do projeto atual — só o
+ * gatilho de trocar para OUTRO projeto específico saiu, porque não existia
+ * de verdade.
  *
  * É ilha de vidro porque é controle, não conteúdo.
  */
 export function StudioTopBar({
-  projectName,
   clientName,
   clientId,
   clients,
@@ -44,33 +45,17 @@ export function StudioTopBar({
   filters,
   onRemoveFilter,
   onOpenFilters,
-  onOpenProjects,
   onOpenHistory,
   onNewProject,
 }: StudioTopBarProps) {
   return (
     <header className="studio-topbar glass-island">
-      {/* Duas ações, dois elementos: trocar de projeto e filtrar por
-          cliente não são a mesma coisa, e `<button>` dentro de `<button>`
-          não é HTML válido — por isso o nome do cliente saiu de dentro do
-          botão do projeto para um irmão logo abaixo. */}
-      <div className="flex min-w-0 flex-col px-1">
-        <button
-          type="button"
-          onClick={onOpenProjects}
-          className="group -mx-1 flex min-w-0 items-center gap-1.5 rounded-[10px] px-1 py-0.5 text-left transition-colors duration-200 hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wavy-focus)]"
-          aria-label="Trocar de projeto"
-        >
-          <span className="truncate text-sm font-semibold text-white/92">{projectName}</span>
-          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-white/45 transition-transform duration-200 group-hover:translate-y-0.5" />
-        </button>
-        <StudioClientSelector
-          clientId={clientId}
-          clientName={clientName}
-          clients={clients}
-          onChange={onClientChange}
-        />
-      </div>
+      <StudioClientSelector
+        clientId={clientId}
+        clientName={clientName}
+        clients={clients}
+        onChange={onClientChange}
+      />
 
       <div className="studio-topbar-search">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/40" />

@@ -17,14 +17,13 @@ interface StudioClientSelectorProps {
 /**
  * Seletor de cliente do topo.
  *
- * O nome do cliente era só texto — "Sem cliente" nunca mudava nada.
- * Escolher aqui passa a restringir o resto da tela (canvas, bibliotecas e
+ * É o único elemento do canto esquerdo da barra — havia um botão de
+ * projeto em negrito por cima dele, mas trocar de projeto não estava
+ * ligado a nada e o par de botões empilhados confundia mais do que
+ * ajudava. Este seletor, que já funcionava, herdou o destaque visual do
+ * que saiu: escolher aqui restringe o resto da tela (canvas, bibliotecas e
  * o que a próxima geração recebe como contexto) ao que já existe daquele
  * cliente — ver `CriativoStudioV2Page.tsx`.
- *
- * Fica FORA do botão de projeto, e não dentro dele: os dois são ações
- * diferentes (trocar de projeto vs. filtrar por cliente), e `<button>`
- * dentro de `<button>` não é HTML válido.
  */
 export function StudioClientSelector({ clientId, clientName, clients, onChange }: StudioClientSelectorProps) {
   const [open, setOpen] = useState(false);
@@ -48,12 +47,12 @@ export function StudioClientSelector({ clientId, clientName, clients, onChange }
         <button
           type="button"
           aria-label="Filtrar por cliente"
-          className="group -mx-1 flex items-center gap-1 rounded-md px-1 text-left transition-colors duration-150 hover:bg-white/[0.06]"
+          className="group -mx-1 flex min-w-0 items-center gap-1.5 rounded-[10px] px-1 py-0.5 text-left transition-colors duration-200 hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wavy-focus)]"
         >
-          <span className="truncate text-[11px] text-white/50 group-hover:text-white/72">
+          <span className="truncate text-sm font-semibold text-white/92">
             {clientName ?? 'Sem cliente'}
           </span>
-          <ChevronDown className="h-3 w-3 shrink-0 text-white/35" />
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-white/45 transition-transform duration-200 group-hover:translate-y-0.5" />
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="glass w-64 border-white/10 p-0">
