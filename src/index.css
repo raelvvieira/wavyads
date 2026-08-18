@@ -600,6 +600,22 @@
      O afastamento das colunas sai de variáveis locais para que o canvas
      acompanhe a ilha de bibliotecas abrindo e o painel direito entrando —
      nenhuma das duas pode cobrir o conteúdo. */
+  /* Invólucro da tela. É ele que carrega a altura da viewport, para que o
+     que vier antes do shell — um aviso, uma barra de estado — ocupe espaço
+     em vez de empurrar o dock para fora da tela.
+
+     `dvh` e não `vh`: no celular a barra de endereço muda a altura da
+     viewport, e `vh` deixaria o dock fora dela. */
+  .studio-page {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    height: calc(100dvh - var(--wavy-page-pad) * 2);
+    min-height: 560px;
+    padding: var(--wavy-page-pad);
+    padding-right: 0;
+  }
+
   .studio-shell {
     --studio-library-width: 68px;
     --studio-side-panel-width: 0px;
@@ -608,11 +624,8 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    /* `dvh` e não `vh`: no celular a barra de endereço muda a altura da
-       viewport, e `vh` deixaria o dock fora da tela. */
-    height: calc(100dvh - var(--wavy-page-pad) * 2);
-    min-height: 520px;
-    padding: var(--wavy-page-pad) 0;
+    flex: 1 1 auto;
+    min-height: 0;
   }
 
   .studio-shell[data-library-expanded='true'] {
@@ -1151,6 +1164,12 @@
   }
 
   @media (max-width: 1023px) {
+    .studio-page {
+      height: auto;
+      min-height: 0;
+      padding: 12px;
+    }
+
     .studio-shell,
     .studio-shell[data-library-expanded='true'] {
       --studio-library-width: 0px;

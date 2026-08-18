@@ -26,23 +26,36 @@ function matchesQuery(asset: CreativeAsset, query: string): boolean {
     .some((campo) => !!campo && campo.toLowerCase().includes(alvo));
 }
 
+function matchesFilters(a: CreativeAsset, filtros: AssetFilters): boolean {
+  if (filtros.clientId !== undefined && filtros.clientId !== null && a.clientId !== filtros.clientId) return false;
+  if (filtros.types?.length && !filtros.types.includes(a.type)) return false;
+  if (filtros.statuses?.length && !filtros.statuses.includes(a.status)) return false;
+  if (filtros.aspectRatio && a.aspectRatio !== filtros.aspectRatio) return false;
+  if (filtros.query && !matchesQuery(a, filtros.query)) return false;
+  return true;
+}
+
 /**
- * O que o canvas desenha.
+ * O que o canvas desenha por padrão.
  *
  * Insumos (logo, produto, referência) ficam de fora: eles alimentam a
  * geração, não são resultado dela. Sem esse corte, o canvas de um projeto
  * com dez referências abre poluído.
  */
 export function visibleCanvasAssets(assets: CreativeAsset[], filtros: AssetFilters = {}): CreativeAsset[] {
-  return assets.filter((a) => {
-    if (!isArtwork(a)) return false;
-    if (filtros.clientId !== undefined && filtros.clientId !== null && a.clientId !== filtros.clientId) return false;
-    if (filtros.types?.length && !filtros.types.includes(a.type)) return false;
-    if (filtros.statuses?.length && !filtros.statuses.includes(a.status)) return false;
-    if (filtros.aspectRatio && a.aspectRatio !== filtros.aspectRatio) return false;
-    if (filtros.query && !matchesQuery(a, filtros.query)) return false;
-    return true;
-  });
+  return assets.filter((a) => isArtwork(a) && matchesFilters(a, filtros));
+}
+
+/**
+ * O acervo de uma biblioteca escolhida a dedo.
+ *
+ * Aqui o insumo APARECE. O corte de `visibleCanvasAssets` existe para que o
+ * canvas não abra poluído, não para tornar referência e produto
+ * inalcançáveis — sem esta porta, abrir "Referências" mostraria zero e a
+ * biblioteca pareceria vazia com sessenta itens dentro.
+ */
+export function libraryAssets(assets: CreativeAsset[], filtros: AssetFilters = {}): CreativeAsset[] {
+  return assets.filter((a) => matchesFilters(a, filtros));
 }
 
 export type SelectionAction =

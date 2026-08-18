@@ -146,3 +146,34 @@ export async function createAssetGroup(input: {
   if (error) throw error;
   return mapGroupRow(data);
 }
+
+export interface ListCreativeAssetsFilter {
+  projectId?: string | null;
+  clientId?: string | null;
+  limit?: number;
+}
+
+/**
+ * Lê os assets para o canvas.
+ *
+ * Traz TODOS os tipos, incluindo insumo — o corte de "o que o canvas
+ * desenha" é do seletor `visibleCanvasAssets`, não da consulta. Separar
+ * assim é o que permite o inspetor montar a linhagem completa: um resize
+ * cujo avô ficou de fora da consulta apareceria solto na árvore.
+ */
+export async function listCreativeAssets(
+  filtro: ListCreativeAssetsFilter = {},
+): Promise<CreativeAsset[]> {
+  let query = supabase
+    .from('creative_assets')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(filtro.limit ?? 300);
+
+  if (filtro.projectId) query = query.eq('project_id', filtro.projectId);
+  if (filtro.clientId) query = query.eq('client_id', filtro.clientId);
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data || []).map(mapAssetRow);
+}

@@ -15,6 +15,7 @@ import ComercialIndexPage from "@/pages/ComercialIndexPage";
 import CrmPage from "@/pages/CrmPage";
 import GoogleAdsAIPage from "@/pages/GoogleAdsAIPage";
 import CriativoStudioPage from "@/pages/CriativoStudioPage";
+import CriativoStudioV2Page from "@/pages/CriativoStudioV2Page";
 import SocialMidiaStudioPage from "@/pages/SocialMidiaStudioPage";
 import SocialTemplateLabPage from "@/pages/SocialTemplateLabPage";
 import MetaCallbackPage from "@/pages/MetaCallbackPage";
@@ -46,6 +47,10 @@ const App = () => (
               <Route path="/crm/:clientId" element={<CrmPage />} />
               <Route path="/google-ads-ai" element={<GoogleAdsAIPage />} />
               <Route path="/criativo-studio" element={<CriativoStudioPage />} />
+              {/* Prévia do shell V2 com o acervo real, somente leitura.
+                  Dentro do ProtectedRoute como qualquer outra tela do produto:
+                  ela lê `creative_assets`, e isso pede sessão. */}
+              <Route path="/criativo-studio/v2" element={<CriativoStudioV2Page />} />
               <Route path="/social-midia-studio" element={<SocialMidiaStudioPage />} />
               <Route path="/social-template-lab" element={<SocialTemplateLabPage />} />
               <Route path="/configuracoes" element={<SettingsPage />} />
