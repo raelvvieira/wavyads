@@ -598,6 +598,13 @@ export default function CriativoStudioPage() {
     negativePrompt,
     storyImage,
     squareImage,
+    // Os IDs de asset são a âncora da linhagem. Sem eles no snapshot, um
+    // projeto restaurado gera arte órfã: editar cria asset com
+    // parent_asset_id nulo, e o Fator monta grupo sem pai.
+    mainStoryAssetId,
+    mainSquareAssetId,
+    factorAssetIds,
+    factorSquareAssetIds,
     factorVariations,
     factorImages,
     factorErrors,
@@ -680,6 +687,10 @@ export default function CriativoStudioPage() {
     setNegativePrompt(state.negativePrompt || '');
     setStoryImage(state.storyImage || null);
     setSquareImage(state.squareImage || null);
+    setMainStoryAssetId(state.mainStoryAssetId || null);
+    setMainSquareAssetId(state.mainSquareAssetId || null);
+    setFactorAssetIds(state.factorAssetIds || [null, null, null, null, null]);
+    setFactorSquareAssetIds(state.factorSquareAssetIds || [null, null, null, null, null]);
     setFactorVariations(state.factorVariations || null);
     setFactorImages(state.factorImages || []);
     setFactorErrors(state.factorErrors || []);
@@ -689,6 +700,69 @@ export default function CriativoStudioPage() {
     setSelectedTemplateId(state.selectedTemplateId || null);
     setSelectedTemplate(state.selectedTemplate || null);
     setSelectedClientId(state.selectedClientId || null);
+    // Estes três eram gravados e nunca repostos. `language` é o idioma do
+    // texto DENTRO da arte: um projeto salvo em inglês voltava como pt-BR e a
+    // próxima geração saía no idioma errado, sem aviso nenhum.
+    setStep(typeof state.step === 'number' ? state.step : 0);
+    setModel(state.model || 'gemini-3.1-flash-image-preview');
+    setLanguage(state.language || 'pt-BR');
+  };
+
+  /**
+   * Recupera os IDs de asset de um projeto salvo antes de o snapshot passar a
+   * guardá-los.
+   *
+   * Sem isso, todo projeto já existente continuaria gerando arte órfã depois
+   * de restaurado — a correção só valeria para projetos novos. A URL é o
+   * elo disponível: ela está no snapshot e também na linha do asset.
+   *
+   * Silencioso de propósito: é um reparo oportunista. Se a consulta falhar, o
+   * projeto abre do mesmo jeito, só sem os vínculos.
+   */
+  const reconcileAssetIdsByUrl = async (projectId: string, state: any) => {
+    const alvos: { url: string; aplicar: (id: string) => void }[] = [];
+
+    if (state.storyImage && !state.mainStoryAssetId) {
+      alvos.push({ url: state.storyImage, aplicar: setMainStoryAssetId });
+    }
+    if (state.squareImage && !state.mainSquareAssetId) {
+      alvos.push({ url: state.squareImage, aplicar: setMainSquareAssetId });
+    }
+    (state.factorImages || []).forEach((url: string | null, i: number) => {
+      if (url && !state.factorAssetIds?.[i]) {
+        alvos.push({
+          url,
+          aplicar: (id) => setFactorAssetIds((prev) => prev.map((v, j) => (j === i ? id : v))),
+        });
+      }
+    });
+    (state.factorSquareImages || []).forEach((url: string | null, i: number) => {
+      if (url && !state.factorSquareAssetIds?.[i]) {
+        alvos.push({
+          url,
+          aplicar: (id) => setFactorSquareAssetIds((prev) => prev.map((v, j) => (j === i ? id : v))),
+        });
+      }
+    });
+
+    if (alvos.length === 0) return;
+
+    try {
+      const { data, error } = await db
+        .from('creative_assets')
+        .select('id,url')
+        .eq('project_id', projectId)
+        .in('url', alvos.map((a) => a.url));
+      if (error || !data) return;
+
+      const idPorUrl = new Map<string, string>(data.map((r: any) => [r.url, r.id]));
+      for (const alvo of alvos) {
+        const id = idPorUrl.get(alvo.url);
+        if (id) alvo.aplicar(id);
+      }
+    } catch {
+      // Reparo opcional: falhar aqui não pode impedir o projeto de abrir.
+    }
   };
 
   const loadCreativeProject = async (projectId: string) => {
@@ -700,7 +774,10 @@ export default function CriativoStudioPage() {
       if (stateError && stateError.code !== 'PGRST116') throw stateError;
       setCurrentProjectId(projectId);
       setProjectTitle(project?.title || 'Novo criativo');
-      restoreProjectState(stateRow?.state_json || {});
+      const snapshot = stateRow?.state_json || {};
+      restoreProjectState(snapshot);
+      // Projetos salvos antes desta correção não têm os IDs no snapshot.
+      await reconcileAssetIdsByUrl(projectId, snapshot);
       // client_id da coluna própria é a fonte de verdade (projetos antigos podem
       // não ter selectedClientId no state_json).
       setSelectedClientId(project?.client_id || null);
@@ -1525,6 +1602,13 @@ export default function CriativoStudioPage() {
     negativePrompt,
     storyImage,
     squareImage,
+    // Os IDs de asset são a âncora da linhagem. Sem eles no snapshot, um
+    // projeto restaurado gera arte órfã: editar cria asset com
+    // parent_asset_id nulo, e o Fator monta grupo sem pai.
+    mainStoryAssetId,
+    mainSquareAssetId,
+    factorAssetIds,
+    factorSquareAssetIds,
     factorVariations,
     factorImages,
     editedVersions,
@@ -1642,6 +1726,9 @@ export default function CriativoStudioPage() {
           // prompt de edição é instruído a não repeti-lo.
           safeZoneBlock: buildSafeZoneBlock(editRatio),
         },
+        // Sem teto, uma edição perdida pendura o painel para sempre. A
+        // geração já tinha o dela; edição e Fator tinham ficado de fora.
+        timeout: 90_000,
       });
       if (error) throw new Error(await extractFunctionErrorMessage(error));
       if ((data as any)?.error) throw new Error((data as any).error);
@@ -1887,6 +1974,9 @@ export default function CriativoStudioPage() {
           aspectRatio: factorRatio,
           safeZoneBlock: safeBlockForFactor,
         },
+        // O Fator escreve cinco variações num modelo de raciocínio; é a
+        // chamada mais lenta do fluxo, e a que mais precisa de teto.
+        timeout: 120_000,
       });
       if (error) throw new Error(await extractFunctionErrorMessage(error));
       if ((data as any)?.error) throw new Error((data as any).error);

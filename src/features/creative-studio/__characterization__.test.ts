@@ -45,21 +45,17 @@ describe('snapshot do projeto', () => {
     expect(ausentes).toEqual([]);
   });
 
-  it('grava três campos que a restauração NÃO repõe — defeito conhecido', () => {
-    // Caracterização de um bug real, não de um comportamento desejado.
-    // `language` é o idioma do texto DENTRO da arte: restaurar um projeto
-    // salvo em inglês devolve pt-BR sem avisar. `model` volta ao padrão e
-    // `step` perde a posição no fluxo.
-    //
-    // Este teste existe para que a correção seja deliberada: ao consertar,
-    // ele falha e obriga a atualizar a lista. Não trate como aprovado.
+  it('tudo que o snapshot grava é reposto na restauração', () => {
+    // Era um defeito: `step`, `model` e `language` eram gravados e nunca
+    // repostos. `language` é o idioma do texto DENTRO da arte — um projeto
+    // salvo em inglês voltava como pt-BR sem aviso.
     const i = fonte.indexOf('const restoreProjectState');
     const restore = fonte.slice(i, fonte.indexOf('\n  };', i));
     const semRestauro = CAMPOS_DO_SNAPSHOT.filter((c) => {
       const setter = `set${c[0].toUpperCase()}${c.slice(1)}`;
       return !restore.includes(setter);
     });
-    expect(semRestauro).toEqual(['step', 'model', 'language']);
+    expect(semRestauro).toEqual([]);
   });
 
   it('não serializa imagem em base64', () => {
@@ -113,24 +109,17 @@ describe('integrações que não podem sumir', () => {
     expect(esperadas.filter((f) => !fonte.includes(`invoke('${f}'`))).toEqual([]);
   });
 
-  it('só a geração declara timeout — edição e Fator NÃO', () => {
-    // Caracterização de defeito, não de acerto. `criativo-generate` ganhou
-    // timeout depois de a página travar em geração perdida; `criativo-edit-image`
-    // e `criativo-fator` ficaram de fora e podem pendurar a interface
-    // indefinidamente. Corrigir isto faz o teste falhar — atualize a lista.
+  it('toda chamada de geração, edição e Fator declara timeout', () => {
+    // Sem teto, uma chamada perdida pendura a interface para sempre. A
+    // geração ganhou o dela depois de a página travar; edição e Fator
+    // tinham ficado de fora.
     const chamadas = [...fonte.matchAll(/invoke\('criativo-[a-z-]+'/g)];
-    const comTimeout: string[] = [];
-    const semTimeout: string[] = [];
-
-    for (const m of chamadas) {
-      const nome = m[0].replace("invoke('", '').replace("'", '');
-      if (!/generate|edit-image|fator/.test(nome)) continue;
+    const semTimeout = chamadas.filter((m) => {
+      if (!/generate|edit-image|fator/.test(m[0])) return false;
       const proxima = chamadas.find((o) => o.index! > m.index!)?.index ?? fonte.length;
-      (fonte.slice(m.index!, proxima).includes('timeout:') ? comTimeout : semTimeout).push(nome);
-    }
-
-    expect([...new Set(comTimeout)].sort()).toEqual(['criativo-generate']);
-    expect([...new Set(semTimeout)].sort()).toEqual(['criativo-edit-image', 'criativo-fator']);
+      return !fonte.slice(m.index!, proxima).includes('timeout:');
+    });
+    expect(semTimeout.map((m) => m[0])).toEqual([]);
   });
 
   it('erro de edge function é extraído do corpo', () => {
@@ -157,6 +146,27 @@ describe('linhagem de assets', () => {
     expect(i).toBeGreaterThan(-1);
     const bloco = fonte.slice(i, fonte.indexOf('\n  };', i));
     expect(bloco).toContain('aspectReference: asset.url');
+  });
+
+  it('o snapshot guarda as âncoras de linhagem', () => {
+    // Sem os IDs no snapshot, restaurar um projeto e editar criava asset
+    // órfão com parent_asset_id nulo, e o Fator montava grupo sem pai.
+    const bloco = blocoDoSnapshot();
+    for (const id of ['mainStoryAssetId', 'mainSquareAssetId', 'factorAssetIds', 'factorSquareAssetIds']) {
+      expect(bloco).toContain(id);
+    }
+  });
+
+  it('projeto salvo antes disso recupera os IDs pela URL', () => {
+    // A correção precisa alcançar os projetos que já existem, senão só vale
+    // para os novos. A URL é o elo entre o snapshot antigo e a linha do asset.
+    const i = fonte.indexOf('const reconcileAssetIdsByUrl');
+    expect(i).toBeGreaterThan(-1);
+    const bloco = fonte.slice(i, fonte.indexOf('\n  };', i));
+    expect(bloco).toContain("from('creative_assets')");
+    expect(bloco).toContain('.in(');
+    // Reparo oportunista: falhar aqui não pode impedir o projeto de abrir.
+    expect(bloco).toContain('catch');
   });
 
   it('o Fator agrupa as cinco variações num lote', () => {
