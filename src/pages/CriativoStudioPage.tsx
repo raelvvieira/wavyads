@@ -37,6 +37,7 @@ import {
   createCreativeAsset,
 } from '@/features/creative-studio/api/creativeAssets';
 import { buildCreativePrompt, buildSafeZoneBlock } from '@/features/creative-studio/lib/promptBuilder';
+import { pickThumbnailUrl, readProjectSnapshot } from '@/features/creative-studio/state/projectSnapshot';
 import {
   Sparkles,
   Wand2,
@@ -629,7 +630,7 @@ export default function CriativoStudioPage() {
       // data: URI (base64 gigante) — nunca usar isso como thumbnail_url, que é
       // lido em massa na lista do histórico. Cada candidato é checado
       // independente (não para no primeiro truthy).
-      const thumb = [storyImage, squareImage].find((u) => u && !u.startsWith('data:')) || null;
+      const thumb = pickThumbnailUrl([storyImage, squareImage]);
       await db
         .from('creative_projects')
         .update({
@@ -662,50 +663,53 @@ export default function CriativoStudioPage() {
     }
   };
 
+  /**
+   * Repõe o estado na interface. A leitura e os padrões vivem em
+   * `readProjectSnapshot` — aqui fica só a fiação dos setters, para que a
+   * tolerância a snapshots antigos seja testável fora do componente.
+   */
   const restoreProjectState = (state: any) => {
-    setCurrentStage(state.currentStage || 'initial');
-    setRightPanelMode(state.rightPanelMode || 'none');
-    setConversationMessages(state.conversationMessages || []);
-    setInitialPrompt(state.initialPrompt || '');
-    setSelectedAspectRatio((state.selectedAspectRatio || '4:5') as CreativeAspectRatio);
-    setSelectedResolution((state.selectedResolution || '4K') as CreativeResolution);
-    setRefImages(state.refImages || []);
-    setAnalysis(state.analysis || null);
-    setEditedDoc(state.editedDoc || '');
-    setRawCopy(state.rawCopy || '');
-    setCopyVariations(state.copyVariations || []);
-    setSelectedVariationIdx(state.selectedVariationIdx ?? null);
-    setCopyApproved(!!state.copyApproved);
-    setCopySource(state.copySource || 'ai');
-    setSuggestedRawCopy(state.suggestedRawCopy || '');
-    setProductUrl(state.productUrl || '');
-    setUrlContext(state.urlContext || null);
-    setLogoImage(state.logoImage || []);
-    setProductImages(state.productImages || []);
-    setPreserveFaces(state.preserveFaces ?? true);
-    setBusinessContext(state.businessContext || '');
-    setNegativePrompt(state.negativePrompt || '');
-    setStoryImage(state.storyImage || null);
-    setSquareImage(state.squareImage || null);
-    setMainStoryAssetId(state.mainStoryAssetId || null);
-    setMainSquareAssetId(state.mainSquareAssetId || null);
-    setFactorAssetIds(state.factorAssetIds || [null, null, null, null, null]);
-    setFactorSquareAssetIds(state.factorSquareAssetIds || [null, null, null, null, null]);
-    setFactorVariations(state.factorVariations || null);
-    setFactorImages(state.factorImages || []);
-    setFactorErrors(state.factorErrors || []);
-    setFactorSquareImages(state.factorSquareImages || [null, null, null, null, null]);
-    setEditedVersions(state.editedVersions || {});
-    setProjectTitle(state.projectTitle || state.initialPrompt?.slice(0, 60) || 'Novo criativo');
-    setSelectedTemplateId(state.selectedTemplateId || null);
-    setSelectedTemplate(state.selectedTemplate || null);
-    setSelectedClientId(state.selectedClientId || null);
-    // Estes três eram gravados e nunca repostos. `language` é o idioma do
-    // texto DENTRO da arte: um projeto salvo em inglês voltava como pt-BR e a
-    // próxima geração saía no idioma errado, sem aviso nenhum.
-    setStep(typeof state.step === 'number' ? state.step : 0);
-    setModel(state.model || 'gemini-3.1-flash-image-preview');
-    setLanguage(state.language || 'pt-BR');
+    const s = readProjectSnapshot(state);
+    setCurrentStage(s.currentStage as CurrentStage);
+    setRightPanelMode(s.rightPanelMode as RightPanelMode);
+    setConversationMessages(s.conversationMessages);
+    setInitialPrompt(s.initialPrompt);
+    setSelectedAspectRatio(s.selectedAspectRatio);
+    setSelectedResolution(s.selectedResolution);
+    setStep(s.step);
+    setRefImages(s.refImages);
+    setAnalysis(s.analysis);
+    setEditedDoc(s.editedDoc);
+    setRawCopy(s.rawCopy);
+    setCopyVariations(s.copyVariations);
+    setSelectedVariationIdx(s.selectedVariationIdx);
+    setCopyApproved(s.copyApproved);
+    setCopySource(s.copySource as any);
+    setSuggestedRawCopy(s.suggestedRawCopy);
+    setProductUrl(s.productUrl);
+    setUrlContext(s.urlContext);
+    setLogoImage(s.logoImage);
+    setProductImages(s.productImages);
+    setPreserveFaces(s.preserveFaces);
+    setModel(s.model as any);
+    setLanguage(s.language);
+    setBusinessContext(s.businessContext);
+    setNegativePrompt(s.negativePrompt);
+    setStoryImage(s.storyImage);
+    setSquareImage(s.squareImage);
+    setMainStoryAssetId(s.mainStoryAssetId);
+    setMainSquareAssetId(s.mainSquareAssetId);
+    setFactorAssetIds(s.factorAssetIds);
+    setFactorSquareAssetIds(s.factorSquareAssetIds);
+    setFactorVariations(s.factorVariations as any);
+    setFactorImages(s.factorImages);
+    setFactorErrors(s.factorErrors);
+    setFactorSquareImages(s.factorSquareImages);
+    setEditedVersions(s.editedVersions);
+    setProjectTitle(s.projectTitle);
+    setSelectedTemplateId(s.selectedTemplateId);
+    setSelectedTemplate(s.selectedTemplate);
+    setSelectedClientId(s.selectedClientId);
   };
 
   /**
