@@ -40,6 +40,16 @@ import { buildCreativePrompt, buildSafeZoneBlock } from '@/features/creative-stu
 import { pickThumbnailUrl, readProjectSnapshot } from '@/features/creative-studio/state/projectSnapshot';
 import { editKey, factorKey, mainKey, resolveAssetId } from '@/features/creative-studio/state/assetKeys';
 import {
+  archiveProject,
+  createProject,
+  duplicateProject,
+  findAssetIdsByUrl,
+  listRecentProjects,
+  loadProject,
+  saveProjectSnapshot,
+  updateProjectMeta,
+} from '@/features/creative-studio/api/projectRepository';
+import {
   Sparkles,
   Wand2,
   Loader2,
@@ -540,29 +550,21 @@ export default function CriativoStudioPage() {
 
   const createCreativeProject = async () => {
     if (currentProjectId) return currentProjectId;
-    const userId = await getCurrentUserId();
     const title = buildProjectTitle();
-    const { data, error } = await db
-      .from('creative_projects')
-      .insert({
-        title,
-        initial_prompt: initialPrompt,
-        current_stage: currentStage,
-        selected_aspect_ratio: selectedAspectRatio,
-        selected_resolution: selectedResolution,
-        language,
-        model,
-        status: 'in_progress',
-        user_id: userId,
-        created_by: userId,
-        client_id: selectedClientId,
-      })
-      .select('id,title')
-      .single();
-    if (error) throw error;
-    setCurrentProjectId(data.id);
-    setProjectTitle(data.title || title);
-    return data.id as string;
+    const { id, title: savedTitle } = await createProject({
+      title,
+      initialPrompt,
+      currentStage,
+      aspectRatio: selectedAspectRatio,
+      resolution: selectedResolution,
+      language,
+      model,
+      userId: await getCurrentUserId(),
+      clientId: selectedClientId,
+    });
+    setCurrentProjectId(id);
+    setProjectTitle(savedTitle || title);
+    return id;
   };
 
   const buildProjectStateSnapshot = () => ({
@@ -617,30 +619,23 @@ export default function CriativoStudioPage() {
       setSavingProject(true);
       const projectId = currentProjectId || await createCreativeProject();
       const snapshot = buildProjectStateSnapshot();
-      await db
-        .from('creative_project_state')
-        .upsert({ project_id: projectId, state_json: snapshot, updated_at: new Date().toISOString() }, { onConflict: 'project_id' });
+      await saveProjectSnapshot(projectId, snapshot);
       // Se o upload pro Storage falhou, storyImage/squareImage podem estar como
       // data: URI (base64 gigante) — nunca usar isso como thumbnail_url, que é
       // lido em massa na lista do histórico. Cada candidato é checado
       // independente (não para no primeiro truthy).
-      const thumb = pickThumbnailUrl([storyImage, squareImage]);
-      await db
-        .from('creative_projects')
-        .update({
-          title: buildProjectTitle(),
-          initial_prompt: initialPrompt,
-          current_stage: currentStage,
-          selected_aspect_ratio: selectedAspectRatio,
-          selected_resolution: selectedResolution,
-          language,
-          model,
-          thumbnail_url: thumb,
-          status: storyImage || squareImage ? 'generated' : 'in_progress',
-          client_id: selectedClientId,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', projectId);
+      await updateProjectMeta(projectId, {
+        title: buildProjectTitle(),
+        initialPrompt,
+        currentStage,
+        aspectRatio: selectedAspectRatio,
+        resolution: selectedResolution,
+        language,
+        model,
+        thumbnailUrl: pickThumbnailUrl([storyImage, squareImage]),
+        hasArtwork: !!(storyImage || squareImage),
+        clientId: selectedClientId,
+      });
       const savedAt = new Date().toISOString();
       setLastSavedAt(savedAt);
       if (!options?.silent) toast({ title: 'Projeto salvo' });
@@ -746,14 +741,7 @@ export default function CriativoStudioPage() {
     if (alvos.length === 0) return;
 
     try {
-      const { data, error } = await db
-        .from('creative_assets')
-        .select('id,url')
-        .eq('project_id', projectId)
-        .in('url', alvos.map((a) => a.url));
-      if (error || !data) return;
-
-      const idPorUrl = new Map<string, string>(data.map((r: any) => [r.url, r.id]));
+      const idPorUrl = await findAssetIdsByUrl(projectId, alvos.map((a) => a.url));
       for (const alvo of alvos) {
         const id = idPorUrl.get(alvo.url);
         if (id) alvo.aplicar(id);
@@ -766,18 +754,15 @@ export default function CriativoStudioPage() {
   const loadCreativeProject = async (projectId: string) => {
     setLoadingProject(true);
     try {
-      const { data: project, error: projectError } = await db.from('creative_projects').select('*').eq('id', projectId).single();
-      if (projectError) throw projectError;
-      const { data: stateRow, error: stateError } = await db.from('creative_project_state').select('state_json').eq('project_id', projectId).single();
-      if (stateError && stateError.code !== 'PGRST116') throw stateError;
+      const { project, snapshot } = await loadProject(projectId);
       setCurrentProjectId(projectId);
       setProjectTitle(project?.title || 'Novo criativo');
-      const snapshot = stateRow?.state_json || {};
-      restoreProjectState(snapshot);
-      // Projetos salvos antes desta correção não têm os IDs no snapshot.
-      await reconcileAssetIdsByUrl(projectId, snapshot);
-      // client_id da coluna própria é a fonte de verdade (projetos antigos podem
-      // não ter selectedClientId no state_json).
+      restoreProjectState(snapshot || {});
+      // Projetos salvos antes desta correção não têm as âncoras de linhagem
+      // no snapshot; sem isto, editá-los continuaria criando arte órfã.
+      await reconcileAssetIdsByUrl(projectId, snapshot || {});
+      // client_id da coluna própria é a fonte de verdade (projetos antigos
+      // podem não ter selectedClientId no state_json).
       setSelectedClientId(project?.client_id || null);
       setLastSavedAt(project?.updated_at || null);
       toast({ title: 'Projeto carregado' });
@@ -791,14 +776,7 @@ export default function CriativoStudioPage() {
   const fetchProjectHistory = async () => {
     setProjectHistoryLoading(true);
     try {
-      const { data, error } = await db
-        .from('creative_projects')
-        .select('id,title,status,selected_aspect_ratio,selected_resolution,thumbnail_url,updated_at')
-        .neq('status', 'archived')
-        .order('updated_at', { ascending: false })
-        .limit(30);
-      if (error) throw error;
-      setProjectHistory(data || []);
+      setProjectHistory(await listRecentProjects());
     } catch (e: any) {
       toast({ title: 'Erro ao buscar histórico', description: e?.message || 'Não foi possível listar projetos.', variant: 'destructive' });
     } finally {
@@ -808,8 +786,7 @@ export default function CriativoStudioPage() {
 
   const archiveCreativeProject = async (projectId: string) => {
     try {
-      const { error } = await db.from('creative_projects').update({ status: 'archived' }).eq('id', projectId);
-      if (error) throw error;
+      await archiveProject(projectId);
       await fetchProjectHistory();
       toast({ title: 'Projeto arquivado' });
     } catch (e: any) {
@@ -819,32 +796,7 @@ export default function CriativoStudioPage() {
 
   const duplicateCreativeProject = async (projectId: string) => {
     try {
-      const { data: project, error: projectError } = await db.from('creative_projects').select('*').eq('id', projectId).single();
-      if (projectError) throw projectError;
-      const { data: stateRow } = await db.from('creative_project_state').select('state_json').eq('project_id', projectId).single();
-      const userId = await getCurrentUserId();
-      const { data: duplicated, error: duplicateError } = await db
-        .from('creative_projects')
-        .insert({
-          title: `${project.title} cópia`,
-          initial_prompt: project.initial_prompt,
-          current_stage: project.current_stage,
-          selected_aspect_ratio: project.selected_aspect_ratio,
-          selected_resolution: project.selected_resolution,
-          language: project.language,
-          model: project.model,
-          thumbnail_url: project.thumbnail_url,
-          status: 'in_progress',
-          user_id: userId,
-          created_by: userId,
-          client_id: project.client_id,
-        })
-        .select('id')
-        .single();
-      if (duplicateError) throw duplicateError;
-      if (stateRow?.state_json) {
-        await db.from('creative_project_state').insert({ project_id: duplicated.id, state_json: stateRow.state_json });
-      }
+      await duplicateProject(projectId, await getCurrentUserId());
       await fetchProjectHistory();
       toast({ title: 'Projeto duplicado' });
     } catch (e: any) {
@@ -1432,12 +1384,11 @@ export default function CriativoStudioPage() {
       }
       const { error: usageError } = await db.from('creative_templates').update({ usage_count: (template.usage_count || 0) + 1 }).eq('id', template.id);
       if (usageError) console.error('Falha ao incrementar usage_count do template', usageError);
-      const { error: stateError } = await db.from('creative_project_state').upsert({
-        project_id: projectId,
-        state_json: { ...buildProjectStateSnapshot(), selectedTemplateId: template.id, selectedTemplate: template },
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'project_id' });
-      if (stateError) throw stateError;
+      await saveProjectSnapshot(projectId, {
+        ...buildProjectStateSnapshot(),
+        selectedTemplateId: template.id,
+        selectedTemplate: template,
+      });
       setCurrentStage('copy');
       setRightPanelMode('template-applied');
       addAssistantMessage(`Template aplicado: ${template.name}. Agora podemos adaptar copy, produto, avatar e referências para criar uma nova versão.`, [

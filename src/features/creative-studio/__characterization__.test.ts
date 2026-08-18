@@ -158,15 +158,24 @@ describe('linhagem de assets', () => {
   });
 
   it('projeto salvo antes disso recupera os IDs pela URL', () => {
-    // A correção precisa alcançar os projetos que já existem, senão só vale
-    // para os novos. A URL é o elo entre o snapshot antigo e a linha do asset.
+    // A consulta em si mudou de lugar (agora é `findAssetIdsByUrl`, no
+    // repositório, com teste de comportamento próprio). O que importa aqui é
+    // que a página continue chamando a reconciliação ao abrir um projeto —
+    // sem isso, projeto antigo volta a produzir arte órfã.
     const i = fonte.indexOf('const reconcileAssetIdsByUrl');
     expect(i).toBeGreaterThan(-1);
     const bloco = fonte.slice(i, fonte.indexOf('\n  };', i));
-    expect(bloco).toContain("from('creative_assets')");
-    expect(bloco).toContain('.in(');
+    expect(bloco).toContain('findAssetIdsByUrl');
     // Reparo oportunista: falhar aqui não pode impedir o projeto de abrir.
     expect(bloco).toContain('catch');
+    expect(fonte).toContain('await reconcileAssetIdsByUrl(projectId');
+  });
+
+  it('a página não fala direto com as tabelas de projeto', () => {
+    // Depois da extração, todo acesso passa pelo repositório. Uma consulta
+    // solta aqui é sinal de que alguém contornou a camada.
+    expect(fonte).not.toContain("from('creative_projects')");
+    expect(fonte).not.toContain("from('creative_project_state')");
   });
 
   it('o Fator agrupa as cinco variações num lote', () => {
