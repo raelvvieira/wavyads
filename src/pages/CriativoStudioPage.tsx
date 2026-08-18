@@ -39,6 +39,7 @@ import {
 import { buildCreativePrompt, buildSafeZoneBlock } from '@/features/creative-studio/lib/promptBuilder';
 import { pickThumbnailUrl, readProjectSnapshot } from '@/features/creative-studio/state/projectSnapshot';
 import { editKey, factorKey, mainKey, resolveAssetId } from '@/features/creative-studio/state/assetKeys';
+import { parseStudioAction, type StudioActionId } from '@/features/creative-studio/state/studioActions';
 import {
   archiveProject,
   createProject,
@@ -157,7 +158,8 @@ interface SelectedAsset {
 
 type ConversationAction = {
   label: string;
-  action: string;
+  /** Vocabulário tipado: id desconhecido não compila mais. */
+  action: StudioActionId;
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   disabled?: boolean;
 };
@@ -2376,7 +2378,7 @@ export default function CriativoStudioPage() {
     else await generate(backendAspect);
   };
 
-  const handleQuickAction = async (action: string) => {
+  const handleQuickAction = async (action: StudioActionId) => {
     switch (action) {
       case 'open-upload-references':
         setCurrentStage('references');
@@ -2556,7 +2558,9 @@ export default function CriativoStudioPage() {
     setArtSavedToIntelligence(false);
   };
 
-  const progressItems = [
+  // O tipo explícito é o que faz o compilador cobrar o vocabulário aqui
+  // também: sem ele, o ternário produz `string` e o id errado passaria.
+  const progressItems: { label: string; done: boolean; current: boolean; note: string; action: StudioActionId }[] = [
     { label: 'Referências', done: !!analysis, current: ['references', 'reference-review'].includes(currentStage), note: analysis ? 'pronta' : 'opcional', action: analysis ? 'open-design-system' : 'open-upload-references' },
     { label: 'Copy', done: copyApproved, current: currentStage === 'copy', note: copyApproved ? 'aprovada' : 'pendente', action: copyApproved ? 'open-paste-copy' : 'generate-copy-now' },
     {
