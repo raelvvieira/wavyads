@@ -1,16 +1,15 @@
 import { useMemo, useState } from 'react';
 import { Grid3x3, GitBranch } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { CreativeAsset } from '../types/creative';
-import type { CanvasViewMode, SidePanelMode, StudioLibraryEntry, StudioLibraryId } from '../types/studioUi';
+import type { CreativeAsset, CreativeAspectRatio, CreativeResolution } from '../types/creative';
+import type { CanvasViewMode, DockAttachment, SidePanelMode, StudioLibraryEntry, StudioLibraryId } from '../types/studioUi';
 import type { SelectionAction } from '../state/canvasSelectors';
 import { summarizeSelection } from '../state/canvasSelectors';
 import { StudioTopBar, type StudioFilterChip } from './StudioTopBar';
 import { StudioLibraryIsland } from './StudioLibraryIsland';
 import { CreativeCanvas } from '../canvas/CreativeCanvas';
-import { CommandDock, type DockAttachment } from '../command/CommandDock';
+import { CommandDock } from '../command/CommandDock';
 import { AssetInspector } from '../inspector/AssetInspector';
-import type { CreativeAspectRatio } from '../types/creative';
 
 export interface CreativeStudioShellProps {
   projectName: string;
@@ -39,11 +38,17 @@ export interface CreativeStudioShellProps {
   busy: boolean;
   hasCopy: boolean;
   ratio: CreativeAspectRatio;
+  resolution: CreativeResolution;
+  modelId: string;
   quantity?: number;
   attachments: DockAttachment[];
   onRemoveAttachment: (id: string) => void;
-  onOpenAttachments: () => void;
-  onOpenSettings: () => void;
+  onAttach: (attachment: DockAttachment) => void;
+  onRatioChange: (ratio: CreativeAspectRatio) => void;
+  onResolutionChange: (resolution: CreativeResolution) => void;
+  onModelChange: (modelId: string) => void;
+  /** Já filtrada por `type: 'reference'` — alimenta o menu de anexos. */
+  referenceLibrary: CreativeAsset[];
   onAssetAction: (action: SelectionAction, assets: CreativeAsset[]) => void;
 }
 
@@ -157,12 +162,17 @@ export function CreativeStudioShell(props: CreativeStudioShellProps) {
             busy={props.busy}
             hasCopy={props.hasCopy}
             ratio={props.ratio}
+            resolution={props.resolution}
+            modelId={props.modelId}
             quantity={props.quantity}
             selection={resumo}
             attachments={props.attachments}
             onRemoveAttachment={props.onRemoveAttachment}
-            onOpenAttachments={props.onOpenAttachments}
-            onOpenSettings={props.onOpenSettings}
+            onAttach={props.onAttach}
+            onRatioChange={props.onRatioChange}
+            onResolutionChange={props.onResolutionChange}
+            onModelChange={props.onModelChange}
+            referenceLibrary={props.referenceLibrary}
             onOpenCopilot={() => setSidePanel('copilot')}
           />
         </div>

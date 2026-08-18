@@ -38,7 +38,7 @@ vi.mock('@/integrations/supabase/client', () => ({
 
 const {
   createProject, listRecentProjects, loadProject, saveProjectSnapshot,
-  archiveProject, duplicateProject, findAssetIdsByUrl,
+  archiveProject, duplicateProject, findAssetIdsByUrl, updateProjectFormat,
 } = await import('./projectRepository');
 
 const projetoBase = {
@@ -169,5 +169,26 @@ describe('saveProjectSnapshot e archiveProject', () => {
     respostas = [{ data: null, error: null }];
     await archiveProject('p1');
     expect(chamadas.find((c) => c.op === 'update')!.args[0]).toEqual({ status: 'archived' });
+  });
+});
+
+describe('updateProjectFormat', () => {
+  it('grava só formato e resolução — não o projeto inteiro', async () => {
+    // updateProjectMeta pede título, prompt, cliente... Este é o patch
+    // cirúrgico para quando só o formato mudou, sem arriscar sobrescrever
+    // o resto com um valor errado.
+    respostas = [{ data: null, error: null }];
+    await updateProjectFormat('p1', { aspectRatio: '9:16', resolution: '4K' });
+
+    const update = chamadas.find((c) => c.op === 'update')!.args[0] as any;
+    expect(update.selected_aspect_ratio).toBe('9:16');
+    expect(update.selected_resolution).toBe('4K');
+    expect('title' in update).toBe(false);
+    expect(chamadas.find((c) => c.op === 'eq')!.args).toEqual(['id', 'p1']);
+  });
+
+  it('propaga erro do banco', async () => {
+    respostas = [{ data: null, error: new Error('rls') }];
+    await expect(updateProjectFormat('p1', { aspectRatio: '4:5', resolution: '2K' })).rejects.toThrow('rls');
   });
 });

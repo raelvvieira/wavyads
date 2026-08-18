@@ -91,6 +91,35 @@ describe('generate', () => {
     await createStudioAssetActions(deps).generate('x', '4:5');
     expect(deps.ensureProjectId).toHaveBeenCalledTimes(1);
   });
+
+  it('logo e produtos anexados chegam ao corpo da chamada e ficam salvos na linha', async () => {
+    // Salvar em `metadata` é o que permite o retry devolver os mesmos
+    // anexos — o prompt só MENCIONA o logo, nunca guarda a URL.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'u' }, error: null });
+
+    await createStudioAssetActions(deps).generate('x', '4:5', {
+      logoImageUrl: 'https://x/logo.png',
+      productImageUrls: ['https://x/p1.png'],
+    });
+
+    expect(deps.invoke).toHaveBeenCalledWith('criativo-generate', expect.objectContaining({
+      logoImage: 'https://x/logo.png',
+      productImages: ['https://x/p1.png'],
+    }), expect.any(Number));
+    const linha = [...deps.linhas.values()][0];
+    expect(linha.metadata).toEqual({ logoImage: 'https://x/logo.png', productImages: ['https://x/p1.png'] });
+  });
+
+  it('copy anexada renderiza literal — muda o prompt salvo na linha', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'u' }, error: null });
+
+    await createStudioAssetActions(deps).generate('lançamento', '4:5', { copy: 'Só hoje: 50% OFF' });
+
+    const linha = [...deps.linhas.values()][0];
+    expect(linha.prompt).toContain('Só hoje: 50% OFF');
+  });
 });
 
 describe('retry', () => {
@@ -112,6 +141,23 @@ describe('retry', () => {
     const deps = fakeDeps();
     const semPrompt = assetBase({ id: 'f2', status: 'failed', prompt: null });
     await expect(createStudioAssetActions(deps).retry(semPrompt)).rejects.toThrow(/prompt salvo/);
+  });
+
+  it('retentar devolve os mesmos anexos da geração original', async () => {
+    const deps = fakeDeps();
+    const falhouComAnexos = assetBase({
+      id: 'f3', status: 'failed',
+      metadata: { logoImage: 'https://x/logo.png', productImages: ['https://x/p1.png'] },
+    });
+    deps.linhas.set('f3', falhouComAnexos);
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/ok.png' }, error: null });
+
+    await createStudioAssetActions(deps).retry(falhouComAnexos);
+
+    expect(deps.invoke).toHaveBeenCalledWith('criativo-generate', expect.objectContaining({
+      logoImage: 'https://x/logo.png',
+      productImages: ['https://x/p1.png'],
+    }), expect.any(Number));
   });
 });
 

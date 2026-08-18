@@ -76,6 +76,22 @@ export const FACTOR_AXIS_LABELS: Record<FactorAxis, string> = {
   structure: 'Estrutura',
 };
 
+export const ASSET_STATUS_LABELS: Record<CreativeAssetStatus, string> = {
+  queued: 'Na fila',
+  generating: 'Gerando',
+  ready: 'Pronta',
+  failed: 'Falhou',
+};
+
+/** Rótulo de exibição do tipo — só os que o Canvas desenha têm um aqui. */
+export const ASSET_ORIGIN_LABELS: Partial<Record<CreativeAssetType, string>> = {
+  original: 'Geração original',
+  factor: 'Fator Criativo',
+  edited: 'Edição',
+  resize: 'Redimensionamento',
+  imported: 'Importada',
+};
+
 // A IA do Fator Criativo devolve o eixo em português livre ("Emocional",
 // "emoção", "Oferta"...). O banco guarda o valor canônico, então normalizamos
 // aqui — sem casar, grava null em vez de estourar o CHECK constraint.

@@ -21,9 +21,11 @@ vi.mock('@/features/creative-studio/api/creativeAssets', () => ({
 
 const listRecentProjects = vi.fn();
 const createProject = vi.fn();
+const updateProjectFormat = vi.fn();
 vi.mock('@/features/creative-studio/api/projectRepository', () => ({
   listRecentProjects: (...a: any[]) => listRecentProjects(...a),
   createProject: (...a: any[]) => createProject(...a),
+  updateProjectFormat: (...a: any[]) => updateProjectFormat(...a),
 }));
 
 const invoke = vi.fn();
@@ -64,6 +66,7 @@ describe('CriativoStudioV2Page', () => {
     vi.clearAllMocks();
     listCreativeAssets.mockResolvedValue(ASSETS_DO_PROJETO);
     listRecentProjects.mockResolvedValue([PROJETO]);
+    updateProjectFormat.mockResolvedValue(undefined);
   });
 
   it('desenha o acervo real do projeto mais recente', async () => {
@@ -116,6 +119,71 @@ describe('CriativoStudioV2Page', () => {
       body: expect.objectContaining({ formatRatio: '4:5' }),
     }));
     await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Arte gerada' })));
+  });
+
+  it('anexar copy pelo menu do clipe chega literal ao prompt da geração', async () => {
+    // Ponta a ponta: AttachMenu → onAttach → estado da página →
+    // handleSubmitCommand → actions.generate → buildGenerationRequest.
+    createCreativeAsset.mockResolvedValue({
+      id: 'nova', projectId: 'proj-1', clientId: null, type: 'original', status: 'generating',
+      url: null, thumbnailUrl: null, parentAssetId: null, rootAssetId: null, groupId: null,
+      factorAxis: null, aspectRatio: '4:5', resolution: '2K', width: null, height: null,
+      prompt: 'p', negativePrompt: null, model: 'gpt-image-2', errorMessage: null, filename: null,
+      isClientIntelligence: false, metadata: {},
+      createdAt: '2026-08-18T12:00:00.000Z', updatedAt: '2026-08-18T12:00:00.000Z',
+    } satisfies CreativeAsset);
+    invoke.mockResolvedValue({ data: { imageUrl: 'https://x/nova.png' }, error: null });
+    updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({ id, ...patch }));
+
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência, logo, copy ou arquivos' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar copy' }));
+    fireEvent.change(screen.getByPlaceholderText(/Cole o texto final/), {
+      target: { value: 'Até 50% OFF — só hoje' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar' }));
+
+    // A copy anexada basta — o Gerar libera mesmo com o dock vazio.
+    const botaoGerar = screen.getByRole('button', { name: 'Gerar' });
+    expect(botaoGerar).not.toBeDisabled();
+    await act(async () => { fireEvent.click(botaoGerar); });
+
+    const chamada = invoke.mock.calls.find((c) => c[0] === 'criativo-generate')!;
+    expect(chamada[1].body.prompt).toContain('Até 50% OFF — só hoje');
+
+    // Consumido: não sobra no dock depois do envio.
+    await waitFor(() => expect(screen.queryByText(/Até 50% OFF/)).toBeNull());
+  });
+
+  it('trocar o formato no popover de geração muda o próximo pedido e persiste no projeto', async () => {
+    createCreativeAsset.mockResolvedValue({
+      id: 'nova', projectId: 'proj-1', clientId: null, type: 'original', status: 'generating',
+      url: null, thumbnailUrl: null, parentAssetId: null, rootAssetId: null, groupId: null,
+      factorAxis: null, aspectRatio: '9:16', resolution: '2K', width: null, height: null,
+      prompt: 'p', negativePrompt: null, model: 'gpt-image-2', errorMessage: null, filename: null,
+      isClientIntelligence: false, metadata: {},
+      createdAt: '2026-08-18T12:00:00.000Z', updatedAt: '2026-08-18T12:00:00.000Z',
+    } satisfies CreativeAsset);
+    invoke.mockResolvedValue({ data: { imageUrl: 'https://x/nova.png' }, error: null });
+    updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({ id, ...patch }));
+
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir configurações de geração' }));
+    fireEvent.click(screen.getByRole('button', { name: '9:16' }));
+
+    expect(updateProjectFormat).toHaveBeenCalledWith('proj-1', { aspectRatio: '9:16', resolution: '2K' });
+
+    fireEvent.change(screen.getByPlaceholderText('O que você quer criar?'), { target: { value: 'story' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Gerar' }));
+    });
+
+    const chamada = invoke.mock.calls.find((c) => c[0] === 'criativo-generate')!;
+    expect(chamada[1].body.formatRatio).toBe('9:16');
   });
 
   it('gerar sem projeto ainda existente cria o projeto primeiro', async () => {

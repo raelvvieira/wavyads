@@ -31,3 +31,15 @@ export interface StudioLibraryEntry {
   /** Ausente quando a contagem ainda não é conhecida — 0 e "não sei" são coisas distintas. */
   count?: number;
 }
+
+/** O que o menu de anexos do dock sabe anexar. */
+export type DockAttachmentKind = 'reference' | 'logo' | 'copy' | 'file';
+
+export interface DockAttachment {
+  id: string;
+  kind: DockAttachmentKind;
+  label: string;
+  thumbnailUrl?: string | null;
+  /** URL para reference/logo/file; o texto em si para copy. */
+  value: string;
+}

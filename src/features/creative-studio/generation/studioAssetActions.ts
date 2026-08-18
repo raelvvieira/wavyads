@@ -29,8 +29,18 @@ export interface StudioAssetActionsDeps {
   recordUsage(usageKey: string): void;
 }
 
+export interface GenerationOptions {
+  resolution?: CreativeResolution;
+  /** Default `IMAGE_GENERATION_MODEL.id` — parametrizável para a Fase 7. */
+  modelId?: string;
+  /** Texto final anexado via "Anexar copy" — renderizado verbatim. */
+  copy?: string | null;
+  logoImageUrl?: string | null;
+  productImageUrls?: string[];
+}
+
 export interface StudioAssetActions {
-  generate(brief: string, aspectRatio: CreativeAspectRatio, resolution?: CreativeResolution): Promise<CreativeAsset>;
+  generate(brief: string, aspectRatio: CreativeAspectRatio, options?: GenerationOptions): Promise<CreativeAsset>;
   retry(asset: CreativeAsset): Promise<CreativeAsset>;
   edit(asset: CreativeAsset, feedback: string): Promise<CreativeAsset>;
   resize(asset: CreativeAsset): Promise<CreativeAsset>;
@@ -64,8 +74,16 @@ async function runGeneration(
 
 export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAssetActions {
   return {
-    async generate(brief, aspectRatio, resolution) {
-      const { prompt, body } = buildGenerationRequest({ brief, aspectRatio, resolution });
+    async generate(brief, aspectRatio, options = {}) {
+      const { prompt, body } = buildGenerationRequest({
+        brief,
+        aspectRatio,
+        resolution: options.resolution,
+        modelId: options.modelId,
+        copy: options.copy,
+        logoImageUrl: options.logoImageUrl,
+        productImageUrls: options.productImageUrls,
+      });
       const projectId = await deps.ensureProjectId();
       const row = await deps.createAsset({
         projectId,
@@ -73,9 +91,16 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
         type: 'original',
         status: 'generating',
         aspectRatio,
-        resolution: resolution ?? '2K',
+        resolution: options.resolution ?? '2K',
         prompt,
-        model: IMAGE_GENERATION_MODEL.id,
+        model: options.modelId ?? IMAGE_GENERATION_MODEL.id,
+        // As URLs dos anexos não sobrevivem no PROMPT — ele só MENCIONA
+        // logo/produto ("a brand logo is provided..."). Guardar aqui é o
+        // que permite o retry devolver os mesmos anexos.
+        metadata: {
+          logoImage: options.logoImageUrl ?? null,
+          productImages: options.productImageUrls ?? [],
+        },
       });
       return runGeneration(deps, row, body);
     },
@@ -84,7 +109,12 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
       // Mesma linha, não uma nova: a arte que falhou não deixou artefato
       // nenhum, então tentar de novo é completar o que já existe, não criar
       // outra pendência ao lado dela.
-      const { body } = buildRetryRequest(asset);
+      const { body } = buildRetryRequest({
+        prompt: asset.prompt,
+        aspectRatio: asset.aspectRatio,
+        logoImage: asset.metadata?.logoImage ?? null,
+        productImages: asset.metadata?.productImages ?? [],
+      });
       const retomada = await deps.updateAsset(asset.id, { status: 'generating', errorMessage: null });
       return runGeneration(deps, retomada, body);
     },

@@ -1,15 +1,14 @@
 import { useEffect, useRef } from 'react';
 import { ArrowUp, Loader2, MessageSquare, Paperclip, Settings2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { CreativeAspectRatio } from '../types/creative';
+import type { CreativeAspectRatio, CreativeAsset, CreativeResolution } from '../types/creative';
+import type { DockAttachment } from '../types/studioUi';
 import { describeGeneration } from '../generation/capabilities';
 import { canGenerate, type SelectionSummary } from '../state/canvasSelectors';
+import { AttachMenu } from './AttachMenu';
+import { GenerationSettingsPopover } from './GenerationSettingsPopover';
 
-export interface DockAttachment {
-  id: string;
-  label: string;
-  thumbnailUrl?: string | null;
-}
+export type { DockAttachment, DockAttachmentKind } from '../types/studioUi';
 
 interface CommandDockProps {
   value: string;
@@ -18,12 +17,18 @@ interface CommandDockProps {
   busy: boolean;
   hasCopy: boolean;
   ratio: CreativeAspectRatio;
+  resolution: CreativeResolution;
+  modelId: string;
   quantity?: number;
   selection: SelectionSummary;
   attachments: DockAttachment[];
   onRemoveAttachment: (id: string) => void;
-  onOpenAttachments: () => void;
-  onOpenSettings: () => void;
+  onAttach: (attachment: DockAttachment) => void;
+  onRatioChange: (ratio: CreativeAspectRatio) => void;
+  onResolutionChange: (resolution: CreativeResolution) => void;
+  onModelChange: (modelId: string) => void;
+  /** Já filtrada por `type: 'reference'` — alimenta o sub-painel de anexo. */
+  referenceLibrary: CreativeAsset[];
   onOpenCopilot: () => void;
 }
 
@@ -39,6 +44,11 @@ interface CommandDockProps {
  * A cápsula de configuração vem de `describeGeneration`, que só afirma o que
  * o pedido realmente carrega. Ela não repete o modelo do seletor da tela
  * antiga, que hoje não é o modelo que gera.
+ *
+ * O clipe e a cápsula abrem popovers de verdade, não um callback de disparo
+ * único — `Popover`/`PopoverTrigger` precisa envolver o botão real, então
+ * `AttachMenu`/`GenerationSettingsPopover` vivem aqui dentro, não num
+ * componente irmão que só saberia "abrir".
  */
 export function CommandDock({
   value,
@@ -47,12 +57,17 @@ export function CommandDock({
   busy,
   hasCopy,
   ratio,
+  resolution,
+  modelId,
   quantity,
   selection,
   attachments,
   onRemoveAttachment,
-  onOpenAttachments,
-  onOpenSettings,
+  onAttach,
+  onRatioChange,
+  onResolutionChange,
+  onModelChange,
+  referenceLibrary,
   onOpenCopilot,
 }: CommandDockProps) {
   const textarea = useRef<HTMLTextAreaElement>(null);
@@ -91,15 +106,16 @@ export function CommandDock({
       )}
 
       <div className="studio-dock-row">
-        <button
-          type="button"
-          onClick={onOpenAttachments}
-          aria-label="Anexar referência"
-          title="Anexar referência"
-          className="studio-dock-icon"
-        >
-          <Paperclip className="h-4 w-4" />
-        </button>
+        <AttachMenu referenceLibrary={referenceLibrary} onAttach={onAttach}>
+          <button
+            type="button"
+            aria-label="Anexar referência, logo, copy ou arquivos"
+            title="Anexar"
+            className="studio-dock-icon"
+          >
+            <Paperclip className="h-4 w-4" />
+          </button>
+        </AttachMenu>
 
         <textarea
           ref={textarea}
@@ -142,15 +158,23 @@ export function CommandDock({
       </div>
 
       <div className="studio-dock-row studio-dock-footer">
-        <button
-          type="button"
-          onClick={onOpenSettings}
-          className="studio-dock-summary"
-          aria-label="Abrir configurações de geração"
+        <GenerationSettingsPopover
+          ratio={ratio}
+          resolution={resolution}
+          modelId={modelId}
+          onRatioChange={onRatioChange}
+          onResolutionChange={onResolutionChange}
+          onModelChange={onModelChange}
         >
-          <Settings2 className="h-3.5 w-3.5" />
-          <span className="metric-number">{describeGeneration({ ratio, quantity })}</span>
-        </button>
+          <button
+            type="button"
+            className="studio-dock-summary"
+            aria-label="Abrir configurações de geração"
+          >
+            <Settings2 className="h-3.5 w-3.5" />
+            <span className="metric-number">{describeGeneration({ ratio, quantity })}</span>
+          </button>
+        </GenerationSettingsPopover>
 
         {selection.total > 0 && (
           <span className="text-[11px] text-white/50">
