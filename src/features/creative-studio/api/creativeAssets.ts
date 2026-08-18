@@ -177,3 +177,45 @@ export async function listCreativeAssets(
   if (error) throw error;
   return (data || []).map(mapAssetRow);
 }
+
+export interface UpdateCreativeAssetInput {
+  status?: CreativeAssetStatus;
+  url?: string | null;
+  thumbnailUrl?: string | null;
+  errorMessage?: string | null;
+  width?: number | null;
+  height?: number | null;
+  metadata?: Record<string, any>;
+}
+
+/**
+ * Atualiza um asset já gravado.
+ *
+ * Existe para o ciclo `queued/generating` → `ready`/`failed`: o V2 grava a
+ * linha ANTES de chamar a IA, para que a arte apareça no canvas gerando de
+ * verdade, e completa a mesma linha quando a resposta volta — em vez de só
+ * inserir no fim, que escondia qualquer falha a meio do caminho.
+ */
+export async function updateCreativeAsset(
+  id: string,
+  patch: UpdateCreativeAssetInput,
+): Promise<CreativeAsset> {
+  const row: Record<string, any> = {};
+  if (patch.status !== undefined) row.status = patch.status;
+  if (patch.url !== undefined) row.url = patch.url;
+  if (patch.thumbnailUrl !== undefined) row.thumbnail_url = patch.thumbnailUrl;
+  if (patch.errorMessage !== undefined) row.error_message = patch.errorMessage;
+  if (patch.width !== undefined) row.width = patch.width;
+  if (patch.height !== undefined) row.height = patch.height;
+  if (patch.metadata !== undefined) row.metadata = patch.metadata;
+
+  const { data, error } = await supabase
+    .from('creative_assets')
+    .update(row)
+    .eq('id', id)
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  return mapAssetRow(data);
+}
