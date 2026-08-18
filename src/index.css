@@ -379,7 +379,8 @@
       transform var(--wavy-duration-medium) var(--wavy-ease-fluid);
   }
 
-  .wavy-nav-island[data-expanded='true'] .wavy-nav-label {
+  .wavy-nav-island[data-expanded='true'] .wavy-nav-label,
+  .studio-library-island[data-expanded='true'] .wavy-nav-label {
     opacity: 1;
     transform: none;
     transition-delay: 70ms;
@@ -587,6 +588,666 @@
   .accent-glow-hover:hover {
     box-shadow: var(--wavy-shadow-card);
     border-color: var(--wavy-border-strong);
+  }
+
+  /* ---------------------------------------------------------------------
+     Criativo Studio V2 — as cinco regiões
+     ---------------------------------------------------------------------
+     Workspace, não página: a altura é a da viewport e quem rola é o canvas.
+     Se a página inteira rolasse, o dock sairia de cena justamente enquanto
+     o usuário procura a arte sobre a qual quer comandar.
+
+     O afastamento das colunas sai de variáveis locais para que o canvas
+     acompanhe a ilha de bibliotecas abrindo e o painel direito entrando —
+     nenhuma das duas pode cobrir o conteúdo. */
+  .studio-shell {
+    --studio-library-width: 68px;
+    --studio-side-panel-width: 0px;
+
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    /* `dvh` e não `vh`: no celular a barra de endereço muda a altura da
+       viewport, e `vh` deixaria o dock fora da tela. */
+    height: calc(100dvh - var(--wavy-page-pad) * 2);
+    min-height: 520px;
+    padding: var(--wavy-page-pad) 0;
+  }
+
+  .studio-shell[data-library-expanded='true'] {
+    --studio-library-width: 232px;
+  }
+
+  .studio-shell[data-side-panel='true'] {
+    --studio-side-panel-width: 320px;
+  }
+
+  /* Barra contextual: ilha, com a mesma folga das outras. */
+  .studio-topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    min-height: 56px;
+    padding: 8px 10px 8px 8px;
+    border-radius: var(--wavy-radius-feature);
+  }
+
+  .studio-topbar-search {
+    position: relative;
+    flex: 1 1 auto;
+    max-width: 420px;
+  }
+
+  .studio-body {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  /* Ilha de bibliotecas. Segunda ilha da tela, mais estreita que a
+     navegação do app para que a hierarquia entre as duas fique óbvia. */
+  .studio-library-island {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: var(--studio-library-width);
+    padding: 8px;
+    overflow: hidden;
+    border-radius: var(--wavy-radius-island);
+    background: var(--wavy-nav-sheen), var(--wavy-glass);
+    border: 1px solid var(--wavy-glass-border);
+    box-shadow: var(--wavy-shadow-island);
+    backdrop-filter: blur(24px) saturate(135%);
+    -webkit-backdrop-filter: blur(24px) saturate(135%);
+    transition: width var(--wavy-duration-panel) var(--wavy-ease-fluid);
+  }
+
+  .studio-library-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    /* `min-height: 0` é o que faz a lista rolar dentro da ilha em vez de
+       empurrar o botão de expandir para fora dela. */
+    min-height: 0;
+    overflow-y: auto;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .studio-library-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    height: 44px;
+    padding: 0 12px 0 0;
+    border-radius: var(--wavy-radius-large-control);
+    color: hsl(var(--wavy-ink) / 0.62);
+    transition: background var(--wavy-duration-fast) var(--wavy-ease),
+                color var(--wavy-duration-fast) var(--wavy-ease);
+  }
+
+  .studio-library-item:hover {
+    background: hsl(var(--wavy-ink) / 0.06);
+    color: hsl(var(--wavy-ink) / 0.92);
+  }
+
+  .studio-library-item:focus-visible {
+    outline: 2px solid var(--wavy-focus);
+    outline-offset: 2px;
+  }
+
+  .studio-library-item[data-active='true'] {
+    background: var(--wavy-nav-active-bg);
+    box-shadow: var(--wavy-nav-active-shadow);
+    color: hsl(var(--wavy-ink) / 0.96);
+  }
+
+  /* Largura fixa: o ícone não pode andar quando a ilha abre. */
+  .studio-library-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    flex-shrink: 0;
+  }
+
+  /* Região do canvas. O recuo à esquerda acompanha a ilha; à direita, o
+     painel do inspetor. */
+  .studio-canvas-region {
+    position: relative;
+    height: 100%;
+    padding-left: calc(var(--studio-library-width) + 20px);
+    padding-right: 0;
+    transition: padding var(--wavy-duration-panel) var(--wavy-ease-fluid);
+  }
+
+  .studio-shell[data-side-panel='true'] .studio-canvas-region {
+    padding-right: calc(var(--studio-side-panel-width) + 20px);
+  }
+
+  .studio-canvas-toolbar {
+    position: absolute;
+    left: calc(var(--studio-library-width) + 20px);
+    top: 0;
+    z-index: 15;
+    display: flex;
+    gap: 2px;
+    padding: 5px;
+    border-radius: var(--wavy-radius-pill);
+    transition: left var(--wavy-duration-panel) var(--wavy-ease-fluid);
+  }
+
+  .studio-canvas-scroll {
+    height: 100%;
+    overflow-y: auto;
+    /* Espaço no topo para a toolbar flutuante e, embaixo, para o dock —
+       sem isso a última fileira de artes nasce debaixo do comando. */
+    padding: 48px 4px 132px;
+  }
+
+  .studio-canvas-group + .studio-canvas-group {
+    margin-top: 26px;
+  }
+
+  .studio-canvas-group-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--wavy-border);
+  }
+
+  .studio-canvas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+    gap: 14px;
+    align-items: start;
+  }
+
+  .studio-canvas-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 0 24px 96px;
+    text-align: center;
+  }
+
+  /* Card de arte. SÓLIDO: vidro atrás de imagem do cliente falseia a cor
+     que ele vai publicar. */
+  .studio-asset-node {
+    position: relative;
+    margin: 0;
+    border-radius: var(--wavy-radius-card);
+  }
+
+  .studio-asset-surface {
+    display: block;
+    width: 100%;
+    /* Sem teto, um 9:16 estica a fileira inteira e deixa os 4:5 vizinhos
+       boiando num vão. A proporção continua real: o card encolhe na largura
+       em vez de ser cortado. */
+    max-height: 300px;
+    margin-inline: auto;
+    overflow: hidden;
+    border-radius: var(--wavy-radius-card);
+    background: var(--wavy-surface-raised);
+    border: 1px solid var(--wavy-border);
+    transition: border-color var(--wavy-duration-fast) var(--wavy-ease),
+                box-shadow var(--wavy-duration-fast) var(--wavy-ease),
+                transform var(--wavy-duration-fast) var(--wavy-ease);
+  }
+
+  .studio-asset-surface:hover {
+    border-color: var(--wavy-border-strong);
+    box-shadow: var(--wavy-shadow-card);
+  }
+
+  .studio-asset-surface:active {
+    transform: scale(0.985);
+  }
+
+  .studio-asset-surface:focus-visible {
+    outline: 2px solid var(--wavy-focus);
+    outline-offset: 2px;
+  }
+
+  /* Seleção não pode depender só de cor: o contorno duplo dá forma além do
+     matiz, e a marca de confirmação dá um terceiro sinal. */
+  .studio-asset-node[data-selected='true'] .studio-asset-surface {
+    border-color: var(--wavy-brand-orange);
+    box-shadow: 0 0 0 2px rgb(255 131 30 / 0.30), var(--wavy-shadow-card);
+  }
+
+  .studio-asset-node[data-status='failed'] .studio-asset-surface {
+    border-color: hsl(var(--destructive) / 0.42);
+  }
+
+  .studio-asset-check {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: var(--wavy-gradient);
+    color: #fff;
+  }
+
+  .studio-asset-actions {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: opacity var(--wavy-duration-fast) var(--wavy-ease),
+                transform var(--wavy-duration-fast) var(--wavy-ease);
+  }
+
+  /* Aparece no hover E no foco: só no hover, quem navega por teclado nunca
+     alcança estas ações. */
+  .studio-asset-node:hover .studio-asset-actions,
+  .studio-asset-node:focus-within .studio-asset-actions {
+    opacity: 1;
+    transform: none;
+  }
+
+  .studio-asset-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    color: hsl(var(--wavy-ink) / 0.85);
+    background: var(--wavy-glass);
+    border: 1px solid var(--wavy-glass-border);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .studio-asset-action:hover {
+    background: var(--wavy-surface-elevated);
+  }
+
+  .studio-asset-action:focus-visible {
+    outline: 2px solid var(--wavy-focus);
+    outline-offset: 1px;
+  }
+
+  .studio-asset-caption {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 2px 0;
+  }
+
+  /* Command Dock: centrado sobre o canvas, largura limitada para que a
+     linha de comando não fique longa demais para ler. */
+  .studio-dock-anchor {
+    position: absolute;
+    left: calc(var(--studio-library-width) + 20px);
+    /* `right: 0` num posicionado resolve contra a BORDA do bloco, não contra
+       o padding — então o recuo que afasta o canvas do inspetor não afasta o
+       dock, e o vidro dele acaba desenhado por cima do painel. */
+    right: 0;
+    bottom: 0;
+    z-index: 25;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+    transition: left var(--wavy-duration-panel) var(--wavy-ease-fluid),
+                right var(--wavy-duration-panel) var(--wavy-ease-fluid);
+  }
+
+  .studio-shell[data-side-panel='true'] .studio-dock-anchor {
+    right: calc(var(--studio-side-panel-width) + 20px);
+  }
+
+  .studio-dock {
+    pointer-events: auto;
+    width: min(720px, 100%);
+    padding: 10px 10px 8px;
+    border-radius: var(--wavy-radius-feature);
+  }
+
+  .studio-dock-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+  }
+
+  .studio-dock-footer {
+    align-items: center;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--wavy-border);
+  }
+
+  .studio-dock-attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .studio-dock-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 4px 4px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    color: hsl(var(--wavy-ink) / 0.78);
+    background: hsl(var(--wavy-ink) / 0.06);
+    border: 1px solid var(--wavy-border);
+  }
+
+  /* Sólido dentro do vidro: campo é onde o texto vive, e desfoque atrás de
+     texto que está sendo digitado custa legibilidade. */
+  .studio-dock-input {
+    flex: 1 1 auto;
+    min-height: 36px;
+    max-height: 168px;
+    padding: 8px 2px;
+    resize: none;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 14px;
+    line-height: var(--wavy-leading-body);
+    color: hsl(var(--wavy-ink) / 0.92);
+  }
+
+  .studio-dock-input::placeholder {
+    color: hsl(var(--wavy-ink) / 0.40);
+  }
+
+  .studio-dock-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border-radius: 999px;
+    color: hsl(var(--wavy-ink) / 0.58);
+    transition: background var(--wavy-duration-fast) var(--wavy-ease),
+                color var(--wavy-duration-fast) var(--wavy-ease);
+  }
+
+  .studio-dock-icon:hover {
+    background: hsl(var(--wavy-ink) / 0.07);
+    color: hsl(var(--wavy-ink) / 0.90);
+  }
+
+  .studio-dock-icon:focus-visible {
+    outline: 2px solid var(--wavy-focus);
+    outline-offset: 1px;
+  }
+
+  .studio-dock-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 26px;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    color: hsl(var(--wavy-ink) / 0.70);
+    background: hsl(var(--wavy-ink) / 0.05);
+    border: 1px solid var(--wavy-border);
+  }
+
+  .studio-dock-summary:hover {
+    background: hsl(var(--wavy-ink) / 0.09);
+    color: hsl(var(--wavy-ink) / 0.92);
+  }
+
+  .studio-dock-summary:focus-visible {
+    outline: 2px solid var(--wavy-focus);
+    outline-offset: 1px;
+  }
+
+  /* Painel direito. SÓLIDO, não vidro: aqui mora texto longo (prompt,
+     mensagem de erro) e o padrão reserva vidro para controles. */
+  .studio-side-panel {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    width: var(--studio-side-panel-width);
+    overflow: hidden;
+    border-radius: var(--wavy-radius-island);
+    background: var(--wavy-surface);
+    border: 1px solid var(--wavy-border);
+    box-shadow: var(--wavy-shadow-panel);
+  }
+
+  .studio-side-panel-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 14px 14px 12px;
+    border-bottom: 1px solid var(--wavy-border);
+  }
+
+  .studio-side-panel-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 14px;
+  }
+
+  .studio-side-panel-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 14px;
+    border-top: 1px solid var(--wavy-border);
+  }
+
+  .studio-inspector-facts {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 6px 14px;
+    margin: 0;
+  }
+
+  .studio-inspector-facts dd {
+    margin: 0;
+    text-align: right;
+  }
+
+  .studio-inspector-lineage {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 11px;
+    color: hsl(var(--wavy-ink) / 0.62);
+  }
+
+  .studio-inspector-lineage li {
+    padding: 5px 9px;
+    border-radius: var(--wavy-radius-small);
+    background: hsl(var(--wavy-ink) / 0.04);
+    border: 1px solid transparent;
+  }
+
+  .studio-inspector-lineage li[data-current='true'] {
+    color: hsl(var(--wavy-ink) / 0.92);
+    border-color: var(--wavy-border-strong);
+    background: hsl(var(--wavy-ink) / 0.07);
+  }
+
+  .studio-inspector-action {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    height: 34px;
+    padding: 0 10px;
+    border-radius: var(--wavy-radius-control);
+    font-size: 12px;
+    font-weight: 500;
+    color: hsl(var(--wavy-ink) / 0.82);
+    background: hsl(var(--wavy-ink) / 0.05);
+    border: 1px solid var(--wavy-border);
+    transition: background var(--wavy-duration-fast) var(--wavy-ease);
+  }
+
+  .studio-inspector-action:hover {
+    background: hsl(var(--wavy-ink) / 0.09);
+  }
+
+  .studio-inspector-action:focus-visible {
+    outline: 2px solid var(--wavy-focus);
+    outline-offset: 1px;
+  }
+
+  /* Abaixo do desktop as ilhas laterais saem de cena: reduzir a ilha de
+     bibliotecas num viewport estreito custaria metade da largura do canvas.
+     Ela volta como fileira rolável sob a barra, e o inspetor ocupa a tela. */
+  @media (max-width: 719px) {
+    .studio-topbar {
+      flex-wrap: wrap;
+    }
+
+    /* Linha própria: espremida entre o nome do projeto e três botões, a
+       busca não cabe nem para o placeholder. */
+    .studio-topbar-search {
+      order: 3;
+      flex-basis: 100%;
+      max-width: none;
+    }
+  }
+
+  @media (max-width: 1023px) {
+    .studio-shell,
+    .studio-shell[data-library-expanded='true'] {
+      --studio-library-width: 0px;
+      height: auto;
+      min-height: 0;
+    }
+
+    .studio-library-island,
+    .studio-shell[data-library-expanded='true'] .studio-library-island {
+      position: static;
+      width: auto;
+      flex-direction: row;
+      gap: 4px;
+      padding: 6px;
+      border-radius: var(--wavy-radius-feature);
+    }
+
+    .studio-library-list {
+      flex-direction: row;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+
+    /* Na fileira o rótulo é a única pista do destino — sem ele a barra vira
+       sete ícones indistinguíveis. */
+    .studio-library-island .wavy-nav-label {
+      opacity: 1;
+      transform: none;
+    }
+
+    .studio-library-item {
+      width: auto;
+      padding-right: 12px;
+    }
+
+    .studio-library-icon {
+      width: 36px;
+    }
+
+    .studio-library-item.mt-auto {
+      display: none;
+    }
+
+    .studio-canvas-region {
+      padding-left: 0;
+      padding-right: 0;
+      min-height: 60vh;
+    }
+
+    .studio-shell[data-side-panel='true'] .studio-canvas-region {
+      padding-right: 0;
+    }
+
+    .studio-canvas-toolbar {
+      left: 0;
+    }
+
+    .studio-canvas-scroll {
+      height: auto;
+      overflow: visible;
+      padding-bottom: 120px;
+    }
+
+    .studio-canvas-grid {
+      grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+      gap: 10px;
+    }
+
+    .studio-dock-anchor {
+      left: 0;
+      position: fixed;
+      right: 12px;
+      bottom: calc(88px + env(safe-area-inset-bottom));
+      padding-left: 12px;
+    }
+
+    .studio-side-panel,
+    .studio-shell[data-side-panel='true'] .studio-side-panel {
+      position: fixed;
+      inset: 12px 12px calc(80px + env(safe-area-inset-bottom));
+      top: auto;
+      height: 62dvh;
+      width: auto;
+      z-index: 50;
+    }
+  }
+
+  /* Sem movimento: a largura ainda muda, mas de uma vez. */
+  @media (prefers-reduced-motion: reduce) {
+    .studio-library-island,
+    .studio-canvas-region,
+    .studio-canvas-toolbar,
+    .studio-dock-anchor,
+    .studio-asset-actions,
+    .studio-asset-surface {
+      transition: none;
+    }
   }
 }
 
