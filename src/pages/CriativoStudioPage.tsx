@@ -2550,8 +2550,8 @@ export default function CriativoStudioPage() {
   const renderCopyCard = (variation: CopyResult, idx: number) => (
     <div key={idx} className="rounded-2xl border border-white/10 bg-white/[0.035] p-3 space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] uppercase tracking-wider text-[#FF831E]">{variation.angulo || `Sugestão ${idx + 1}`}</p>
-        {copyApproved && copySource === 'ai' && selectedVariationIdx === idx && <Check className="h-4 w-4 text-[#FF831E]" />}
+        <p className="text-[11px] uppercase tracking-wider text-accent">{variation.angulo || `Sugestão ${idx + 1}`}</p>
+        {copyApproved && copySource === 'ai' && selectedVariationIdx === idx && <Check className="h-4 w-4 text-accent" />}
       </div>
       {variation.label && <CopyBlock label="Label" value={variation.label} small uppercase />}
       <CopyBlock label="Título" value={variation.titulo} bold />
@@ -2671,7 +2671,7 @@ export default function CriativoStudioPage() {
     defaultOpen?: boolean;
   }) => (
     <Collapsible defaultOpen={defaultOpen} className="rounded-2xl border border-white/10 bg-white/[0.035]">
-      <CollapsibleTrigger className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-[#FFB877]">
+      <CollapsibleTrigger className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-[var(--wavy-accent-label)]">
         {title}
         <ChevronDown className="h-3.5 w-3.5 text-white/45" />
       </CollapsibleTrigger>
@@ -2705,7 +2705,7 @@ export default function CriativoStudioPage() {
     };
 
     return (
-      <aside className="lg:sticky lg:top-4 h-fit lg:max-h-[calc(100vh-2rem)] rounded-[24px] border border-white/10 bg-[#111113]/95 shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur">
+      <aside className="lg:sticky lg:top-4 h-fit lg:max-h-[calc(100vh-2rem)] rounded-[24px] border border-white/10 bg-[var(--wavy-surface)]/95 shadow-[var(--wavy-shadow-panel)] backdrop-blur">
         <div className="flex items-center justify-between gap-3 border-b border-white/10 p-4">
           <div>
             <p className="text-xs uppercase tracking-[0.22em] text-white/38">Configuração</p>
@@ -2719,7 +2719,7 @@ export default function CriativoStudioPage() {
         <div className="max-h-[calc(100vh-9rem)] overflow-y-auto p-4 space-y-4">
           {rightPanelMode === 'none' && (
             <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-5 text-sm text-white/62">
-              <Sparkles className="mb-3 h-5 w-5 text-[#FF831E]" />
+              <Sparkles className="mb-3 h-5 w-5 text-accent" />
               <p className="font-medium text-white/90">O painel contextual aparecerá aqui.</p>
               <p className="mt-1 text-xs">Escolha uma ação na conversa para configurar referências, copy, assets ou geração.</p>
             </div>
@@ -2808,7 +2808,7 @@ export default function CriativoStudioPage() {
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {(template.tags || []).slice(0, 4).map((tag) => <span key={tag} className="rounded-full bg-white/10 px-2 py-1 text-[10px] text-white/55">{tag}</span>)}
-                    <span className="rounded-full bg-[#FF831E]/15 px-2 py-1 text-[10px] text-[#FFB877]">{template.usage_count || 0} usos</span>
+                    <span className="rounded-full bg-[#FF831E]/15 px-2 py-1 text-[10px] text-[var(--wavy-accent-label)]">{template.usage_count || 0} usos</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <Button size="sm" className="rounded-full bg-[#FF831E] text-white hover:bg-[#DA2F1E]" onClick={() => applyTemplate(template)}>Usar template</Button>
@@ -2844,7 +2844,7 @@ export default function CriativoStudioPage() {
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-semibold text-white">{detailTemplate.name}</p>
                       {detailTemplate.is_builtin && (
-                        <span className="shrink-0 rounded-full bg-[#FF831E]/15 px-2 py-0.5 text-[10px] text-[#FFB877]">Estilo Wavy</span>
+                        <span className="shrink-0 rounded-full bg-[#FF831E]/15 px-2 py-0.5 text-[10px] text-[var(--wavy-accent-label)]">Estilo Wavy</span>
                       )}
                     </div>
                     {detailTemplate.description && <p className="mt-1 text-white/60">{detailTemplate.description}</p>}
@@ -3083,7 +3083,7 @@ export default function CriativoStudioPage() {
                   </PanelFold>
                   <PanelFold title="Mood" defaultOpen>
                     <div className="flex flex-wrap gap-1.5">
-                      {analysis.mood.adjetivos.map((m) => <span key={m} className="rounded-full bg-[#FF831E]/15 px-2 py-1 text-[10px] text-[#FFB877]">{m}</span>)}
+                      {analysis.mood.adjetivos.map((m) => <span key={m} className="rounded-full bg-[#FF831E]/15 px-2 py-1 text-[10px] text-[var(--wavy-accent-label)]">{m}</span>)}
                     </div>
                     {analysis.mood.referencias.length > 0 && (
                       <p className="pt-1 text-white/55">Referências: {analysis.mood.referencias.join(', ')}</p>
@@ -3110,7 +3110,7 @@ export default function CriativoStudioPage() {
             <div className="space-y-3">
               {suggestedRawCopy && (
                 <div className="rounded-2xl border border-[#FF831E]/30 bg-[#FF831E]/10 p-3 text-sm">
-                  <p className="mb-2 text-[11px] uppercase tracking-wider text-[#FFB877]">Copy sugerida pela IA</p>
+                  <p className="mb-2 text-[11px] uppercase tracking-wider text-[var(--wavy-accent-label)]">Copy sugerida pela IA</p>
                   <p className="whitespace-pre-wrap text-white/80">{suggestedRawCopy}</p>
                   <Button size="sm" onClick={() => setRawCopy(suggestedRawCopy)} className="mt-3 rounded-full bg-[#FF831E] text-white hover:bg-[#DA2F1E]">Usar sugestão</Button>
                 </div>
@@ -3154,7 +3154,7 @@ export default function CriativoStudioPage() {
             <div className="space-y-3">
               {suggestedRawCopy && (
                 <div className="rounded-2xl border border-[#FF831E]/30 bg-[#FF831E]/10 p-3 text-sm text-white/80">
-                  <p className="mb-1 text-[11px] uppercase tracking-wider text-[#FFB877]">Rascunho sugerido</p>
+                  <p className="mb-1 text-[11px] uppercase tracking-wider text-[var(--wavy-accent-label)]">Rascunho sugerido</p>
                   {suggestedRawCopy}
                 </div>
               )}
@@ -3259,7 +3259,7 @@ export default function CriativoStudioPage() {
           {rightPanelMode === 'generated-result' && (
             <div className="space-y-3">
               <div className="flex gap-2 text-[10px]">
-                <span className="rounded-full bg-[#FF831E]/15 px-2 py-1 text-[#FFB877]">{selectedAspectRatio}</span>
+                <span className="rounded-full bg-[#FF831E]/15 px-2 py-1 text-[var(--wavy-accent-label)]">{selectedAspectRatio}</span>
                 <span className="rounded-full bg-white/10 px-2 py-1 text-white/60">{selectedResolution}</span>
                 <span className="rounded-full bg-white/10 px-2 py-1 text-white/60">{language}</span>
                 <span className="rounded-full bg-white/10 px-2 py-1 text-white/60">GPT Image 2</span>
@@ -3292,7 +3292,7 @@ export default function CriativoStudioPage() {
 
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 space-y-2">
                 <div className="flex items-center gap-1.5 text-xs font-medium text-white/80">
-                  <BrainCircuit className="h-3.5 w-3.5 text-[#FF831E]" />
+                  <BrainCircuit className="h-3.5 w-3.5 text-accent" />
                   Inteligência do cliente
                 </div>
                 {selectedClientId ? (
@@ -3309,7 +3309,7 @@ export default function CriativoStudioPage() {
                         {savingCopyIntelligence ? (
                           <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
                         ) : copySavedToIntelligence ? (
-                          <BookmarkCheck className="mr-1.5 h-3 w-3 text-[#FF831E]" />
+                          <BookmarkCheck className="mr-1.5 h-3 w-3 text-accent" />
                         ) : (
                           <BookmarkPlus className="mr-1.5 h-3 w-3" />
                         )}
@@ -3325,7 +3325,7 @@ export default function CriativoStudioPage() {
                         {savingArtIntelligence ? (
                           <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
                         ) : artSavedToIntelligence ? (
-                          <BookmarkCheck className="mr-1.5 h-3 w-3 text-[#FF831E]" />
+                          <BookmarkCheck className="mr-1.5 h-3 w-3 text-accent" />
                         ) : (
                           <BookmarkPlus className="mr-1.5 h-3 w-3" />
                         )}
@@ -3343,7 +3343,7 @@ export default function CriativoStudioPage() {
           {rightPanelMode === 'asset-actions' && selectedAsset && (
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-xs uppercase tracking-wider text-[#FFB877]">{selectedAsset.label}</p>
+                <p className="text-xs uppercase tracking-wider text-[var(--wavy-accent-label)]">{selectedAsset.label}</p>
                 <span className="rounded-full bg-white/10 px-2 py-1 text-[10px] text-white/60">
                   {selectedAsset.aspect === 'square' ? '1:1' : selectedAspectRatio}
                 </span>
@@ -3441,7 +3441,7 @@ export default function CriativoStudioPage() {
 
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 space-y-2">
                 <div className="flex items-center gap-1.5 text-xs font-medium text-white/80">
-                  <BrainCircuit className="h-3.5 w-3.5 text-[#FF831E]" />
+                  <BrainCircuit className="h-3.5 w-3.5 text-accent" />
                   Inteligência do cliente
                 </div>
                 {selectedClientId ? (
@@ -3464,7 +3464,7 @@ export default function CriativoStudioPage() {
                       {savingArtIntelligence ? (
                         <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
                       ) : assetSavedKeys.has(selectedAsset.key) ? (
-                        <BookmarkCheck className="mr-1.5 h-3 w-3 text-[#FF831E]" />
+                        <BookmarkCheck className="mr-1.5 h-3 w-3 text-accent" />
                       ) : (
                         <BookmarkPlus className="mr-1.5 h-3 w-3" />
                       )}
@@ -3492,7 +3492,7 @@ export default function CriativoStudioPage() {
                   <p className="mb-2 font-medium text-white">Eixos que serão explorados:</p>
                   <div className="flex flex-wrap gap-1.5">
                     {['Emocional', 'Oferta', 'Persona', 'Hook', 'Estrutura'].map((axis) => (
-                      <span key={axis} className="rounded-full bg-[#FF831E]/15 px-2 py-1 text-[#FFB877]">{axis}</span>
+                      <span key={axis} className="rounded-full bg-[#FF831E]/15 px-2 py-1 text-[var(--wavy-accent-label)]">{axis}</span>
                     ))}
                   </div>
                 </div>
@@ -3507,7 +3507,7 @@ export default function CriativoStudioPage() {
                 const err = factorErrors[i];
                 return (
                   <div key={i} className="rounded-2xl border border-white/10 bg-white/[0.035] p-3 space-y-2">
-                    <p className="text-[11px] uppercase tracking-wider text-[#FF831E]">#{i + 1} {v?.eixo || 'variação'}</p>
+                    <p className="text-[11px] uppercase tracking-wider text-accent">#{i + 1} {v?.eixo || 'variação'}</p>
                     {err && (
                       <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-xs text-destructive">
                         {err}
@@ -3522,11 +3522,11 @@ export default function CriativoStudioPage() {
                           <p><span className="text-white/35">Para quem:</span> {v.estrategia.paraQuem}</p>
                         </div>
                         <div className="rounded-xl bg-[var(--wavy-surface-soft)] p-2 text-xs text-white/70">
-                          {v.copy.label && <p className="text-[10px] uppercase tracking-wider text-[#FFB877]">{v.copy.label}</p>}
+                          {v.copy.label && <p className="text-[10px] uppercase tracking-wider text-[var(--wavy-accent-label)]">{v.copy.label}</p>}
                           <p className="font-semibold text-white">{v.copy.titulo}</p>
                           {v.copy.subtitulo && <p>{v.copy.subtitulo}</p>}
                           {v.copy.dados && <p className="text-white/45">{v.copy.dados}</p>}
-                          <p className="text-[#FFB877]">{v.copy.cta}</p>
+                          <p className="text-[var(--wavy-accent-label)]">{v.copy.cta}</p>
                         </div>
                         <div className="rounded-xl bg-[var(--wavy-surface-soft)] p-2 text-xs text-white/60">
                           <p><span className="text-white/35">Hook:</span> {v.descricaoVisual.hook}</p>
@@ -3602,7 +3602,7 @@ export default function CriativoStudioPage() {
                 </SelectContent>
               </Select>
               {selectedEditTarget && (
-                <p className="text-xs uppercase tracking-wider text-[#FFB877]">{selectedEditTarget.label}</p>
+                <p className="text-xs uppercase tracking-wider text-[var(--wavy-accent-label)]">{selectedEditTarget.label}</p>
               )}
               {renderGeneratedThumb(
                 selectedEditTarget?.image || getEditTargetFromKey(selectedEditKey).image,
@@ -3634,7 +3634,7 @@ export default function CriativoStudioPage() {
                 if (versions.length === 0) return null;
                 return (
                   <div className="space-y-3">
-                    <p className="text-xs uppercase tracking-wider text-[#FFB877]">Versões editadas</p>
+                    <p className="text-xs uppercase tracking-wider text-[var(--wavy-accent-label)]">Versões editadas</p>
                     {versions.map((ed, i) => (
                       <div key={i} className="rounded-2xl border border-white/10 bg-white/[0.035] p-2 space-y-2">
                         <button
@@ -3674,7 +3674,7 @@ export default function CriativoStudioPage() {
   };
 
   const conversationalLayout = (
-    <div className="min-h-screen bg-[#0C0C0E] text-white">
+    <div className="min-h-screen bg-background text-white">
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] xl:grid-cols-[minmax(0,1fr)_460px]">
 
         <main className="mx-auto flex w-full max-w-4xl flex-col px-4 py-5 sm:px-6 lg:px-8">
@@ -3682,7 +3682,7 @@ export default function CriativoStudioPage() {
             {/* Barra utilitária: identidade do app (discreta) + ações do workspace */}
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-white/45">
-                <Wand2 className="h-4 w-4 text-[#FF831E]" />
+                <Wand2 className="h-4 w-4 text-accent" />
                 <span className="text-xs font-semibold uppercase tracking-wider">Criativo Studio</span>
               </div>
               <div className="flex items-center gap-2">
@@ -3746,7 +3746,7 @@ export default function CriativoStudioPage() {
             {currentStage === 'initial' && (
               <div className="mx-auto w-full max-w-3xl text-center">
                 <p className="mb-4 text-3xl font-semibold">O que vamos criar hoje?</p>
-                <div className="rounded-[24px] border border-white/10 bg-[#111113] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.35)] focus-within:border-[#FF831E]/70">
+                <div className="rounded-[24px] border border-white/10 bg-[var(--wavy-surface)] p-3 shadow-[var(--wavy-shadow-panel)] focus-within:border-[#FF831E]/70">
                   <Textarea
                     value={initialPrompt}
                     onChange={(e) => setInitialPrompt(e.target.value)}
@@ -3761,7 +3761,7 @@ export default function CriativoStudioPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="rounded-full border-[#FF831E]/40 text-[#FFB877] hover:bg-[#FF831E]/10"
+                          className="rounded-full border-[#FF831E]/40 text-[var(--wavy-accent-label)] hover:bg-[#FF831E]/10"
                           onClick={openQuickCreative}
                         >
                           <BrainCircuit className="mr-1.5 h-3.5 w-3.5" /> Criativo Rápido
@@ -3813,7 +3813,7 @@ export default function CriativoStudioPage() {
 
             {currentStage !== 'initial' && (
               <div className="space-y-4">
-                <div className="flex flex-wrap items-center gap-2 rounded-[24px] border border-white/10 bg-[#111113] p-2">
+                <div className="flex flex-wrap items-center gap-2 rounded-[24px] border border-white/10 bg-[var(--wavy-surface)] p-2">
                   {renderClientSelect()}
                   <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-xs text-white/62">GPT Image 2</span>
                   <Select value={selectedResolution} onValueChange={(v) => setSelectedResolution(v as CreativeResolution)}>
@@ -3853,7 +3853,7 @@ export default function CriativoStudioPage() {
                 </div>
                 {conversationMessages.map((message) => (
                   <div key={message.id} className="flex gap-3">
-                    <div className={cn('mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full', message.role === 'assistant' ? 'bg-[#FF831E]/15 text-[#FFB877]' : 'bg-white/10')}>
+                    <div className={cn('mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full', message.role === 'assistant' ? 'bg-[#FF831E]/15 text-[var(--wavy-accent-label)]' : 'bg-white/10')}>
                       {message.role === 'assistant' ? <Bot className="h-4 w-4" /> : <User className="h-4 w-4" />}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -3861,7 +3861,7 @@ export default function CriativoStudioPage() {
                         <span>{message.role === 'assistant' ? 'Criativo AI' : 'Você'}</span>
                         {message.timestamp && <span>{message.timestamp}</span>}
                       </div>
-                      <div className="rounded-[24px] border border-white/10 bg-[#111113] p-4 text-sm leading-relaxed text-white/82">
+                      <div className="rounded-[24px] border border-white/10 bg-[var(--wavy-surface)] p-4 text-sm leading-relaxed text-white/82">
                         {message.content}
                       </div>
                       {message.actions && (
@@ -3874,10 +3874,10 @@ export default function CriativoStudioPage() {
                 ))}
                 {(analyzing || improving || urlReading || contextLoading || generating || factorLoading || !!editLoadingKey) && (
                   <div className="flex gap-3 text-sm text-white/60">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FF831E]/15 text-[#FFB877]">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FF831E]/15 text-[var(--wavy-accent-label)]">
                       <Loader2 className="h-4 w-4 animate-spin" />
                     </div>
-                    <div className="rounded-[24px] border border-white/10 bg-[#111113] p-4">
+                    <div className="rounded-[24px] border border-white/10 bg-[var(--wavy-surface)] p-4">
                       {analyzing && 'Analisando referências...'}
                       {improving && 'Gerando sugestões de copy...'}
                       {urlReading && 'Lendo site...'}
@@ -3889,7 +3889,7 @@ export default function CriativoStudioPage() {
                   </div>
                 )}
                 {(storyImage || squareImage || factorLoading || (factorVariations && factorVariations.length > 0)) && (
-                  <div className="mt-2 space-y-5 rounded-[24px] border border-white/10 bg-[#111113] p-5">
+                  <div className="mt-2 space-y-5 rounded-[24px] border border-white/10 bg-[var(--wavy-surface)] p-5">
                     <div className="flex items-center justify-between">
                       <h3 className="text-xs font-semibold uppercase tracking-wider text-white/45">Artes prontas</h3>
                       {(storyImage || squareImage) && (
@@ -3940,7 +3940,7 @@ export default function CriativoStudioPage() {
 
                     {(factorLoading || (factorVariations && factorVariations.length > 0)) && (
                       <div className="space-y-3">
-                        <p className="text-[11px] uppercase tracking-wider text-[#FFB877]">
+                        <p className="text-[11px] uppercase tracking-wider text-[var(--wavy-accent-label)]">
                           Fator Criativo · 5 variações{factorLoading && ` (${factorProgress}/5)`}
                         </p>
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -3951,7 +3951,7 @@ export default function CriativoStudioPage() {
                             const err = factorErrors[i];
                             return (
                               <div key={i} className="space-y-1.5">
-                                <p className="text-[10px] uppercase tracking-wider text-[#FF831E]">#{i + 1} {v?.eixo || 'variação'}</p>
+                                <p className="text-[10px] uppercase tracking-wider text-accent">#{i + 1} {v?.eixo || 'variação'}</p>
                                 {img ? renderBoardCard({
                                   url: img,
                                   aspect: 'story',

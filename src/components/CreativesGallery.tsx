@@ -238,6 +238,9 @@ export function CreativesGallery({ ads }: CreativesGalleryProps) {
                 poster={selectedAd.image_url_hd || selectedAd.image_url || selectedAd.thumbnail_url || undefined}
                 controls
                 autoPlay
+                // tema-fixo: preto é o fundo do player atrás do vídeo, não uma
+                // superfície da interface. Clarear aqui só produziria barras
+                // brancas em volta do criativo.
                 className="w-full rounded-lg max-h-[75vh] bg-black"
               />
             ) : selectedAd && (selectedAd.image_url_hd || selectedAd.image_url || selectedAd.thumbnail_url) ? (
