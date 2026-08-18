@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Boxes, CheckCircle2, ImageIcon, LayoutTemplate, Sparkles, UserRound, Wand2 } from 'lucide-react';
+import { Boxes, CheckCircle2, ImageIcon, Images, LayoutTemplate, Layers, UserRound } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { useClients } from '@/hooks/useClients';
 import { supabase } from '@/integrations/supabase/client';
 import { extractFunctionErrorMessage } from '@/lib/functionError';
 import { recordAiUsage, type AiUsageType } from '@/lib/aiUsageTracker';
@@ -54,6 +55,14 @@ export default function CriativoStudioV2Page() {
   const [modelId, setModelId] = useState<string>(IMAGE_GENERATION_MODEL.id);
   const [attachments, setAttachments] = useState<DockAttachment[]>([]);
 
+  const { data: clients = [] } = useClients();
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const clientOptions = useMemo(() => clients.map((c) => ({ id: c.id, name: c.name })), [clients]);
+  const clientName = useMemo(
+    () => clients.find((c) => c.id === selectedClientId)?.name ?? null,
+    [clients, selectedClientId],
+  );
+
   // O projeto pode nascer DURANTE uma geração (primeira arte do workspace).
   // Guardar em ref, e não só em state, evita duas chamadas em paralelo
   // criarem dois projetos quando o usuário dispara duas gerações rápido.
@@ -104,7 +113,7 @@ export default function CriativoStudioV2Page() {
         language: 'pt-BR',
         model: 'gemini-3.1-flash-image-preview',
         userId: userData.user?.id ?? null,
-        clientId: null,
+        clientId: selectedClientId,
       });
       setProjectId(id);
       setProjects((prev) => [{ id, title: 'Novo projeto', status: 'in_progress', selected_aspect_ratio: '4:5', selected_resolution: '2K', thumbnail_url: null, updated_at: new Date().toISOString() }, ...prev]);
@@ -117,12 +126,20 @@ export default function CriativoStudioV2Page() {
     } finally {
       criandoProjetoRef.current = null;
     }
-  }, []);
+  }, [selectedClientId]);
 
   const projeto = useMemo(() => projects.find((p) => p.id === projectId) ?? null, [projects, projectId]);
+
+  // Camada de cliente: aplicada ANTES do projeto, e alimenta tanto o canvas
+  // quanto as contagens da ilha — selecionar um cliente precisa restringir
+  // tudo o que a tela mostra, não só as artes visíveis no momento.
+  const assetsDoCliente = useMemo(
+    () => (selectedClientId ? assets.filter((a) => a.clientId === selectedClientId) : assets),
+    [assets, selectedClientId],
+  );
   const doProjeto = useMemo(
-    () => (projectId ? assets.filter((a) => a.projectId === projectId) : assets),
-    [assets, projectId],
+    () => (projectId ? assetsDoCliente.filter((a) => a.projectId === projectId) : assetsDoCliente),
+    [assetsDoCliente, projectId],
   );
   const visiveis = useMemo(() => {
     const filtro = filtroDaBiblioteca(library);
@@ -137,17 +154,20 @@ export default function CriativoStudioV2Page() {
   );
 
   const bibliotecas = useMemo<StudioLibraryEntry[]>(() => {
-    const conta = (fn: (a: CreativeAsset) => boolean) => assets.filter(fn).length;
+    const conta = (fn: (a: CreativeAsset) => boolean) => assetsDoCliente.filter(fn).length;
     return [
       { id: 'all', label: 'Todas as criações', icon: ImageIcon, count: conta(() => true) },
-      { id: 'generations', label: 'Gerações', icon: Sparkles, count: conta((a) => a.type === 'original') },
-      { id: 'references', label: 'Referências', icon: Wand2, count: conta((a) => a.type === 'reference') },
+      // Layers/Images, e não Sparkles/Wand2: a navegação principal do app
+      // já usa esses dois para "Google Ads I.A" e "Criativo Studio", e as
+      // duas ilhas ficam lado a lado na mesma tela.
+      { id: 'generations', label: 'Gerações', icon: Layers, count: conta((a) => a.type === 'original') },
+      { id: 'references', label: 'Referências', icon: Images, count: conta((a) => a.type === 'reference') },
       { id: 'products', label: 'Produtos', icon: Boxes, count: conta((a) => a.type === 'product') },
       { id: 'avatars', label: 'Avatares', icon: UserRound, count: conta((a) => a.type === 'avatar') },
       { id: 'templates', label: 'Templates', icon: LayoutTemplate, count: conta((a) => a.type === 'template') },
       { id: 'approved', label: 'Inteligência', icon: CheckCircle2, count: conta((a) => a.isClientIntelligence) },
     ];
-  }, [assets]);
+  }, [assetsDoCliente]);
 
   // Substitui/insere uma linha no estado local sem esperar outro round-trip
   // ao banco — é o que faz o card virar "gerando" na hora, não só depois
@@ -165,7 +185,7 @@ export default function CriativoStudioV2Page() {
   const actions = useMemo(() => {
     const deps: StudioAssetActionsDeps = {
       ensureProjectId,
-      clientId: null,
+      clientId: selectedClientId,
       invoke: async (name, body, timeoutMs) =>
         supabase.functions.invoke(name, { body: body as any, timeout: timeoutMs }),
       extractErrorMessage: extractFunctionErrorMessage,
@@ -174,7 +194,7 @@ export default function CriativoStudioV2Page() {
       recordUsage: (usageKey) => { void recordAiUsage(usageKey as AiUsageType); },
     };
     return createStudioAssetActions(deps);
-  }, [ensureProjectId]);
+  }, [ensureProjectId, selectedClientId]);
 
   // Um aviso só, com o motivo. O que falta ligar (Fator Criativo) compartilha
   // a mesma razão: é a próxima fatia, não um bug desta.
@@ -186,6 +206,20 @@ export default function CriativoStudioV2Page() {
   }, []);
 
   const voltarAoAtual = useCallback(() => navigate('/criativo-studio'), [navigate]);
+
+  // Trocar de cliente zera o projeto ativo. Sem isso, o canvas continuaria
+  // preso a um projeto do cliente ANTERIOR, filtrado pelo cliente NOVO —
+  // na prática, vazio, sem nada que explique por quê. Pousar em "todo o
+  // acervo desse cliente" é o resultado previsível.
+  const handleClientChange = useCallback((id: string | null) => {
+    setSelectedClientId(id);
+    setProjectId(null);
+  }, []);
+
+  const handleRemoveFilter = useCallback((id: string) => {
+    if (id === 'cliente') { setSelectedClientId(null); setProjectId(null); return; }
+    setProjectId(null);
+  }, []);
 
   const handleRatioChange = useCallback((novoRatio: CreativeAspectRatio) => {
     setRatio(novoRatio);
@@ -313,7 +347,10 @@ export default function CriativoStudioV2Page() {
 
       <CreativeStudioShell
         projectName={projeto?.title ?? (projectId ? 'Projeto sem título' : 'Todo o acervo')}
-        clientName={null}
+        clientName={clientName}
+        clientId={selectedClientId}
+        clients={clientOptions}
+        onClientChange={handleClientChange}
         assets={visiveis}
         allAssets={assets}
         libraries={bibliotecas}
@@ -321,9 +358,12 @@ export default function CriativoStudioV2Page() {
         onSelectLibrary={setLibrary}
         query={query}
         onQueryChange={setQuery}
-        filters={projeto ? [{ id: 'projeto', label: 'Só este projeto' }] : []}
-        onRemoveFilter={() => setProjectId(null)}
-        onClearFilters={() => { setQuery(''); setLibrary('all'); setProjectId(null); }}
+        filters={[
+          ...(projeto ? [{ id: 'projeto', label: 'Só este projeto' }] : []),
+          ...(clientName ? [{ id: 'cliente', label: clientName }] : []),
+        ]}
+        onRemoveFilter={handleRemoveFilter}
+        onClearFilters={() => { setQuery(''); setLibrary('all'); setProjectId(null); setSelectedClientId(null); }}
         onOpenFilters={aindaNaoLigado}
         onOpenProjects={aindaNaoLigado}
         onOpenHistory={aindaNaoLigado}

@@ -1,0 +1,104 @@
+import { useMemo, useState } from 'react';
+import { Check, ChevronDown, Search } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+
+export interface StudioClientOption {
+  id: string;
+  name: string;
+}
+
+interface StudioClientSelectorProps {
+  clientId: string | null;
+  clientName: string | null;
+  clients: StudioClientOption[];
+  onChange: (clientId: string | null) => void;
+}
+
+/**
+ * Seletor de cliente do topo.
+ *
+ * O nome do cliente era só texto — "Sem cliente" nunca mudava nada.
+ * Escolher aqui passa a restringir o resto da tela (canvas, bibliotecas e
+ * o que a próxima geração recebe como contexto) ao que já existe daquele
+ * cliente — ver `CriativoStudioV2Page.tsx`.
+ *
+ * Fica FORA do botão de projeto, e não dentro dele: os dois são ações
+ * diferentes (trocar de projeto vs. filtrar por cliente), e `<button>`
+ * dentro de `<button>` não é HTML válido.
+ */
+export function StudioClientSelector({ clientId, clientName, clients, onChange }: StudioClientSelectorProps) {
+  const [open, setOpen] = useState(false);
+  const [busca, setBusca] = useState('');
+
+  const filtrados = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    if (!termo) return clients;
+    return clients.filter((c) => c.name.toLowerCase().includes(termo));
+  }, [clients, busca]);
+
+  const escolher = (id: string | null) => {
+    onChange(id);
+    setOpen(false);
+    setBusca('');
+  };
+
+  return (
+    <Popover open={open} onOpenChange={(v) => { setOpen(v); if (!v) setBusca(''); }}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label="Filtrar por cliente"
+          className="group -mx-1 flex items-center gap-1 rounded-md px-1 text-left transition-colors duration-150 hover:bg-white/[0.06]"
+        >
+          <span className="truncate text-[11px] text-white/50 group-hover:text-white/72">
+            {clientName ?? 'Sem cliente'}
+          </span>
+          <ChevronDown className="h-3 w-3 shrink-0 text-white/35" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="glass w-64 border-white/10 p-0">
+        <div className="border-b border-white/10 p-2">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/35" />
+            <input
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar cliente…"
+              aria-label="Buscar cliente"
+              autoFocus
+              className="glass-input h-8 w-full rounded-[var(--wavy-radius-control)] pl-8 pr-2 text-[12px]"
+            />
+          </div>
+        </div>
+
+        <ul className="max-h-64 overflow-y-auto p-1.5">
+          <li>
+            <button
+              type="button"
+              onClick={() => escolher(null)}
+              className="flex w-full items-center justify-between gap-2 rounded-[var(--wavy-radius-control)] px-2.5 py-2 text-left text-[13px] font-medium text-white/78 transition-colors duration-150 hover:bg-white/[0.07]"
+            >
+              Sem cliente
+              {clientId === null && <Check className="h-3.5 w-3.5 shrink-0 text-accent" />}
+            </button>
+          </li>
+          {filtrados.map((c) => (
+            <li key={c.id}>
+              <button
+                type="button"
+                onClick={() => escolher(c.id)}
+                className="flex w-full items-center justify-between gap-2 rounded-[var(--wavy-radius-control)] px-2.5 py-2 text-left text-[13px] font-medium text-white/82 transition-colors duration-150 hover:bg-white/[0.07]"
+              >
+                <span className="truncate">{c.name}</span>
+                {clientId === c.id && <Check className="h-3.5 w-3.5 shrink-0 text-accent" />}
+              </button>
+            </li>
+          ))}
+          {filtrados.length === 0 && (
+            <li className="px-2.5 py-3 text-center text-[12px] text-white/45">Nenhum cliente encontrado.</li>
+          )}
+        </ul>
+      </PopoverContent>
+    </Popover>
+  );
+}

@@ -33,14 +33,11 @@ function montar(onExpandedChange = vi.fn()) {
 const expandida = (ilha: Element) => ilha.getAttribute('data-expanded') === 'true';
 
 describe('StudioLibraryIsland', () => {
-  it('o clique é o caminho garantido de expandir', () => {
-    // Teclado e toque não têm hover: rótulo alcançável só pelo ponteiro é
-    // rótulo que parte dos usuários nunca lê.
-    const { ilha } = montar();
-    expect(expandida(ilha)).toBe(false);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Expandir bibliotecas' }));
-    expect(expandida(ilha)).toBe(true);
+  it('sem botão de fixar — são sete destinos sempre visíveis por ícone', () => {
+    // Diferente da navegação principal do app, esta ilha secundária não
+    // precisa de um clique que mantenha o estado aberto.
+    montar();
+    expect(screen.queryByRole('button', { name: /[Ee]xpandir/ })).toBeNull();
   });
 
   it('o hover de mouse expande e o de toque não', () => {
@@ -71,12 +68,19 @@ describe('StudioLibraryIsland', () => {
     expect(expandida(ilha)).toBe(true);
   });
 
-  it('Escape limpa TODOS os estados abertos, não só o fixado', () => {
-    // Limpar só o fixado faz a tecla parecer quebrada: a ilha continua
-    // aberta pelo ponteiro e nada visível acontece.
+  it('Escape limpa o estado aberto pelo ponteiro', () => {
     const { ilha } = montar();
-    fireEvent.click(screen.getByRole('button', { name: 'Expandir bibliotecas' }));
     ponteiro(ilha, 'entra', 'mouse');
+    expect(expandida(ilha)).toBe(true);
+
+    fireEvent.keyDown(ilha, { key: 'Escape' });
+    expect(expandida(ilha)).toBe(false);
+  });
+
+  it('Escape limpa o estado aberto por foco', () => {
+    const { ilha } = montar();
+    act(() => (screen.getByRole('button', { name: /Todas as criações/ }) as HTMLElement).focus());
+    expect(expandida(ilha)).toBe(true);
 
     fireEvent.keyDown(ilha, { key: 'Escape' });
     expect(expandida(ilha)).toBe(false);
@@ -100,7 +104,7 @@ describe('StudioLibraryIsland', () => {
     const item = screen.getByRole('button', { name: /Todas as criações/ });
     expect(item.getAttribute('title')).toBe('Todas as criações');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Expandir bibliotecas' }));
+    ponteiro(ilha, 'entra', 'mouse');
     expect(item.getAttribute('title')).toBeNull();
   });
 

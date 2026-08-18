@@ -102,14 +102,16 @@ describe('canvasSections — modo linhagem', () => {
     ]);
   });
 
-  it('o prompt da raiz vai para a dica, em caixa normal — não para o título', () => {
+  it('não carrega o prompt como dica — vira um parágrafo pesando no cabeçalho', () => {
+    // O prompt de geração completo (com [INTRODUCTION]/[SAFE ZONE]...) já
+    // apareceu assim numa seção de linhagem, e é o que este teste trava.
     const [secao] = canvasSections(
-      [asset({ id: 'r', type: 'original', prompt: 'Story vertical com depoimento' })],
+      [asset({ id: 'r', type: 'original', prompt: '[INTRODUCTION] Create a 9:16 vertical Instagram Story...' })],
       'lineage',
     );
 
     expect(secao.title).toBe('Geração');
-    expect(secao.hint).toBe('Story vertical com depoimento');
+    expect(secao.hint).toBeUndefined();
   });
 
   it('conta a árvore inteira, não só a raiz', () => {

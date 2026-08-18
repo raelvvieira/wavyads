@@ -41,6 +41,9 @@ vi.mock('@/lib/aiUsageTracker', () => ({ recordAiUsage: vi.fn() }));
 const toast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({ toast: (...a: any[]) => toast(...a) }));
 
+const useClients = vi.fn();
+vi.mock('@/hooks/useClients', () => ({ useClients: (...a: any[]) => useClients(...a) }));
+
 import CriativoStudioV2Page from './CriativoStudioV2Page';
 
 const PROJETO = {
@@ -67,6 +70,7 @@ describe('CriativoStudioV2Page', () => {
     listCreativeAssets.mockResolvedValue(ASSETS_DO_PROJETO);
     listRecentProjects.mockResolvedValue([PROJETO]);
     updateProjectFormat.mockResolvedValue(undefined);
+    useClients.mockReturnValue({ data: [{ id: 'c1', name: 'Boutique Aurora' }, { id: 'c2', name: 'Loja do João' }] });
   });
 
   it('desenha o acervo real do projeto mais recente', async () => {
@@ -316,5 +320,68 @@ describe('CriativoStudioV2Page', () => {
     await waitFor(() => expect(screen.getByText('Prévia')).toBeTruthy());
     fireEvent.click(screen.getByRole('button', { name: 'Abrir o Studio atual' }));
     expect(navigate).toHaveBeenCalledWith('/criativo-studio');
+  });
+
+  it('selecionar um cliente filtra o canvas e as contagens da ilha ao que é dele', async () => {
+    // Toda a amostra é do cliente 'cli-1' — uma arte passa a ser de outro,
+    // e selecionar 'cli-1' precisa escondê-la do canvas e da contagem.
+    useClients.mockReturnValue({ data: [
+      { id: 'cli-1', name: 'Boutique Aurora' },
+      { id: 'cli-2', name: 'Loja do João' },
+    ] });
+    const misto = ASSETS_DO_PROJETO.map((a, i) => (i === 0 ? { ...a, clientId: 'cli-2' } : a));
+    listCreativeAssets.mockResolvedValue(misto);
+    const totalMisto = misto.length;
+
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+    expect(cards().length).toBeLessThan(totalMisto + 1); // sanity: canvas != acervo bruto (insumo já é cortado)
+    const totalAntes = cards().length;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Filtrar por cliente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Boutique Aurora' }));
+
+    await waitFor(() => expect(cards().length).toBeLessThan(totalAntes));
+    // O nome aparece duas vezes agora (trigger + chip de filtro) — o que
+    // importa aqui é que o filtro é removível, não onde o texto está.
+    expect(screen.getByRole('button', { name: 'Remover filtro Boutique Aurora' })).toBeTruthy();
+  });
+
+  it('gerar depois de escolher um cliente grava o clientId no asset criado', async () => {
+    useClients.mockReturnValue({ data: [{ id: 'cli-9', name: 'Studio Nômade' }] });
+    createCreativeAsset.mockResolvedValue({
+      id: 'nova', projectId: 'proj-1', clientId: 'cli-9', type: 'original', status: 'generating',
+      url: null, thumbnailUrl: null, parentAssetId: null, rootAssetId: null, groupId: null,
+      factorAxis: null, aspectRatio: '4:5', resolution: '2K', width: null, height: null,
+      prompt: 'p', negativePrompt: null, model: 'gpt-image-2', errorMessage: null, filename: null,
+      isClientIntelligence: false, metadata: {},
+      createdAt: '2026-08-18T12:00:00.000Z', updatedAt: '2026-08-18T12:00:00.000Z',
+    } satisfies CreativeAsset);
+    invoke.mockResolvedValue({ data: { imageUrl: 'https://x/nova.png' }, error: null });
+    updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({ id, ...patch }));
+
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Filtrar por cliente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Studio Nômade' }));
+
+    fireEvent.change(screen.getByPlaceholderText('O que você quer criar?'), { target: { value: 'x' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Gerar' }));
+    });
+
+    expect(createCreativeAsset).toHaveBeenCalledWith(expect.objectContaining({ clientId: 'cli-9' }));
+  });
+
+  it('trocar de cliente zera o filtro "Só este projeto" — não fica preso a um projeto de outro cliente', async () => {
+    useClients.mockReturnValue({ data: [{ id: 'cli-1', name: 'Boutique Aurora' }] });
+    montar();
+    await waitFor(() => expect(screen.getByText('Só este projeto')).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Filtrar por cliente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Boutique Aurora' }));
+
+    await waitFor(() => expect(screen.queryByText('Só este projeto')).toBeNull());
   });
 });

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { StudioLibraryEntry, StudioLibraryId } from '../types/studioUi';
 
@@ -30,22 +29,24 @@ export function StudioLibraryIsland({
   onSelect,
   onExpandedChange,
 }: StudioLibraryIslandProps) {
-  const [pinned, setPinned] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [focusWithin, setFocusWithin] = useState(false);
   const ref = useRef<HTMLElement>(null);
 
-  const showLabels = pinned || previewing || focusWithin;
+  // Sem estado fixado por clique — sete destinos sempre visíveis por ícone,
+  // sem a hierarquia de uma navegação primária. Abre por hover (mouse) e
+  // por foco (tab para dentro de qualquer item), e cada ícone recolhido
+  // ainda tem `title` como identificação para quem não usa nenhum dos dois.
+  const showLabels = previewing || focusWithin;
 
   useEffect(() => {
     onExpandedChange?.(showLabels);
   }, [showLabels, onExpandedChange]);
 
-  // Escape limpa TODOS os estados abertos. Limpar só o fixado faz a tecla
-  // parecer quebrada enquanto a ilha continua aberta pelo ponteiro.
+  // Escape limpa TODOS os estados abertos. Limpar só um deles faz a tecla
+  // parecer quebrada enquanto a ilha continua aberta pelo outro caminho.
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key !== 'Escape') return;
-    setPinned(false);
     setPreviewing(false);
     setFocusWithin(false);
     (e.currentTarget as HTMLElement).blur();
@@ -102,23 +103,6 @@ export function StudioLibraryIsland({
           );
         })}
       </ul>
-
-      {/* O clique é obrigatório: teclado e toque não têm hover, e rótulo
-          alcançável só por ponteiro é rótulo que parte dos usuários nunca lê. */}
-      <button
-        type="button"
-        onClick={() => setPinned((v) => !v)}
-        aria-expanded={showLabels}
-        aria-label={pinned ? 'Recolher bibliotecas' : 'Expandir bibliotecas'}
-        className="studio-library-item mt-auto"
-      >
-        <span className="studio-library-icon">
-          {pinned ? <PanelLeftClose className="h-[18px] w-[18px]" /> : <PanelLeftOpen className="h-[18px] w-[18px]" />}
-        </span>
-        <span className="wavy-nav-label flex-1 text-left text-[13px] font-medium">
-          {pinned ? 'Recolher' : 'Expandir'}
-        </span>
-      </button>
     </nav>
   );
 }

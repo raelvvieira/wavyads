@@ -12,6 +12,9 @@ function montar(patch: Partial<CreativeStudioShellProps> = {}) {
   const props: CreativeStudioShellProps = {
     projectName: 'Campanha de Verão',
     clientName: 'Boutique Aurora',
+    clientId: 'c1',
+    clients: [{ id: 'c1', name: 'Boutique Aurora' }],
+    onClientChange: vi.fn(),
     assets: visiveis,
     allAssets: PREVIEW_ASSETS,
     libraries: PREVIEW_LIBRARIES,
