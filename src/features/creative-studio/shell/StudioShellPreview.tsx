@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { visibleCanvasAssets } from '../state/canvasSelectors';
 import type { StudioLibraryId } from '../types/studioUi';
 import { CreativeStudioShell } from './CreativeStudioShell';
+import { StudioPreviewBanner } from './StudioPreviewBanner';
 import { PREVIEW_ASSETS, PREVIEW_LIBRARIES } from './studioPreviewFixtures';
 
 /**
@@ -22,7 +23,9 @@ export function StudioShellPreview() {
   );
 
   return (
-    <CreativeStudioShell
+    <div className="studio-page">
+      <StudioPreviewBanner onOpenCurrent={() => {}} />
+      <CreativeStudioShell
       projectName="Campanha de Verão 2026"
       clientName="Boutique Aurora"
       assets={visiveis}
@@ -50,6 +53,7 @@ export function StudioShellPreview() {
       onOpenAttachments={() => {}}
       onOpenSettings={() => {}}
       onAssetAction={() => {}}
-    />
+      />
+    </div>
   );
 }

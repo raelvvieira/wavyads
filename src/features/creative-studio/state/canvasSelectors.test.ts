@@ -5,6 +5,7 @@ import {
   canGenerate,
   summarizeSelection,
   visibleCanvasAssets,
+  libraryAssets,
 } from './canvasSelectors';
 
 function asset(over: Partial<CreativeAsset> & { id: string }): CreativeAsset {
@@ -143,5 +144,37 @@ describe('summarizeSelection', () => {
       asset({ id: 'd', status: 'failed' }),
     ]);
     expect(s).toEqual({ total: 4, ready: 1, generating: 2, failed: 1 });
+  });
+});
+
+describe('libraryAssets', () => {
+  function insumo(id: string, type: CreativeAsset['type']): CreativeAsset {
+    return {
+      id, projectId: 'p', clientId: 'c', type, status: 'ready', url: 'u',
+      thumbnailUrl: null, parentAssetId: null, rootAssetId: null, groupId: null,
+      factorAxis: null, aspectRatio: '1:1', resolution: null, width: null, height: null,
+      prompt: null, negativePrompt: null, model: null, errorMessage: null, filename: null,
+      isClientIntelligence: false, metadata: {},
+      createdAt: '2026-08-18T10:00:00.000Z', updatedAt: '2026-08-18T10:00:00.000Z',
+    };
+  }
+
+  const acervo = [
+    insumo('r1', 'reference'),
+    insumo('p1', 'product'),
+    insumo('a1', 'original'),
+  ];
+
+  it('mostra insumo quando a biblioteca é pedida a dedo', () => {
+    // Sem esta porta, abrir "Referências" mostraria zero — o corte de
+    // `visibleCanvasAssets` existe para o canvas não abrir poluído, não
+    // para tornar referência inalcançável.
+    expect(libraryAssets(acervo, { types: ['reference'] }).map((a) => a.id)).toEqual(['r1']);
+    expect(visibleCanvasAssets(acervo, { types: ['reference'] })).toEqual([]);
+  });
+
+  it('aplica os mesmos filtros que o canvas', () => {
+    expect(libraryAssets(acervo, { clientId: 'outro' })).toEqual([]);
+    expect(libraryAssets(acervo)).toHaveLength(3);
   });
 });
