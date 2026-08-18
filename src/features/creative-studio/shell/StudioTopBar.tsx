@@ -1,5 +1,6 @@
 import { ChevronDown, History, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { StudioClientSelector, type StudioClientOption } from './StudioClientSelector';
 
 export interface StudioFilterChip {
   id: string;
@@ -9,6 +10,9 @@ export interface StudioFilterChip {
 interface StudioTopBarProps {
   projectName: string;
   clientName: string | null;
+  clientId: string | null;
+  clients: StudioClientOption[];
+  onClientChange: (clientId: string | null) => void;
   query: string;
   onQueryChange: (value: string) => void;
   filters: StudioFilterChip[];
@@ -32,6 +36,9 @@ interface StudioTopBarProps {
 export function StudioTopBar({
   projectName,
   clientName,
+  clientId,
+  clients,
+  onClientChange,
   query,
   onQueryChange,
   filters,
@@ -43,20 +50,27 @@ export function StudioTopBar({
 }: StudioTopBarProps) {
   return (
     <header className="studio-topbar glass-island">
-      <button
-        type="button"
-        onClick={onOpenProjects}
-        className="group flex min-w-0 items-center gap-2.5 rounded-[14px] px-2.5 py-1.5 text-left transition-colors duration-200 hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wavy-focus)]"
-        aria-label="Trocar de projeto"
-      >
-        <span className="min-w-0">
-          <span className="block truncate text-sm font-semibold text-white/92">{projectName}</span>
-          <span className="block truncate text-[11px] text-white/50">
-            {clientName ?? 'Sem cliente'}
-          </span>
-        </span>
-        <ChevronDown className="h-4 w-4 shrink-0 text-white/45 transition-transform duration-200 group-hover:translate-y-0.5" />
-      </button>
+      {/* Duas ações, dois elementos: trocar de projeto e filtrar por
+          cliente não são a mesma coisa, e `<button>` dentro de `<button>`
+          não é HTML válido — por isso o nome do cliente saiu de dentro do
+          botão do projeto para um irmão logo abaixo. */}
+      <div className="flex min-w-0 flex-col px-1">
+        <button
+          type="button"
+          onClick={onOpenProjects}
+          className="group -mx-1 flex min-w-0 items-center gap-1.5 rounded-[10px] px-1 py-0.5 text-left transition-colors duration-200 hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wavy-focus)]"
+          aria-label="Trocar de projeto"
+        >
+          <span className="truncate text-sm font-semibold text-white/92">{projectName}</span>
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-white/45 transition-transform duration-200 group-hover:translate-y-0.5" />
+        </button>
+        <StudioClientSelector
+          clientId={clientId}
+          clientName={clientName}
+          clients={clients}
+          onChange={onClientChange}
+        />
+      </div>
 
       <div className="studio-topbar-search">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/40" />

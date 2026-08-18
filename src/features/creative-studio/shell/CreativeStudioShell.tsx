@@ -6,6 +6,7 @@ import type { CanvasViewMode, DockAttachment, SidePanelMode, StudioLibraryEntry,
 import type { SelectionAction } from '../state/canvasSelectors';
 import { summarizeSelection } from '../state/canvasSelectors';
 import { StudioTopBar, type StudioFilterChip } from './StudioTopBar';
+import type { StudioClientOption } from './StudioClientSelector';
 import { StudioLibraryIsland } from './StudioLibraryIsland';
 import { CreativeCanvas } from '../canvas/CreativeCanvas';
 import { CommandDock } from '../command/CommandDock';
@@ -14,6 +15,9 @@ import { AssetInspector } from '../inspector/AssetInspector';
 export interface CreativeStudioShellProps {
   projectName: string;
   clientName: string | null;
+  clientId: string | null;
+  clients: StudioClientOption[];
+  onClientChange: (clientId: string | null) => void;
   /** Já filtrado por `visibleCanvasAssets`. */
   assets: CreativeAsset[];
   /** Acervo completo, para o inspetor montar a linhagem. */
@@ -104,6 +108,9 @@ export function CreativeStudioShell(props: CreativeStudioShellProps) {
       <StudioTopBar
         projectName={props.projectName}
         clientName={props.clientName}
+        clientId={props.clientId}
+        clients={props.clients}
+        onClientChange={props.onClientChange}
         query={props.query}
         onQueryChange={props.onQueryChange}
         filters={props.filters}

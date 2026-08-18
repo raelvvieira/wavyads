@@ -122,10 +122,11 @@ function secoesEmLinhagem(assets: CreativeAsset[]): CanvasSection[] {
       return {
         key: raiz.asset.id,
         title: TIPO_LOTE[raiz.asset.type] ?? 'Origem',
+        // Sem `hint`: o prompt de geração inteiro (com os blocos
+        // [INTRODUCTION]/[SAFE ZONE]...) virava um parágrafo pesando sobre
+        // o cabeçalho da seção. `meta` (contagem + data) já identifica a
+        // árvore o suficiente para navegar a linhagem.
         meta: `${plural(items.length)} · ${dataCurta(raiz.asset.createdAt)}`,
-        // Em caixa normal e truncado na tela: aqui o prompt identifica a
-        // árvore, e é a única pista que distingue duas raízes do mesmo tipo.
-        hint: raiz.asset.prompt ?? raiz.asset.filename ?? undefined,
         items,
       };
     })

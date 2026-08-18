@@ -1,4 +1,4 @@
-import { Boxes, CheckCircle2, ImageIcon, LayoutTemplate, Sparkles, UserRound, Wand2 } from 'lucide-react';
+import { Boxes, CheckCircle2, ImageIcon, Images, LayoutTemplate, Layers, UserRound } from 'lucide-react';
 import type { CreativeAsset } from '../types/creative';
 import type { StudioLibraryEntry } from '../types/studioUi';
 
@@ -104,8 +104,8 @@ export const PREVIEW_ASSETS: CreativeAsset[] = [
 
 export const PREVIEW_LIBRARIES: StudioLibraryEntry[] = [
   { id: 'all', label: 'Todas as criações', icon: ImageIcon, count: 11 },
-  { id: 'generations', label: 'Gerações', icon: Sparkles, count: 8 },
-  { id: 'references', label: 'Referências', icon: Wand2, count: 3 },
+  { id: 'generations', label: 'Gerações', icon: Layers, count: 8 },
+  { id: 'references', label: 'Referências', icon: Images, count: 3 },
   { id: 'products', label: 'Produtos', icon: Boxes, count: 2 },
   { id: 'avatars', label: 'Avatares', icon: UserRound, count: 1 },
   { id: 'templates', label: 'Templates', icon: LayoutTemplate, count: 4 },

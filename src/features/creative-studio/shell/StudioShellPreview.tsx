@@ -27,6 +27,8 @@ export function StudioShellPreview() {
   const [attachments, setAttachments] = useState<DockAttachment[]>([
     { id: 'r1', kind: 'file', label: 'referencia-verao.jpg', value: 'https://x/r1.jpg' },
   ]);
+  const [clientId, setClientId] = useState<string | null>('c1');
+  const clients = [{ id: 'c1', name: 'Boutique Aurora' }, { id: 'c2', name: 'Loja do João' }];
 
   const visiveis = useMemo(
     () => visibleCanvasAssets(PREVIEW_ASSETS, query ? { query } : {}),
@@ -39,7 +41,10 @@ export function StudioShellPreview() {
       <StudioPreviewBanner onOpenCurrent={() => {}} />
       <CreativeStudioShell
       projectName="Campanha de Verão 2026"
-      clientName="Boutique Aurora"
+      clientName={clients.find((c) => c.id === clientId)?.name ?? null}
+      clientId={clientId}
+      clients={clients}
+      onClientChange={setClientId}
       assets={visiveis}
       allAssets={PREVIEW_ASSETS}
       libraries={PREVIEW_LIBRARIES}
