@@ -38,6 +38,11 @@ vi.mock('@/integrations/supabase/client', () => ({
 
 vi.mock('@/lib/aiUsageTracker', () => ({ recordAiUsage: vi.fn() }));
 
+const uploadDataUrlToCreativeStorage = vi.fn();
+vi.mock('@/features/creative-studio/api/storageUpload', () => ({
+  uploadDataUrlToCreativeStorage: (...a: any[]) => uploadDataUrlToCreativeStorage(...a),
+}));
+
 const toast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({ toast: (...a: any[]) => toast(...a) }));
 
@@ -145,7 +150,7 @@ describe('CriativoStudioV2Page', () => {
     montar();
     await waitFor(() => expect(cards().length).toBeGreaterThan(0));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência, logo, copy ou arquivos' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência, logo, copy ou produto' }));
     fireEvent.click(screen.getByRole('button', { name: 'Anexar copy' }));
     fireEvent.change(screen.getByPlaceholderText(/Cole o texto final/), {
       target: { value: 'Até 50% OFF — só hoje' },
@@ -162,6 +167,47 @@ describe('CriativoStudioV2Page', () => {
 
     // Consumido: não sobra no dock depois do envio.
     await waitFor(() => expect(screen.queryByText(/Até 50% OFF/)).toBeNull());
+  });
+
+  it('anexar produto pelo menu do clipe entra em productImageUrls na geração', async () => {
+    // Mesmo canal que "referência" já alimentava — só reforça que renomear
+    // 'file' para 'product' não quebrou o fio até `buildGenerationRequest`.
+    createCreativeAsset.mockResolvedValue({
+      id: 'nova', projectId: 'proj-1', clientId: null, type: 'original', status: 'generating',
+      url: null, thumbnailUrl: null, parentAssetId: null, rootAssetId: null, groupId: null,
+      factorAxis: null, aspectRatio: '4:5', resolution: '2K', width: null, height: null,
+      prompt: 'p', negativePrompt: null, model: 'gpt-image-2', errorMessage: null, filename: null,
+      isClientIntelligence: false, metadata: {},
+      createdAt: '2026-08-18T12:00:00.000Z', updatedAt: '2026-08-18T12:00:00.000Z',
+    } satisfies CreativeAsset);
+    invoke.mockResolvedValue({ data: { imageUrl: 'https://x/nova.png' }, error: null });
+    updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({ id, ...patch }));
+    uploadDataUrlToCreativeStorage.mockResolvedValue('https://x/produto-enviado.png');
+
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência, logo, copy ou produto' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar produto' }));
+
+    const arquivo = new File(['conteudo'], 'produto.png', { type: 'image/png' });
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [arquivo] } });
+    });
+    // O upload anexa direto (sem passo de confirmação) — o chip "Produto"
+    // no dock é o sinal de que o anexo chegou.
+    await waitFor(() => expect(screen.getByText('Produto')).toBeTruthy());
+
+    fireEvent.change(screen.getByPlaceholderText('O que você quer criar?'), {
+      target: { value: 'lançamento de verão' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Gerar' }));
+    });
+
+    const chamada = invoke.mock.calls.find((c) => c[0] === 'criativo-generate')!;
+    expect(chamada[1].body.productImages).toContain('https://x/produto-enviado.png');
   });
 
   it('trocar o formato no popover de geração muda o próximo pedido e persiste no projeto', async () => {

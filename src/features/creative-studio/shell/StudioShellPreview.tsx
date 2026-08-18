@@ -25,7 +25,7 @@ export function StudioShellPreview() {
   const [resolution, setResolution] = useState<CreativeResolution>('2K');
   const [modelId, setModelId] = useState(IMAGE_GENERATION_MODEL.id);
   const [attachments, setAttachments] = useState<DockAttachment[]>([
-    { id: 'r1', kind: 'file', label: 'referencia-verao.jpg', value: 'https://x/r1.jpg' },
+    { id: 'r1', kind: 'product', label: 'produto-verao.jpg', value: 'https://x/r1.jpg' },
   ]);
   const [clientId, setClientId] = useState<string | null>('c1');
   const clients = [{ id: 'c1', name: 'Boutique Aurora' }, { id: 'c2', name: 'Loja do João' }];

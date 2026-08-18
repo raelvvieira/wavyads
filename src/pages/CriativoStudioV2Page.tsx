@@ -263,7 +263,7 @@ export default function CriativoStudioV2Page() {
         // Sem seleção: gerar uma arte nova, no formato escolhido no popover.
         const logo = attachments.find((a) => a.kind === 'logo');
         const copyAnexada = attachments.find((a) => a.kind === 'copy');
-        const imagens = attachments.filter((a) => a.kind === 'reference' || a.kind === 'file').map((a) => a.value);
+        const imagens = attachments.filter((a) => a.kind === 'reference' || a.kind === 'product').map((a) => a.value);
 
         toast({ title: 'Gerando arte…' });
         const resultado = await actions.generate(texto, ratio, {

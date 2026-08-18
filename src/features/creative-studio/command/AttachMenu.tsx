@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react';
-import { BadgeCheck, ChevronLeft, ChevronRight, FileUp, Images, Type } from 'lucide-react';
+import { BadgeCheck, Boxes, ChevronLeft, ChevronRight, Images, Type } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
 import { ImageDropzone } from '@/components/criativo/ImageDropzone';
@@ -19,7 +19,8 @@ const OPCOES: { kind: DockAttachmentKind; label: string; icon: typeof Images }[]
   { kind: 'reference', label: 'Anexar referência', icon: Images },
   { kind: 'logo', label: 'Anexar logo', icon: BadgeCheck },
   { kind: 'copy', label: 'Anexar copy', icon: Type },
-  { kind: 'file', label: 'Anexar arquivos', icon: FileUp },
+  // Mesmo ícone da biblioteca "Produtos" — mesmo conceito, mesmo símbolo.
+  { kind: 'product', label: 'Anexar produto', icon: Boxes },
 ];
 
 /**
@@ -113,7 +114,7 @@ function SubPainel({
   if (kind === 'reference') return <PainelReferencia referenceLibrary={referenceLibrary} onVoltar={onVoltar} onAnexar={onAnexar} />;
   if (kind === 'logo') return <PainelUpload titulo="Anexar logo" maxImages={1} texto="Solte, clique ou cole o logo" kind="logo" onVoltar={onVoltar} onAnexar={onAnexar} />;
   if (kind === 'copy') return <PainelCopy onVoltar={onVoltar} onAnexar={onAnexar} />;
-  return <PainelUpload titulo="Anexar arquivos" maxImages={6} texto="Solte, clique ou cole imagens" kind="file" onVoltar={onVoltar} onAnexar={onAnexar} />;
+  return <PainelUpload titulo="Anexar produto" maxImages={6} texto="Solte, clique ou cole imagens do produto" kind="product" onVoltar={onVoltar} onAnexar={onAnexar} />;
 }
 
 function PainelReferencia({
@@ -168,7 +169,7 @@ function PainelUpload({
   titulo: string;
   maxImages: number;
   texto: string;
-  kind: 'logo' | 'file';
+  kind: 'logo' | 'product';
   onVoltar: () => void;
   onAnexar: (attachment: Omit<DockAttachment, 'id'>) => void;
 }) {
@@ -184,7 +185,7 @@ function PainelUpload({
       for (const dataUrl of dataUrls) {
         const path = `attachments/${kind}/${crypto.randomUUID()}.png`;
         const url = await uploadDataUrlToCreativeStorage({ dataUrl, path });
-        onAnexar({ kind, label: kind === 'logo' ? 'Logo' : 'Arquivo', thumbnailUrl: url, value: url });
+        onAnexar({ kind, label: kind === 'logo' ? 'Logo' : 'Produto', thumbnailUrl: url, value: url });
       }
     } finally {
       setEnviando(false);

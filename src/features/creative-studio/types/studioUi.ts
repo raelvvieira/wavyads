@@ -33,7 +33,7 @@ export interface StudioLibraryEntry {
 }
 
 /** O que o menu de anexos do dock sabe anexar. */
-export type DockAttachmentKind = 'reference' | 'logo' | 'copy' | 'file';
+export type DockAttachmentKind = 'reference' | 'logo' | 'copy' | 'product';
 
 export interface DockAttachment {
   id: string;

@@ -21,6 +21,8 @@ function montar(selected: CreativeAsset[]) {
   );
 }
 
+const corpo = () => document.querySelector('.studio-side-panel-body') as HTMLElement;
+
 describe('AssetInspector — visualização em tamanho completo', () => {
   it('clicar na imagem abre o diálogo com a arte inteira', () => {
     const pronta = asset({ id: 'a1', status: 'ready', url: 'https://x/a.png' });
@@ -65,5 +67,61 @@ describe('AssetInspector — visualização em tamanho completo', () => {
     ];
     montar(duas);
     expect(screen.queryByRole('button', { name: 'Ver arte em tamanho completo' })).toBeNull();
+  });
+});
+
+// Mais de 60 caracteres: o título do cabeçalho (`tituloDoAsset`) trunca em
+// 60, então um prompt longo garante que o texto do CORPO só existe depois
+// de abrir a seção — sem isso `getByText` acha o título e o corpo juntos.
+const PROMPT_LONGO_VERAO =
+  'Anúncio de lançamento da coleção de verão, modelo em ambiente externo ao pôr do sol, tipografia editorial';
+const PROMPT_LONGO_INVERNO =
+  'Anúncio de lançamento da coleção de inverno, cenário urbano à noite, tipografia geométrica moderna';
+
+describe('AssetInspector — prompt e troca de seleção', () => {
+  it('o prompt nasce fechado', () => {
+    const pronta = asset({ id: 'a1', status: 'ready', url: 'https://x/a.png', prompt: PROMPT_LONGO_VERAO });
+    montar([pronta]);
+    expect(screen.getByRole('button', { name: /Prompt/i }).getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByText(PROMPT_LONGO_VERAO)).toBeNull();
+  });
+
+  it('clicar abre o prompt e mostra o texto completo', () => {
+    const pronta = asset({ id: 'a1', status: 'ready', url: 'https://x/a.png', prompt: PROMPT_LONGO_VERAO });
+    montar([pronta]);
+    fireEvent.click(screen.getByRole('button', { name: /Prompt/i }));
+    expect(screen.getByText(PROMPT_LONGO_VERAO)).toBeTruthy();
+  });
+
+  it('trocar de arte selecionada fecha o prompt que estava aberto', () => {
+    // Sem isso o prompt aberto de UMA arte continuava aberto ao trocar
+    // para outra — estado local vazando de uma seleção para a próxima.
+    const a1 = asset({ id: 'a1', status: 'ready', url: 'https://x/a.png', prompt: PROMPT_LONGO_VERAO });
+    const a2 = asset({ id: 'a2', status: 'ready', url: 'https://x/b.png', prompt: PROMPT_LONGO_INVERNO });
+    const { rerender } = montar([a1]);
+
+    fireEvent.click(screen.getByRole('button', { name: /Prompt/i }));
+    expect(screen.getByText(PROMPT_LONGO_VERAO)).toBeTruthy();
+
+    rerender(<AssetInspector selected={[a2]} allAssets={[a1, a2]} onAction={vi.fn()} onClose={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: /Prompt/i }).getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByText(PROMPT_LONGO_INVERNO)).toBeNull();
+  });
+
+  it('trocar de arte selecionada reseta o scroll do corpo', () => {
+    // A imagem "sumia" porque o painel é o MESMO nó DOM entre seleções —
+    // sem resetar o scroll, a imagem da arte nova (primeiro item) ficava
+    // escondida na posição de rolagem deixada pela arte anterior.
+    const a1 = asset({ id: 'a1', status: 'ready', url: 'https://x/a.png' });
+    const a2 = asset({ id: 'a2', status: 'ready', url: 'https://x/b.png' });
+    const { rerender } = montar([a1]);
+
+    Object.defineProperty(corpo(), 'scrollTop', { value: 400, writable: true });
+    expect(corpo().scrollTop).toBe(400);
+
+    rerender(<AssetInspector selected={[a2]} allAssets={[a1, a2]} onAction={vi.fn()} onClose={vi.fn()} />);
+
+    expect(corpo().scrollTop).toBe(0);
   });
 });
