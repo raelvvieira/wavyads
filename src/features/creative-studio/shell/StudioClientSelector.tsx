@@ -50,7 +50,7 @@ export function StudioClientSelector({ clientId, clientName, clients, onChange }
           className="group -mx-1 flex min-w-0 items-center gap-1.5 rounded-[10px] px-1 py-0.5 text-left transition-colors duration-200 hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wavy-focus)]"
         >
           <span className="truncate text-sm font-semibold text-white/92">
-            {clientName ?? 'Sem cliente'}
+            {clientName ?? 'Todos Clientes'}
           </span>
           <ChevronDown className="h-3.5 w-3.5 shrink-0 text-white/45 transition-transform duration-200 group-hover:translate-y-0.5" />
         </button>
@@ -77,7 +77,7 @@ export function StudioClientSelector({ clientId, clientName, clients, onChange }
               onClick={() => escolher(null)}
               className="flex w-full items-center justify-between gap-2 rounded-[var(--wavy-radius-control)] px-2.5 py-2 text-left text-[13px] font-medium text-white/78 transition-colors duration-150 hover:bg-white/[0.07]"
             >
-              Sem cliente
+              Todos Clientes
               {clientId === null && <Check className="h-3.5 w-3.5 shrink-0 text-accent" />}
             </button>
           </li>

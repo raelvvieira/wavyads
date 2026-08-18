@@ -37,7 +37,7 @@ describe('AttachMenu', () => {
   it('lista as quatro opções ao abrir', () => {
     montar();
     abrir();
-    ['Anexar referência', 'Anexar logo', 'Anexar copy', 'Anexar arquivos'].forEach((rotulo) => {
+    ['Anexar referência', 'Anexar logo', 'Anexar copy', 'Anexar produto'].forEach((rotulo) => {
       expect(screen.getByRole('button', { name: rotulo })).toBeTruthy();
     });
   });
@@ -96,6 +96,23 @@ describe('AttachMenu', () => {
 
     await waitFor(() => expect(onAttach).toHaveBeenCalledWith(expect.objectContaining({
       kind: 'logo', value: 'https://x/logo-enviado.png',
+    })));
+  });
+
+  it('produto: sobe o arquivo e anexa com kind "product"', async () => {
+    // Este anexo alimenta `productImageUrls` na geração — é o mesmo canal
+    // que "Anexar arquivos" já usava, só com o nome batendo com a função.
+    uploadDataUrlToCreativeStorage.mockResolvedValue('https://x/produto-enviado.png');
+    const { onAttach } = montar();
+    abrir();
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar produto' }));
+
+    const arquivo = new File(['conteudo'], 'produto.png', { type: 'image/png' });
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [arquivo] } });
+
+    await waitFor(() => expect(onAttach).toHaveBeenCalledWith(expect.objectContaining({
+      kind: 'product', value: 'https://x/produto-enviado.png', label: 'Produto',
     })));
   });
 

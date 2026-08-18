@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Download, Expand, Maximize2, Pencil, RefreshCw, Sparkles, X } from 'lucide-react';
+import { ChevronDown, Download, Expand, Maximize2, Pencil, RefreshCw, Sparkles, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { CreativeAsset } from '../types/creative';
 import { ASSET_ORIGIN_LABELS, ASSET_STATUS_LABELS, FACTOR_AXIS_LABELS } from '../types/creative';
 import { availableActionsForSelection, type SelectionAction } from '../state/canvasSelectors';
@@ -58,68 +59,14 @@ export function AssetInspector({ selected, allAssets, onAction, onClose }: Asset
         </button>
       </header>
 
-      <div className="studio-side-panel-body">
-        {unico?.url && unico.status === 'ready' && (
-          <button
-            type="button"
-            onClick={() => setPreviewOpen(true)}
-            aria-label="Ver arte em tamanho completo"
-            className="group relative block w-full overflow-hidden rounded-[var(--wavy-radius-card)] border border-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wavy-focus)]"
-          >
-            <img
-              src={unico.thumbnailUrl ?? unico.url}
-              alt={unico.prompt?.slice(0, 120) ?? 'Arte selecionada'}
-              className="w-full object-cover"
-            />
-            {/* Só um afago de affordance — o clique já funciona sem isso,
-                mas sem sinal nenhum a imagem parece decorativa. */}
-            <span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all duration-150 group-hover:bg-black/30 group-hover:opacity-100">
-              <Expand className="h-5 w-5 text-white drop-shadow" />
-            </span>
-          </button>
-        )}
-
-        {unico && (
-          <dl className="studio-inspector-facts">
-            <Fato termo="Formato" valor={unico.aspectRatio ?? '—'} />
-            <Fato termo="Status" valor={ASSET_STATUS_LABELS[unico.status]} />
-            <Fato termo="Origem" valor={ASSET_ORIGIN_LABELS[unico.type] ?? unico.type} />
-            {unico.factorAxis && <Fato termo="Eixo" valor={FACTOR_AXIS_LABELS[unico.factorAxis]} />}
-            {unico.model && <Fato termo="Modelo" valor={unico.model} />}
-          </dl>
-        )}
-
-        {/* Duas artes ou mais: o caminho até a raiz não é único, então em vez
-            de escolher um arbitrariamente o inspetor mostra a contagem. */}
-        {caminho.length > 1 && (
-          <section>
-            <p className="wavy-caps mb-1.5 text-[10px] font-semibold uppercase text-white/45">Veio de</p>
-            <ol className="studio-inspector-lineage">
-              {caminho.map((a, i) => (
-                <li key={a.id} data-current={i === caminho.length - 1}>
-                  {ASSET_ORIGIN_LABELS[a.type] ?? a.type}
-                  {a.aspectRatio && <span className="metric-number text-white/40"> · {a.aspectRatio}</span>}
-                </li>
-              ))}
-            </ol>
-          </section>
-        )}
-
-        {unico?.prompt && (
-          <section>
-            <p className="wavy-caps mb-1.5 text-[10px] font-semibold uppercase text-white/45">Prompt</p>
-            <p className="rounded-[var(--wavy-radius-card)] border border-white/8 bg-white/[0.03] p-3 text-xs leading-relaxed text-white/68">
-              {unico.prompt}
-            </p>
-          </section>
-        )}
-
-        {unico?.status === 'failed' && unico.errorMessage && (
-          <p className="rounded-[var(--wavy-radius-card)] border border-destructive/30 bg-destructive/10 p-3 text-xs leading-relaxed text-white/78">
-            {unico.errorMessage}
-          </p>
-        )}
-      </div>
+      {/* `key` muda a cada seleção — força o React a desmontar e remontar
+          o corpo inteiro em vez de reaproveitar o mesmo nó. Duas coisas
+          dependem disso: o SCROLL, que sem isso mantinha a posição da arte
+          anterior e escondia a imagem da nova acima do que estava visível
+          (foi assim que a imagem "sumiu" — a arte trocava, o scroll não);
+          e o prompt aberto/fechado, que sem isso vazava de uma arte para a
+          próxima. */}
+      <Corpo key={unico?.id ?? `multi-${selected.length}`} unico={unico} caminho={caminho} onPreview={() => setPreviewOpen(true)} />
 
       {acoes.length > 0 && (
         <footer className="studio-side-panel-footer">
@@ -144,6 +91,104 @@ export function AssetInspector({ selected, allAssets, onAction, onClose }: Asset
 
       <AssetPreviewDialog asset={previewOpen ? unico : null} onClose={() => setPreviewOpen(false)} />
     </aside>
+  );
+}
+
+/**
+ * Corpo do inspetor.
+ *
+ * Componente próprio para que a `key` no chamador funcione: React só reseta
+ * scroll e estado local ao trocar de `key` se o que muda de identidade for
+ * a raiz de uma árvore de componentes, não um `<div>` solto no meio de um
+ * componente que continua o mesmo.
+ */
+function Corpo({
+  unico,
+  caminho,
+  onPreview,
+}: {
+  unico: CreativeAsset | null;
+  caminho: CreativeAsset[];
+  onPreview: () => void;
+}) {
+  const [promptAberto, setPromptAberto] = useState(false);
+
+  return (
+    <div className="studio-side-panel-body">
+      {unico?.url && unico.status === 'ready' && (
+        <button
+          type="button"
+          onClick={onPreview}
+          aria-label="Ver arte em tamanho completo"
+          className="group relative block w-full overflow-hidden rounded-[var(--wavy-radius-card)] border border-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wavy-focus)]"
+        >
+          <img
+            src={unico.thumbnailUrl ?? unico.url}
+            alt={unico.prompt?.slice(0, 120) ?? 'Arte selecionada'}
+            className="w-full object-cover"
+          />
+          {/* Só um afago de affordance — o clique já funciona sem isso,
+              mas sem sinal nenhum a imagem parece decorativa. */}
+          <span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all duration-150 group-hover:bg-black/30 group-hover:opacity-100">
+            <Expand className="h-5 w-5 text-white drop-shadow" />
+          </span>
+        </button>
+      )}
+
+      {unico && (
+        <dl className="studio-inspector-facts">
+          <Fato termo="Formato" valor={unico.aspectRatio ?? '—'} />
+          <Fato termo="Status" valor={ASSET_STATUS_LABELS[unico.status]} />
+          <Fato termo="Origem" valor={ASSET_ORIGIN_LABELS[unico.type] ?? unico.type} />
+          {unico.factorAxis && <Fato termo="Eixo" valor={FACTOR_AXIS_LABELS[unico.factorAxis]} />}
+          {unico.model && <Fato termo="Modelo" valor={unico.model} />}
+        </dl>
+      )}
+
+      {/* Duas artes ou mais: o caminho até a raiz não é único, então em vez
+          de escolher um arbitrariamente o inspetor mostra a contagem. */}
+      {caminho.length > 1 && (
+        <section>
+          <p className="wavy-caps mb-1.5 text-[10px] font-semibold uppercase text-white/45">Veio de</p>
+          <ol className="studio-inspector-lineage">
+            {caminho.map((a, i) => (
+              <li key={a.id} data-current={i === caminho.length - 1}>
+                {ASSET_ORIGIN_LABELS[a.type] ?? a.type}
+                {a.aspectRatio && <span className="metric-number text-white/40"> · {a.aspectRatio}</span>}
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
+      {unico?.prompt && (
+        <section>
+          {/* Fechado por padrão: o prompt de geração passa de 500
+              caracteres com os blocos de safe zone, e por completo pesa
+              mais do que ajuda — quem quer conferir clica para abrir. */}
+          <button
+            type="button"
+            onClick={() => setPromptAberto((v) => !v)}
+            aria-expanded={promptAberto}
+            className="flex w-full items-center justify-between gap-2 rounded-[var(--wavy-radius-control)] py-1 text-left transition-colors duration-150 hover:text-white/70"
+          >
+            <span className="wavy-caps text-[10px] font-semibold uppercase text-white/45">Prompt</span>
+            <ChevronDown className={cn('h-3.5 w-3.5 text-white/40 transition-transform duration-200', promptAberto && 'rotate-180')} />
+          </button>
+          {promptAberto && (
+            <p className="mt-1.5 rounded-[var(--wavy-radius-card)] border border-white/8 bg-white/[0.03] p-3 text-xs leading-relaxed text-white/68">
+              {unico.prompt}
+            </p>
+          )}
+        </section>
+      )}
+
+      {unico?.status === 'failed' && unico.errorMessage && (
+        <p className="rounded-[var(--wavy-radius-card)] border border-destructive/30 bg-destructive/10 p-3 text-xs leading-relaxed text-white/78">
+          {unico.errorMessage}
+        </p>
+      )}
+    </div>
   );
 }
 

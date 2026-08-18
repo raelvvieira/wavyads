@@ -109,7 +109,7 @@ export function CommandDock({
         <AttachMenu referenceLibrary={referenceLibrary} onAttach={onAttach}>
           <button
             type="button"
-            aria-label="Anexar referência, logo, copy ou arquivos"
+            aria-label="Anexar referência, logo, copy ou produto"
             title="Anexar"
             className="studio-dock-icon"
           >

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, CheckCircle, XCircle, Loader2, Users, Calendar, Pencil, RefreshCw, Trash2, UserPlus, X, Mail, Scan, Eye, EyeOff } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { useClients, useCreateClient, useUpdateClient, useDeleteClient } from '@/hooks/useClients';
-import { useAddClientUser, useClientUsers } from '@/hooks/useClientUsers';
+import { useAddClientUser, useClientAccessList, useRemoveClientUser } from '@/hooks/useClientUsers';
 import { useGetMetaAuthUrl, useSelectMetaAccount } from '@/hooks/useMetaOAuth';
 import { useGetGoogleAdsAuthUrl, useSelectGoogleAdsAccount, useListGoogleAdsAccounts, useSetGoogleAdsAccountManual } from '@/hooks/useGoogleAdsOAuth';
 import { useAllClientPixels, useUpsertClientPixel } from '@/hooks/useClientPixels';
@@ -26,6 +26,7 @@ export default function AdminDashboard() {
   const updateClient = useUpdateClient();
   const deleteClient = useDeleteClient();
   const addClientUser = useAddClientUser();
+  const removeClientUser = useRemoveClientUser();
   const getAuthUrl = useGetMetaAuthUrl();
   const selectAccount = useSelectMetaAccount();
   const getGoogleAuthUrl = useGetGoogleAdsAuthUrl();
@@ -86,6 +87,9 @@ export default function AdminDashboard() {
   const [accessClientName, setAccessClientName] = useState('');
   const [accessName, setAccessName] = useState('');
   const [accessEmail, setAccessEmail] = useState('');
+  const { data: accessList } = useClientAccessList(accessDialogOpen ? accessClientId : undefined);
+  const [resendingUserId, setResendingUserId] = useState<string | null>(null);
+  const [removeAccessTarget, setRemoveAccessTarget] = useState<{ userId: string; label: string } | null>(null);
 
   // Meta sync state
   const [syncingClientId, setSyncingClientId] = useState<string | null>(null);
@@ -318,6 +322,27 @@ export default function AdminDashboard() {
           setEditDialogOpen(false);
         },
         onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
+      }
+    );
+  };
+
+  // Reenvia o mesmo email de acesso pra quem já tem acesso — chama a mesma
+  // função de conceder acesso, que detecta o vínculo existente e reenvia em
+  // vez de tentar duplicar a linha em `client_users`.
+  const handleResendAccess = (person: { user_id: string; name: string | null; email: string | null }) => {
+    if (!person.email) return;
+    setResendingUserId(person.user_id);
+    addClientUser.mutate(
+      { clientId: accessClientId, name: person.name || person.email, email: person.email },
+      {
+        onSuccess: (data: any) => {
+          toast({
+            title: data?.resent ? 'Email reenviado' : 'Acesso concedido!',
+            description: data?.message,
+          });
+        },
+        onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
+        onSettled: () => setResendingUserId(null),
       }
     );
   };
@@ -645,7 +670,7 @@ export default function AdminDashboard() {
                   className="btn-glass w-full rounded-xl py-2.5 text-xs font-medium flex items-center justify-center gap-2"
                 >
                   <UserPlus className="h-3.5 w-3.5" />
-                  Adicionar Acesso
+                  Gerenciar Acesso
                 </button>
               </div>
             </GlassCard>
@@ -767,12 +792,70 @@ export default function AdminDashboard() {
       </Dialog>
 
 
-      {/* Add Access Dialog */}
-      <Dialog open={accessDialogOpen} onOpenChange={setAccessDialogOpen}>
-        <DialogContent className="glass border-white/10 bg-card">
+      {/* Access Dialog: lista quem já tem acesso (reenviar/remover) + form de conceder */}
+      <Dialog
+        open={accessDialogOpen}
+        onOpenChange={(open) => {
+          setAccessDialogOpen(open);
+          if (!open) setRemoveAccessTarget(null);
+        }}
+      >
+        <DialogContent className="glass border-white/10 bg-card max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Adicionar Acesso — {accessClientName}</DialogTitle>
+            <DialogTitle>Acesso — {accessClientName}</DialogTitle>
           </DialogHeader>
+
+          <div className="mt-4 space-y-2">
+            <p className="text-sm text-muted-foreground">Quem tem acesso</p>
+            {!accessList?.length ? (
+              <p className="text-xs text-muted-foreground">Ninguém tem acesso ainda.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {accessList.map((person) => (
+                  <div
+                    key={person.id}
+                    className="glass rounded-xl px-3 py-2.5 flex items-center justify-between gap-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{person.name || person.email || 'Sem nome'}</p>
+                      {person.name && person.email && (
+                        <p className="text-xs text-muted-foreground truncate">{person.email}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleResendAccess(person)}
+                        disabled={resendingUserId === person.user_id || !person.email}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors disabled:opacity-50"
+                        title="Reenviar email de acesso"
+                      >
+                        {resendingUserId === person.user_id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setRemoveAccessTarget({
+                            userId: person.user_id,
+                            label: person.name || person.email || 'esta pessoa',
+                          })
+                        }
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-white/10 transition-colors"
+                        title="Remover acesso"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -787,14 +870,16 @@ export default function AdminDashboard() {
                       title: data?.resent ? 'Email reenviado' : 'Acesso concedido!',
                       description: data?.message || 'O usuário receberá um email.',
                     });
-                    setAccessDialogOpen(false);
+                    setAccessName('');
+                    setAccessEmail('');
                   },
                   onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
                 }
               );
             }}
-            className="space-y-4 mt-4"
+            className="space-y-4 mt-5 pt-4 border-t border-white/10"
           >
+            <p className="text-sm text-muted-foreground">Conceder novo acesso</p>
             <div className="space-y-1.5">
               <label className="text-sm text-muted-foreground">Nome *</label>
               <input
@@ -829,6 +914,44 @@ export default function AdminDashboard() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Remove Access Confirmation */}
+      <AlertDialog
+        open={!!removeAccessTarget}
+        onOpenChange={(open) => { if (!open) setRemoveAccessTarget(null); }}
+      >
+        <AlertDialogContent className="glass border-white/10 bg-card">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover acesso de {removeAccessTarget?.label}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Essa pessoa deixa de ver o dashboard de {accessClientName}. A conta dela continua
+              existindo — se tiver acesso a outros clientes, não é afetada.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={removeClientUser.isPending}
+              onClick={() => {
+                if (!removeAccessTarget) return;
+                removeClientUser.mutate(
+                  { clientId: accessClientId, userId: removeAccessTarget.userId },
+                  {
+                    onSuccess: () => {
+                      toast({ title: 'Acesso removido' });
+                      setRemoveAccessTarget(null);
+                    },
+                    onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
+                  }
+                );
+              }}
+            >
+              {removeClientUser.isPending ? 'Removendo...' : 'Remover'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Pixel Meta Dialog */}
       <Dialog open={pixelDialogOpen} onOpenChange={setPixelDialogOpen}>

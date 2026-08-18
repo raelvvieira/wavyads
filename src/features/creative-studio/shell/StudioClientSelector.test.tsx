@@ -18,9 +18,11 @@ function montar(patch: Partial<Parameters<typeof StudioClientSelector>[0]> = {})
 const abrir = () => fireEvent.click(screen.getByRole('button', { name: 'Filtrar por cliente' }));
 
 describe('StudioClientSelector', () => {
-  it('mostra "Sem cliente" quando nada está selecionado', () => {
+  it('mostra "Todos Clientes" quando nada está selecionado', () => {
+    // Sem seleção a tela mostra o acervo de TODOS os clientes, não de
+    // nenhum — "Sem cliente" descrevia o estado errado.
     montar();
-    expect(screen.getByText('Sem cliente')).toBeTruthy();
+    expect(screen.getByText('Todos Clientes')).toBeTruthy();
   });
 
   it('mostra o nome do cliente selecionado', () => {
@@ -35,10 +37,10 @@ describe('StudioClientSelector', () => {
     expect(onChange).toHaveBeenCalledWith('c2');
   });
 
-  it('"Sem cliente" na lista limpa a seleção', () => {
+  it('"Todos Clientes" na lista limpa a seleção', () => {
     const { onChange } = montar({ clientId: 'c1', clientName: 'Boutique Aurora' });
     abrir();
-    fireEvent.click(screen.getByRole('button', { name: 'Sem cliente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Todos Clientes' }));
     expect(onChange).toHaveBeenCalledWith(null);
   });
 
