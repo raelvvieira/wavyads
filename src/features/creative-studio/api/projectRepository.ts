@@ -143,6 +143,30 @@ export async function updateProjectMeta(projectId: string, meta: ProjectMetaUpda
   if (error) throw error;
 }
 
+/**
+ * Grava só formato e resolução — não o projeto inteiro.
+ *
+ * `updateProjectMeta` exige TODOS os campos (título, prompt inicial,
+ * cliente...); usá-lo aqui, só para gravar dois campos, arriscaria
+ * sobrescrever algo com um valor errado ou desatualizado. Mesmo espírito de
+ * `updateCreativeAsset` em `creativeAssets.ts`: um patch cirúrgico, não uma
+ * substituição total.
+ */
+export async function updateProjectFormat(
+  projectId: string,
+  format: { aspectRatio: string; resolution: string },
+): Promise<void> {
+  const { error } = await db
+    .from('creative_projects')
+    .update({
+      selected_aspect_ratio: format.aspectRatio,
+      selected_resolution: format.resolution,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', projectId);
+  if (error) throw error;
+}
+
 export async function archiveProject(projectId: string): Promise<void> {
   const { error } = await db.from('creative_projects').update({ status: 'archived' }).eq('id', projectId);
   if (error) throw error;

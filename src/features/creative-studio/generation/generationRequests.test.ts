@@ -41,6 +41,29 @@ describe('buildGenerationRequest', () => {
     expect(body.productImages).toEqual([]);
     expect(body.storyReference).toBeNull();
   });
+
+  it('copy anexada vira modo literal — o texto sai exato, não uma paráfrase', () => {
+    const { prompt } = buildGenerationRequest({
+      brief: 'lançamento de verão', aspectRatio: '4:5', copy: 'Até 50% OFF — só hoje',
+    });
+    expect(prompt).toContain('USER-WRITTEN COPY, FINAL');
+    expect(prompt).toContain('Até 50% OFF — só hoje');
+  });
+
+  it('sem copy anexada, não força o modo literal', () => {
+    const { prompt } = buildGenerationRequest({ brief: 'x', aspectRatio: '4:5' });
+    expect(prompt).not.toContain('USER-WRITTEN COPY');
+  });
+
+  it('copy só de espaços em branco não conta como anexada', () => {
+    const { prompt } = buildGenerationRequest({ brief: 'x', aspectRatio: '4:5', copy: '   ' });
+    expect(prompt).not.toContain('USER-WRITTEN COPY');
+  });
+
+  it('modelId é parametrizável, com o modelo real como padrão', () => {
+    expect(buildGenerationRequest({ brief: 'x', aspectRatio: '4:5' }).body.model).toBe('gpt-image-2');
+    expect(buildGenerationRequest({ brief: 'x', aspectRatio: '4:5', modelId: 'futuro-modelo' }).body.model).toBe('futuro-modelo');
+  });
 });
 
 describe('buildEditRequest', () => {
@@ -95,5 +118,21 @@ describe('buildRetryRequest', () => {
 
   it('sem prompt salvo, recusa — não há o que tentar de novo', () => {
     expect(() => buildRetryRequest({ prompt: null, aspectRatio: '4:5' })).toThrow(/prompt salvo/);
+  });
+
+  it('reaproveita os anexos da geração original — o prompt só MENCIONA o logo', () => {
+    // O prompt guarda "a brand logo is provided...", não a URL. Sem
+    // repassar aqui, retentar perderia o anexo mesmo com o prompt intacto.
+    const { body } = buildRetryRequest({
+      prompt: 'p', aspectRatio: '4:5', logoImage: 'https://x/logo.png', productImages: ['https://x/p1.png'],
+    });
+    expect(body.logoImage).toBe('https://x/logo.png');
+    expect(body.productImages).toEqual(['https://x/p1.png']);
+  });
+
+  it('sem anexos salvos, o corpo não inventa nenhum', () => {
+    const { body } = buildRetryRequest({ prompt: 'p', aspectRatio: '4:5' });
+    expect(body.logoImage).toBeNull();
+    expect(body.productImages).toEqual([]);
   });
 });

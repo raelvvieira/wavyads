@@ -28,9 +28,11 @@ export interface GenerationRequest {
 /**
  * Geração a partir do texto livre do dock.
  *
- * O texto vira `businessContext` — a descrição do que gerar — e não copy
- * fixa: sem um wizard de aprovação de copy antes dele, tratar o texto do
- * dock como copy literal renderizaria a frase de comando na arte.
+ * O texto vira `businessContext` — a descrição do que gerar. `copy`, quando
+ * vem de um anexo "Anexar copy", é outra coisa: texto FINAL, renderizado
+ * verbatim (`buildCreativePrompt`'s modo `{source:'original'}`) — a
+ * distinção existe porque tratar o texto do dock como copy sem um anexo
+ * explícito renderizaria a frase de comando na arte.
  */
 export function buildGenerationRequest(input: {
   brief: string;
@@ -39,8 +41,12 @@ export function buildGenerationRequest(input: {
   language?: string;
   logoImageUrl?: string | null;
   productImageUrls?: string[];
+  copy?: string | null;
+  /** Default `IMAGE_GENERATION_MODEL.id` — parametrizável para a Fase 7. */
+  modelId?: string;
 }): GenerationRequest {
   const backendAspect = getBackendAspectFromSelectedRatio(input.aspectRatio);
+  const copyTexto = input.copy?.trim();
   const prompt = buildCreativePrompt({
     aspect: backendAspect,
     aspectRatio: input.aspectRatio,
@@ -49,6 +55,7 @@ export function buildGenerationRequest(input: {
     businessContext: input.brief,
     productImageCount: input.productImageUrls?.length ?? 0,
     hasLogo: !!input.logoImageUrl,
+    copy: copyTexto ? { source: 'original', text: copyTexto } : null,
   });
   return {
     prompt,
@@ -56,7 +63,7 @@ export function buildGenerationRequest(input: {
       prompt,
       aspectRatio: backendAspect,
       formatRatio: input.aspectRatio,
-      model: IMAGE_GENERATION_MODEL.id,
+      model: input.modelId ?? IMAGE_GENERATION_MODEL.id,
       productImages: input.productImageUrls ?? [],
       logoImage: input.logoImageUrl ?? null,
       storyReference: null,
@@ -70,10 +77,17 @@ export function buildGenerationRequest(input: {
  * A linha falhada já carrega prompt e formato — não pede o brief de novo.
  * Sem formato salvo (asset ainda não chegou a ter um), cai no 4:5 padrão do
  * app em vez de quebrar.
+ *
+ * `productImages`/`logoImage` são opcionais e vêm de fora (do `metadata` do
+ * asset) — o PROMPT guarda só a MENÇÃO ao logo/produto ("a brand logo is
+ * provided..."), não as URLs em si. Sem repassá-las aqui, retentar uma
+ * geração com anexos perderia os anexos, mesmo com o prompt intacto.
  */
 export function buildRetryRequest(asset: {
   prompt: string | null;
   aspectRatio: string | null;
+  productImages?: string[];
+  logoImage?: string | null;
 }): GenerationRequest {
   if (!asset.prompt) throw new Error('Esta arte não tem prompt salvo para tentar novamente.');
   const ratio = (asset.aspectRatio as CreativeAspectRatio) || '4:5';
@@ -85,8 +99,8 @@ export function buildRetryRequest(asset: {
       aspectRatio: backendAspect,
       formatRatio: ratio,
       model: IMAGE_GENERATION_MODEL.id,
-      productImages: [],
-      logoImage: null,
+      productImages: asset.productImages ?? [],
+      logoImage: asset.logoImage ?? null,
       storyReference: null,
     },
   };

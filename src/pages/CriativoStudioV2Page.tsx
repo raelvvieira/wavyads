@@ -12,19 +12,24 @@ import {
   listCreativeAssets,
   updateCreativeAsset,
 } from '@/features/creative-studio/api/creativeAssets';
-import { createProject, listRecentProjects, type ProjectSummary } from '@/features/creative-studio/api/projectRepository';
+import {
+  createProject,
+  listRecentProjects,
+  updateProjectFormat,
+  type ProjectSummary,
+} from '@/features/creative-studio/api/projectRepository';
 import { libraryAssets, visibleCanvasAssets, type SelectionAction } from '@/features/creative-studio/state/canvasSelectors';
 import { createStudioAssetActions, type StudioAssetActionsDeps } from '@/features/creative-studio/generation/studioAssetActions';
-import type { CreativeAsset, CreativeAspectRatio } from '@/features/creative-studio/types/creative';
-import type { StudioLibraryEntry, StudioLibraryId } from '@/features/creative-studio/types/studioUi';
+import { IMAGE_GENERATION_MODEL } from '@/features/creative-studio/generation/capabilities';
+import type { CreativeAsset, CreativeAspectRatio, CreativeResolution } from '@/features/creative-studio/types/creative';
+import type { DockAttachment, StudioLibraryEntry, StudioLibraryId } from '@/features/creative-studio/types/studioUi';
 
 /**
  * Criativo Studio V2 — funcional.
  *
  * Mostra o acervo REAL e agora também GERA, EDITA e REDIMENSIONA de
  * verdade, chamando as mesmas edge functions do Studio atual. Fator
- * Criativo, biblioteca de referências/produtos e configuração de modelo
- * continuam no Studio atual — ligá-los é a próxima fatia.
+ * Criativo continua no Studio atual — ligá-lo é a próxima fatia.
  *
  * Cada ação grava o ciclo `generating` → `ready`/`failed` no banco antes de
  * atualizar a tela: o card aparece gerando de verdade, e uma falha do
@@ -43,6 +48,11 @@ export default function CriativoStudioV2Page() {
   const [query, setQuery] = useState('');
   const [command, setCommand] = useState('');
   const [library, setLibrary] = useState<StudioLibraryId>('all');
+
+  const [ratio, setRatio] = useState<CreativeAspectRatio>('4:5');
+  const [resolution, setResolution] = useState<CreativeResolution>('2K');
+  const [modelId, setModelId] = useState<string>(IMAGE_GENERATION_MODEL.id);
+  const [attachments, setAttachments] = useState<DockAttachment[]>([]);
 
   // O projeto pode nascer DURANTE uma geração (primeira arte do workspace).
   // Guardar em ref, e não só em state, evita duas chamadas em paralelo
@@ -67,6 +77,17 @@ export default function CriativoStudioV2Page() {
   }, []);
 
   useEffect(() => { carregar(); }, [carregar]);
+
+  // Formato/resolução seguem o projeto ativo — troca de projeto troca o
+  // padrão de geração junto, do mesmo jeito que o Studio atual já faz.
+  useEffect(() => {
+    if (!projectId) return;
+    const p = projects.find((x) => x.id === projectId);
+    if (!p) return;
+    setRatio((p.selected_aspect_ratio as CreativeAspectRatio) || '4:5');
+    setResolution((p.selected_resolution as CreativeResolution) || '2K');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
 
   const ensureProjectId = useCallback(async (): Promise<string> => {
     if (projectIdRef.current) return projectIdRef.current;
@@ -110,6 +131,11 @@ export default function CriativoStudioV2Page() {
       : visibleCanvasAssets(doProjeto, { query });
   }, [doProjeto, query, library]);
 
+  const referenceLibrary = useMemo(
+    () => libraryAssets(doProjeto, { types: ['reference'] }),
+    [doProjeto],
+  );
+
   const bibliotecas = useMemo<StudioLibraryEntry[]>(() => {
     const conta = (fn: (a: CreativeAsset) => boolean) => assets.filter(fn).length;
     return [
@@ -150,38 +176,71 @@ export default function CriativoStudioV2Page() {
     return createStudioAssetActions(deps);
   }, [ensureProjectId]);
 
-  // Um aviso só, com o motivo. O que falta ligar (Fator, biblioteca de
-  // referências para a geração, escolha de modelo) compartilha a mesma
-  // razão: é a próxima fatia, não um bug desta.
+  // Um aviso só, com o motivo. O que falta ligar (Fator Criativo) compartilha
+  // a mesma razão: é a próxima fatia, não um bug desta.
   const aindaNaoLigado = useCallback(() => {
     toast({
       title: 'Ainda não ligado nesta versão',
-      description: 'Fator Criativo e referências continuam no Studio atual. Gerar, editar e redimensionar já funcionam aqui.',
+      description: 'Fator Criativo continua no Studio atual. Gerar, editar, redimensionar e anexar já funcionam aqui.',
     });
   }, []);
 
   const voltarAoAtual = useCallback(() => navigate('/criativo-studio'), [navigate]);
 
+  const handleRatioChange = useCallback((novoRatio: CreativeAspectRatio) => {
+    setRatio(novoRatio);
+    if (projectIdRef.current) {
+      void updateProjectFormat(projectIdRef.current, { aspectRatio: novoRatio, resolution }).catch(() => {});
+    }
+  }, [resolution]);
+
+  const handleResolutionChange = useCallback((novaResolucao: CreativeResolution) => {
+    setResolution(novaResolucao);
+    if (projectIdRef.current) {
+      void updateProjectFormat(projectIdRef.current, { aspectRatio: ratio, resolution: novaResolucao }).catch(() => {});
+    }
+  }, [ratio]);
+
+  const handleAttach = useCallback((attachment: DockAttachment) => {
+    // Upload (quando há um) já aconteceu dentro do menu — aqui só entra o
+    // anexo pronto, com a URL ou o texto final.
+    setAttachments((prev) => [...prev, attachment]);
+  }, []);
+
+  const handleRemoveAttachment = useCallback((id: string) => {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  }, []);
+
+  const hasCopy = attachments.some((a) => a.kind === 'copy');
+
   const handleSubmitCommand = useCallback(async (selectedIds: string[]) => {
     const texto = command.trim();
-    if (!texto || busy) return;
+    if ((!texto && !hasCopy) || busy) return;
     setBusy(true);
     try {
       if (selectedIds.length === 0) {
-        // Sem seleção: gerar uma arte nova, no formato do projeto atual.
-        const ratio = (projeto?.selected_aspect_ratio as CreativeAspectRatio) || '4:5';
-        // Otimista: mostra o card gerando antes de a chamada existir de
-        // verdade no banco seria enganoso, então aqui esperamos só o
-        // suficiente para ter a linha — o resto acontece em segundo plano.
-        const promessa = actions.generate(texto, ratio);
+        // Sem seleção: gerar uma arte nova, no formato escolhido no popover.
+        const logo = attachments.find((a) => a.kind === 'logo');
+        const copyAnexada = attachments.find((a) => a.kind === 'copy');
+        const imagens = attachments.filter((a) => a.kind === 'reference' || a.kind === 'file').map((a) => a.value);
+
         toast({ title: 'Gerando arte…' });
-        const resultado = await promessa;
+        const resultado = await actions.generate(texto, ratio, {
+          resolution,
+          modelId,
+          copy: copyAnexada?.value ?? null,
+          logoImageUrl: logo?.value ?? null,
+          productImageUrls: imagens,
+        });
         upsertAsset(resultado);
         if (resultado.status === 'failed') {
           toast({ title: 'Erro ao gerar', description: resultado.errorMessage ?? undefined, variant: 'destructive' });
         } else {
           toast({ title: 'Arte gerada' });
         }
+        // Os anexos eram para ESTE pedido, não uma preferência permanente —
+        // consumidos, saem do dock.
+        setAttachments([]);
       } else if (selectedIds.length === 1) {
         const alvo = assets.find((a) => a.id === selectedIds[0]);
         if (!alvo) return;
@@ -202,7 +261,7 @@ export default function CriativoStudioV2Page() {
       setBusy(false);
       setCommand('');
     }
-  }, [command, busy, projeto, actions, assets, upsertAsset, aindaNaoLigado]);
+  }, [command, hasCopy, busy, attachments, ratio, resolution, modelId, actions, assets, upsertAsset, aindaNaoLigado]);
 
   const handleAssetAction = useCallback(async (acao: SelectionAction, selecionados: CreativeAsset[]) => {
     if (acao === 'download') {
@@ -275,12 +334,17 @@ export default function CriativoStudioV2Page() {
         onCommandChange={setCommand}
         onSubmitCommand={handleSubmitCommand}
         busy={busy}
-        hasCopy={false}
-        ratio={(projeto?.selected_aspect_ratio as CreativeAspectRatio) ?? '4:5'}
-        attachments={[]}
-        onRemoveAttachment={() => {}}
-        onOpenAttachments={aindaNaoLigado}
-        onOpenSettings={aindaNaoLigado}
+        hasCopy={hasCopy}
+        ratio={ratio}
+        resolution={resolution}
+        modelId={modelId}
+        attachments={attachments}
+        onRemoveAttachment={handleRemoveAttachment}
+        onAttach={handleAttach}
+        onRatioChange={handleRatioChange}
+        onResolutionChange={handleResolutionChange}
+        onModelChange={setModelId}
+        referenceLibrary={referenceLibrary}
         onAssetAction={handleAssetAction}
       />
     </div>

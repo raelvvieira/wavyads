@@ -1,8 +1,10 @@
-import { Download, Maximize2, Pencil, RefreshCw, Sparkles, X } from 'lucide-react';
+import { useState } from 'react';
+import { Download, Expand, Maximize2, Pencil, RefreshCw, Sparkles, X } from 'lucide-react';
 import type { CreativeAsset } from '../types/creative';
-import { FACTOR_AXIS_LABELS } from '../types/creative';
+import { ASSET_ORIGIN_LABELS, ASSET_STATUS_LABELS, FACTOR_AXIS_LABELS } from '../types/creative';
 import { availableActionsForSelection, type SelectionAction } from '../state/canvasSelectors';
 import { pathToRoot } from '../state/lineage';
+import { AssetPreviewDialog } from './AssetPreviewDialog';
 
 const ACAO: Record<SelectionAction, { label: string; icon?: typeof Pencil } | undefined> = {
   edit: { label: 'Editar com IA', icon: Pencil },
@@ -35,6 +37,7 @@ export function AssetInspector({ selected, allAssets, onAction, onClose }: Asset
   const acoes = availableActionsForSelection(selected);
   const unico = selected.length === 1 ? selected[0] : null;
   const caminho = unico ? pathToRoot(unico.id, allAssets) : [];
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   return (
     <aside className="studio-side-panel" aria-label="Inspetor da seleção">
@@ -57,18 +60,30 @@ export function AssetInspector({ selected, allAssets, onAction, onClose }: Asset
 
       <div className="studio-side-panel-body">
         {unico?.url && unico.status === 'ready' && (
-          <img
-            src={unico.thumbnailUrl ?? unico.url}
-            alt={unico.prompt?.slice(0, 120) ?? 'Arte selecionada'}
-            className="w-full rounded-[var(--wavy-radius-card)] border border-white/10 object-cover"
-          />
+          <button
+            type="button"
+            onClick={() => setPreviewOpen(true)}
+            aria-label="Ver arte em tamanho completo"
+            className="group relative block w-full overflow-hidden rounded-[var(--wavy-radius-card)] border border-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wavy-focus)]"
+          >
+            <img
+              src={unico.thumbnailUrl ?? unico.url}
+              alt={unico.prompt?.slice(0, 120) ?? 'Arte selecionada'}
+              className="w-full object-cover"
+            />
+            {/* Só um afago de affordance — o clique já funciona sem isso,
+                mas sem sinal nenhum a imagem parece decorativa. */}
+            <span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all duration-150 group-hover:bg-black/30 group-hover:opacity-100">
+              <Expand className="h-5 w-5 text-white drop-shadow" />
+            </span>
+          </button>
         )}
 
         {unico && (
           <dl className="studio-inspector-facts">
             <Fato termo="Formato" valor={unico.aspectRatio ?? '—'} />
-            <Fato termo="Status" valor={STATUS_LABEL[unico.status]} />
-            <Fato termo="Origem" valor={ORIGEM_LABEL[unico.type] ?? unico.type} />
+            <Fato termo="Status" valor={ASSET_STATUS_LABELS[unico.status]} />
+            <Fato termo="Origem" valor={ASSET_ORIGIN_LABELS[unico.type] ?? unico.type} />
             {unico.factorAxis && <Fato termo="Eixo" valor={FACTOR_AXIS_LABELS[unico.factorAxis]} />}
             {unico.model && <Fato termo="Modelo" valor={unico.model} />}
           </dl>
@@ -82,7 +97,7 @@ export function AssetInspector({ selected, allAssets, onAction, onClose }: Asset
             <ol className="studio-inspector-lineage">
               {caminho.map((a, i) => (
                 <li key={a.id} data-current={i === caminho.length - 1}>
-                  {ORIGEM_LABEL[a.type] ?? a.type}
+                  {ASSET_ORIGIN_LABELS[a.type] ?? a.type}
                   {a.aspectRatio && <span className="metric-number text-white/40"> · {a.aspectRatio}</span>}
                 </li>
               ))}
@@ -126,24 +141,11 @@ export function AssetInspector({ selected, allAssets, onAction, onClose }: Asset
           })}
         </footer>
       )}
+
+      <AssetPreviewDialog asset={previewOpen ? unico : null} onClose={() => setPreviewOpen(false)} />
     </aside>
   );
 }
-
-const STATUS_LABEL: Record<CreativeAsset['status'], string> = {
-  queued: 'Na fila',
-  generating: 'Gerando',
-  ready: 'Pronta',
-  failed: 'Falhou',
-};
-
-const ORIGEM_LABEL: Record<string, string> = {
-  original: 'Geração original',
-  factor: 'Fator Criativo',
-  edited: 'Edição',
-  resize: 'Redimensionamento',
-  imported: 'Importada',
-};
 
 function tituloDoAsset(asset: CreativeAsset): string {
   return asset.prompt?.slice(0, 60) ?? asset.filename ?? 'Arte';
