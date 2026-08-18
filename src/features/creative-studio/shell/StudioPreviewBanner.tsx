@@ -16,7 +16,7 @@ export function StudioPreviewBanner({ onOpenCurrent }: StudioPreviewBannerProps)
         Prévia
       </span>
       <p className="text-xs text-white/62">
-        Studio V2 em leitura: seu acervo real no layout novo. Gerar e transformar seguem no Studio atual.
+        Studio V2 com o acervo real. Gerar, editar e redimensionar já funcionam aqui — Fator Criativo e referências ainda seguem no Studio atual.
       </p>
       <button
         type="button"
