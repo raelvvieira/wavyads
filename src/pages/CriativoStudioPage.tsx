@@ -38,6 +38,7 @@ import {
 } from '@/features/creative-studio/api/creativeAssets';
 import { buildCreativePrompt, buildSafeZoneBlock } from '@/features/creative-studio/lib/promptBuilder';
 import { pickThumbnailUrl, readProjectSnapshot } from '@/features/creative-studio/state/projectSnapshot';
+import { editKey, factorKey, mainKey, resolveAssetId } from '@/features/creative-studio/state/assetKeys';
 import {
   Sparkles,
   Wand2,
@@ -387,7 +388,7 @@ export default function CriativoStudioPage() {
   // asset para que edições diferentes não disputem o mesmo lugar.
   const [assetSquares, setAssetSquares] = useState<Record<string, { url: string; assetId: string | null }>>({});
   const [assetSquareLoadingKey, setAssetSquareLoadingKey] = useState<string | null>(null);
-  const [selectedEditKey, setSelectedEditKey] = useState<string>('main:story');
+  const [selectedEditKey, setSelectedEditKey] = useState<string>(mainKey('story'));
   const [selectedEditTarget, setSelectedEditTarget] = useState<{
     key: string;
     image: string;
@@ -406,26 +407,19 @@ export default function CriativoStudioPage() {
   // Traduz a chave que a UI usa para identificar uma arte no quadro
   // ('main:story', 'f2:square', 'edit:main:story#1') no id do asset
   // correspondente, para que a próxima derivação saiba de quem descende.
-  const assetIdForKey = (key: string): string | null => {
-    if (key === 'main:story') return mainStoryAssetId;
-    if (key === 'main:square') return mainSquareAssetId;
-
-    const factor = key.match(/^f(\d+):(story|square)$/);
-    if (factor) {
-      const index = Number(factor[1]);
-      return (factor[2] === 'square' ? factorSquareAssetIds[index] : factorAssetIds[index]) ?? null;
-    }
-
-    // Re-edição: 'edit:{chaveDeOrigem}#{indice}' aponta para a versão editada,
-    // não para a arte que a originou — encadeia v1 → v2 → v3.
-    const edited = key.match(/^edit:(.+)#(\d+)$/);
-    if (edited) {
-      const version = editedVersions[edited[1]]?.[Number(edited[2])];
-      return version?.assetId ?? null;
-    }
-
-    return null;
-  };
+  /**
+   * Âncora de linhagem de uma arte do quadro. O vocabulário das chaves e a
+   * resolução vivem em `state/assetKeys`, testados — aqui fica só a ligação
+   * com o estado da página.
+   */
+  const assetIdForKey = (key: string): string | null =>
+    resolveAssetId(key, {
+      mainStoryAssetId,
+      mainSquareAssetId,
+      factorAssetIds,
+      factorSquareAssetIds,
+      editedVersions,
+    });
 
   useEffect(() => {
     if (!roleLoading && !isAdmin) navigate('/dashboard');
@@ -1169,7 +1163,7 @@ export default function CriativoStudioPage() {
     copy?: any,
   ) => {
     openAssetActions({
-      key: `edit:${sourceKey}#${idx}`,
+      key: editKey(sourceKey, idx),
       url: ed.url,
       aspect: ed.aspect ?? fallbackAspect,
       prompt: ed.prompt ?? fallbackPrompt,
@@ -1902,7 +1896,7 @@ export default function CriativoStudioPage() {
 
   const getEditTargetFromKey = (key: string) => {
     const factorIndex = Number(key.match(/\d+/)?.[0] || 0);
-    if (key === 'main:square') {
+    if (key === mainKey('square')) {
       return {
         key,
         image: squareImage,
@@ -1930,7 +1924,7 @@ export default function CriativoStudioPage() {
       };
     }
     return {
-      key: 'main:story',
+      key: mainKey('story'),
       image: storyImage,
       aspect: 'story' as const,
       prompt: buildFinalPromptForSelectedAspect(),
@@ -2492,7 +2486,7 @@ export default function CriativoStudioPage() {
         break;
       case 'open-edit-image':
         openEditTarget({
-          key: storyImage ? 'main:story' : 'main:square',
+          key: mainKey(storyImage ? 'story' : 'square'),
           image: storyImage || squareImage,
           aspect: storyImage ? 'story' : 'square',
           prompt: storyImage
@@ -2600,7 +2594,7 @@ export default function CriativoStudioPage() {
     setEditPanelKey(null);
     setEditFeedback('');
     setEditLoadingKey(null);
-    setSelectedEditKey('main:story');
+    setSelectedEditKey(mainKey('story'));
     setSelectedEditTarget(null);
     setSelectedTemplateId(null);
     setSelectedTemplate(null);
@@ -3640,7 +3634,7 @@ export default function CriativoStudioPage() {
                       <div className="grid grid-cols-2 gap-2">
                         <Button size="sm" variant="outline" className="rounded-full" onClick={() => download(img, imageFileName(`criativo-fator-${i + 1}-${v?.eixo || 'story'}`))}>Baixar Story</Button>
                         <Button size="sm" variant="outline" className="rounded-full" onClick={() => recreateSquare(i)} disabled={factorSquareLoading[i]}>{factorSquareLoading[i] ? 'Gerando...' : '1080x1080'}</Button>
-                        <Button size="sm" variant="outline" className="rounded-full" onClick={() => openEditTarget({ key: `f${i}:story`, image: img, aspect: 'story', prompt: v?.promptCompleto || '', label: `Fator ${i + 1}` })}>Editar</Button>
+                        <Button size="sm" variant="outline" className="rounded-full" onClick={() => openEditTarget({ key: factorKey(i, 'story'), image: img, aspect: 'story', prompt: v?.promptCompleto || '', label: `Fator ${i + 1}` })}>Editar</Button>
                         <Button size="sm" variant="outline" className="rounded-full" onClick={() => setLightboxUrl(img)}>Preview</Button>
                         <Button size="sm" variant="outline" className="rounded-full" onClick={() => openSaveTemplate({
                           sourceProjectId: currentProjectId,
@@ -3660,7 +3654,7 @@ export default function CriativoStudioPage() {
                         <p className="text-[10px] text-white/40">Versão 1080x1080 · veja no quadro abaixo</p>
                         <div className="grid grid-cols-3 gap-2">
                           <Button size="sm" variant="outline" className="rounded-full" onClick={() => download(sqImg, imageFileName(`criativo-fator-${i + 1}-square`))}>Baixar</Button>
-                          <Button size="sm" variant="outline" className="rounded-full" onClick={() => openEditTarget({ key: `f${i}:square`, image: sqImg, aspect: 'square', prompt: v?.promptCompleto || '', label: `Fator ${i + 1} square` })}>Editar</Button>
+                          <Button size="sm" variant="outline" className="rounded-full" onClick={() => openEditTarget({ key: factorKey(i, 'square'), image: sqImg, aspect: 'square', prompt: v?.promptCompleto || '', label: `Fator ${i + 1} square` })}>Editar</Button>
                           <Button size="sm" variant="outline" className="rounded-full" onClick={() => setLightboxUrl(sqImg)}>Preview</Button>
                         </div>
                       </div>
@@ -3687,8 +3681,8 @@ export default function CriativoStudioPage() {
                 <SelectContent>
                   {storyImage && <SelectItem value="main:story">Principal Story</SelectItem>}
                   {squareImage && <SelectItem value="main:square">Principal 1:1</SelectItem>}
-                  {factorImages.map((img, i) => img && <SelectItem key={i} value={`f${i}:story`}>Fator #{i + 1}</SelectItem>)}
-                  {factorSquareImages.map((img, i) => img && <SelectItem key={`sq-${i}`} value={`f${i}:square`}>Fator #{i + 1} 1:1</SelectItem>)}
+                  {factorImages.map((img, i) => img && <SelectItem key={i} value={factorKey(i, 'story')}>Fator #{i + 1}</SelectItem>)}
+                  {factorSquareImages.map((img, i) => img && <SelectItem key={`sq-${i}`} value={factorKey(i, 'square')}>Fator #{i + 1} 1:1</SelectItem>)}
                   {/* Re-edição de uma arte já editada: expõe o alvo atual para não ficar vazio */}
                   {(selectedEditTarget?.key || selectedEditKey).startsWith('edit:') && (
                     <SelectItem value={selectedEditTarget?.key || selectedEditKey}>{selectedEditTarget?.label || 'Arte editada'}</SelectItem>
@@ -4006,9 +4000,9 @@ export default function CriativoStudioPage() {
                           title: 'Arte principal',
                           subtitle: selectedAspectRatio,
                           onDownload: () => download(storyImage, imageFileName(`criativo-principal-${selectedAspectRatio}`)),
-                          onEdit: () => openEditTarget({ key: 'main:story', image: storyImage, aspect: 'story', prompt: buildFinalPromptForSelectedAspect(), label: 'Principal Story' }),
+                          onEdit: () => openEditTarget({ key: mainKey('story'), image: storyImage, aspect: 'story', prompt: buildFinalPromptForSelectedAspect(), label: 'Principal Story' }),
                           onSelect: () => openAssetActions({
-                            key: 'main:story', url: storyImage, aspect: 'story',
+                            key: mainKey('story'), url: storyImage, aspect: 'story',
                             prompt: buildFinalPromptForSelectedAspect(), label: 'Arte principal',
                             assetId: mainStoryAssetId, copy: copySource === 'ai' ? selectedCopy : { rawCopy },
                           }),
@@ -4021,9 +4015,9 @@ export default function CriativoStudioPage() {
                           aspect: 'square',
                           title: 'Versão 1080x1080',
                           onDownload: () => download(squareImage, imageFileName('criativo-square')),
-                          onEdit: () => openEditTarget({ key: 'main:square', image: squareImage, aspect: 'square', prompt: buildFinalPrompt('square', { selectedAspectRatio: '1:1', selectedResolution }), label: 'Principal 1:1' }),
+                          onEdit: () => openEditTarget({ key: mainKey('square'), image: squareImage, aspect: 'square', prompt: buildFinalPrompt('square', { selectedAspectRatio: '1:1', selectedResolution }), label: 'Principal 1:1' }),
                           onSelect: () => openAssetActions({
-                            key: 'main:square', url: squareImage, aspect: 'square',
+                            key: mainKey('square'), url: squareImage, aspect: 'square',
                             prompt: buildFinalPrompt('square', { selectedAspectRatio: '1:1', selectedResolution }),
                             label: 'Versão 1080x1080', assetId: mainSquareAssetId,
                             copy: copySource === 'ai' ? selectedCopy : { rawCopy },
@@ -4052,9 +4046,9 @@ export default function CriativoStudioPage() {
                                   compact: true,
                                   title: v?.nome,
                                   onDownload: () => download(img, imageFileName(`criativo-fator-${i + 1}-${v?.eixo || 'story'}`)),
-                                  onEdit: () => openEditTarget({ key: `f${i}:story`, image: img, aspect: 'story', prompt: v?.promptCompleto || '', label: `Fator ${i + 1}` }),
+                                  onEdit: () => openEditTarget({ key: factorKey(i, 'story'), image: img, aspect: 'story', prompt: v?.promptCompleto || '', label: `Fator ${i + 1}` }),
                                   onSelect: () => openAssetActions({
-                                    key: `f${i}:story`, url: img, aspect: 'story',
+                                    key: factorKey(i, 'story'), url: img, aspect: 'story',
                                     prompt: v?.promptCompleto || '', label: `Fator #${i + 1}${v?.eixo ? ` · ${v.eixo}` : ''}`,
                                     factorIndex: i, factorVariation: v, copy: v?.copy,
                                   }),
@@ -4070,9 +4064,9 @@ export default function CriativoStudioPage() {
                                   compact: true,
                                   subtitle: '1080x1080',
                                   onDownload: () => download(sqImg, imageFileName(`criativo-fator-${i + 1}-square`)),
-                                  onEdit: () => openEditTarget({ key: `f${i}:square`, image: sqImg, aspect: 'square', prompt: v?.promptCompleto || '', label: `Fator ${i + 1} square` }),
+                                  onEdit: () => openEditTarget({ key: factorKey(i, 'square'), image: sqImg, aspect: 'square', prompt: v?.promptCompleto || '', label: `Fator ${i + 1} square` }),
                                   onSelect: () => openAssetActions({
-                                    key: `f${i}:square`, url: sqImg, aspect: 'square',
+                                    key: factorKey(i, 'square'), url: sqImg, aspect: 'square',
                                     prompt: v?.promptCompleto || '', label: `Fator #${i + 1} · 1080`,
                                     factorIndex: i, factorVariation: v, copy: v?.copy,
                                   }),
