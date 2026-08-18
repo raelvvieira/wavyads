@@ -13,7 +13,6 @@ import { CommandDock } from '../command/CommandDock';
 import { AssetInspector } from '../inspector/AssetInspector';
 
 export interface CreativeStudioShellProps {
-  projectName: string;
   clientName: string | null;
   clientId: string | null;
   clients: StudioClientOption[];
@@ -31,7 +30,6 @@ export interface CreativeStudioShellProps {
   onRemoveFilter: (id: string) => void;
   onClearFilters: () => void;
   onOpenFilters: () => void;
-  onOpenProjects: () => void;
   onOpenHistory: () => void;
   onNewProject: () => void;
   loading?: boolean;
@@ -106,7 +104,6 @@ export function CreativeStudioShell(props: CreativeStudioShellProps) {
       data-side-panel={painelAberto}
     >
       <StudioTopBar
-        projectName={props.projectName}
         clientName={props.clientName}
         clientId={props.clientId}
         clients={props.clients}
@@ -116,7 +113,6 @@ export function CreativeStudioShell(props: CreativeStudioShellProps) {
         filters={props.filters}
         onRemoveFilter={props.onRemoveFilter}
         onOpenFilters={props.onOpenFilters}
-        onOpenProjects={props.onOpenProjects}
         onOpenHistory={props.onOpenHistory}
         onNewProject={props.onNewProject}
       />

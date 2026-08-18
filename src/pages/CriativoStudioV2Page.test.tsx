@@ -76,7 +76,10 @@ describe('CriativoStudioV2Page', () => {
   it('desenha o acervo real do projeto mais recente', async () => {
     montar();
     await waitFor(() => expect(cards().length).toBeGreaterThan(0));
-    expect(screen.getByText('Campanha de Verão')).toBeTruthy();
+    // O nome do projeto não é mais um cabeçalho próprio — o chip "Só este
+    // projeto" (removível) é o que confirma que o projeto carregado é o
+    // escopo ativo.
+    expect(screen.getByText('Só este projeto')).toBeTruthy();
   });
 
   it('diz na cara que é prévia, mas nomeia o que já funciona', async () => {
@@ -383,5 +386,48 @@ describe('CriativoStudioV2Page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Boutique Aurora' }));
 
     await waitFor(() => expect(screen.queryByText('Só este projeto')).toBeNull());
+  });
+
+  it('Filtros e Histórico avisam sobre si mesmos, não sobre o Fator Criativo', async () => {
+    // O aviso genérico citava "Fator Criativo" para qualquer gatilho não
+    // ligado — inclusive estes dois, que não têm nada a ver com ele.
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Filtros' }));
+    expect(toast).toHaveBeenLastCalledWith(expect.objectContaining({
+      description: expect.stringContaining('Filtros avançados'),
+    }));
+    expect(toast).not.toHaveBeenLastCalledWith(expect.objectContaining({
+      description: expect.stringContaining('Fator Criativo'),
+    }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Histórico de projetos' }));
+    expect(toast).toHaveBeenLastCalledWith(expect.objectContaining({
+      description: expect.stringContaining('Histórico de projetos'),
+    }));
+  });
+
+  it('Fator Criativo tem a própria mensagem, sobre o próprio fluxo futuro', async () => {
+    montar();
+    await waitFor(() => expect(prontos().length).toBeGreaterThan(0));
+
+    fireEvent.click(prontos()[0].querySelector('.studio-asset-surface')!);
+    // "Fator Criativo" também existe como ação rápida do card, no hover —
+    // este teste fala do botão do inspetor.
+    const painel = screen.getByRole('complementary', { name: /inspetor/i });
+    fireEvent.click([...painel.querySelectorAll('.studio-inspector-action')].find((b) => b.textContent === 'Fator Criativo')!);
+
+    expect(toast).toHaveBeenLastCalledWith(expect.objectContaining({
+      title: 'Fator Criativo chega em breve',
+      description: expect.stringContaining('fluxo de ativação próprio'),
+    }));
+  });
+
+  it('não existe mais um botão de trocar de projeto — o seletor de cliente ocupou o lugar dele', async () => {
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+    expect(screen.queryByRole('button', { name: 'Trocar de projeto' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Filtrar por cliente' })).toBeTruthy();
   });
 });

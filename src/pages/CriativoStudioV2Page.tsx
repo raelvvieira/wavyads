@@ -196,12 +196,19 @@ export default function CriativoStudioV2Page() {
     return createStudioAssetActions(deps);
   }, [ensureProjectId, selectedClientId]);
 
-  // Um aviso só, com o motivo. O que falta ligar (Fator Criativo) compartilha
-  // a mesma razão: é a próxima fatia, não um bug desta.
-  const aindaNaoLigado = useCallback(() => {
+  // Cada gatilho tem a própria frase — um aviso genérico citando "Fator
+  // Criativo" estava disparando para trocar de projeto, abrir filtros e
+  // abrir histórico, que não têm nada a ver com Fator Criativo. Ele vai
+  // ganhar um fluxo de ativação PRÓPRIO mais adiante, então merece uma
+  // mensagem só dele.
+  const avisarIndisponivel = useCallback((mensagem: string) => {
+    toast({ title: 'Ainda não disponível', description: mensagem });
+  }, []);
+
+  const avisarFatorCriativo = useCallback(() => {
     toast({
-      title: 'Ainda não ligado nesta versão',
-      description: 'Fator Criativo continua no Studio atual. Gerar, editar, redimensionar e anexar já funcionam aqui.',
+      title: 'Fator Criativo chega em breve',
+      description: 'Vai ganhar um fluxo de ativação próprio nesta versão — por enquanto continua no Studio atual.',
     });
   }, []);
 
@@ -287,7 +294,7 @@ export default function CriativoStudioV2Page() {
           toast({ title: 'Edição aplicada' });
         }
       } else {
-        aindaNaoLigado();
+        avisarIndisponivel('Ações em lote ainda não estão disponíveis — selecione uma arte por vez.');
       }
     } catch (e: any) {
       toast({ title: 'Erro', description: e?.message ?? 'Não foi possível concluir.', variant: 'destructive' });
@@ -295,14 +302,17 @@ export default function CriativoStudioV2Page() {
       setBusy(false);
       setCommand('');
     }
-  }, [command, hasCopy, busy, attachments, ratio, resolution, modelId, actions, assets, upsertAsset, aindaNaoLigado]);
+  }, [command, hasCopy, busy, attachments, ratio, resolution, modelId, actions, assets, upsertAsset, avisarIndisponivel]);
 
   const handleAssetAction = useCallback(async (acao: SelectionAction, selecionados: CreativeAsset[]) => {
     if (acao === 'download') {
       for (const a of selecionados) if (a.url) window.open(a.url, '_blank', 'noopener');
       return;
     }
-    if (selecionados.length !== 1) { aindaNaoLigado(); return; }
+    if (selecionados.length !== 1) {
+      avisarIndisponivel('Ações em lote ainda não estão disponíveis — selecione uma arte por vez.');
+      return;
+    }
     const [alvo] = selecionados;
 
     if (acao === 'retry') {
@@ -338,15 +348,19 @@ export default function CriativoStudioV2Page() {
       return;
     }
 
-    aindaNaoLigado();
-  }, [actions, upsertAsset, aindaNaoLigado]);
+    if (acao === 'factor') {
+      avisarFatorCriativo();
+      return;
+    }
+
+    avisarIndisponivel('Esta ação ainda não está disponível nesta versão.');
+  }, [actions, upsertAsset, avisarIndisponivel, avisarFatorCriativo]);
 
   return (
     <div className="studio-page">
       <StudioPreviewBanner onOpenCurrent={voltarAoAtual} />
 
       <CreativeStudioShell
-        projectName={projeto?.title ?? (projectId ? 'Projeto sem título' : 'Todo o acervo')}
         clientName={clientName}
         clientId={selectedClientId}
         clients={clientOptions}
@@ -364,9 +378,8 @@ export default function CriativoStudioV2Page() {
         ]}
         onRemoveFilter={handleRemoveFilter}
         onClearFilters={() => { setQuery(''); setLibrary('all'); setProjectId(null); setSelectedClientId(null); }}
-        onOpenFilters={aindaNaoLigado}
-        onOpenProjects={aindaNaoLigado}
-        onOpenHistory={aindaNaoLigado}
+        onOpenFilters={() => avisarIndisponivel('Filtros avançados ainda não estão disponíveis nesta versão.')}
+        onOpenHistory={() => avisarIndisponivel('Histórico de projetos ainda não está disponível nesta versão.')}
         onNewProject={() => setProjectId(null)}
         loading={loading}
         error={error}
