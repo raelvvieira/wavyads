@@ -2,10 +2,16 @@ import { useMemo, useState } from 'react';
 import { libraryAssets, visibleCanvasAssets } from '../state/canvasSelectors';
 import type { DockAttachment, StudioLibraryId } from '../types/studioUi';
 import type { CreativeAspectRatio, CreativeResolution } from '../types/creative';
+import type { CopyBankEntry } from '../api/copyBank';
 import { IMAGE_GENERATION_MODEL } from '../generation/capabilities';
 import { CreativeStudioShell } from './CreativeStudioShell';
 import { StudioPreviewBanner } from './StudioPreviewBanner';
 import { PREVIEW_ASSETS, PREVIEW_LIBRARIES } from './studioPreviewFixtures';
+
+const PREVIEW_COPY_BANK: CopyBankEntry[] = [
+  { id: 'cb1', copyText: 'Até 50% OFF em toda a coleção — só até domingo', tema: 'promoção', createdAt: '2026-08-15T10:00:00.000Z' },
+  { id: 'cb2', copyText: 'Peças novas toda semana, direto do ateliê pra você', tema: 'lançamento', createdAt: '2026-08-10T10:00:00.000Z' },
+];
 
 /**
  * Monta o shell V2 com dados de exemplo.
@@ -35,6 +41,8 @@ export function StudioShellPreview() {
     [query],
   );
   const referenceLibrary = useMemo(() => libraryAssets(PREVIEW_ASSETS, { types: ['reference'] }), []);
+  const logoLibrary = useMemo(() => libraryAssets(PREVIEW_ASSETS, { types: ['logo'] }), []);
+  const productLibrary = useMemo(() => libraryAssets(PREVIEW_ASSETS, { types: ['product'] }), []);
 
   return (
     <div className="studio-page">
@@ -72,6 +80,10 @@ export function StudioShellPreview() {
       onResolutionChange={setResolution}
       onModelChange={setModelId}
       referenceLibrary={referenceLibrary}
+      logoLibrary={logoLibrary}
+      productLibrary={productLibrary}
+      copyBank={PREVIEW_COPY_BANK}
+      onNewLibraryUpload={() => {}}
       onAssetAction={() => {}}
       />
     </div>

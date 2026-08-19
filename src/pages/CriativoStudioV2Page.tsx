@@ -18,6 +18,7 @@ import {
   listCreativeAssets,
   updateCreativeAsset,
 } from '@/features/creative-studio/api/creativeAssets';
+import { listCopyBank, saveCopyToBank, type CopyBankEntry } from '@/features/creative-studio/api/copyBank';
 import {
   createProject,
   listRecentProjects,
@@ -69,6 +70,7 @@ export default function CriativoStudioV2Page() {
 
   const { data: clients = [] } = useClients();
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [copyBank, setCopyBank] = useState<CopyBankEntry[]>([]);
   const clientOptions = useMemo(() => clients.map((c) => ({ id: c.id, name: c.name })), [clients]);
   const clientName = useMemo(
     () => clients.find((c) => c.id === selectedClientId)?.name ?? null,
@@ -89,7 +91,11 @@ export default function CriativoStudioV2Page() {
       const [lista, recentes] = await Promise.all([listCreativeAssets(), listRecentProjects(20)]);
       setAssets(lista);
       setProjects(recentes);
-      setProjectId((atual) => atual ?? recentes[0]?.id ?? null);
+      // Sem cliente selecionado o padrão é "Todos Clientes" — auto-selecionar
+      // o projeto mais recente aqui prendia o canvas a UM projeto (chip "Só
+      // este projeto") antes mesmo do usuário escolher algo, escondendo todo
+      // o resto do acervo logo na primeira tela. Projeto só entra em cena
+      // quando algo realmente precisa de um (`ensureProjectId`, ao gerar).
     } catch (e: any) {
       setError(e?.message ?? 'Não foi possível ler o acervo.');
     } finally {
@@ -98,6 +104,17 @@ export default function CriativoStudioV2Page() {
   }, []);
 
   useEffect(() => { carregar(); }, [carregar]);
+
+  // Copy é sobre a voz da marca do cliente, não de um projeto — recarrega
+  // sempre que o cliente selecionado muda, sem cliente não há o que buscar.
+  useEffect(() => {
+    if (!selectedClientId) { setCopyBank([]); return; }
+    let cancelado = false;
+    listCopyBank(selectedClientId)
+      .then((entradas) => { if (!cancelado) setCopyBank(entradas); })
+      .catch(() => { if (!cancelado) setCopyBank([]); });
+    return () => { cancelado = true; };
+  }, [selectedClientId]);
 
   // Formato/resolução seguem o projeto ativo — troca de projeto troca o
   // padrão de geração junto, do mesmo jeito que o Studio atual já faz.
@@ -162,6 +179,14 @@ export default function CriativoStudioV2Page() {
 
   const referenceLibrary = useMemo(
     () => libraryAssets(doProjeto, { types: ['reference'] }),
+    [doProjeto],
+  );
+  const logoLibrary = useMemo(
+    () => libraryAssets(doProjeto, { types: ['logo'] }),
+    [doProjeto],
+  );
+  const productLibrary = useMemo(
+    () => libraryAssets(doProjeto, { types: ['product'] }),
     [doProjeto],
   );
 
@@ -271,6 +296,23 @@ export default function CriativoStudioV2Page() {
     setAttachments((prev) => prev.filter((a) => a.id !== id));
   }, []);
 
+  // Upload novo de logo/produto pelo menu de anexos: além de virar anexo
+  // desta geração (já feito pelo `onAttach` de sempre), grava como asset
+  // reutilizável — a grade do menu mostra na próxima vez que abrir.
+  const handleNewLibraryUpload = useCallback(async (kind: 'logo' | 'product', url: string) => {
+    try {
+      const pid = await ensureProjectId();
+      const asset = await createCreativeAsset({
+        projectId: pid, type: kind, url, thumbnailUrl: url,
+        clientId: selectedClientId, status: 'ready',
+      });
+      upsertAsset(asset);
+    } catch {
+      // O anexo em si já aconteceu — só a reutilização futura falhou. Não
+      // vale travar o fluxo nem avisar o usuário por isso.
+    }
+  }, [ensureProjectId, selectedClientId, upsertAsset]);
+
   const hasCopy = attachments.some((a) => a.kind === 'copy');
 
   const handleSubmitCommand = useCallback(async (selectedIds: string[]) => {
@@ -297,6 +339,16 @@ export default function CriativoStudioV2Page() {
           toast({ title: 'Erro ao gerar', description: resultado.errorMessage ?? undefined, variant: 'destructive' });
         } else {
           toast({ title: 'Arte gerada' });
+          // Fecha o loop de "copies já usadas": sem isto, o histórico do
+          // painel de anexos só cresceria com um salvamento manual que o V2
+          // nunca ofereceu.
+          if (copyAnexada?.value) {
+            void saveCopyToBank({
+              clientId: selectedClientId, projectId: projectIdRef.current, copyText: copyAnexada.value,
+            })
+              .then((entrada) => { if (entrada) setCopyBank((prev) => [entrada, ...prev]); })
+              .catch(() => {});
+          }
         }
         // Os anexos eram para ESTE pedido, não uma preferência permanente —
         // consumidos, saem do dock.
@@ -462,6 +514,10 @@ export default function CriativoStudioV2Page() {
         onResolutionChange={handleResolutionChange}
         onModelChange={setModelId}
         referenceLibrary={referenceLibrary}
+        logoLibrary={logoLibrary}
+        productLibrary={productLibrary}
+        copyBank={copyBank}
+        onNewLibraryUpload={handleNewLibraryUpload}
         onAssetAction={handleAssetAction}
       />
 

@@ -42,6 +42,10 @@ function montar(patch: Partial<CreativeStudioShellProps> = {}) {
     onResolutionChange: vi.fn(),
     onModelChange: vi.fn(),
     referenceLibrary: [],
+    logoLibrary: [],
+    productLibrary: [],
+    copyBank: [],
+    onNewLibraryUpload: vi.fn(),
     onAssetAction,
     ...patch,
   };

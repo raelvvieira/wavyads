@@ -51,6 +51,13 @@ vi.mock('@/hooks/use-toast', () => ({ toast: (...a: any[]) => toast(...a) }));
 const useClients = vi.fn();
 vi.mock('@/hooks/useClients', () => ({ useClients: (...a: any[]) => useClients(...a) }));
 
+const listCopyBank = vi.fn();
+const saveCopyToBank = vi.fn();
+vi.mock('@/features/creative-studio/api/copyBank', () => ({
+  listCopyBank: (...a: any[]) => listCopyBank(...a),
+  saveCopyToBank: (...a: any[]) => saveCopyToBank(...a),
+}));
+
 import CriativoStudioV2Page from './CriativoStudioV2Page';
 
 const PROJETO = {
@@ -59,8 +66,10 @@ const PROJETO = {
   thumbnail_url: null, updated_at: '2026-08-18T10:00:00.000Z',
 };
 
-// A amostra tem assets sem `projectId: 'proj-1'`; a página só mostra o
-// acervo do projeto ativo. Reatribui para os testes verem cards de verdade.
+// Nenhum projeto vem pré-selecionado ao carregar (ver "desenha TODO o
+// acervo..." abaixo) — o canvas não filtra mais por `projectId` até que
+// uma geração de fato crie/reuse um. `projectId: 'proj-1'` aqui só serve
+// para os testes de editar/retentar, que operam sobre uma arte específica.
 const ASSETS_DO_PROJETO = PREVIEW_ASSETS.map((a) => ({ ...a, projectId: 'proj-1' }));
 
 function montar() {
@@ -77,16 +86,22 @@ describe('CriativoStudioV2Page', () => {
     listCreativeAssets.mockResolvedValue(ASSETS_DO_PROJETO);
     listRecentProjects.mockResolvedValue([PROJETO]);
     updateProjectFormat.mockResolvedValue(undefined);
+    // Só entra em jogo quando uma geração de fato precisa de um projeto —
+    // nenhum teste depende do id em si, exceto quando sobrescrito localmente.
+    createProject.mockResolvedValue({ id: 'proj-1', title: 'Novo projeto' });
+    listCopyBank.mockResolvedValue([]);
+    saveCopyToBank.mockResolvedValue(null);
     useClients.mockReturnValue({ data: [{ id: 'c1', name: 'Boutique Aurora' }, { id: 'c2', name: 'Loja do João' }] });
   });
 
-  it('desenha o acervo real do projeto mais recente', async () => {
+  it('desenha TODO o acervo ao carregar — nenhum projeto vem pré-selecionado', async () => {
+    // Regressão: um projeto auto-selecionado no carregamento prendia o
+    // canvas a UM projeto (chip "Só este projeto") mesmo com "Todos
+    // Clientes" — o padrão — escondendo o resto do acervo na primeira tela.
+    listCreativeAssets.mockResolvedValue(ASSETS_DO_PROJETO);
     montar();
     await waitFor(() => expect(cards().length).toBeGreaterThan(0));
-    // O nome do projeto não é mais um cabeçalho próprio — o chip "Só este
-    // projeto" (removível) é o que confirma que o projeto carregado é o
-    // escopo ativo.
-    expect(screen.getByText('Só este projeto')).toBeTruthy();
+    expect(screen.queryByText('Só este projeto')).toBeNull();
   });
 
   it('diz na cara que é prévia, mas nomeia o que já funciona', async () => {
@@ -216,7 +231,7 @@ describe('CriativoStudioV2Page', () => {
     createCreativeAsset.mockResolvedValue({
       id: 'nova', projectId: 'proj-1', clientId: null, type: 'original', status: 'generating',
       url: null, thumbnailUrl: null, parentAssetId: null, rootAssetId: null, groupId: null,
-      factorAxis: null, aspectRatio: '9:16', resolution: '2K', width: null, height: null,
+      factorAxis: null, aspectRatio: '4:5', resolution: '2K', width: null, height: null,
       prompt: 'p', negativePrompt: null, model: 'gpt-image-2', errorMessage: null, filename: null,
       isClientIntelligence: false, metadata: {},
       createdAt: '2026-08-18T12:00:00.000Z', updatedAt: '2026-08-18T12:00:00.000Z',
@@ -226,6 +241,14 @@ describe('CriativoStudioV2Page', () => {
 
     montar();
     await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+
+    // Sem projeto pré-selecionado, persistir formato exige um projeto de
+    // verdade primeiro — a própria geração cria um via `ensureProjectId`.
+    fireEvent.change(screen.getByPlaceholderText('O que você quer criar?'), { target: { value: 'lançamento' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Gerar' }));
+    });
+    expect(createProject).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole('button', { name: 'Abrir configurações de geração' }));
     fireEvent.click(screen.getByRole('button', { name: '9:16' }));
@@ -237,7 +260,7 @@ describe('CriativoStudioV2Page', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Gerar' }));
     });
 
-    const chamada = invoke.mock.calls.find((c) => c[0] === 'criativo-generate')!;
+    const chamada = invoke.mock.calls.filter((c) => c[0] === 'criativo-generate').at(-1)!;
     expect(chamada[1].body.formatRatio).toBe('9:16');
   });
 
@@ -427,7 +450,25 @@ describe('CriativoStudioV2Page', () => {
 
   it('trocar de cliente zera o filtro "Só este projeto" — não fica preso a um projeto de outro cliente', async () => {
     useClients.mockReturnValue({ data: [{ id: 'cli-1', name: 'Boutique Aurora' }] });
+    createCreativeAsset.mockResolvedValue({
+      id: 'nova', projectId: 'proj-1', clientId: null, type: 'original', status: 'generating',
+      url: null, thumbnailUrl: null, parentAssetId: null, rootAssetId: null, groupId: null,
+      factorAxis: null, aspectRatio: '4:5', resolution: '2K', width: null, height: null,
+      prompt: 'p', negativePrompt: null, model: 'gpt-image-2', errorMessage: null, filename: null,
+      isClientIntelligence: false, metadata: {},
+      createdAt: '2026-08-18T12:00:00.000Z', updatedAt: '2026-08-18T12:00:00.000Z',
+    } satisfies CreativeAsset);
+    invoke.mockResolvedValue({ data: { imageUrl: 'https://x/nova.png' }, error: null });
+    updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({ id, ...patch }));
+
     montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+
+    // Gerar sem projeto ainda ativo cria um — só a partir daí o chip existe.
+    fireEvent.change(screen.getByPlaceholderText('O que você quer criar?'), { target: { value: 'x' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Gerar' }));
+    });
     await waitFor(() => expect(screen.getByText('Só este projeto')).toBeTruthy());
 
     fireEvent.click(screen.getByRole('button', { name: 'Filtrar por cliente' }));
@@ -541,6 +582,71 @@ describe('CriativoStudioV2Page', () => {
 
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Erro ao apagar', variant: 'destructive' }));
     expect(cards()).toHaveLength(totalAntes);
+  });
+
+  it('subir um produto novo pelo menu também o salva como asset reutilizável do cliente', async () => {
+    useClients.mockReturnValue({ data: [{ id: 'cli-9', name: 'Studio Nômade' }] });
+    uploadDataUrlToCreativeStorage.mockResolvedValue('https://x/produto-enviado.png');
+    createCreativeAsset.mockResolvedValue({
+      id: 'prod-novo', projectId: 'proj-1', clientId: 'cli-9', type: 'product', status: 'ready',
+      url: 'https://x/produto-enviado.png', thumbnailUrl: 'https://x/produto-enviado.png',
+      parentAssetId: null, rootAssetId: null, groupId: null,
+      factorAxis: null, aspectRatio: null, resolution: null, width: null, height: null,
+      prompt: null, negativePrompt: null, model: null, errorMessage: null, filename: null,
+      isClientIntelligence: false, metadata: {},
+      createdAt: '2026-08-19T12:00:00.000Z', updatedAt: '2026-08-19T12:00:00.000Z',
+    } satisfies CreativeAsset);
+
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByRole('button', { name: 'Filtrar por cliente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Studio Nômade' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência, logo, copy ou produto' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar produto' }));
+    const arquivo = new File(['conteudo'], 'produto.png', { type: 'image/png' });
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [arquivo] } });
+    });
+
+    await waitFor(() => expect(createCreativeAsset).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'product', clientId: 'cli-9', url: 'https://x/produto-enviado.png', status: 'ready',
+    })));
+  });
+
+  it('gerar com copy anexada registra a copy no histórico do cliente', async () => {
+    useClients.mockReturnValue({ data: [{ id: 'cli-9', name: 'Studio Nômade' }] });
+    createCreativeAsset.mockResolvedValue({
+      id: 'nova', projectId: 'proj-1', clientId: 'cli-9', type: 'original', status: 'generating',
+      url: null, thumbnailUrl: null, parentAssetId: null, rootAssetId: null, groupId: null,
+      factorAxis: null, aspectRatio: '4:5', resolution: '2K', width: null, height: null,
+      prompt: 'p', negativePrompt: null, model: 'gpt-image-2', errorMessage: null, filename: null,
+      isClientIntelligence: false, metadata: {},
+      createdAt: '2026-08-18T12:00:00.000Z', updatedAt: '2026-08-18T12:00:00.000Z',
+    } satisfies CreativeAsset);
+    invoke.mockResolvedValue({ data: { imageUrl: 'https://x/nova.png' }, error: null });
+    updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({ id, status: 'ready', ...patch }));
+
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByRole('button', { name: 'Filtrar por cliente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Studio Nômade' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência, logo, copy ou produto' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar copy' }));
+    fireEvent.change(screen.getByPlaceholderText(/Cole o texto final/), {
+      target: { value: 'Até 50% OFF — só hoje' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar' }));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Gerar' }));
+    });
+
+    await waitFor(() => expect(saveCopyToBank).toHaveBeenCalledWith(expect.objectContaining({
+      clientId: 'cli-9', copyText: 'Até 50% OFF — só hoje',
+    })));
   });
 
   it('não existe mais um botão de trocar de projeto — o seletor de cliente ocupou o lugar dele', async () => {

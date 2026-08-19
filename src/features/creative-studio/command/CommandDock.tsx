@@ -3,6 +3,7 @@ import { ArrowUp, Loader2, MessageSquare, Paperclip, Settings2, X } from 'lucide
 import { cn } from '@/lib/utils';
 import type { CreativeAspectRatio, CreativeAsset, CreativeResolution } from '../types/creative';
 import type { DockAttachment } from '../types/studioUi';
+import type { CopyBankEntry } from '../api/copyBank';
 import { describeGeneration } from '../generation/capabilities';
 import { canGenerate, type SelectionSummary } from '../state/canvasSelectors';
 import { AttachMenu } from './AttachMenu';
@@ -27,8 +28,13 @@ interface CommandDockProps {
   onRatioChange: (ratio: CreativeAspectRatio) => void;
   onResolutionChange: (resolution: CreativeResolution) => void;
   onModelChange: (modelId: string) => void;
-  /** Já filtrada por `type: 'reference'` — alimenta o sub-painel de anexo. */
+  /** Já filtrada por `type: 'reference'`/`'logo'`/`'product'` — alimenta os sub-painéis de anexo. */
   referenceLibrary: CreativeAsset[];
+  logoLibrary: CreativeAsset[];
+  productLibrary: CreativeAsset[];
+  /** Copies já usadas por este cliente — alimenta o sub-painel de copy. */
+  copyBank: CopyBankEntry[];
+  onNewLibraryUpload: (kind: 'logo' | 'product', url: string) => void;
   onOpenCopilot: () => void;
 }
 
@@ -68,6 +74,10 @@ export function CommandDock({
   onResolutionChange,
   onModelChange,
   referenceLibrary,
+  logoLibrary,
+  productLibrary,
+  copyBank,
+  onNewLibraryUpload,
   onOpenCopilot,
 }: CommandDockProps) {
   const textarea = useRef<HTMLTextAreaElement>(null);
@@ -106,7 +116,14 @@ export function CommandDock({
       )}
 
       <div className="studio-dock-row">
-        <AttachMenu referenceLibrary={referenceLibrary} onAttach={onAttach}>
+        <AttachMenu
+          referenceLibrary={referenceLibrary}
+          logoLibrary={logoLibrary}
+          productLibrary={productLibrary}
+          copyBank={copyBank}
+          onAttach={onAttach}
+          onNewLibraryUpload={onNewLibraryUpload}
+        >
           <button
             type="button"
             aria-label="Anexar referência, logo, copy ou produto"
