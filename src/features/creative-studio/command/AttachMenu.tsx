@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react';
-import { BadgeCheck, Boxes, ChevronLeft, ChevronRight, Images, Loader2, Sparkles, Type } from 'lucide-react';
+import { BadgeCheck, Boxes, ChevronLeft, ChevronRight, Images, Loader2, Sparkles, Type, UserRound } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
 import { ImageDropzone } from '@/components/criativo/ImageDropzone';
@@ -16,6 +16,8 @@ interface AttachMenuProps {
   /** Idem, por `type: 'logo'`/`'product'` — logo/produto já salvos deste cliente. */
   logoLibrary: CreativeAsset[];
   productLibrary: CreativeAsset[];
+  /** Avatares já gerados deste cliente. */
+  avatarLibrary: CreativeAsset[];
   /** Copies já usadas por este cliente, mais recente primeiro. */
   copyBank: CopyBankEntry[];
   onAttach: (attachment: DockAttachment) => void;
@@ -32,6 +34,8 @@ const OPCOES: { kind: DockAttachmentKind; label: string; icon: typeof Images }[]
   { kind: 'copy', label: 'Anexar copy', icon: Type },
   // Mesmo ícone da biblioteca "Produtos" — mesmo conceito, mesmo símbolo.
   { kind: 'product', label: 'Anexar produto', icon: Boxes },
+  // Mesmo ícone da biblioteca "Avatares" — mesmo conceito, mesmo símbolo.
+  { kind: 'avatar', label: 'Anexar avatar', icon: UserRound },
 ];
 
 /**
@@ -46,6 +50,7 @@ export function AttachMenu({
   referenceLibrary,
   logoLibrary,
   productLibrary,
+  avatarLibrary,
   copyBank,
   onAttach,
   onNewLibraryUpload,
@@ -96,6 +101,7 @@ export function AttachMenu({
             referenceLibrary={referenceLibrary}
             logoLibrary={logoLibrary}
             productLibrary={productLibrary}
+            avatarLibrary={avatarLibrary}
             copyBank={copyBank}
             onVoltar={() => setStep('lista')}
             onAnexar={anexar}
@@ -128,6 +134,7 @@ function SubPainel({
   referenceLibrary,
   logoLibrary,
   productLibrary,
+  avatarLibrary,
   copyBank,
   onVoltar,
   onAnexar,
@@ -137,6 +144,7 @@ function SubPainel({
   referenceLibrary: CreativeAsset[];
   logoLibrary: CreativeAsset[];
   productLibrary: CreativeAsset[];
+  avatarLibrary: CreativeAsset[];
   copyBank: CopyBankEntry[];
   onVoltar: () => void;
   onAnexar: (attachment: Omit<DockAttachment, 'id'>) => void;
@@ -152,6 +160,7 @@ function SubPainel({
     );
   }
   if (kind === 'copy') return <PainelCopy copyBank={copyBank} onVoltar={onVoltar} onAnexar={onAnexar} />;
+  if (kind === 'avatar') return <PainelAvatar library={avatarLibrary} onVoltar={onVoltar} onAnexar={onAnexar} />;
   return (
     <PainelBiblioteca
       titulo="Anexar produto" maxImages={6} texto="Solte, clique ou cole imagens do produto" kind="product"
@@ -275,6 +284,57 @@ function PainelBiblioteca({
       )}
       <div className="p-2.5">
         <ImageDropzone images={[]} onChange={handleChange} label={enviando ? 'Enviando…' : texto} maxImages={maxImages} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Avatar não tem upload: ele NASCE gerado no Avatar Studio, a partir de
+ * traços. Um dropzone aqui criaria um segundo caminho para o mesmo conceito
+ * — e o de cá não guardaria persona nenhuma.
+ */
+function PainelAvatar({
+  library,
+  onVoltar,
+  onAnexar,
+}: {
+  library: CreativeAsset[];
+  onVoltar: () => void;
+  onAnexar: (attachment: Omit<DockAttachment, 'id'>) => void;
+}) {
+  const prontos = library.filter((a) => a.status === 'ready' && !!a.url);
+  return (
+    <div>
+      <VoltarHeader titulo="Anexar avatar" onVoltar={onVoltar} />
+      <div className="max-h-64 overflow-y-auto p-2.5">
+        {prontos.length === 0 ? (
+          <p className="px-1 py-3 text-center text-[12px] text-white/45">
+            Nenhum avatar ainda. Crie um na biblioteca "Avatares".
+          </p>
+        ) : (
+          <div className="grid grid-cols-3 gap-1.5">
+            {prontos.map((item) => {
+              const nome = (item.metadata as any)?.persona?.name ?? item.filename ?? 'Avatar';
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => item.url && onAnexar({
+                    kind: 'avatar',
+                    label: nome,
+                    thumbnailUrl: item.thumbnailUrl ?? item.url,
+                    value: item.url,
+                  })}
+                  aria-label={`Anexar ${nome}`}
+                  className="aspect-square overflow-hidden rounded-[var(--wavy-radius-control)] border border-white/10 transition-[border-color] duration-150 hover:border-white/25"
+                >
+                  <img src={item.thumbnailUrl ?? item.url ?? ''} alt="" className="h-full w-full object-cover" />
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

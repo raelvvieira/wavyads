@@ -1042,6 +1042,64 @@
 
   /* Painel direito. SÓLIDO, não vidro: aqui mora texto longo (prompt,
      mensagem de erro) e o padrão reserva vidro para controles. */
+
+  /* ---- Avatar Studio -------------------------------------------------
+     Ocupa a mesma região do canvas, mas rola como página: é uma tela, não
+     uma grade infinita — por isso `overflow-y` próprio em vez de herdar o
+     comportamento do canvas. */
+  .studio-avatar-region {
+    height: 100%;
+    overflow-y: auto;
+    padding: 4px 4px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .studio-avatar-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+    gap: 12px;
+  }
+
+  .studio-avatar-card {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    overflow: hidden;
+    text-align: left;
+    border-radius: var(--wavy-radius-card);
+    border: 1px solid rgb(255 255 255 / 0.08);
+    background: rgb(255 255 255 / 0.03);
+    transition: border-color var(--wavy-duration-control) var(--wavy-ease-fluid),
+                transform var(--wavy-duration-control) var(--wavy-ease-fluid);
+  }
+
+  .studio-avatar-card:hover {
+    border-color: rgb(255 255 255 / 0.22);
+    transform: translateY(-2px);
+  }
+
+  .studio-avatar-card:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--wavy-focus);
+  }
+
+  .studio-avatar-card-art {
+    position: relative;
+    display: grid;
+    place-items: center;
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+  }
+
+  .studio-avatar-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 8px 10px 10px;
+  }
+
   .studio-side-panel {
     position: absolute;
     right: 0;

@@ -167,7 +167,7 @@ describe('CriativoStudioV2Page', () => {
     montar();
     await waitFor(() => expect(cards().length).toBeGreaterThan(0));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência, logo, copy ou produto' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência, logo, copy, produto ou avatar' }));
     fireEvent.click(screen.getByRole('button', { name: 'Anexar copy' }));
     fireEvent.change(screen.getByPlaceholderText(/Cole o texto final/), {
       target: { value: 'Até 50% OFF — só hoje' },
@@ -204,7 +204,7 @@ describe('CriativoStudioV2Page', () => {
     montar();
     await waitFor(() => expect(cards().length).toBeGreaterThan(0));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência, logo, copy ou produto' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência, logo, copy, produto ou avatar' }));
     fireEvent.click(screen.getByRole('button', { name: 'Anexar produto' }));
 
     const arquivo = new File(['conteudo'], 'produto.png', { type: 'image/png' });
@@ -602,7 +602,7 @@ describe('CriativoStudioV2Page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Filtrar por cliente' }));
     fireEvent.click(screen.getByRole('button', { name: 'Studio Nômade' }));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência, logo, copy ou produto' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência, logo, copy, produto ou avatar' }));
     fireEvent.click(screen.getByRole('button', { name: 'Anexar produto' }));
     const arquivo = new File(['conteudo'], 'produto.png', { type: 'image/png' });
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
@@ -633,7 +633,7 @@ describe('CriativoStudioV2Page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Filtrar por cliente' }));
     fireEvent.click(screen.getByRole('button', { name: 'Studio Nômade' }));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência, logo, copy ou produto' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência, logo, copy, produto ou avatar' }));
     fireEvent.click(screen.getByRole('button', { name: 'Anexar copy' }));
     fireEvent.change(screen.getByPlaceholderText(/Cole o texto final/), {
       target: { value: 'Até 50% OFF — só hoje' },
@@ -647,6 +647,49 @@ describe('CriativoStudioV2Page', () => {
     await waitFor(() => expect(saveCopyToBank).toHaveBeenCalledWith(expect.objectContaining({
       clientId: 'cli-9', copyText: 'Até 50% OFF — só hoje',
     })));
+  });
+
+  it('a biblioteca "Avatares" abre o Avatar Studio no lugar do canvas', async () => {
+    // Primeira entrada da ilha que abre uma TELA em vez de filtrar o grid —
+    // o dock some junto, porque ele cria anúncio, não persona.
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+
+    fireEvent.click(screen.getByRole('button', { name: /Avatares/ }));
+
+    expect(screen.getByRole('region', { name: 'Avatar Studio' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Personalizar Fashion Model' })).toBeTruthy();
+    expect(screen.queryByPlaceholderText('O que você quer criar?')).toBeNull();
+  });
+
+  it('gerar avatar cria um asset do tipo avatar com a persona no metadata', async () => {
+    createCreativeAsset.mockResolvedValue({
+      id: 'av-novo', projectId: 'proj-1', clientId: null, type: 'avatar', status: 'generating',
+      url: null, thumbnailUrl: null, parentAssetId: null, rootAssetId: null, groupId: null,
+      factorAxis: null, aspectRatio: '4:5', resolution: '2K', width: null, height: null,
+      prompt: 'p', negativePrompt: null, model: 'gpt-image-2', errorMessage: null, filename: 'Fitness Bro',
+      isClientIntelligence: false, metadata: {},
+      createdAt: '2026-08-19T12:00:00.000Z', updatedAt: '2026-08-19T12:00:00.000Z',
+    } satisfies CreativeAsset);
+    invoke.mockResolvedValue({ data: { imageUrl: 'https://x/avatar.png' }, error: null });
+    updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({ id, ...patch }));
+
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByRole('button', { name: /Avatares/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Personalizar Fitness Bro' }));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Gerar avatar/ }));
+    });
+
+    expect(createCreativeAsset).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'avatar',
+      metadata: expect.objectContaining({
+        persona: expect.objectContaining({ name: 'Fitness Bro', presetId: 'fitness-bro' }),
+      }),
+    }));
+    await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Avatar pronto' })));
   });
 
   it('não existe mais um botão de trocar de projeto — o seletor de cliente ocupou o lugar dele', async () => {

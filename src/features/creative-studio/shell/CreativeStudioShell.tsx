@@ -5,11 +5,13 @@ import type { CreativeAsset, CreativeAspectRatio, CreativeResolution } from '../
 import type { CanvasViewMode, DockAttachment, SidePanelMode, StudioLibraryEntry, StudioLibraryId } from '../types/studioUi';
 import type { SelectionAction } from '../state/canvasSelectors';
 import type { CopyBankEntry } from '../api/copyBank';
+import type { AvatarPersona } from '../types/avatarPersona';
 import { summarizeSelection } from '../state/canvasSelectors';
 import { StudioTopBar, type StudioFilterChip } from './StudioTopBar';
 import type { StudioClientOption } from './StudioClientSelector';
 import { StudioLibraryIsland } from './StudioLibraryIsland';
 import { CreativeCanvas } from '../canvas/CreativeCanvas';
+import { AvatarStudio } from '../avatar/AvatarStudio';
 import { CommandDock } from '../command/CommandDock';
 import { AssetInspector } from '../inspector/AssetInspector';
 
@@ -57,6 +59,9 @@ export interface CreativeStudioShellProps {
   /** Copies já usadas por este cliente — alimenta o sub-painel de copy. */
   copyBank: CopyBankEntry[];
   onNewLibraryUpload: (kind: 'logo' | 'product', url: string) => void;
+  /** Avatares deste cliente — alimentam o Avatar Studio e o menu de anexos. */
+  avatarLibrary: CreativeAsset[];
+  onGenerateAvatar: (persona: AvatarPersona, referenceImages: string[]) => void;
   onAssetAction: (action: SelectionAction, assets: CreativeAsset[]) => void;
 }
 
@@ -101,7 +106,8 @@ export function CreativeStudioShell(props: CreativeStudioShellProps) {
     });
   };
 
-  const painelAberto = sidePanel !== 'none' && selecionados.length > 0;
+  const modoAvatar = props.activeLibrary === 'avatars';
+  const painelAberto = !modoAvatar && sidePanel !== 'none' && selecionados.length > 0;
 
   return (
     <div
@@ -136,6 +142,17 @@ export function CreativeStudioShell(props: CreativeStudioShellProps) {
       />
 
       <main className="studio-canvas-region">
+        {/* "Avatares" é a primeira entrada da ilha que abre uma TELA em vez
+            de filtrar o grid — o dock some junto, porque ele cria anúncio,
+            não persona. É o padrão que o UGC Studio vai seguir. */}
+        {modoAvatar ? (
+          <AvatarStudio
+            avatars={props.avatarLibrary}
+            busy={props.busy}
+            onGenerate={props.onGenerateAvatar}
+          />
+        ) : (
+          <>
         <div className="studio-canvas-toolbar glass-island" role="group" aria-label="Modo de organização">
           <ModeButton
             active={viewMode === 'grid'}
@@ -184,11 +201,14 @@ export function CreativeStudioShell(props: CreativeStudioShellProps) {
             referenceLibrary={props.referenceLibrary}
             logoLibrary={props.logoLibrary}
             productLibrary={props.productLibrary}
+            avatarLibrary={props.avatarLibrary}
             copyBank={props.copyBank}
             onNewLibraryUpload={props.onNewLibraryUpload}
             onOpenCopilot={() => setSidePanel('copilot')}
           />
         </div>
+          </>
+        )}
       </main>
 
       {painelAberto && (
