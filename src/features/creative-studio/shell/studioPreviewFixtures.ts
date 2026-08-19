@@ -100,6 +100,20 @@ export const PREVIEW_ASSETS: CreativeAsset[] = [
     url: arte('REF', '#71717A', '#3F3F46', 800, 800),
     createdAt: '2026-08-17T08:00:00.000Z',
   }),
+  // Também insumo — alimenta a grade de "já salvos" do menu de anexos
+  // (logo/produto), a mesma mecânica de reuso que a referência já tem.
+  asset({
+    id: 'logo1', type: 'logo', status: 'ready', aspectRatio: '1:1', width: 512, height: 512,
+    url: arte('LOGO', '#F59E0B', '#B45309', 512, 512),
+    filename: 'logo-boutique-aurora.png',
+    createdAt: '2026-08-16T08:00:00.000Z',
+  }),
+  asset({
+    id: 'prod1', type: 'product', status: 'ready', aspectRatio: '1:1', width: 800, height: 800,
+    url: arte('PROD', '#0EA5E9', '#075985', 800, 800),
+    filename: 'produto-verao.jpg',
+    createdAt: '2026-08-16T08:05:00.000Z',
+  }),
 ];
 
 export const PREVIEW_LIBRARIES: StudioLibraryEntry[] = [

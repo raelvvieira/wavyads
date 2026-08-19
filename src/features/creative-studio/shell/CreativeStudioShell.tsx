@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import type { CreativeAsset, CreativeAspectRatio, CreativeResolution } from '../types/creative';
 import type { CanvasViewMode, DockAttachment, SidePanelMode, StudioLibraryEntry, StudioLibraryId } from '../types/studioUi';
 import type { SelectionAction } from '../state/canvasSelectors';
+import type { CopyBankEntry } from '../api/copyBank';
 import { summarizeSelection } from '../state/canvasSelectors';
 import { StudioTopBar, type StudioFilterChip } from './StudioTopBar';
 import type { StudioClientOption } from './StudioClientSelector';
@@ -49,8 +50,13 @@ export interface CreativeStudioShellProps {
   onRatioChange: (ratio: CreativeAspectRatio) => void;
   onResolutionChange: (resolution: CreativeResolution) => void;
   onModelChange: (modelId: string) => void;
-  /** Já filtrada por `type: 'reference'` — alimenta o menu de anexos. */
+  /** Já filtradas por tipo — alimentam os sub-painéis do menu de anexos. */
   referenceLibrary: CreativeAsset[];
+  logoLibrary: CreativeAsset[];
+  productLibrary: CreativeAsset[];
+  /** Copies já usadas por este cliente — alimenta o sub-painel de copy. */
+  copyBank: CopyBankEntry[];
+  onNewLibraryUpload: (kind: 'logo' | 'product', url: string) => void;
   onAssetAction: (action: SelectionAction, assets: CreativeAsset[]) => void;
 }
 
@@ -176,6 +182,10 @@ export function CreativeStudioShell(props: CreativeStudioShellProps) {
             onResolutionChange={props.onResolutionChange}
             onModelChange={props.onModelChange}
             referenceLibrary={props.referenceLibrary}
+            logoLibrary={props.logoLibrary}
+            productLibrary={props.productLibrary}
+            copyBank={props.copyBank}
+            onNewLibraryUpload={props.onNewLibraryUpload}
             onOpenCopilot={() => setSidePanel('copilot')}
           />
         </div>
