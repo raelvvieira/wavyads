@@ -81,12 +81,33 @@ describe('availableActionsForSelection', () => {
 
   it('arte gerando não aceita nada', () => {
     // Oferecer "editar" numa arte que ainda está gerando produz chamada com
-    // URL nula.
+    // URL nula. Nem apagar entra aqui: a linha pode sumir do banco no meio
+    // do ciclo generating→ready/failed, e a chamada em voo tentaria
+    // atualizar um asset que já não existe mais.
     expect(availableActionsForSelection([asset({ id: 'a', status: 'generating', url: null })])).toEqual([]);
   });
 
-  it('arte falhada só oferece nova tentativa', () => {
-    expect(availableActionsForSelection([asset({ id: 'a', status: 'failed' })])).toEqual(['retry']);
+  it('arte falhada oferece nova tentativa e apagar', () => {
+    expect(availableActionsForSelection([asset({ id: 'a', status: 'failed' })])).toEqual(['retry', 'delete']);
+  });
+
+  it('apagar vale para arte pronta, sempre por último', () => {
+    const acoes = availableActionsForSelection([asset({ id: 'a' })]);
+    expect(acoes).toContain('delete');
+    expect(acoes[acoes.length - 1]).toBe('delete');
+  });
+
+  it('apagar não vale em lote, mesmo com tudo pronto', () => {
+    const lote = [asset({ id: 'a' }), asset({ id: 'b' })];
+    expect(availableActionsForSelection(lote)).not.toContain('delete');
+  });
+
+  it('usar como referência só vale para arte pronta', () => {
+    expect(availableActionsForSelection([asset({ id: 'a' })])).toContain('use-as-reference');
+    expect(availableActionsForSelection([asset({ id: 'a', status: 'failed' })])).not.toContain('use-as-reference');
+    expect(availableActionsForSelection([asset({ id: 'a', status: 'generating', url: null })])).not.toContain('use-as-reference');
+    const lote = [asset({ id: 'a' }), asset({ id: 'b' })];
+    expect(availableActionsForSelection(lote)).not.toContain('use-as-reference');
   });
 
   it('quadrado não oferece redimensionar', () => {

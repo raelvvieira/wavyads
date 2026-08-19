@@ -66,7 +66,9 @@ export type SelectionAction =
   | 'preview'
   | 'save-as-template'
   | 'save-to-client-intelligence'
-  | 'retry';
+  | 'retry'
+  | 'delete'
+  | 'use-as-reference';
 
 /**
  * Ações válidas para uma seleção.
@@ -87,11 +89,15 @@ export function availableActionsForSelection(selecionados: CreativeAsset[]): Sel
     return todasProntas ? ['download'] : [];
   }
 
-  if (algumaFalhou) return ['retry'];
+  // Apagar vale para uma arte pronta ou que falhou — nunca enquanto ainda
+  // está gerando: a linha pode sumir do banco no meio do ciclo
+  // generating→ready/failed, e a chamada em voo tentaria atualizar um
+  // asset que já não existe mais.
+  if (algumaFalhou) return ['retry', 'delete'];
   if (!todasProntas) return [];
 
   const [asset] = selecionados;
-  const acoes: SelectionAction[] = ['edit', 'factor', 'download', 'preview', 'save-as-template'];
+  const acoes: SelectionAction[] = ['edit', 'use-as-reference', 'factor', 'download', 'preview', 'save-as-template'];
 
   // Redimensionar só faz sentido saindo de um formato que não é quadrado —
   // o destino é sempre 1:1.
@@ -99,6 +105,9 @@ export function availableActionsForSelection(selecionados: CreativeAsset[]): Sel
 
   // Inteligência do cliente exige um cliente para guardar.
   if (asset.clientId) acoes.push('save-to-client-intelligence');
+
+  // Por último, sempre — separa a ação destrutiva das demais.
+  acoes.push('delete');
 
   return acoes;
 }

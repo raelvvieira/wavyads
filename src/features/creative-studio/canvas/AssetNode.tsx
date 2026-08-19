@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, Download, Loader2, Maximize2, Pencil, RefreshCw, Sparkles } from 'lucide-react';
+import { AlertTriangle, Check, Download, Loader2, Maximize2, Pencil, RefreshCw, Repeat, Sparkles, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CreativeAsset } from '../types/creative';
 import { FACTOR_AXIS_LABELS } from '../types/creative';
@@ -21,10 +21,12 @@ function aspectStyle(asset: CreativeAsset): React.CSSProperties {
 
 const ACAO_ICONE: Partial<Record<SelectionAction, { icon: typeof Pencil; label: string }>> = {
   edit: { icon: Pencil, label: 'Editar com IA' },
+  'use-as-reference': { icon: Repeat, label: 'Usar como referência' },
   factor: { icon: Sparkles, label: 'Fator Criativo' },
   resize: { icon: Maximize2, label: 'Redimensionar' },
   download: { icon: Download, label: 'Baixar' },
   retry: { icon: RefreshCw, label: 'Tentar novamente' },
+  delete: { icon: Trash2, label: 'Apagar arte' },
 };
 
 interface AssetNodeProps {
@@ -113,7 +115,7 @@ export function AssetNode({ asset, selected, onToggleSelect, onAction, actions }
                 onClick={() => onAction(acao, asset)}
                 aria-label={label}
                 title={label}
-                className="studio-asset-action"
+                className={cn('studio-asset-action', acao === 'delete' && 'hover:text-destructive')}
               >
                 <Icon className="h-3.5 w-3.5" />
               </button>

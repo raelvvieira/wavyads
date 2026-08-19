@@ -13,10 +13,12 @@ vi.mock('react-router-dom', async () => ({
 const listCreativeAssets = vi.fn();
 const createCreativeAsset = vi.fn();
 const updateCreativeAsset = vi.fn();
+const deleteCreativeAsset = vi.fn();
 vi.mock('@/features/creative-studio/api/creativeAssets', () => ({
   listCreativeAssets: (...a: any[]) => listCreativeAssets(...a),
   createCreativeAsset: (...a: any[]) => createCreativeAsset(...a),
   updateCreativeAsset: (...a: any[]) => updateCreativeAsset(...a),
+  deleteCreativeAsset: (...a: any[]) => deleteCreativeAsset(...a),
 }));
 
 const listRecentProjects = vi.fn();
@@ -468,6 +470,77 @@ describe('CriativoStudioV2Page', () => {
       title: 'Fator Criativo chega em breve',
       description: expect.stringContaining('fluxo de ativação próprio'),
     }));
+  });
+
+  it('usar como referência: a arte selecionada vira anexo no dock', async () => {
+    montar();
+    await waitFor(() => expect(prontos().length).toBeGreaterThan(0));
+    const antes = document.querySelectorAll('.studio-dock-chip').length;
+
+    fireEvent.click(prontos()[0].querySelector('.studio-asset-surface')!);
+    const painel = screen.getByRole('complementary', { name: /inspetor/i });
+    fireEvent.click([...painel.querySelectorAll('.studio-inspector-action')].find((b) => b.textContent === 'Usar como referência')!);
+
+    expect(document.querySelectorAll('.studio-dock-chip')).toHaveLength(antes + 1);
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Adicionada como referência' }));
+  });
+
+  it('apagar arte: abre a confirmação sem apagar nada ainda, cancelar mantém o card', async () => {
+    montar();
+    await waitFor(() => expect(prontos().length).toBeGreaterThan(0));
+    const totalAntes = cards().length;
+
+    fireEvent.click(prontos()[0].querySelector('.studio-asset-surface')!);
+    const painel = screen.getByRole('complementary', { name: /inspetor/i });
+    fireEvent.click([...painel.querySelectorAll('.studio-inspector-action')].find((b) => b.textContent === 'Apagar arte')!);
+
+    expect(screen.getByRole('alertdialog')).toBeTruthy();
+    expect(deleteCreativeAsset).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(deleteCreativeAsset).not.toHaveBeenCalled();
+    expect(cards()).toHaveLength(totalAntes);
+  });
+
+  it('apagar arte: confirmar chama deleteCreativeAsset e o card some (e fecha o inspetor)', async () => {
+    deleteCreativeAsset.mockResolvedValue(undefined);
+    montar();
+    await waitFor(() => expect(prontos().length).toBeGreaterThan(0));
+    const totalAntes = cards().length;
+
+    fireEvent.click(prontos()[0].querySelector('.studio-asset-surface')!);
+    const painel = screen.getByRole('complementary', { name: /inspetor/i });
+    fireEvent.click([...painel.querySelectorAll('.studio-inspector-action')].find((b) => b.textContent === 'Apagar arte')!);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Apagar' }));
+    });
+
+    expect(deleteCreativeAsset).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(cards()).toHaveLength(totalAntes - 1));
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Arte apagada' }));
+    // A seleção é derivada do array de assets — some o asset, some o
+    // inspetor, sem nenhum reset de seleção manual.
+    expect(screen.queryByRole('complementary', { name: /inspetor/i })).toBeNull();
+  });
+
+  it('apagar arte: erro do banco mostra toast destrutivo e mantém o card', async () => {
+    deleteCreativeAsset.mockRejectedValue(new Error('RLS negou a exclusão'));
+    montar();
+    await waitFor(() => expect(prontos().length).toBeGreaterThan(0));
+    const totalAntes = cards().length;
+
+    fireEvent.click(prontos()[0].querySelector('.studio-asset-surface')!);
+    const painel = screen.getByRole('complementary', { name: /inspetor/i });
+    fireEvent.click([...painel.querySelectorAll('.studio-inspector-action')].find((b) => b.textContent === 'Apagar arte')!);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Apagar' }));
+    });
+
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Erro ao apagar', variant: 'destructive' }));
+    expect(cards()).toHaveLength(totalAntes);
   });
 
   it('não existe mais um botão de trocar de projeto — o seletor de cliente ocupou o lugar dele', async () => {

@@ -15,6 +15,7 @@ function fakeQuery(tabela: string) {
   const q: any = {
     insert: registrar('insert'),
     update: registrar('update'),
+    delete: registrar('delete'),
     select: registrar('select'),
     eq: registrar('eq'),
     // `order`/`limit` continuam encadeáveis: `listCreativeAssets` ainda
@@ -35,7 +36,7 @@ vi.mock('@/integrations/supabase/client', () => ({
   },
 }));
 
-const { listCreativeAssets, updateCreativeAsset } = await import('./creativeAssets');
+const { listCreativeAssets, updateCreativeAsset, deleteCreativeAsset } = await import('./creativeAssets');
 
 const linhaBase = {
   id: 'a1', project_id: 'p1', client_id: null, type: 'original', status: 'ready',
@@ -91,5 +92,20 @@ describe('updateCreativeAsset', () => {
   it('propaga erro do banco', async () => {
     respostas = [{ data: null, error: new Error('linha não encontrada') }];
     await expect(updateCreativeAsset('a1', { status: 'failed' })).rejects.toThrow('linha não encontrada');
+  });
+});
+
+describe('deleteCreativeAsset', () => {
+  it('apaga pelo id', async () => {
+    respostas = [{ data: null, error: null }];
+    await deleteCreativeAsset('a1');
+
+    expect(chamadas.some((c) => c.op === 'delete')).toBe(true);
+    expect(chamadas.find((c) => c.op === 'eq')!.args).toEqual(['id', 'a1']);
+  });
+
+  it('propaga erro do banco', async () => {
+    respostas = [{ data: null, error: new Error('RLS negou') }];
+    await expect(deleteCreativeAsset('a1')).rejects.toThrow('RLS negou');
   });
 });

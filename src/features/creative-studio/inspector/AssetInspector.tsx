@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, Download, Expand, Maximize2, Pencil, RefreshCw, Sparkles, X } from 'lucide-react';
+import { ChevronDown, Download, Expand, Maximize2, Pencil, RefreshCw, Repeat, Sparkles, Trash2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CreativeAsset } from '../types/creative';
 import { ASSET_ORIGIN_LABELS, ASSET_STATUS_LABELS, FACTOR_AXIS_LABELS } from '../types/creative';
@@ -9,6 +9,7 @@ import { AssetPreviewDialog } from './AssetPreviewDialog';
 
 const ACAO: Record<SelectionAction, { label: string; icon?: typeof Pencil } | undefined> = {
   edit: { label: 'Editar com IA', icon: Pencil },
+  'use-as-reference': { label: 'Usar como referência', icon: Repeat },
   factor: { label: 'Fator Criativo', icon: Sparkles },
   resize: { label: 'Redimensionar para 1:1', icon: Maximize2 },
   download: { label: 'Baixar', icon: Download },
@@ -16,6 +17,7 @@ const ACAO: Record<SelectionAction, { label: string; icon?: typeof Pencil } | un
   preview: undefined,
   'save-as-template': { label: 'Salvar como template' },
   'save-to-client-intelligence': { label: 'Salvar na inteligência do cliente' },
+  delete: { label: 'Apagar arte', icon: Trash2 },
 };
 
 interface AssetInspectorProps {
@@ -79,7 +81,7 @@ export function AssetInspector({ selected, allAssets, onAction, onClose }: Asset
                 key={a}
                 type="button"
                 onClick={() => onAction(a, selected)}
-                className="studio-inspector-action"
+                className={cn('studio-inspector-action', a === 'delete' && 'hover:text-destructive')}
               >
                 {Icon && <Icon className="h-3.5 w-3.5" />}
                 {spec.label}
