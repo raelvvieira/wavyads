@@ -1,11 +1,13 @@
 import type { CreativeAsset, CreativeAspectRatio, CreativeResolution } from '../types/creative';
 import { IMAGE_GENERATION_MODEL, IMAGE_EDIT_MODEL } from './capabilities';
 import {
+  buildAvatarRequest,
   buildEditRequest,
   buildGenerationRequest,
   buildResizeRequest,
   buildRetryRequest,
 } from './generationRequests';
+import type { AvatarPersona } from '../types/avatarPersona';
 
 /**
  * Orquestra gerar/editar/redimensionar/retentar contra as edge functions
@@ -37,10 +39,14 @@ export interface GenerationOptions {
   copy?: string | null;
   logoImageUrl?: string | null;
   productImageUrls?: string[];
+  /** Avatares anexados — entram como talento do anúncio. */
+  avatarImageUrls?: string[];
 }
 
 export interface StudioAssetActions {
   generate(brief: string, aspectRatio: CreativeAspectRatio, options?: GenerationOptions): Promise<CreativeAsset>;
+  /** Retrato de uma persona — vira asset `avatar`, reutilizável depois. */
+  generateAvatar(persona: AvatarPersona, referenceImageUrls?: string[]): Promise<CreativeAsset>;
   retry(asset: CreativeAsset): Promise<CreativeAsset>;
   edit(asset: CreativeAsset, feedback: string): Promise<CreativeAsset>;
   resize(asset: CreativeAsset): Promise<CreativeAsset>;
@@ -83,6 +89,7 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
         copy: options.copy,
         logoImageUrl: options.logoImageUrl,
         productImageUrls: options.productImageUrls,
+        avatarImageUrls: options.avatarImageUrls,
       });
       const projectId = await deps.ensureProjectId();
       const row = await deps.createAsset({
@@ -100,7 +107,29 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
         metadata: {
           logoImage: options.logoImageUrl ?? null,
           productImages: options.productImageUrls ?? [],
+          avatarImages: options.avatarImageUrls ?? [],
         },
+      });
+      return runGeneration(deps, row, body);
+    },
+
+    async generateAvatar(persona, referenceImageUrls = []) {
+      const { prompt, body } = buildAvatarRequest({ persona, referenceImageUrls });
+      const projectId = await deps.ensureProjectId();
+      const row = await deps.createAsset({
+        projectId,
+        clientId: deps.clientId,
+        type: 'avatar',
+        status: 'generating',
+        aspectRatio: '4:5',
+        resolution: '2K',
+        prompt,
+        model: IMAGE_GENERATION_MODEL.id,
+        filename: persona.name,
+        // Os traços ficam guardados, não só o prompt: é o que permite
+        // reabrir o customizador com o que foi escolhido e regerar a
+        // persona depois, em vez de só olhar o retrato pronto.
+        metadata: { persona, referenceImages: referenceImageUrls },
       });
       return runGeneration(deps, row, body);
     },

@@ -32,6 +32,7 @@ interface CommandDockProps {
   referenceLibrary: CreativeAsset[];
   logoLibrary: CreativeAsset[];
   productLibrary: CreativeAsset[];
+  avatarLibrary: CreativeAsset[];
   /** Copies já usadas por este cliente — alimenta o sub-painel de copy. */
   copyBank: CopyBankEntry[];
   onNewLibraryUpload: (kind: 'logo' | 'product', url: string) => void;
@@ -76,6 +77,7 @@ export function CommandDock({
   referenceLibrary,
   logoLibrary,
   productLibrary,
+  avatarLibrary,
   copyBank,
   onNewLibraryUpload,
   onOpenCopilot,
@@ -120,13 +122,14 @@ export function CommandDock({
           referenceLibrary={referenceLibrary}
           logoLibrary={logoLibrary}
           productLibrary={productLibrary}
+          avatarLibrary={avatarLibrary}
           copyBank={copyBank}
           onAttach={onAttach}
           onNewLibraryUpload={onNewLibraryUpload}
         >
           <button
             type="button"
-            aria-label="Anexar referência, logo, copy ou produto"
+            aria-label="Anexar referência, logo, copy, produto ou avatar"
             title="Anexar"
             className="studio-dock-icon"
           >

@@ -46,6 +46,8 @@ function montar(patch: Partial<CreativeStudioShellProps> = {}) {
     productLibrary: [],
     copyBank: [],
     onNewLibraryUpload: vi.fn(),
+    avatarLibrary: [],
+    onGenerateAvatar: vi.fn(),
     onAssetAction,
     ...patch,
   };

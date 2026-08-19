@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { buildEditRequest, buildGenerationRequest, buildResizeRequest, buildRetryRequest } from './generationRequests';
+import {
+  buildAvatarRequest,
+  buildEditRequest,
+  buildGenerationRequest,
+  buildResizeRequest,
+  buildRetryRequest,
+} from './generationRequests';
 
 describe('buildGenerationRequest', () => {
   it('o texto do dock entra como businessContext, não como copy literal', () => {
@@ -134,5 +140,60 @@ describe('buildRetryRequest', () => {
     const { body } = buildRetryRequest({ prompt: 'p', aspectRatio: '4:5' });
     expect(body.logoImage).toBeNull();
     expect(body.productImages).toEqual([]);
+  });
+});
+
+describe('buildGenerationRequest — avatar como talento', () => {
+  it('avatar anexado abre o bloco [TALENT] e vem primeiro nas referências', () => {
+    // Primeiro na lista de propósito: o modelo pesa mais as primeiras
+    // referências, e a identidade da pessoa é o que menos pode derreter.
+    const { prompt, body } = buildGenerationRequest({
+      brief: 'anúncio de verão',
+      aspectRatio: '4:5',
+      productImageUrls: ['https://x/produto.png'],
+      avatarImageUrls: ['https://x/avatar.png'],
+    });
+
+    expect(prompt).toContain('[TALENT]');
+    expect(prompt).toContain('Preserve their facial structure');
+    expect(body.productImages).toEqual(['https://x/avatar.png', 'https://x/produto.png']);
+  });
+
+  it('sem avatar, nenhum bloco [TALENT]', () => {
+    const { prompt } = buildGenerationRequest({
+      brief: 'x', aspectRatio: '4:5', productImageUrls: ['https://x/produto.png'],
+    });
+    expect(prompt).not.toContain('[TALENT]');
+  });
+
+  it('a contagem de fotos anexadas soma produto e avatar', () => {
+    // O bloco [ATTACHED PHOTOS] AFIRMA quantas imagens vieram — omitir os
+    // avatares faria o prompt mentir para o modelo.
+    const { prompt } = buildGenerationRequest({
+      brief: 'x', aspectRatio: '4:5',
+      productImageUrls: ['https://x/p1.png'],
+      avatarImageUrls: ['https://x/a1.png', 'https://x/a2.png'],
+    });
+    expect(prompt).toContain('3 reference image(s) provided');
+  });
+});
+
+describe('buildAvatarRequest', () => {
+  const persona = {
+    name: 'Fashion Model', gender: 'female' as const, ageRange: '25-30' as const,
+    styles: ['luxury' as const], hairColor: 'dark-brown' as const, eyeColor: 'brown' as const,
+    details: '', presetId: null,
+  };
+
+  it('sempre 4:5 — retrato é retrato', () => {
+    const { body } = buildAvatarRequest({ persona });
+    expect(body.formatRatio).toBe('4:5');
+    expect(body.aspectRatio).toBe('story');
+  });
+
+  it('não carrega logo nem story de referência', () => {
+    const { body } = buildAvatarRequest({ persona });
+    expect(body.logoImage).toBeNull();
+    expect(body.storyReference).toBeNull();
   });
 });

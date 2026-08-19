@@ -1,4 +1,6 @@
 import { buildCreativePrompt, buildSafeZoneBlock } from '../lib/promptBuilder';
+import { buildAvatarPrompt } from '../lib/avatarPromptBuilder';
+import type { AvatarPersona } from '../types/avatarPersona';
 import { getBackendAspectFromSelectedRatio } from '../constants/formats';
 import { IMAGE_GENERATION_MODEL } from './capabilities';
 import type { BackendAspect, CreativeAspectRatio, CreativeResolution } from '../types/creative';
@@ -41,19 +43,27 @@ export function buildGenerationRequest(input: {
   language?: string;
   logoImageUrl?: string | null;
   productImageUrls?: string[];
+  /** Avatares anexados. Viajam no mesmo canal de imagem do backend
+   *  (`productImages`), mas ganham um bloco próprio no prompt. */
+  avatarImageUrls?: string[];
   copy?: string | null;
   /** Default `IMAGE_GENERATION_MODEL.id` — parametrizável para a Fase 7. */
   modelId?: string;
 }): GenerationRequest {
   const backendAspect = getBackendAspectFromSelectedRatio(input.aspectRatio);
   const copyTexto = input.copy?.trim();
+  const produtos = input.productImageUrls ?? [];
+  const avatares = input.avatarImageUrls ?? [];
   const prompt = buildCreativePrompt({
     aspect: backendAspect,
     aspectRatio: input.aspectRatio,
     resolution: input.resolution ?? '2K',
     language: input.language ?? 'pt-BR',
     businessContext: input.brief,
-    productImageCount: input.productImageUrls?.length ?? 0,
+    // Conta as duas fontes: o bloco [ATTACHED PHOTOS] afirma quantas
+    // imagens vieram, e omitir os avatares faria o prompt mentir.
+    productImageCount: produtos.length + avatares.length,
+    avatarCount: avatares.length,
     hasLogo: !!input.logoImageUrl,
     copy: copyTexto ? { source: 'original', text: copyTexto } : null,
   });
@@ -64,8 +74,39 @@ export function buildGenerationRequest(input: {
       aspectRatio: backendAspect,
       formatRatio: input.aspectRatio,
       model: input.modelId ?? IMAGE_GENERATION_MODEL.id,
-      productImages: input.productImageUrls ?? [],
+      // Avatar primeiro: o modelo pesa mais as primeiras referências, e a
+      // identidade da pessoa é o que menos pode derreter.
+      productImages: [...avatares, ...produtos],
       logoImage: input.logoImageUrl ?? null,
+      storyReference: null,
+    },
+  };
+}
+
+/**
+ * Geração do retrato de uma persona.
+ *
+ * Formato fixo em 4:5: retrato é retrato, e deixar o usuário escolher 16:9
+ * aqui só produziria avatar mal enquadrado. As fotos de referência viajam
+ * em `productImages` porque é o único canal de imagem que a edge function
+ * conhece — o que as distingue é o bloco [REFERENCE PHOTOS] do prompt.
+ */
+export function buildAvatarRequest(input: {
+  persona: AvatarPersona;
+  referenceImageUrls?: string[];
+  modelId?: string;
+}): GenerationRequest {
+  const referencias = input.referenceImageUrls ?? [];
+  const prompt = buildAvatarPrompt({ persona: input.persona, referenceCount: referencias.length });
+  return {
+    prompt,
+    body: {
+      prompt,
+      aspectRatio: 'story',
+      formatRatio: '4:5',
+      model: input.modelId ?? IMAGE_GENERATION_MODEL.id,
+      productImages: referencias,
+      logoImage: null,
       storyReference: null,
     },
   };

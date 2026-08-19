@@ -43,6 +43,7 @@ export function StudioShellPreview() {
   const referenceLibrary = useMemo(() => libraryAssets(PREVIEW_ASSETS, { types: ['reference'] }), []);
   const logoLibrary = useMemo(() => libraryAssets(PREVIEW_ASSETS, { types: ['logo'] }), []);
   const productLibrary = useMemo(() => libraryAssets(PREVIEW_ASSETS, { types: ['product'] }), []);
+  const avatarLibrary = useMemo(() => libraryAssets(PREVIEW_ASSETS, { types: ['avatar'] }), []);
 
   return (
     <div className="studio-page">
@@ -84,6 +85,8 @@ export function StudioShellPreview() {
       productLibrary={productLibrary}
       copyBank={PREVIEW_COPY_BANK}
       onNewLibraryUpload={() => {}}
+      avatarLibrary={avatarLibrary}
+      onGenerateAvatar={() => {}}
       onAssetAction={() => {}}
       />
     </div>

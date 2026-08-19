@@ -114,6 +114,21 @@ export const PREVIEW_ASSETS: CreativeAsset[] = [
     filename: 'produto-verao.jpg',
     createdAt: '2026-08-16T08:05:00.000Z',
   }),
+  // Avatar gerado: carrega a persona no metadata, que é o que permite
+  // reabrir o customizador com os traços escolhidos.
+  asset({
+    id: 'av1', type: 'avatar', status: 'ready', aspectRatio: '4:5', width: 1080, height: 1350,
+    url: arte('AVATAR', '#8B5CF6', '#2A1B4A', 1080, 1350),
+    filename: 'Ana Editorial',
+    metadata: {
+      persona: {
+        name: 'Ana Editorial', gender: 'female', ageRange: '25-30',
+        styles: ['luxury', 'lifestyle'], hairColor: 'dark-brown', eyeColor: 'brown',
+        details: 'Cachos brilhantes, olhar editorial', presetId: 'fashion-model',
+      },
+    },
+    createdAt: '2026-08-16T09:00:00.000Z',
+  }),
 ];
 
 export const PREVIEW_LIBRARIES: StudioLibraryEntry[] = [

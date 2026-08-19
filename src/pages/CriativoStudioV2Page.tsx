@@ -19,6 +19,7 @@ import {
   updateCreativeAsset,
 } from '@/features/creative-studio/api/creativeAssets';
 import { listCopyBank, saveCopyToBank, type CopyBankEntry } from '@/features/creative-studio/api/copyBank';
+import { uploadDataUrlToCreativeStorage } from '@/features/creative-studio/api/storageUpload';
 import {
   createProject,
   listRecentProjects,
@@ -31,6 +32,7 @@ import { createStudioAssetActions, type StudioAssetActionsDeps } from '@/feature
 import { IMAGE_GENERATION_MODEL } from '@/features/creative-studio/generation/capabilities';
 import type { CreativeAsset, CreativeAspectRatio, CreativeResolution } from '@/features/creative-studio/types/creative';
 import type { DockAttachment, StudioLibraryEntry, StudioLibraryId } from '@/features/creative-studio/types/studioUi';
+import type { AvatarPersona } from '@/features/creative-studio/types/avatarPersona';
 
 /**
  * Criativo Studio V2 — funcional.
@@ -189,6 +191,12 @@ export default function CriativoStudioV2Page() {
     () => libraryAssets(doProjeto, { types: ['product'] }),
     [doProjeto],
   );
+  // Avatar é do CLIENTE, não do projeto: a persona atravessa campanhas, e
+  // filtrar por projeto esconderia a persona criada na semana passada.
+  const avatarLibrary = useMemo(
+    () => libraryAssets(assetsDoCliente, { types: ['avatar'] }),
+    [assetsDoCliente],
+  );
 
   const bibliotecas = useMemo<StudioLibraryEntry[]>(() => {
     const conta = (fn: (a: CreativeAsset) => boolean) => assetsDoCliente.filter(fn).length;
@@ -313,6 +321,33 @@ export default function CriativoStudioV2Page() {
     }
   }, [ensureProjectId, selectedClientId, upsertAsset]);
 
+  const handleGenerateAvatar = useCallback(async (persona: AvatarPersona, referenceImages: string[]) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      // As referências chegam como data URL do dropzone; o provedor precisa
+      // de URL http(s), então sobem antes de virar parte do pedido.
+      const urls: string[] = [];
+      for (const dataUrl of referenceImages) {
+        urls.push(await uploadDataUrlToCreativeStorage({
+          dataUrl, path: `avatars/refs/${crypto.randomUUID()}.png`,
+        }));
+      }
+      toast({ title: 'Gerando avatar…' });
+      const resultado = await actions.generateAvatar(persona, urls);
+      upsertAsset(resultado);
+      if (resultado.status === 'failed') {
+        toast({ title: 'Erro ao gerar avatar', description: resultado.errorMessage ?? undefined, variant: 'destructive' });
+      } else {
+        toast({ title: 'Avatar pronto' });
+      }
+    } catch (e: any) {
+      toast({ title: 'Erro ao gerar avatar', description: e?.message, variant: 'destructive' });
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, actions, upsertAsset]);
+
   const hasCopy = attachments.some((a) => a.kind === 'copy');
 
   const handleSubmitCommand = useCallback(async (selectedIds: string[]) => {
@@ -325,6 +360,7 @@ export default function CriativoStudioV2Page() {
         const logo = attachments.find((a) => a.kind === 'logo');
         const copyAnexada = attachments.find((a) => a.kind === 'copy');
         const imagens = attachments.filter((a) => a.kind === 'reference' || a.kind === 'product').map((a) => a.value);
+        const avatares = attachments.filter((a) => a.kind === 'avatar').map((a) => a.value);
 
         toast({ title: 'Gerando arte…' });
         const resultado = await actions.generate(texto, ratio, {
@@ -333,6 +369,7 @@ export default function CriativoStudioV2Page() {
           copy: copyAnexada?.value ?? null,
           logoImageUrl: logo?.value ?? null,
           productImageUrls: imagens,
+          avatarImageUrls: avatares,
         });
         upsertAsset(resultado);
         if (resultado.status === 'failed') {
@@ -518,6 +555,8 @@ export default function CriativoStudioV2Page() {
         productLibrary={productLibrary}
         copyBank={copyBank}
         onNewLibraryUpload={handleNewLibraryUpload}
+        avatarLibrary={avatarLibrary}
+        onGenerateAvatar={handleGenerateAvatar}
         onAssetAction={handleAssetAction}
       />
 
@@ -559,7 +598,6 @@ function filtroDaBiblioteca(id: StudioLibraryId): { types?: CreativeAsset['type'
     case 'generations': return { types: ['original', 'factor', 'edited', 'resize', 'imported'] };
     case 'references': return { types: ['reference'] };
     case 'products': return { types: ['product'] };
-    case 'avatars': return { types: ['avatar'] };
     case 'templates': return { types: ['template'] };
     default: return {};
   }

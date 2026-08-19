@@ -32,6 +32,8 @@ export interface CreativePromptInput {
   designSystemDoc?: string;
   copy?: PromptCopy;
   productImageCount?: number;
+  /** Quantas das fotos anexadas são avatares de persona. */
+  avatarCount?: number;
   preserveFaces?: boolean;
   hasLogo?: boolean;
   /** Story usado como verdade visual quando se gera a versão quadrada. */
@@ -125,6 +127,7 @@ export function buildCreativePrompt(input: CreativePromptInput): string {
     designSystemDoc = '',
     copy = null,
     productImageCount = 0,
+    avatarCount = 0,
     preserveFaces = true,
     hasLogo = false,
     hasStoryReference = false,
@@ -198,6 +201,16 @@ ${copy.text.trim()}
 This is the COMPLETE and FINAL copy — the user wrote it themselves and it must not be changed. Do NOT add any headline, kicker, tagline, subtitle, CTA button, price, offer or any other text that is not written above, even if the composition seems to have room for it or a reference/template suggests one. If the text above has no explicit call-to-action line, do not invent one. Distribute exactly this text across the composition following the typography system and hierarchy from the design system above — do not add new text elements to fill the layout.`;
   }
 
+  // O [ATTACHED PHOTOS] fala de "product/person/scene" genericamente —
+  // fraco demais para sustentar identidade. Quando há avatar anexado, o
+  // prompt precisa dizer que aquela pessoa É o talento do anúncio.
+  const talentBlock = avatarCount > 0
+    ? `[TALENT]
+The first ${avatarCount} attached reference image(s) are the TALENT for this advertisement — the person who must appear in the artwork.
+Preserve their facial structure, skin tone, hair and overall likeness exactly. Do NOT swap, average or beautify the face.
+Place them naturally in the scene described above, at a scale and pose that fits the composition, with lighting that matches the rest of the artwork.`
+    : '';
+
   const logoBlock = hasLogo
     ? `[BRAND LOGO]
 A brand logo is provided as a separate reference. Place it discreetly in a corner (top-left or bottom-right preferred), small, clean. Do NOT distort, recolor, recreate or redesign it — treat as a fixed brand asset.`
@@ -238,6 +251,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
     templateBlock,
     safe,
     consistency,
+    talentBlock,
     logoBlock,
     textBlocks,
     moodBlock,

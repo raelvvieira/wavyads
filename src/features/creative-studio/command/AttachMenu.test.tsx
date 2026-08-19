@@ -33,6 +33,7 @@ function montar(opts: {
   referenceLibrary?: CreativeAsset[];
   logoLibrary?: CreativeAsset[];
   productLibrary?: CreativeAsset[];
+  avatarLibrary?: CreativeAsset[];
   copyBank?: CopyBankEntry[];
 } = {}) {
   const onAttach = vi.fn();
@@ -42,6 +43,7 @@ function montar(opts: {
       referenceLibrary={opts.referenceLibrary ?? []}
       logoLibrary={opts.logoLibrary ?? []}
       productLibrary={opts.productLibrary ?? []}
+      avatarLibrary={opts.avatarLibrary ?? []}
       copyBank={opts.copyBank ?? []}
       onAttach={onAttach}
       onNewLibraryUpload={onNewLibraryUpload}
@@ -57,10 +59,10 @@ const abrir = () => fireEvent.click(screen.getByRole('button', { name: 'Abrir an
 beforeEach(() => vi.clearAllMocks());
 
 describe('AttachMenu', () => {
-  it('lista as quatro opções ao abrir', () => {
+  it('lista as cinco opções ao abrir', () => {
     montar();
     abrir();
-    ['Anexar referência', 'Anexar logo', 'Anexar copy', 'Anexar produto'].forEach((rotulo) => {
+    ['Anexar referência', 'Anexar logo', 'Anexar copy', 'Anexar produto', 'Anexar avatar'].forEach((rotulo) => {
       expect(screen.getByRole('button', { name: rotulo })).toBeTruthy();
     });
   });
@@ -212,6 +214,32 @@ describe('AttachMenu', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sugerir variações' }));
 
     await waitFor(() => expect(screen.getByText('IA não retornou variações')).toBeTruthy());
+  });
+
+  it('avatar: a grade lista os já gerados e anexa com kind "avatar"', () => {
+    const av = asset('av1', 'avatar');
+    const { onAttach } = montar({
+      avatarLibrary: [{ ...av, metadata: { persona: { name: 'Ana Editorial' } } } as any],
+    });
+    abrir();
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar avatar' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar Ana Editorial' }));
+
+    expect(onAttach).toHaveBeenCalledWith(expect.objectContaining({
+      kind: 'avatar', value: 'https://x/av1.png', label: 'Ana Editorial',
+    }));
+  });
+
+  it('avatar: sem nenhum, manda criar no Avatar Studio — não oferece upload', () => {
+    // Avatar NASCE gerado, a partir de traços. Um dropzone aqui criaria um
+    // segundo caminho para o mesmo conceito, sem persona nenhuma.
+    montar();
+    abrir();
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar avatar' }));
+
+    expect(screen.getByText(/Nenhum avatar ainda/)).toBeTruthy();
+    expect(document.querySelector('input[type="file"]')).toBeNull();
   });
 
   it('Voltar retorna à lista sem fechar o popover', () => {

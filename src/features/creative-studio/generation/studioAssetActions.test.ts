@@ -108,7 +108,11 @@ describe('generate', () => {
       productImages: ['https://x/p1.png'],
     }), expect.any(Number));
     const linha = [...deps.linhas.values()][0];
-    expect(linha.metadata).toEqual({ logoImage: 'https://x/logo.png', productImages: ['https://x/p1.png'] });
+    expect(linha.metadata).toEqual({
+      logoImage: 'https://x/logo.png',
+      productImages: ['https://x/p1.png'],
+      avatarImages: [],
+    });
   });
 
   it('copy anexada renderiza literal — muda o prompt salvo na linha', async () => {
@@ -209,5 +213,67 @@ describe('resize', () => {
     const deps = fakeDeps();
     const quadrado = assetBase({ aspectRatio: '1:1' });
     await expect(createStudioAssetActions(deps).resize(quadrado)).rejects.toThrow(/já é 1:1/);
+  });
+});
+
+describe('generateAvatar', () => {
+  const persona = {
+    name: 'Fashion Model',
+    gender: 'female' as const,
+    ageRange: '25-30' as const,
+    styles: ['luxury' as const],
+    hairColor: 'dark-brown' as const,
+    eyeColor: 'brown' as const,
+    details: 'cachos brilhantes',
+    presetId: 'fashion-model',
+  };
+
+  it('grava um asset de avatar com os traços no metadata, antes de chamar o provedor', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/avatar.png' }, error: null });
+
+    const resultado = await createStudioAssetActions(deps).generateAvatar(persona);
+
+    expect(deps.ordem).toEqual(['createAsset', 'updateAsset:ready']);
+    expect(resultado.type).toBe('avatar');
+    expect(resultado.status).toBe('ready');
+    expect(resultado.url).toBe('https://x/avatar.png');
+    // Os traços sobrevivem: é o que permite reabrir e regerar depois.
+    expect((resultado.metadata as any).persona).toEqual(persona);
+  });
+
+  it('manda o prompt de retrato, não o de anúncio — sem safe zone', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/avatar.png' }, error: null });
+
+    await createStudioAssetActions(deps).generateAvatar(persona);
+
+    const body = (deps.invoke as any).mock.calls[0][1];
+    expect(body.prompt).toContain('[SUBJECT]');
+    expect(body.prompt).toContain('[PHOTOGRAPHIC TREATMENT]');
+    expect(body.prompt).not.toContain('[SAFE ZONE]');
+    expect(body.formatRatio).toBe('4:5');
+  });
+
+  it('fotos de referência viajam no canal de imagem do backend', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/avatar.png' }, error: null });
+
+    await createStudioAssetActions(deps).generateAvatar(persona, ['https://x/ref1.png', 'https://x/ref2.png']);
+
+    const body = (deps.invoke as any).mock.calls[0][1];
+    expect(body.productImages).toEqual(['https://x/ref1.png', 'https://x/ref2.png']);
+    expect(body.prompt).toContain('[REFERENCE PHOTOS]');
+  });
+
+  it('falha do provedor marca a mesma linha como failed', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: null, error: new Error('rosto recusado') });
+
+    const resultado = await createStudioAssetActions(deps).generateAvatar(persona);
+
+    expect(resultado.status).toBe('failed');
+    expect(resultado.errorMessage).toBe('rosto recusado');
+    expect(deps.linhas.size).toBe(1);
   });
 });
