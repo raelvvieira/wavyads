@@ -122,6 +122,19 @@ export async function createCreativeAsset(input: CreateCreativeAssetInput): Prom
   return mapAssetRow(data);
 }
 
+/**
+ * Apaga um asset — chamada direta, sem edge function. A RLS `FOR ALL` de
+ * admin já cobre `DELETE`, mesmo caminho que a tela V1 já usa para apagar
+ * uma referência. Não é soft-delete: a linha some do banco de verdade.
+ *
+ * `parent_asset_id`/`root_asset_id`/`group_id` de eventuais filhos são
+ * `ON DELETE SET NULL` — filhos não são apagados junto, só orfanados.
+ */
+export async function deleteCreativeAsset(id: string): Promise<void> {
+  const { error } = await supabase.from('creative_assets').delete().eq('id', id);
+  if (error) throw error;
+}
+
 export async function createAssetGroup(input: {
   projectId: string;
   type: CreativeAssetGroupType;

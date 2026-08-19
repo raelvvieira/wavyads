@@ -6,10 +6,15 @@ import { useClients } from '@/hooks/useClients';
 import { supabase } from '@/integrations/supabase/client';
 import { extractFunctionErrorMessage } from '@/lib/functionError';
 import { recordAiUsage, type AiUsageType } from '@/lib/aiUsageTracker';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { CreativeStudioShell } from '@/features/creative-studio/shell/CreativeStudioShell';
 import { StudioPreviewBanner } from '@/features/creative-studio/shell/StudioPreviewBanner';
 import {
   createCreativeAsset,
+  deleteCreativeAsset,
   listCreativeAssets,
   updateCreativeAsset,
 } from '@/features/creative-studio/api/creativeAssets';
@@ -20,6 +25,7 @@ import {
   type ProjectSummary,
 } from '@/features/creative-studio/api/projectRepository';
 import { libraryAssets, visibleCanvasAssets, type SelectionAction } from '@/features/creative-studio/state/canvasSelectors';
+import { childrenByParentId } from '@/features/creative-studio/state/lineage';
 import { createStudioAssetActions, type StudioAssetActionsDeps } from '@/features/creative-studio/generation/studioAssetActions';
 import { IMAGE_GENERATION_MODEL } from '@/features/creative-studio/generation/capabilities';
 import type { CreativeAsset, CreativeAspectRatio, CreativeResolution } from '@/features/creative-studio/types/creative';
@@ -54,6 +60,12 @@ export default function CriativoStudioV2Page() {
   const [resolution, setResolution] = useState<CreativeResolution>('2K');
   const [modelId, setModelId] = useState<string>(IMAGE_GENERATION_MODEL.id);
   const [attachments, setAttachments] = useState<DockAttachment[]>([]);
+
+  // Confirmação de apagar arte: abrir o diálogo não apaga nada — só a
+  // confirmação chama `deleteCreativeAsset`.
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<CreativeAsset | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const { data: clients = [] } = useClients();
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
@@ -180,6 +192,13 @@ export default function CriativoStudioV2Page() {
       copia[idx] = asset;
       return copia;
     });
+  }, []);
+
+  // Some do estado local — como a seleção do shell é derivada filtrando
+  // `assets`, isto também fecha o inspetor sozinho quando a arte apagada
+  // era a selecionada, sem precisar de nenhuma prop de "limpar seleção".
+  const removeAsset = useCallback((id: string) => {
+    setAssets((prev) => prev.filter((a) => a.id !== id));
   }, []);
 
   const actions = useMemo(() => {
@@ -353,8 +372,53 @@ export default function CriativoStudioV2Page() {
       return;
     }
 
+    if (acao === 'use-as-reference') {
+      if (!alvo.url) return;
+      handleAttach({
+        id: crypto.randomUUID(),
+        kind: 'reference',
+        label: alvo.filename ?? 'Referência',
+        thumbnailUrl: alvo.thumbnailUrl ?? alvo.url,
+        value: alvo.url,
+      });
+      toast({ title: 'Adicionada como referência', description: 'Entra no próximo pedido de geração.' });
+      return;
+    }
+
+    if (acao === 'delete') {
+      // Só abre a confirmação — apagar de verdade só acontece no clique
+      // de "Apagar" dentro do diálogo.
+      setDeleteTarget(alvo);
+      setDeleteDialogOpen(true);
+      return;
+    }
+
     avisarIndisponivel('Esta ação ainda não está disponível nesta versão.');
-  }, [actions, upsertAsset, avisarIndisponivel, avisarFatorCriativo]);
+  }, [actions, upsertAsset, avisarIndisponivel, avisarFatorCriativo, handleAttach]);
+
+  const filhosDoAlvo = useMemo(
+    () => (deleteTarget ? childrenByParentId(assets).get(deleteTarget.id)?.length ?? 0 : 0),
+    [assets, deleteTarget],
+  );
+
+  // `preventDefault` freia o fechamento automático do AlertDialogAction:
+  // sem isso o diálogo some no clique, antes da resposta do banco chegar —
+  // e sem otimismo o card só pode sumir DEPOIS da confirmação de sucesso.
+  const handleConfirmDelete = useCallback(async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await deleteCreativeAsset(deleteTarget.id);
+      removeAsset(deleteTarget.id);
+      toast({ title: 'Arte apagada' });
+      setDeleteDialogOpen(false);
+    } catch (e: any) {
+      toast({ title: 'Erro ao apagar', description: e?.message, variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+    }
+  }, [deleteTarget, removeAsset]);
 
   return (
     <div className="studio-page">
@@ -400,6 +464,35 @@ export default function CriativoStudioV2Page() {
         referenceLibrary={referenceLibrary}
         onAssetAction={handleAssetAction}
       />
+
+      <AlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteDialogOpen(open);
+          if (!open) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent className="glass border-white/10 bg-card">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apagar esta arte?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita.
+              {filhosDoAlvo > 0 &&
+                ` Esta arte tem ${filhosDoAlvo} variaç${filhosDoAlvo > 1 ? 'ões' : 'ão'} que ficar${filhosDoAlvo > 1 ? 'ão' : 'á'} sem a arte original.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleting}
+              onClick={handleConfirmDelete}
+            >
+              {deleting ? 'Apagando...' : 'Apagar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

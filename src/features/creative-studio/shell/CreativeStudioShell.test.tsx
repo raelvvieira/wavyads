@@ -113,7 +113,7 @@ describe('CreativeStudioShell', () => {
     expect(onSubmitCommand).not.toHaveBeenCalled();
   });
 
-  it('arte que falhou continua no canvas e só oferece retentar', () => {
+  it('arte que falhou continua no canvas e só oferece retentar ou apagar', () => {
     montar();
     const falhou = [...document.querySelectorAll('figure')].find(
       (f) => f.getAttribute('data-status') === 'failed',
@@ -124,7 +124,7 @@ describe('CreativeStudioShell', () => {
     const rotulos = [...falhou.querySelectorAll('.studio-asset-action')].map((b) =>
       b.getAttribute('aria-label'),
     );
-    expect(rotulos).toEqual(['Tentar novamente']);
+    expect(rotulos).toEqual(['Tentar novamente', 'Apagar arte']);
   });
 
   it('arte gerando não oferece transformação', () => {

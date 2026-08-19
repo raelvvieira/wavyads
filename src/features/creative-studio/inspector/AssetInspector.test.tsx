@@ -125,3 +125,25 @@ describe('AssetInspector — prompt e troca de seleção', () => {
     expect(corpo().scrollTop).toBe(0);
   });
 });
+
+describe('AssetInspector — rodapé de ações', () => {
+  it('mostra "Usar como referência" e "Apagar arte" para uma arte pronta, e dispara a ação certa', () => {
+    const onAction = vi.fn();
+    const pronta = asset({ id: 'a1', status: 'ready', url: 'https://x/a.png' });
+    render(<AssetInspector selected={[pronta]} allAssets={[pronta]} onAction={onAction} onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Usar como referência' }));
+    expect(onAction).toHaveBeenCalledWith('use-as-reference', [pronta]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apagar arte' }));
+    expect(onAction).toHaveBeenCalledWith('delete', [pronta]);
+  });
+
+  it('arte que falhou oferece apagar, mas não usar como referência', () => {
+    const falhou = asset({ id: 'f1', status: 'failed', url: null, errorMessage: 'erro' });
+    render(<AssetInspector selected={[falhou]} allAssets={[falhou]} onAction={vi.fn()} onClose={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: 'Apagar arte' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Usar como referência' })).toBeNull();
+  });
+});
