@@ -144,7 +144,12 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gemini-2.5-pro",
+        // Mesma descontinuação que derrubou o Fator Criativo: o
+        // `gemini-2.5-pro` deixou de existir para contas novas. Aqui a
+        // chamada é um fetch solto, sem o helper que faz a queda entre
+        // candidatos — se este também sair do ar, o sintoma será um 404
+        // legível, e o conserto é trocar esta linha.
+        model: "gemini-3.1-pro-preview",
         messages: [
           { role: "system", content: SYSTEM },
           { role: "user", content: userContent },

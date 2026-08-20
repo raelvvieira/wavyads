@@ -9,8 +9,23 @@ const corsHeaders = {
 const AI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 
 // Raciocínio para escrever as 5 teses; rápido para só ler a oferta.
-const MODEL_GENERATE = "gemini-2.5-pro";
-const MODEL_ANALYZE = "gemini-2.5-flash";
+/**
+ * Modelos em ordem de preferência, não um modelo só.
+ *
+ * O `gemini-2.5-pro` foi descontinuado no meio da vida deste recurso e
+ * derrubou o Fator Criativo com um 404 — a terceira falha de ambiente
+ * seguida no mesmo lugar. Trocar uma string por outra string só prepara a
+ * quarta. `callModel` desce esta lista quando o modelo do topo não existe
+ * mais, então uma descontinuação vira uma chamada a mais em vez de uma
+ * queda.
+ *
+ * O último da lista de geração é o `2.5-flash` de propósito: ele está
+ * comprovadamente vivo neste projeto (`criativo-suggest-copy` usa e
+ * funciona). Vale menos que um modelo de raciocínio para escrever cinco
+ * teses, e é exatamente por isso que fica por último — é rede, não escolha.
+ */
+const MODELS_GENERATE = ["gemini-3.1-pro-preview", "gemini-3-flash-preview", "gemini-2.5-flash"];
+const MODELS_ANALYZE = ["gemini-2.5-flash", "gemini-3-flash-preview"];
 
 /**
  * Carimbo de versão do motor.
@@ -364,32 +379,56 @@ function langName(language?: string): string {
  */
 async function callModel(opts: {
   apiKey: string;
-  model: string;
+  /** Candidatos em ordem de preferência. Ver MODELS_GENERATE. */
+  models: string[];
   system: string;
   user: string;
   tool: any;
 }): Promise<any> {
-  const resp = await fetch(AI_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${opts.apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: opts.model,
-      messages: [
-        { role: "system", content: opts.system },
-        { role: "user", content: opts.user },
-      ],
-      tools: [opts.tool],
-      tool_choice: { type: "function", function: { name: opts.tool.function.name } },
-    }),
-  });
+  let resp: Response | undefined;
+  let ultimoIndisponivel = "";
 
-  if (!resp.ok) {
+  for (const model of opts.models) {
+    resp = await fetch(AI_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${opts.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: opts.system },
+          { role: "user", content: opts.user },
+        ],
+        tools: [opts.tool],
+        tool_choice: { type: "function", function: { name: opts.tool.function.name } },
+      }),
+    });
+
+    if (resp.ok) break;
+
     const detalhe = await resp.text();
+
+    // Só modelo inexistente justifica tentar o próximo. Cota estourada ou
+    // schema recusado seriam recusados igual pelos outros — repetir só
+    // gastaria tempo e escondaria a causa real atrás do último erro.
+    if (resp.status === 404 && /NOT_FOUND|no longer available|not found/i.test(detalhe)) {
+      console.warn(`criativo-fator: modelo ${model} indisponível, tentando o próximo`);
+      ultimoIndisponivel = model;
+      resp = undefined;
+      continue;
+    }
+
     if (resp.status === 429) throw new Error("Limite de uso da IA atingido. Tente em instantes.");
     throw new Error(`IA respondeu ${resp.status}: ${detalhe.slice(0, 400)}`);
+  }
+
+  if (!resp) {
+    throw new Error(
+      `Nenhum modelo de IA disponível para o Fator Criativo. Tentei ${opts.models.join(", ")} — `
+      + `o último a recusar foi ${ultimoIndisponivel}. É preciso apontar a função para um modelo válido nesta conta.`,
+    );
   }
 
   const data = await resp.json();
@@ -436,7 +475,7 @@ Extraia a inteligência da oferta e o diagnóstico do criativo original. Lembre:
 
       const parsed = await callModel({
         apiKey: GEMINI_API_KEY,
-        model: MODEL_ANALYZE,
+        models: MODELS_ANALYZE,
         system: ANALYZE_SYSTEM,
         user: userMsg,
         tool: ANALYZE_TOOL,
@@ -504,7 +543,7 @@ Aplique o Fator Criativo V2. Gere EXATAMENTE 5 variações, cada uma com tese pr
 
     const parsed = await callModel({
       apiKey: GEMINI_API_KEY,
-      model: MODEL_GENERATE,
+      models: MODELS_GENERATE,
       system: GENERATE_SYSTEM,
       user: userMsg,
       tool: GENERATE_TOOL,
