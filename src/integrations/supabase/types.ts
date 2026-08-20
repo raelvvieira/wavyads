@@ -310,17 +310,13 @@ export type Database = {
       }
       creative_assets: {
         Row: {
-          angle_subtype: string | null
           aspect_ratio: string | null
-          awareness_level: string | null
           client_id: string | null
           created_at: string
           created_by: string | null
-          dominant_emotion: string | null
           error_message: string | null
           factor_axis: string | null
           filename: string | null
-          generation_version: string | null
           group_id: string | null
           height: number | null
           id: string
@@ -332,33 +328,24 @@ export type Database = {
           parent_asset_id: string | null
           project_id: string | null
           prompt: string | null
-          quality_score: number | null
           resolution: string | null
           root_asset_id: string | null
           size_bytes: number | null
           status: string
-          strategic_angle: string | null
-          strategic_thesis: string | null
-          strategy_json: Json | null
           thumbnail_url: string | null
           type: string
           updated_at: string
           url: string | null
-          validation_json: Json | null
           width: number | null
         }
         Insert: {
-          angle_subtype?: string | null
           aspect_ratio?: string | null
-          awareness_level?: string | null
           client_id?: string | null
           created_at?: string
           created_by?: string | null
-          dominant_emotion?: string | null
           error_message?: string | null
           factor_axis?: string | null
           filename?: string | null
-          generation_version?: string | null
           group_id?: string | null
           height?: number | null
           id?: string
@@ -370,33 +357,24 @@ export type Database = {
           parent_asset_id?: string | null
           project_id?: string | null
           prompt?: string | null
-          quality_score?: number | null
           resolution?: string | null
           root_asset_id?: string | null
           size_bytes?: number | null
           status?: string
-          strategic_angle?: string | null
-          strategic_thesis?: string | null
-          strategy_json?: Json | null
           thumbnail_url?: string | null
           type: string
           updated_at?: string
           url?: string | null
-          validation_json?: Json | null
           width?: number | null
         }
         Update: {
-          angle_subtype?: string | null
           aspect_ratio?: string | null
-          awareness_level?: string | null
           client_id?: string | null
           created_at?: string
           created_by?: string | null
-          dominant_emotion?: string | null
           error_message?: string | null
           factor_axis?: string | null
           filename?: string | null
-          generation_version?: string | null
           group_id?: string | null
           height?: number | null
           id?: string
@@ -408,19 +386,14 @@ export type Database = {
           parent_asset_id?: string | null
           project_id?: string | null
           prompt?: string | null
-          quality_score?: number | null
           resolution?: string | null
           root_asset_id?: string | null
           size_bytes?: number | null
           status?: string
-          strategic_angle?: string | null
-          strategic_thesis?: string | null
-          strategy_json?: Json | null
           thumbnail_url?: string | null
           type?: string
           updated_at?: string
           url?: string | null
-          validation_json?: Json | null
           width?: number | null
         }
         Relationships: [

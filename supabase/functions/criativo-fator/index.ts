@@ -185,7 +185,7 @@ Teste obrigatório da direção visual: se a copy fosse removida, o visual ainda
 
 Você NÃO escreve o prompt de imagem. Quem monta o prompt final é o Studio, a partir da sua copy e da sua direção visual, usando o mesmo montador da geração normal — é o que garante que a arte do Fator saia com a mesma safe zone, a mesma tipografia e o mesmo sistema de design das outras.
 
-Isso muda o que se espera de você: `copy` precisa vir com o texto FINAL da arte, palavra por palavra, e `visualDirection` precisa ser concreta o bastante para um diretor de arte executar — sujeito principal, composição e mood em linguagem de imagem, não em linguagem de estratégia. Nada de "transmitir confiança": diga o que aparece no quadro.
+Isso muda o que se espera de você: \`copy\` precisa vir com o texto FINAL da arte, palavra por palavra, e \`visualDirection\` precisa ser concreta o bastante para um diretor de arte executar — sujeito principal, composição e mood em linguagem de imagem, não em linguagem de estratégia. Nada de "transmitir confiança": diga o que aparece no quadro.
 
 ## MOTOR DE QUALIDADE
 
