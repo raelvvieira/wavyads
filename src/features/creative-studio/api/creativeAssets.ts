@@ -19,6 +19,12 @@ function asRecord(value: unknown): Record<string, any> {
 }
 
 function mapAssetRow(row: AssetRow): CreativeAsset {
+  const extra = row as AssetRow & {
+    strategic_angle?: string | null;
+    strategic_thesis?: string | null;
+    quality_score?: number | null;
+  };
+  const meta = asRecord(row.metadata);
   return {
     id: row.id,
     projectId: row.project_id,
@@ -41,10 +47,10 @@ function mapAssetRow(row: AssetRow): CreativeAsset {
     errorMessage: row.error_message,
     filename: row.filename,
     isClientIntelligence: row.is_client_intelligence,
-    metadata: asRecord(row.metadata),
-    strategicAngle: row.strategic_angle,
-    strategicThesis: row.strategic_thesis,
-    qualityScore: row.quality_score,
+    metadata: meta,
+    strategicAngle: extra.strategic_angle ?? meta.strategicAngle ?? null,
+    strategicThesis: extra.strategic_thesis ?? meta.strategicThesis ?? null,
+    qualityScore: extra.quality_score ?? meta.qualityScore ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
