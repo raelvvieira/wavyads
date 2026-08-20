@@ -16,6 +16,9 @@ import CrmPage from "@/pages/CrmPage";
 import GoogleAdsAIPage from "@/pages/GoogleAdsAIPage";
 import CriativoStudioPage from "@/pages/CriativoStudioPage";
 import CriativoStudioV2Page from "@/pages/CriativoStudioV2Page";
+import UgcStudioPage from "@/pages/UgcStudioPage";
+import UgcProjectPage from "@/pages/UgcProjectPage";
+import { UgcStudioPreview } from "@/features/ugc-studio/components/UgcStudioPreview";
 import SocialMidiaStudioPage from "@/pages/SocialMidiaStudioPage";
 import SocialTemplateLabPage from "@/pages/SocialTemplateLabPage";
 import MetaCallbackPage from "@/pages/MetaCallbackPage";
@@ -51,6 +54,8 @@ const App = () => (
                   Dentro do ProtectedRoute como qualquer outra tela do produto:
                   ela lê `creative_assets`, e isso pede sessão. */}
               <Route path="/criativo-studio/v2" element={<CriativoStudioV2Page />} />
+              <Route path="/ugc-studio" element={<UgcStudioPage />} />
+              <Route path="/ugc-studio/:id" element={<UgcProjectPage />} />
               <Route path="/social-midia-studio" element={<SocialMidiaStudioPage />} />
               <Route path="/social-template-lab" element={<SocialTemplateLabPage />} />
               <Route path="/configuracoes" element={<SettingsPage />} />
@@ -58,6 +63,18 @@ const App = () => (
             {/* Bancada visual do shell V2: monta os componentes reais com
                 dados de exemplo, sem sessão. Só em desenvolvimento — é
                 ferramenta de verificação, não rota do produto. */}
+            {import.meta.env.DEV && (
+              <Route
+                path="/__ugc-studio"
+                element={
+                  <div className="wavy-shell relative min-h-screen bg-background">
+                    <div className="wavy-app-content relative z-10 min-h-screen p-6">
+                      <UgcStudioPreview />
+                    </div>
+                  </div>
+                }
+              />
+            )}
             {import.meta.env.DEV && (
               <Route
                 path="/__studio-v2"

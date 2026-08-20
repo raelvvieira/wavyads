@@ -21,6 +21,10 @@ function extensionForMimeType(mime: string): string {
   if (mime === 'image/jpeg') return 'jpg';
   if (mime === 'image/webp') return 'webp';
   if (mime === 'image/gif') return 'gif';
+  // Vídeo entrou com o UGC Studio. Sem estas duas linhas um mp4 subia como
+  // `.png`, e todo player que decide por extensão se recusava a tocá-lo.
+  if (mime === 'video/mp4') return 'mp4';
+  if (mime === 'video/quicktime') return 'mov';
   return 'png';
 }
 
