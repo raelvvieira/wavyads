@@ -118,17 +118,26 @@ function Corpo({
 
   return (
     <div className="studio-side-panel-body">
+      {/* A arte inteira, na proporção dela.
+
+          `shrink-0` não é enfeite: o corpo do painel é um flex column, e a
+          imagem é o único item alto e encolhível da coluna. Sem isso, assim
+          que fatos, linhagem e prompt passam da altura disponível, o flex
+          espreme justamente ela — e com `object-cover` no `<img>` o que
+          sobrava da altura virava recorte, a arte aparecendo como uma faixa
+          fina. Com o shrink fixo e a altura da imagem livre, o painel rola,
+          que é o que o `overflow-y: auto` dele sempre esperou fazer. */}
       {unico?.url && unico.status === 'ready' && (
         <button
           type="button"
           onClick={onPreview}
           aria-label="Ver arte em tamanho completo"
-          className="group relative block w-full overflow-hidden rounded-[var(--wavy-radius-card)] border border-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wavy-focus)]"
+          className="group relative block w-full shrink-0 overflow-hidden rounded-[var(--wavy-radius-card)] border border-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wavy-focus)]"
         >
           <img
             src={unico.thumbnailUrl ?? unico.url}
             alt={unico.prompt?.slice(0, 120) ?? 'Arte selecionada'}
-            className="w-full object-cover"
+            className="block h-auto w-full"
           />
           {/* Só um afago de affordance — o clique já funciona sem isso,
               mas sem sinal nenhum a imagem parece decorativa. */}

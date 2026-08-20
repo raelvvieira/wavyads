@@ -5,9 +5,10 @@ interface StudioPreviewBannerProps {
 /**
  * Aviso de prévia.
  *
- * A tela mostra dados de verdade e não age sobre eles. Sem dizer isso na
- * cara, o usuário lê o silêncio dos botões como defeito — e a conclusão
- * dele seria que o Studio quebrou, não que esta versão ainda não liga.
+ * A tela age sobre o acervo de verdade, mas ainda é a versão nova. O aviso
+ * existe para nomear isso e oferecer a volta — e a frase precisa listar só
+ * o que de fato funciona: um aviso que fica desatualizado ensina o usuário
+ * a não confiar no que a tela diz sobre si mesma.
  */
 export function StudioPreviewBanner({ onOpenCurrent }: StudioPreviewBannerProps) {
   return (
@@ -16,7 +17,7 @@ export function StudioPreviewBanner({ onOpenCurrent }: StudioPreviewBannerProps)
         Prévia
       </span>
       <p className="text-xs text-white/62">
-        Studio V2 com o acervo real. Gerar, editar e redimensionar já funcionam aqui — Fator Criativo e referências ainda seguem no Studio atual.
+        Studio V2 com o acervo real. Gerar, editar, redimensionar e o Fator Criativo já funcionam aqui.
       </p>
       <button
         type="button"

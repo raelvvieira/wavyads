@@ -125,7 +125,10 @@ describe('CriativoStudioV2Page', () => {
   it('diz na cara que é prévia, mas nomeia o que já funciona', async () => {
     montar();
     await waitFor(() => expect(screen.getByText('Prévia')).toBeTruthy());
-    expect(screen.getByText(/Gerar, editar e redimensionar já funcionam aqui/)).toBeTruthy();
+    // O aviso lista só o que de fato funciona. O Fator Criativo entrou nessa
+    // lista quando deixou de ser um toast de "em breve" — um aviso de prévia
+    // desatualizado ensina o usuário a não confiar no que a tela diz de si.
+    expect(screen.getByText(/o Fator Criativo já funcionam aqui/)).toBeTruthy();
   });
 
   it('a biblioteca de referências mostra insumo, que o canvas esconde', async () => {
