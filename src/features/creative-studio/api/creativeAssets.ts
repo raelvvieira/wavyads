@@ -105,9 +105,7 @@ export async function createCreativeAsset(input: CreateCreativeAssetInput): Prom
   const { data: userData } = await supabase.auth.getUser();
   const url = input.url ?? null;
 
-  const { data, error } = await supabase
-    .from('creative_assets')
-    .insert({
+  const linha = {
       project_id: input.projectId,
       client_id: input.clientId ?? null,
       type: input.type,
@@ -137,12 +135,53 @@ export async function createCreativeAsset(input: CreateCreativeAssetInput): Prom
       validation_json: input.validationJson ?? null,
       generation_version: input.generationVersion ?? null,
       created_by: userData.user?.id ?? null,
-    })
+  };
+
+  const { data, error } = await supabase.from('creative_assets').insert(linha).select('*').single();
+  if (!error) return mapAssetRow(data);
+
+  // As colunas da V2 do Fator podem não existir: a migração vive no
+  // repositório, mas quem a aplica no banco é um passo de deploy separado, e
+  // um banco atrasado derrubava os CINCO inserts do lote de uma vez — depois
+  // de a geração de texto já ter sido paga, e sem deixar um card na tela.
+  //
+  // Aqui a linha é regravada sem esses campos. Nada se perde: a estratégia
+  // inteira já viaja em `metadata`, que é jsonb e sempre existe. As colunas
+  // dedicadas são otimização de consulta, não pré-requisito do recurso.
+  if (!ehErroDeColunaDesconhecida(error)) throw error;
+
+  const { data: dataLegado, error: erroLegado } = await supabase
+    .from('creative_assets')
+    .insert(semCamposV2(linha))
     .select('*')
     .single();
+  if (erroLegado) throw erroLegado;
+  return mapAssetRow(dataLegado);
+}
 
-  if (error) throw error;
-  return mapAssetRow(data);
+/** Colunas que só existem depois da migração do Fator Criativo V2. */
+const CAMPOS_V2 = [
+  'strategic_angle', 'angle_subtype', 'strategic_thesis', 'awareness_level',
+  'dominant_emotion', 'quality_score', 'strategy_json', 'validation_json',
+  'generation_version',
+] as const;
+
+// O retorno continua `T`: todos os campos removidos são opcionais no tipo
+// de insert, então tirá-los não deixa a linha inválida — e `Partial<T>`
+// tornaria `type` opcional, que o insert exige.
+function semCamposV2<T extends Record<string, unknown>>(linha: T): T {
+  const copia: Record<string, unknown> = { ...linha };
+  for (const campo of CAMPOS_V2) delete copia[campo];
+  return copia as T;
+}
+
+/**
+ * `PGRST204` é o PostgREST dizendo que a coluna não está no schema cache;
+ * `42703` é o Postgres dizendo que ela não existe. Qualquer outro erro
+ * (RLS, CHECK, FK) é problema de verdade e continua subindo.
+ */
+function ehErroDeColunaDesconhecida(error: { code?: string | null }): boolean {
+  return error?.code === 'PGRST204' || error?.code === '42703';
 }
 
 /**

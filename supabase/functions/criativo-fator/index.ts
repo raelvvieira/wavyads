@@ -12,6 +12,18 @@ const AI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/com
 const MODEL_GENERATE = "gemini-2.5-pro";
 const MODEL_ANALYZE = "gemini-2.5-flash";
 
+/**
+ * Carimbo de versão do motor.
+ *
+ * Existe por uma falha real: enquanto esta função ainda era a V1 em
+ * produção, o `generate` da V2 passava na validação dela (o corpo tem
+ * `originalPrompt` e `aspect`), voltava 200 com variações no formato ANTIGO,
+ * e o cliente só descobria o problema ao ler `strategy.angle` de um objeto
+ * sem `strategy` — dois minutos depois, com uma mensagem ilegível. Com o
+ * carimbo, o cliente recusa a resposta na porta.
+ */
+const ENGINE_VERSION = "factor-v2";
+
 const ANGLES = [
   "problem", "mechanism", "proof", "contrast", "objection", "transformation",
   "opportunity", "cost_of_inaction", "identity", "belief_shift",
@@ -169,15 +181,11 @@ Preservar DNA não é copiar o layout. O design DEVE mudar quando o novo ângulo
 
 Teste obrigatório da direção visual: se a copy fosse removida, o visual ainda sugeriria o ângulo? Se não, fortaleça.
 
-## SAFE ZONE
+## O QUE VOCÊ NÃO ESCREVE
 
-O bloco [SAFE ZONE] da entrada é a fonte de verdade e PREVALECE sobre qualquer safe zone do prompt original. A imagem pode ocupar o frame de borda a borda; headline, subtítulo, corpo, dado, preço, selo, logo e CTA ficam dentro do retângulo seguro. Copie o bloco LITERALMENTE para dentro de cada promptCompleto, substituindo qualquer versão anterior.
+Você NÃO escreve o prompt de imagem. Quem monta o prompt final é o Studio, a partir da sua copy e da sua direção visual, usando o mesmo montador da geração normal — é o que garante que a arte do Fator saia com a mesma safe zone, a mesma tipografia e o mesmo sistema de design das outras.
 
-## promptCompleto
-
-Gere o prompt INTEIRO, não um complemento. Preserve os blocos invariáveis do original (design system, logo, idioma, do not include), substitua integralmente os blocos de mensagem, composição, hook, mood e hierarquia, e troque a safe zone pelo bloco autoritativo. Inclua apenas o texto final aprovado da arte e diga explicitamente que nenhum texto adicional deve ser inventado. Use instruções visuais concretas. Não peça ao gerador de imagem para decidir estratégia.
-
-Estrutura preferencial: [INTRODUCTION] [STRATEGIC INTENT] [DESIGN SYSTEM] [SAFE ZONE] [VISUAL HOOK] [COMPOSITION] [TEXT BLOCKS] [HIERARCHY] [MOOD] [BRAND ELEMENTS] [DO NOT INCLUDE] [FINAL VALIDATION]
+Isso muda o que se espera de você: `copy` precisa vir com o texto FINAL da arte, palavra por palavra, e `visualDirection` precisa ser concreta o bastante para um diretor de arte executar — sujeito principal, composição e mood em linguagem de imagem, não em linguagem de estratégia. Nada de "transmitir confiança": diga o que aparece no quadro.
 
 ## MOTOR DE QUALIDADE
 
@@ -203,28 +211,36 @@ Crie diversidade de ARGUMENTOS, não de palavras ou layouts. Pense como estrateg
 
 Retorne SOMENTE o objeto estruturado do tool-calling.`;
 
+/**
+ * Schema de UMA variação.
+ *
+ * Enxuto de propósito. A versão anterior pedia ao modelo o `promptCompleto`
+ * de cada variação — o prompt de imagem INTEIRO, com safe zone, tipografia e
+ * composição. Cinco desses passavam de 20k tokens de saída, levavam de dois a
+ * quatro minutos e estouravam o timeout antes de entregar qualquer coisa.
+ *
+ * Agora o modelo devolve só o que exige raciocínio: a tese, para quem, com
+ * que emoção, a copy e a direção visual. O prompt de imagem é montado no
+ * cliente por `buildCreativePrompt`, a MESMA função que a geração normal do
+ * Studio usa — o que de quebra impede os dois caminhos de divergirem.
+ *
+ * Também não há `minimum`/`minItems` aqui: a camada OpenAI-compat do Gemini
+ * rejeita parte desses validadores com 400, e a conferência sai mais barata
+ * em código, logo abaixo, do que num 400 sem resposta.
+ */
 const VARIATION_SCHEMA = {
   type: "object",
   properties: {
-    slot: { type: "integer", minimum: 1, maximum: 5 },
+    slot: { type: "integer" },
     label: { type: "string" },
     strategy: {
       type: "object",
       properties: {
         angle: { type: "string", enum: ANGLES },
         angleSubtype: { type: "string" },
-        angleViability: { type: "string", enum: ["valid", "substituted"] },
         strategicThesis: { type: "string" },
-        whySelected: { type: "string" },
-        recognition: { type: "string" },
-        beliefBefore: { type: "string" },
-        beliefAfter: { type: "string" },
-        reasonToBelieve: { type: "string" },
       },
-      required: [
-        "angle", "angleSubtype", "angleViability", "strategicThesis",
-        "whySelected", "recognition", "beliefBefore", "beliefAfter", "reasonToBelieve",
-      ],
+      required: ["angle", "angleSubtype", "strategicThesis"],
       additionalProperties: false,
     },
     audience: {
@@ -233,9 +249,8 @@ const VARIATION_SCHEMA = {
         persona: { type: "string" },
         awarenessLevel: { type: "string" },
         situation: { type: "string" },
-        objection: { type: "string" },
       },
-      required: ["persona", "awarenessLevel", "situation"],
+      required: ["persona", "awarenessLevel"],
       additionalProperties: false,
     },
     execution: {
@@ -243,10 +258,8 @@ const VARIATION_SCHEMA = {
       properties: {
         dominantEmotion: { type: "string" },
         offerFrame: { type: "string" },
-        argumentStructure: { type: "array", items: { type: "string" } },
-        visualHookType: { type: "string" },
       },
-      required: ["dominantEmotion", "offerFrame", "argumentStructure", "visualHookType"],
+      required: ["dominantEmotion"],
       additionalProperties: false,
     },
     copy: {
@@ -266,59 +279,28 @@ const VARIATION_SCHEMA = {
     visualDirection: {
       type: "object",
       properties: {
-        dominantHook: { type: "string" },
         mainSubject: { type: "string" },
         composition: { type: "string" },
-        hierarchy: { type: "array", items: { type: "string" } },
         mood: { type: "string" },
-        relationshipToThesis: { type: "string" },
         differencesFromOriginal: { type: "array", items: { type: "string" } },
-        differencesFromOtherVariations: { type: "array", items: { type: "string" } },
       },
-      required: [
-        "dominantHook", "mainSubject", "composition", "hierarchy", "mood",
-        "relationshipToThesis", "differencesFromOriginal", "differencesFromOtherVariations",
-      ],
+      required: ["mainSubject", "composition", "mood"],
       additionalProperties: false,
     },
     validation: {
       type: "object",
       properties: {
-        supportedFactsUsed: { type: "array", items: { type: "string" } },
-        // A spec exige vazio no resultado final — o campo existe para o
-        // modelo se auto-auditar, não para devolver pendência.
-        unsupportedClaims: { type: "array", items: { type: "string" } },
         changedDimensions: {
           type: "array",
-          minItems: 3,
           items: { type: "string", enum: ["thesis", "message", "receiver", "tone", "visual"] },
         },
-        scores: {
-          type: "object",
-          properties: {
-            specificity: { type: "number" }, naturalness: { type: "number" },
-            clarity: { type: "number" }, relevance: { type: "number" },
-            credibility: { type: "number" }, angleFidelity: { type: "number" },
-            differentiation: { type: "number" }, visualCoherence: { type: "number" },
-            hookStrength: { type: "number" }, actionPotential: { type: "number" },
-          },
-          required: [
-            "specificity", "naturalness", "clarity", "relevance", "credibility",
-            "angleFidelity", "differentiation", "visualCoherence", "hookStrength", "actionPotential",
-          ],
-          additionalProperties: false,
-        },
-        qualityScore: { type: "number", minimum: 8 },
+        qualityScore: { type: "number" },
       },
-      required: ["supportedFactsUsed", "unsupportedClaims", "changedDimensions", "scores", "qualityScore"],
+      required: ["changedDimensions", "qualityScore"],
       additionalProperties: false,
     },
-    promptCompleto: { type: "string" },
   },
-  required: [
-    "slot", "label", "strategy", "audience", "execution", "copy",
-    "visualDirection", "validation", "promptCompleto",
-  ],
+  required: ["slot", "label", "strategy", "audience", "execution", "copy", "visualDirection", "validation"],
   additionalProperties: false,
 };
 
@@ -338,15 +320,11 @@ const GENERATE_TOOL = {
             originalAudience: { type: "string" },
             originalAwarenessLevel: { type: "string" },
             originalEmotion: { type: "string" },
-            originalCopyStructure: { type: "string" },
-            originalVisualHook: { type: "string" },
             invariantElements: { type: "array", items: { type: "string" } },
-            diversificationRisks: { type: "array", items: { type: "string" } },
           },
           required: [
-            "originalAngle", "originalThesis", "originalAudience", "originalAwarenessLevel",
-            "originalEmotion", "originalCopyStructure", "originalVisualHook",
-            "invariantElements", "diversificationRisks",
+            "originalAngle", "originalThesis", "originalAudience",
+            "originalAwarenessLevel", "originalEmotion", "invariantElements",
           ],
           additionalProperties: false,
         },
@@ -354,25 +332,13 @@ const GENERATE_TOOL = {
           type: "object",
           properties: {
             sharedOfferTruth: { type: "string" },
-            selectedAngles: { type: "array", minItems: 5, maxItems: 5, items: { type: "string", enum: ANGLES } },
+            selectedAngles: { type: "array", items: { type: "string", enum: ANGLES } },
             selectionRationale: { type: "string" },
-            unavailableAngles: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  angle: { type: "string", enum: ANGLES },
-                  reason: { type: "string" },
-                },
-                required: ["angle", "reason"],
-                additionalProperties: false,
-              },
-            },
           },
-          required: ["sharedOfferTruth", "selectedAngles", "selectionRationale", "unavailableAngles"],
+          required: ["sharedOfferTruth", "selectedAngles"],
           additionalProperties: false,
         },
-        variations: { type: "array", minItems: 5, maxItems: 5, items: VARIATION_SCHEMA },
+        variations: { type: "array", items: VARIATION_SCHEMA },
       },
       required: ["originalDiagnosis", "strategySummary", "variations"],
       additionalProperties: false,
@@ -481,6 +447,7 @@ Extraia a inteligência da oferta e o diagnóstico do criativo original. Lembre:
       const oi = parsed?.offerIntelligence ?? {};
       return new Response(
         JSON.stringify({
+          engineVersion: ENGINE_VERSION,
           offerIntelligence: { ...oi, proofs: [], mechanism: oi.mechanism ?? null, offerTerms: oi.offerTerms ?? null },
           originalDiagnosis: parsed?.originalDiagnosis ?? null,
         }),
@@ -497,13 +464,14 @@ Extraia a inteligência da oferta e o diagnóstico do criativo original. Lembre:
     }
 
     const offer = body.offerIntelligence || {};
+    const temBriefing = Object.keys(offer).length > 0 && String(offer.offerDescription || "").trim().length > 0;
     const provasAprovadas = (offer.proofs || []).filter((p: any) => p?.approvedForAds);
     const modo = body.mode === "strategic" && Array.isArray(body.selectedAngles) && body.selectedAngles.length
       ? "strategic"
       : "automatic";
 
     const safeZoneSection = body.safeZoneBlock
-      ? `BLOCO [SAFE ZONE] AUTORITATIVO — componha ciente dele e copie-o LITERALMENTE para dentro de cada promptCompleto, substituindo qualquer safe zone anterior:
+      ? `BLOCO [SAFE ZONE] AUTORITATIVO — componha ciente dele. Ele é aplicado pelo montador do Studio, então não o repita na sua resposta; use-o para saber onde o texto pode viver:
 """
 ${body.safeZoneBlock}
 """`
@@ -517,7 +485,9 @@ ${String(body.originalPrompt).slice(0, 12000)}
 COPY APROVADA ATUAL: ${JSON.stringify(body.copy || {})}
 
 BRIEFING DA OFERTA:
-${JSON.stringify(offer, null, 2)}
+${temBriefing
+  ? JSON.stringify(offer, null, 2)
+  : `NÃO INFORMADO. Antes de diversificar, deduza o briefing sozinho a partir do prompt original, da copy aprovada e do nome do cliente: produto, categoria, oferta, público, dores, desejos, objeções e diferenciais. Deduza só o que o material sustenta — o que não der para deduzir fica de fora, e nada disso vira prova.`}
 
 PROVAS APROVADAS PARA ANÚNCIO: ${provasAprovadas.length > 0 ? JSON.stringify(provasAprovadas, null, 2) : "NENHUMA. Não use número, depoimento, case ou credencial em nenhuma variação, e não escolha o ângulo proof."}
 
@@ -530,7 +500,7 @@ ASPECT RATIO ALVO: ${body.aspectRatio || (body.aspect === "square" ? "1:1" : "9:
 
 ${safeZoneSection}
 
-Aplique o Fator Criativo V2. Gere EXATAMENTE 5 variações, cada uma com tese própria. Cada promptCompleto deve estar pronto para alimentar o gerador de imagem e produzir uma peça coerente com a marca original.`;
+Aplique o Fator Criativo V2. Gere EXATAMENTE 5 variações, cada uma com tese própria, copy final e direção visual executável.`;
 
     const parsed = await callModel({
       apiKey: GEMINI_API_KEY,
@@ -545,6 +515,7 @@ Aplique o Fator Criativo V2. Gere EXATAMENTE 5 variações, cada uma com tese pr
 
     return new Response(
       JSON.stringify({
+        engineVersion: ENGINE_VERSION,
         originalDiagnosis: parsed.originalDiagnosis,
         strategySummary: parsed.strategySummary,
         variations,

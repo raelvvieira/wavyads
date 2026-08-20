@@ -353,9 +353,69 @@ export default function CriativoStudioV2Page() {
     }
   }, [busy, actions, upsertAsset]);
 
-  // Abrir o diálogo já dispara a leitura da oferta: o usuário revisa um
-  // briefing pronto em vez de encarar um formulário em branco.
-  const abrirFator = useCallback(async (alvo: CreativeAsset) => {
+  /**
+   * Gera as 5 variações direto, sem formulário.
+   *
+   * É o caminho padrão. A versão anterior abria um briefing e exigia a
+   * descrição da oferta preenchida à mão antes de liberar o botão — pedágio
+   * que contraria o que o Fator Criativo é: um gerador rápido de ângulos.
+   * Agora a própria função deduz a oferta da arte, e o formulário virou o
+   * caminho de exceção (`abrirFatorComBriefing`), para quando há prova real
+   * a informar ou ângulo a fixar.
+   */
+  const rodarFator = useCallback(async (alvo: CreativeAsset, entrada?: FatorCriativoSubmit) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const ratio = (alvo.aspectRatio as CreativeAspectRatio) || '4:5';
+      toast({ title: 'Lendo a oferta e montando 5 teses…', description: 'A escrita estratégica leva alguns instantes.' });
+      const saida = await generateFactorVariations({
+        originalPrompt: alvo.prompt ?? '',
+        copy: (alvo.metadata as any)?.copy ?? null,
+        offerIntelligence: entrada?.offerIntelligence ?? null,
+        mode: entrada?.mode ?? 'automatic',
+        selectedAngles: entrada?.selectedAngles,
+        aspect: ratio === '1:1' ? 'square' : 'story',
+        aspectRatio: ratio,
+        safeZoneBlock: buildSafeZoneBlock(ratio),
+      });
+
+      toast({ title: '5 variações planejadas', description: 'Gerando as artes…' });
+      const artes = await actions.factorCriativo({
+        base: alvo,
+        variations: saida.variations,
+        diagnosis: saida.originalDiagnosis,
+        // Cada slot resolve sozinho no canvas, em vez de tudo aparecer no fim.
+        onSlotDone: (asset) => upsertAsset(asset),
+      });
+
+      // `runGeneration` nunca rejeita — ela grava `failed` na linha. Sem
+      // contar aqui, cinco cards vermelhos vinham acompanhados de um toast
+      // verde dizendo que estava pronto.
+      const prontas = artes.filter((a) => a.status === 'ready').length;
+      if (prontas === 0) {
+        toast({
+          title: 'Nenhuma das 5 variações foi gerada',
+          description: artes[0]?.errorMessage ?? undefined,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: prontas === artes.length ? 'Fator Criativo pronto' : `${prontas} de ${artes.length} variações prontas`,
+          description: prontas === artes.length ? undefined : 'As que falharam têm "Tentar novamente" no card.',
+        });
+      }
+    } catch (e: any) {
+      toast({ title: 'Erro no Fator Criativo', description: e?.message, variant: 'destructive' });
+    } finally {
+      setBusy(false);
+      void carregar();
+    }
+  }, [busy, actions, upsertAsset, carregar]);
+
+  // Caminho de exceção: abre o briefing e já dispara a leitura da oferta,
+  // para o usuário revisar em vez de encarar um formulário em branco.
+  const abrirFatorComBriefing = useCallback(async (alvo: CreativeAsset) => {
     setFatorBase(alvo);
     setFatorBriefing(null);
     setFatorErroAnalise(null);
@@ -368,11 +428,18 @@ export default function CriativoStudioV2Page() {
         clientName,
         language: 'pt-BR',
       });
-      setFatorBriefing(offerIntelligence);
+      // Descarta resposta que não é mais da arte em foco: sem isso, abrir o
+      // Fator em A, fechar e abrir em B fazia o briefing de A aparecer sobre
+      // a arte B — errado e silencioso.
+      setFatorBase((atual) => {
+        if (atual?.id === alvo.id) setFatorBriefing(offerIntelligence);
+        return atual;
+      });
     } catch (e: any) {
-      // Falhar aqui não impede o fluxo — o diálogo cai no formulário vazio
-      // com o motivo à vista.
-      setFatorErroAnalise(e?.message ?? 'erro desconhecido');
+      setFatorBase((atual) => {
+        if (atual?.id === alvo.id) setFatorErroAnalise(e?.message ?? 'erro desconhecido');
+        return atual;
+      });
     } finally {
       setFatorAnalisando(false);
     }
@@ -380,39 +447,10 @@ export default function CriativoStudioV2Page() {
 
   const handleFatorSubmit = useCallback(async (entrada: FatorCriativoSubmit) => {
     const alvo = fatorBase;
-    if (!alvo || busy) return;
+    if (!alvo) return;
     setFatorBase(null); // fecha o diálogo: o progresso vive no canvas
-    setBusy(true);
-    try {
-      const ratio = (alvo.aspectRatio as CreativeAspectRatio) || '4:5';
-      toast({ title: 'Montando as 5 teses…', description: 'A escrita estratégica leva alguns instantes.' });
-      const saida = await generateFactorVariations({
-        originalPrompt: alvo.prompt ?? '',
-        copy: (alvo.metadata as any)?.copy ?? null,
-        offerIntelligence: entrada.offerIntelligence,
-        mode: entrada.mode,
-        selectedAngles: entrada.selectedAngles,
-        aspect: ratio === '1:1' ? 'square' : 'story',
-        aspectRatio: ratio,
-        safeZoneBlock: buildSafeZoneBlock(ratio),
-      });
-
-      toast({ title: '5 variações planejadas', description: 'Gerando as artes…' });
-      await actions.factorCriativo({
-        base: alvo,
-        variations: saida.variations,
-        diagnosis: saida.originalDiagnosis,
-        // Cada slot resolve sozinho no canvas, em vez de tudo aparecer no fim.
-        onSlotDone: (asset) => upsertAsset(asset),
-      });
-      toast({ title: 'Fator Criativo pronto' });
-    } catch (e: any) {
-      toast({ title: 'Erro no Fator Criativo', description: e?.message, variant: 'destructive' });
-    } finally {
-      setBusy(false);
-      void carregar();
-    }
-  }, [fatorBase, busy, actions, upsertAsset, carregar]);
+    await rodarFator(alvo, entrada);
+  }, [fatorBase, rodarFator]);
 
   const hasCopy = attachments.some((a) => a.kind === 'copy');
 
@@ -523,7 +561,12 @@ export default function CriativoStudioV2Page() {
     }
 
     if (acao === 'factor') {
-      void abrirFator(alvo);
+      void rodarFator(alvo);
+      return;
+    }
+
+    if (acao === 'factor-briefing') {
+      void abrirFatorComBriefing(alvo);
       return;
     }
 
@@ -549,7 +592,7 @@ export default function CriativoStudioV2Page() {
     }
 
     avisarIndisponivel('Esta ação ainda não está disponível nesta versão.');
-  }, [actions, upsertAsset, avisarIndisponivel, abrirFator, handleAttach]);
+  }, [actions, upsertAsset, avisarIndisponivel, rodarFator, abrirFatorComBriefing, handleAttach]);
 
   const filhosDoAlvo = useMemo(
     () => (deleteTarget ? childrenByParentId(assets).get(deleteTarget.id)?.length ?? 0 : 0),

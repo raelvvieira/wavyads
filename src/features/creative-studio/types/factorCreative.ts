@@ -114,31 +114,38 @@ export interface OriginalDiagnosis {
   diversificationRisks: string[];
 }
 
+/**
+ * Uma variação, do jeito que o motor devolve.
+ *
+ * Não há `promptCompleto` aqui de propósito. Pedir ao modelo o prompt de
+ * imagem inteiro para cada uma das cinco custava mais de 20k tokens de
+ * saída e estourava o tempo antes de entregar qualquer coisa. O prompt é
+ * montado no cliente por `buildCreativePrompt`, o mesmo montador da geração
+ * normal — o que também impede os dois caminhos de divergirem.
+ *
+ * Vários campos são opcionais porque o schema enxuto não os exige mais:
+ * eram auto-auditoria do modelo, nunca chegavam à tela, e cada um custava
+ * tokens no caminho crítico.
+ */
 export interface FactorVariation {
   slot: 1 | 2 | 3 | 4 | 5;
   label: string;
   strategy: {
     angle: StrategicAngleId;
     angleSubtype: string;
-    angleViability: 'valid' | 'substituted';
     strategicThesis: string;
-    whySelected: string;
-    recognition: string;
-    beliefBefore: string;
-    beliefAfter: string;
-    reasonToBelieve: string;
+    angleViability?: 'valid' | 'substituted';
+    whySelected?: string;
   };
   audience: {
     persona: string;
     awarenessLevel: string;
-    situation: string;
+    situation?: string;
     objection?: string;
   };
   execution: {
     dominantEmotion: string;
-    offerFrame: string;
-    argumentStructure: string[];
-    visualHookType: string;
+    offerFrame?: string;
   };
   copy: {
     label?: string;
@@ -150,32 +157,25 @@ export interface FactorVariation {
     cta: string;
   };
   visualDirection: {
-    dominantHook: string;
     mainSubject: string;
     composition: string;
-    hierarchy: string[];
     mood: string;
-    relationshipToThesis: string;
-    differencesFromOriginal: string[];
-    differencesFromOtherVariations: string[];
+    differencesFromOriginal?: string[];
   };
   validation: {
-    supportedFactsUsed: string[];
-    unsupportedClaims: string[];
     changedDimensions: Array<'thesis' | 'message' | 'receiver' | 'tone' | 'visual'>;
-    scores: Record<string, number>;
     qualityScore: number;
   };
-  promptCompleto: string;
 }
 
 export interface FactorCreativeOutput {
+  /** Carimbo do motor. O cliente recusa a resposta se não for 'factor-v2'. */
+  engineVersion?: string;
   originalDiagnosis: OriginalDiagnosis;
   strategySummary: {
     sharedOfferTruth: string;
     selectedAngles: StrategicAngleId[];
-    selectionRationale: string;
-    unavailableAngles: Array<{ angle: StrategicAngleId; reason: string }>;
+    selectionRationale?: string;
   };
   variations: FactorVariation[];
 }
@@ -209,4 +209,20 @@ export function emptyOfferIntelligence(): OfferIntelligence {
 export function angleLabel(strategicAngle: string | null | undefined): string | null {
   if (!strategicAngle) return null;
   return STRATEGIC_ANGLE_LABELS[strategicAngle as StrategicAngleId] ?? null;
+}
+
+/**
+ * Ângulo de uma arte, olhando nos dois lugares onde ele pode estar.
+ *
+ * A coluna `strategic_angle` só existe depois da migração da V2, e a
+ * gravação sobrevive sem ela (ver `createCreativeAsset`). Quando isso
+ * acontece, o ângulo continua em `metadata.strategy.angle` — e o rótulo
+ * precisa achá-lo lá, senão a arte fica sem identidade na tela justamente
+ * no banco onde a migração está atrasada.
+ */
+export function angleLabelFrom(
+  strategicAngle: string | null | undefined,
+  metadata: Record<string, any> | null | undefined,
+): string | null {
+  return angleLabel(strategicAngle) ?? angleLabel(metadata?.strategy?.angle);
 }

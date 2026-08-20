@@ -61,6 +61,7 @@ export function libraryAssets(assets: CreativeAsset[], filtros: AssetFilters = {
 export type SelectionAction =
   | 'edit'
   | 'factor'
+  | 'factor-briefing'
   | 'resize'
   | 'download'
   | 'preview'
@@ -97,7 +98,7 @@ export function availableActionsForSelection(selecionados: CreativeAsset[]): Sel
   if (!todasProntas) return [];
 
   const [asset] = selecionados;
-  const acoes: SelectionAction[] = ['edit', 'use-as-reference', 'factor', 'download', 'preview', 'save-as-template'];
+  const acoes: SelectionAction[] = ['edit', 'use-as-reference', 'factor', 'factor-briefing', 'download', 'preview', 'save-as-template'];
 
   // Redimensionar só faz sentido saindo de um formato que não é quadrado —
   // o destino é sempre 1:1.

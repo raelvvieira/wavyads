@@ -2,7 +2,7 @@ import { AlertTriangle, Check, Download, Loader2, Maximize2, Pencil, RefreshCw, 
 import { cn } from '@/lib/utils';
 import type { CreativeAsset } from '../types/creative';
 import { FACTOR_AXIS_LABELS } from '../types/creative';
-import { angleLabel } from '../types/factorCreative';
+import { angleLabelFrom } from '../types/factorCreative';
 import type { SelectionAction } from '../state/canvasSelectors';
 
 const TIPO_LABEL: Record<string, string> = {
@@ -130,7 +130,7 @@ export function AssetNode({ asset, selected, onToggleSelect, onAction, actions }
           {/* Ângulo V2 quando existe; eixo V1 nas artes do motor antigo
               (§20 da spec pede exatamente esse fallback na migração). */}
           {(() => {
-            const rotulo = angleLabel(asset.strategicAngle)
+            const rotulo = angleLabelFrom(asset.strategicAngle, asset.metadata)
               ?? (asset.factorAxis ? FACTOR_AXIS_LABELS[asset.factorAxis] : null);
             return rotulo ? ` · ${rotulo}` : null;
           })()}

@@ -1,17 +1,18 @@
 import { useState } from 'react';
-import { ChevronDown, Download, Expand, Maximize2, Pencil, RefreshCw, Repeat, Sparkles, Trash2, X } from 'lucide-react';
+import { ChevronDown, Download, Expand, Maximize2, Pencil, RefreshCw, Repeat, SlidersHorizontal, Sparkles, Trash2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CreativeAsset } from '../types/creative';
 import { ASSET_ORIGIN_LABELS, ASSET_STATUS_LABELS, FACTOR_AXIS_LABELS } from '../types/creative';
 import { availableActionsForSelection, type SelectionAction } from '../state/canvasSelectors';
 import { pathToRoot } from '../state/lineage';
-import { angleLabel } from '../types/factorCreative';
+import { angleLabelFrom } from '../types/factorCreative';
 import { AssetPreviewDialog } from './AssetPreviewDialog';
 
 const ACAO: Record<SelectionAction, { label: string; icon?: typeof Pencil } | undefined> = {
   edit: { label: 'Editar com IA', icon: Pencil },
   'use-as-reference': { label: 'Usar como referência', icon: Repeat },
   factor: { label: 'Fator Criativo', icon: Sparkles },
+  'factor-briefing': { label: 'Fator Criativo com briefing', icon: SlidersHorizontal },
   resize: { label: 'Redimensionar para 1:1', icon: Maximize2 },
   download: { label: 'Baixar', icon: Download },
   retry: { label: 'Tentar novamente', icon: RefreshCw },
@@ -152,8 +153,8 @@ function Corpo({
           <Fato termo="Formato" valor={unico.aspectRatio ?? '—'} />
           <Fato termo="Status" valor={ASSET_STATUS_LABELS[unico.status]} />
           <Fato termo="Origem" valor={ASSET_ORIGIN_LABELS[unico.type] ?? unico.type} />
-          {angleLabel(unico.strategicAngle)
-            ? <Fato termo="Ângulo" valor={angleLabel(unico.strategicAngle)!} />
+          {angleLabelFrom(unico.strategicAngle, unico.metadata)
+            ? <Fato termo="Ângulo" valor={angleLabelFrom(unico.strategicAngle, unico.metadata)!} />
             : unico.factorAxis && <Fato termo="Eixo" valor={FACTOR_AXIS_LABELS[unico.factorAxis]} />}
           {typeof unico.qualityScore === 'number' && (
             <Fato termo="Qualidade" valor={unico.qualityScore.toFixed(1)} />
