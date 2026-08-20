@@ -8,6 +8,8 @@ import {
   buildRetryRequest,
 } from './generationRequests';
 import type { AvatarPersona } from '../types/avatarPersona';
+import type { FactorCreativeOutput, FactorVariation } from '../types/factorCreative';
+import { buildSafeZoneBlock } from '../lib/promptBuilder';
 
 /**
  * Orquestra gerar/editar/redimensionar/retentar contra as edge functions
@@ -28,6 +30,8 @@ export interface StudioAssetActionsDeps {
   // usam para simular o banco, sem duplicar os dois tipos aqui.
   createAsset(input: any): Promise<CreativeAsset>;
   updateAsset(id: string, patch: any): Promise<CreativeAsset>;
+  /** Só o Fator usa: as 5 variações nascem irmãs de um lote. */
+  createGroup?(input: any): Promise<{ id: string }>;
   recordUsage(usageKey: string): void;
 }
 
@@ -47,6 +51,19 @@ export interface StudioAssetActions {
   generate(brief: string, aspectRatio: CreativeAspectRatio, options?: GenerationOptions): Promise<CreativeAsset>;
   /** Retrato de uma persona — vira asset `avatar`, reutilizável depois. */
   generateAvatar(persona: AvatarPersona, referenceImageUrls?: string[]): Promise<CreativeAsset>;
+  /**
+   * Fator Criativo V2: 5 variações estratégicas da arte-base.
+   *
+   * Devolve as 5 linhas já criadas em `generating` e chama `onSlotDone` a
+   * cada uma que conclui — o canvas mostra o lote inteiro na hora e cada
+   * card resolve sozinho, em vez de tudo aparecer no fim.
+   */
+  factorCriativo(input: {
+    base: CreativeAsset;
+    variations: FactorVariation[];
+    diagnosis?: FactorCreativeOutput['originalDiagnosis'] | null;
+    onSlotDone?: (asset: CreativeAsset) => void;
+  }): Promise<CreativeAsset[]>;
   retry(asset: CreativeAsset): Promise<CreativeAsset>;
   edit(asset: CreativeAsset, feedback: string): Promise<CreativeAsset>;
   resize(asset: CreativeAsset): Promise<CreativeAsset>;
@@ -132,6 +149,87 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
         metadata: { persona, referenceImages: referenceImageUrls },
       });
       return runGeneration(deps, row, body);
+    },
+
+    async factorCriativo({ base, variations, diagnosis = null, onSlotDone }) {
+      const projectId = await deps.ensureProjectId();
+      const ratio = (base.aspectRatio as CreativeAspectRatio) || '4:5';
+      const backendAspect = ratio === '1:1' ? 'square' : 'story';
+      // Cinto de segurança da §12: o bloco autoritativo é reanexado a cada
+      // prompt aqui, porque `promptCompleto` é texto livre do modelo e não
+      // há como validar que ele copiou o bloco de verdade.
+      const safeZone = buildSafeZoneBlock(ratio);
+
+      // O grupo é o que torna as 5 irmãs, não cinco artes soltas. Falhar
+      // aqui não impede a geração — só perde o agrupamento.
+      let groupId: string | null = null;
+      try {
+        const grupo = await deps.createGroup?.({
+          projectId,
+          type: 'factor',
+          parentAssetId: base.id,
+          title: 'Fator Criativo',
+          metadata: {
+            version: 'factor-v2',
+            angles: variations.map((v) => v.strategy.angle),
+            diagnosis,
+          },
+        });
+        groupId = grupo?.id ?? null;
+      } catch {
+        groupId = null;
+      }
+
+      // As 5 linhas nascem ANTES de qualquer imagem: é o que faz o lote
+      // inteiro aparecer no canvas de uma vez, gerando de verdade.
+      const linhas = await Promise.all(variations.map((v) => deps.createAsset({
+        projectId,
+        clientId: deps.clientId,
+        type: 'factor',
+        status: 'generating',
+        parentAssetId: base.id,
+        groupId,
+        // §20: `factor_axis` segue preenchido, agora com o ângulo V2.
+        factorAxis: v.strategy.angle,
+        strategicAngle: v.strategy.angle,
+        angleSubtype: v.strategy.angleSubtype,
+        strategicThesis: v.strategy.strategicThesis,
+        awarenessLevel: v.audience.awarenessLevel,
+        dominantEmotion: v.execution.dominantEmotion,
+        qualityScore: v.validation.qualityScore,
+        strategyJson: { strategy: v.strategy, audience: v.audience, execution: v.execution },
+        validationJson: v.validation,
+        generationVersion: 'factor-v2',
+        aspectRatio: ratio,
+        resolution: base.resolution,
+        prompt: `${v.promptCompleto}\n\n${safeZone}`,
+        model: IMAGE_GENERATION_MODEL.id,
+        filename: v.label,
+        metadata: {
+          slot: v.slot,
+          label: v.label,
+          copy: v.copy,
+          visualDirection: v.visualDirection,
+          promptCompleto: v.promptCompleto,
+        },
+      })));
+
+      // Falha ISOLADA por slot: uma variação recusada não derruba as outras
+      // quatro, e o card dela fica `failed` com o botão de retentar.
+      return Promise.all(linhas.map(async (linha) => {
+        const pronta = await runGeneration(deps, linha, {
+          prompt: linha.prompt,
+          aspectRatio: backendAspect,
+          formatRatio: ratio,
+          model: IMAGE_GENERATION_MODEL.id,
+          isVariation: true,
+          productImages: base.metadata?.productImages ?? [],
+          logoImage: base.metadata?.logoImage ?? null,
+          storyReference: backendAspect === 'square' ? base.url : null,
+        });
+        onSlotDone?.(pronta);
+        return pronta;
+      }));
     },
 
     async retry(asset) {

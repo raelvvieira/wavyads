@@ -5,6 +5,7 @@ import type { CreativeAsset } from '../types/creative';
 import { ASSET_ORIGIN_LABELS, ASSET_STATUS_LABELS, FACTOR_AXIS_LABELS } from '../types/creative';
 import { availableActionsForSelection, type SelectionAction } from '../state/canvasSelectors';
 import { pathToRoot } from '../state/lineage';
+import { angleLabel } from '../types/factorCreative';
 import { AssetPreviewDialog } from './AssetPreviewDialog';
 
 const ACAO: Record<SelectionAction, { label: string; icon?: typeof Pencil } | undefined> = {
@@ -142,7 +143,12 @@ function Corpo({
           <Fato termo="Formato" valor={unico.aspectRatio ?? '—'} />
           <Fato termo="Status" valor={ASSET_STATUS_LABELS[unico.status]} />
           <Fato termo="Origem" valor={ASSET_ORIGIN_LABELS[unico.type] ?? unico.type} />
-          {unico.factorAxis && <Fato termo="Eixo" valor={FACTOR_AXIS_LABELS[unico.factorAxis]} />}
+          {angleLabel(unico.strategicAngle)
+            ? <Fato termo="Ângulo" valor={angleLabel(unico.strategicAngle)!} />
+            : unico.factorAxis && <Fato termo="Eixo" valor={FACTOR_AXIS_LABELS[unico.factorAxis]} />}
+          {typeof unico.qualityScore === 'number' && (
+            <Fato termo="Qualidade" valor={unico.qualityScore.toFixed(1)} />
+          )}
           {unico.model && <Fato termo="Modelo" valor={unico.model} />}
         </dl>
       )}

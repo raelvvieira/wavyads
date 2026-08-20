@@ -53,6 +53,10 @@ export interface CreativeAsset {
   errorMessage: string | null;
   filename: string | null;
   isClientIntelligence: boolean;
+  /** Fator Criativo V2 — ausentes nas artes geradas pelo motor antigo. */
+  strategicAngle?: string | null;
+  strategicThesis?: string | null;
+  qualityScore?: number | null;
   metadata: Record<string, any>;
   createdAt: string;
   updatedAt: string;

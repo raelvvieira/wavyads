@@ -48,3 +48,34 @@ describe('AssetNode', () => {
     expect(screen.queryByRole('button', { name: 'Usar como referência' })).toBeNull();
   });
 });
+
+describe('AssetNode — ângulo do Fator', () => {
+  function montarCard(patch: Partial<CreativeAsset>) {
+    render(
+      <AssetNode
+        asset={asset({ id: 'f1', type: 'factor', ...patch } as any)}
+        selected={false}
+        onToggleSelect={vi.fn()}
+        onAction={vi.fn()}
+        actions={[]}
+      />,
+    );
+  }
+
+  it('mostra o ângulo V2 quando a arte tem strategic_angle', () => {
+    montarCard({ strategicAngle: 'cost_of_inaction' } as any);
+    expect(screen.getByText(/Custo da inação/)).toBeTruthy();
+  });
+
+  it('cai no eixo V1 nas artes do motor antigo', () => {
+    // §20 da spec: durante a migração o badge precisa continuar legível
+    // para o que já foi gerado.
+    montarCard({ factorAxis: 'persona' } as any);
+    expect(screen.getByText(/Persona/)).toBeTruthy();
+  });
+
+  it('o ângulo V2 tem prioridade quando os dois existem', () => {
+    montarCard({ strategicAngle: 'proof', factorAxis: 'proof' } as any);
+    expect(screen.getByText(/Prova/)).toBeTruthy();
+  });
+});

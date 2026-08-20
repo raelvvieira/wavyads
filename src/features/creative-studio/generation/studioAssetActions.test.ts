@@ -277,3 +277,134 @@ describe('generateAvatar', () => {
     expect(deps.linhas.size).toBe(1);
   });
 });
+
+describe('factorCriativo', () => {
+  function variacao(slot: number, angle: string): any {
+    return {
+      slot, label: `V${slot} — ${angle}`,
+      strategy: {
+        angle, angleSubtype: 'sub', angleViability: 'valid',
+        strategicThesis: `tese ${slot}`, whySelected: 'x', recognition: 'y',
+        beliefBefore: 'a', beliefAfter: 'b', reasonToBelieve: 'c',
+      },
+      audience: { persona: 'iniciante', awarenessLevel: 'consciente do problema', situation: 's' },
+      execution: {
+        dominantEmotion: 'frustração', offerFrame: 'transformação',
+        argumentStructure: ['problema', 'causa'], visualHookType: 'problema visualizado',
+      },
+      copy: { title: `Título ${slot}`, cta: 'Fale conosco' },
+      visualDirection: {
+        dominantHook: 'h', mainSubject: 'm', composition: 'c', hierarchy: ['1'],
+        mood: 'mo', relationshipToThesis: 'r',
+        differencesFromOriginal: ['d'], differencesFromOtherVariations: ['e'],
+      },
+      validation: {
+        supportedFactsUsed: ['f'], unsupportedClaims: [],
+        changedDimensions: ['thesis', 'message', 'visual'],
+        scores: {}, qualityScore: 8.6,
+      },
+      promptCompleto: `PROMPT DA VARIACAO ${slot}`,
+    };
+  }
+
+  const CINCO = ['problem', 'mechanism', 'proof', 'contrast', 'identity'].map((a, i) => variacao(i + 1, a));
+
+  function depsComGrupo() {
+    const deps = fakeDeps();
+    (deps as any).createGroup = vi.fn(async () => ({ id: 'grupo-1' }));
+    return deps;
+  }
+
+  it('cria as 5 linhas antes de gerar qualquer imagem, agrupadas e ligadas à base', async () => {
+    const deps = depsComGrupo();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/v.png' }, error: null });
+    const base = assetBase({ id: 'base-1', aspectRatio: '4:5' });
+
+    const linhas = await createStudioAssetActions(deps).factorCriativo({ base, variations: CINCO });
+
+    expect(linhas).toHaveLength(5);
+    expect(deps.linhas.size).toBe(5);
+    // As 5 criações vêm ANTES da primeira atualização: é o que faz o lote
+    // inteiro aparecer no canvas de uma vez.
+    expect(deps.ordem.slice(0, 5)).toEqual(Array(5).fill('createAsset'));
+    const primeira = [...deps.linhas.values()][0];
+    expect(primeira.type).toBe('factor');
+    expect(primeira.parentAssetId).toBe('base-1');
+    expect(primeira.groupId).toBe('grupo-1');
+  });
+
+  it('grava o ângulo V2 em strategic_angle E em factor_axis, com a nota', async () => {
+    // §20: `factor_axis` continua preenchido para o badge das telas antigas
+    // seguir funcionando durante a migração.
+    const deps = depsComGrupo();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/v.png' }, error: null });
+
+    await createStudioAssetActions(deps).factorCriativo({ base: assetBase({ id: 'b' }), variations: CINCO });
+
+    const linhas = [...deps.linhas.values()];
+    expect(linhas.map((l: any) => l.strategicAngle)).toEqual(
+      ['problem', 'mechanism', 'proof', 'contrast', 'identity'],
+    );
+    expect(linhas.map((l: any) => l.factorAxis)).toEqual(
+      ['problem', 'mechanism', 'proof', 'contrast', 'identity'],
+    );
+    expect((linhas[0] as any).qualityScore).toBe(8.6);
+    expect((linhas[0] as any).generationVersion).toBe('factor-v2');
+  });
+
+  it('reanexa a safe zone autoritativa em cada prompt', async () => {
+    // §12 pede a proteção dupla: `promptCompleto` é texto livre do modelo,
+    // não há como validar que ele copiou o bloco de verdade.
+    const deps = depsComGrupo();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/v.png' }, error: null });
+
+    await createStudioAssetActions(deps).factorCriativo({ base: assetBase({ id: 'b' }), variations: CINCO });
+
+    const linha = [...deps.linhas.values()][0];
+    expect(linha.prompt).toContain('PROMPT DA VARIACAO 1');
+    expect(linha.prompt).toContain('[SAFE ZONE]');
+  });
+
+  it('falha de UM slot não derruba os outros quatro', async () => {
+    const deps = depsComGrupo();
+    let n = 0;
+    (deps.invoke as any).mockImplementation(async () => {
+      n += 1;
+      if (n === 3) return { data: null, error: new Error('provedor recusou') };
+      return { data: { imageUrl: `https://x/v${n}.png` }, error: null };
+    });
+
+    const linhas = await createStudioAssetActions(deps).factorCriativo({
+      base: assetBase({ id: 'b' }), variations: CINCO,
+    });
+
+    expect(linhas.filter((l) => l.status === 'ready')).toHaveLength(4);
+    const falhou = linhas.filter((l) => l.status === 'failed');
+    expect(falhou).toHaveLength(1);
+    expect(falhou[0].errorMessage).toBe('provedor recusou');
+  });
+
+  it('avisa slot a slot, para o canvas resolver cada card na hora', async () => {
+    const deps = depsComGrupo();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/v.png' }, error: null });
+    const onSlotDone = vi.fn();
+
+    await createStudioAssetActions(deps).factorCriativo({
+      base: assetBase({ id: 'b' }), variations: CINCO, onSlotDone,
+    });
+
+    expect(onSlotDone).toHaveBeenCalledTimes(5);
+  });
+
+  it('sem grupo (falha ao criar), as 5 ainda são geradas', async () => {
+    const deps = fakeDeps(); // sem createGroup
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/v.png' }, error: null });
+
+    const linhas = await createStudioAssetActions(deps).factorCriativo({
+      base: assetBase({ id: 'b' }), variations: CINCO,
+    });
+
+    expect(linhas).toHaveLength(5);
+    expect([...deps.linhas.values()][0].groupId).toBeNull();
+  });
+});

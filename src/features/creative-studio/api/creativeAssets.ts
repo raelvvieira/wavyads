@@ -42,6 +42,9 @@ function mapAssetRow(row: AssetRow): CreativeAsset {
     filename: row.filename,
     isClientIntelligence: row.is_client_intelligence,
     metadata: asRecord(row.metadata),
+    strategicAngle: row.strategic_angle,
+    strategicThesis: row.strategic_thesis,
+    qualityScore: row.quality_score,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -80,6 +83,17 @@ export interface CreateCreativeAssetInput {
   clientId?: string | null;
   isClientIntelligence?: boolean;
   metadata?: Record<string, any>;
+  /** Fator Criativo V2 — o ângulo e o veredito de qualidade viram coluna
+   *  porque é por eles que se filtra e ordena depois; o resto fica em JSON. */
+  strategicAngle?: string | null;
+  angleSubtype?: string | null;
+  strategicThesis?: string | null;
+  awarenessLevel?: string | null;
+  dominantEmotion?: string | null;
+  qualityScore?: number | null;
+  strategyJson?: Record<string, any> | null;
+  validationJson?: Record<string, any> | null;
+  generationVersion?: string | null;
 }
 
 /**
@@ -113,6 +127,15 @@ export async function createCreativeAsset(input: CreateCreativeAssetInput): Prom
       filename: input.filename ?? null,
       is_client_intelligence: input.isClientIntelligence ?? false,
       metadata: input.metadata ?? {},
+      strategic_angle: input.strategicAngle ?? null,
+      angle_subtype: input.angleSubtype ?? null,
+      strategic_thesis: input.strategicThesis ?? null,
+      awareness_level: input.awarenessLevel ?? null,
+      dominant_emotion: input.dominantEmotion ?? null,
+      quality_score: input.qualityScore ?? null,
+      strategy_json: input.strategyJson ?? null,
+      validation_json: input.validationJson ?? null,
+      generation_version: input.generationVersion ?? null,
       created_by: userData.user?.id ?? null,
     })
     .select('*')
