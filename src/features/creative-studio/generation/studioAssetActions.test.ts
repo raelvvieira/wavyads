@@ -333,9 +333,10 @@ describe('factorCriativo', () => {
     expect(primeira.groupId).toBe('grupo-1');
   });
 
-  it('grava o ângulo V2 em strategic_angle E em factor_axis, com a nota', async () => {
-    // §20: `factor_axis` continua preenchido para o badge das telas antigas
-    // seguir funcionando durante a migração.
+  it('grava o ângulo em strategic_angle e deixa factor_axis NULO', async () => {
+    // `factor_axis` tem um CHECK que só conhece os cinco eixos da V1.
+    // Gravar um ângulo V2 ali derrubava os CINCO inserts de uma vez (23514)
+    // em qualquer banco onde a migração da V2 ainda não tivesse rodado.
     const deps = depsComGrupo();
     (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/v.png' }, error: null });
 
@@ -345,24 +346,40 @@ describe('factorCriativo', () => {
     expect(linhas.map((l: any) => l.strategicAngle)).toEqual(
       ['problem', 'mechanism', 'proof', 'contrast', 'identity'],
     );
-    expect(linhas.map((l: any) => l.factorAxis)).toEqual(
-      ['problem', 'mechanism', 'proof', 'contrast', 'identity'],
-    );
+    expect(linhas.map((l: any) => l.factorAxis)).toEqual([null, null, null, null, null]);
     expect((linhas[0] as any).qualityScore).toBe(8.6);
     expect((linhas[0] as any).generationVersion).toBe('factor-v2');
   });
 
-  it('reanexa a safe zone autoritativa em cada prompt', async () => {
-    // §12 pede a proteção dupla: `promptCompleto` é texto livre do modelo,
-    // não há como validar que ele copiou o bloco de verdade.
+  it('a estratégia também vai em metadata — é o que sobrevive sem a migração', async () => {
+    // As colunas dedicadas podem não existir; `metadata` é jsonb e sempre
+    // existe. É de lá que o rótulo do card sai quando o banco está atrasado.
+    const deps = depsComGrupo();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/v.png' }, error: null });
+
+    await createStudioAssetActions(deps).factorCriativo({ base: assetBase({ id: 'b' }), variations: CINCO });
+
+    const linha: any = [...deps.linhas.values()][0];
+    expect(linha.metadata.strategy.angle).toBe('problem');
+    expect(linha.metadata.copy.title).toBe('Título 1');
+  });
+
+  it('o prompt sai do montador do Studio, com a safe zone UMA vez só', async () => {
+    // O motor não escreve mais o prompt — ele devolve tese, copy e direção
+    // visual, e o prompt é montado aqui pelo mesmo `buildCreativePrompt` da
+    // geração normal. Antes o bloco de safe zone entrava duas vezes: o
+    // modelo copiava um para dentro do `promptCompleto` e o cliente
+    // reanexava outro, inflando todo prompt.
     const deps = depsComGrupo();
     (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/v.png' }, error: null });
 
     await createStudioAssetActions(deps).factorCriativo({ base: assetBase({ id: 'b' }), variations: CINCO });
 
     const linha = [...deps.linhas.values()][0];
-    expect(linha.prompt).toContain('PROMPT DA VARIACAO 1');
-    expect(linha.prompt).toContain('[SAFE ZONE]');
+    expect(linha.prompt.match(/\[SAFE ZONE\]/g)).toHaveLength(1);
+    // A tese e a copy da variação chegaram ao prompt.
+    expect(linha.prompt).toContain('tese 1');
+    expect(linha.prompt).toContain('Título 1');
   });
 
   it('falha de UM slot não derruba os outros quatro', async () => {

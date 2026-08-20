@@ -518,48 +518,22 @@ describe('CriativoStudioV2Page', () => {
     }));
   });
 
-  it('Fator Criativo abre o diálogo e lê a oferta da arte — não avisa mais "em breve"', async () => {
-    montar();
-    await waitFor(() => expect(prontos().length).toBeGreaterThan(0));
-
-    fireEvent.click(prontos()[0].querySelector('.studio-asset-surface')!);
-    const painel = screen.getByRole('complementary', { name: /inspetor/i });
-    await act(async () => {
-      fireEvent.click([...painel.querySelectorAll('.studio-inspector-action')].find((b) => b.textContent === 'Fator Criativo')!);
-    });
-
-    expect(analyzeOffer).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy());
-    expect(screen.getByDisplayValue('Instalação de película')).toBeTruthy();
-    expect(toast).not.toHaveBeenCalledWith(expect.objectContaining({
-      title: 'Fator Criativo chega em breve',
-    }));
+  const variacaoFator = (slot: number, angle: string) => ({
+    slot, label: `V${slot}`,
+    strategy: { angle, angleSubtype: 's', strategicThesis: `t${slot}` },
+    audience: { persona: 'p', awarenessLevel: 'n' },
+    execution: { dominantEmotion: 'e' },
+    copy: { title: `T${slot}`, cta: 'CTA' },
+    visualDirection: { mainSubject: 'm', composition: 'c', mood: 'mo' },
+    validation: { changedDimensions: ['thesis', 'message', 'visual'], qualityScore: 8.5 },
   });
 
-  it('confirmar o Fator gera as 5 variações e elas entram no canvas', async () => {
-    const variacao = (slot: number, angle: string) => ({
-      slot, label: `V${slot}`,
-      strategy: {
-        angle, angleSubtype: 's', angleViability: 'valid', strategicThesis: `t${slot}`,
-        whySelected: 'w', recognition: 'r', beliefBefore: 'a', beliefAfter: 'b', reasonToBelieve: 'c',
-      },
-      audience: { persona: 'p', awarenessLevel: 'n', situation: 's' },
-      execution: { dominantEmotion: 'e', offerFrame: 'f', argumentStructure: ['x'], visualHookType: 'h' },
-      copy: { title: `T${slot}`, cta: 'CTA' },
-      visualDirection: {
-        dominantHook: 'h', mainSubject: 'm', composition: 'c', hierarchy: ['1'], mood: 'mo',
-        relationshipToThesis: 'r', differencesFromOriginal: ['d'], differencesFromOtherVariations: ['o'],
-      },
-      validation: {
-        supportedFactsUsed: [], unsupportedClaims: [],
-        changedDimensions: ['thesis', 'message', 'visual'], scores: {}, qualityScore: 8.5,
-      },
-      promptCompleto: `PROMPT ${slot}`,
-    });
+  function prepararFator() {
     generateFactorVariations.mockResolvedValue({
+      engineVersion: 'factor-v2',
       originalDiagnosis: null,
       strategySummary: {},
-      variations: ['problem', 'mechanism', 'proof', 'contrast', 'ease'].map((a, i) => variacao(i + 1, a)),
+      variations: ['problem', 'mechanism', 'proof', 'contrast', 'ease'].map((a, i) => variacaoFator(i + 1, a)),
     });
     createCreativeAsset.mockImplementation(async (input: any) => ({
       id: `fator-${input.strategicAngle}`, ...input, status: 'generating',
@@ -568,24 +542,71 @@ describe('CriativoStudioV2Page', () => {
     }));
     invoke.mockResolvedValue({ data: { imageUrl: 'https://x/fator.png' }, error: null });
     updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({ id, ...patch }));
+  }
 
-    montar();
-    await waitFor(() => expect(prontos().length).toBeGreaterThan(0));
+  async function acionarNoInspetor(rotulo: string) {
     fireEvent.click(prontos()[0].querySelector('.studio-asset-surface')!);
     const painel = screen.getByRole('complementary', { name: /inspetor/i });
     await act(async () => {
-      fireEvent.click([...painel.querySelectorAll('.studio-inspector-action')].find((b) => b.textContent === 'Fator Criativo')!);
+      fireEvent.click([...painel.querySelectorAll('.studio-inspector-action')].find((b) => b.textContent === rotulo)!);
     });
+  }
+
+  it('Fator Criativo gera DIRETO — um clique, sem formulário no caminho', async () => {
+    // O formulário era um pedágio: exigia a descrição da oferta preenchida à
+    // mão antes de liberar o botão, e quando a leitura automática falhava o
+    // usuário ficava sem saída. Agora o clique gera, e a própria função
+    // deduz a oferta da arte.
+    prepararFator();
+    montar();
+    await waitFor(() => expect(prontos().length).toBeGreaterThan(0));
+
+    await acionarNoInspetor('Fator Criativo');
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(analyzeOffer).not.toHaveBeenCalled();
+    expect(generateFactorVariations).toHaveBeenCalledWith(expect.objectContaining({
+      mode: 'automatic', offerIntelligence: null,
+    }));
+    expect(createCreativeAsset).toHaveBeenCalledTimes(5);
+    expect(createCreativeAsset).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'factor', strategicAngle: 'problem', generationVersion: 'factor-v2',
+    }));
+  });
+
+  it('"com briefing" continua abrindo o formulário e lendo a oferta', async () => {
+    // O caminho de exceção: informar prova real ou fixar ângulos.
+    prepararFator();
+    montar();
+    await waitFor(() => expect(prontos().length).toBeGreaterThan(0));
+
+    await acionarNoInspetor('Fator Criativo com briefing');
+
+    expect(analyzeOffer).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy());
+    expect(screen.getByDisplayValue('Instalação de película')).toBeTruthy();
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Gerar 5 variações/ }));
     });
-
-    expect(generateFactorVariations).toHaveBeenCalledWith(expect.objectContaining({ mode: 'automatic' }));
+    expect(generateFactorVariations).toHaveBeenCalledTimes(1);
     expect(createCreativeAsset).toHaveBeenCalledTimes(5);
-    expect(createCreativeAsset).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'factor', strategicAngle: 'problem', generationVersion: 'factor-v2',
+  });
+
+  it('quando as 5 falham, o toast NÃO diz que ficou pronto', async () => {
+    // `runGeneration` nunca rejeita — ela grava `failed` na linha. Sem
+    // contar as prontas, cinco cards vermelhos vinham com um toast verde
+    // dizendo "Fator Criativo pronto".
+    prepararFator();
+    invoke.mockResolvedValue({ data: null, error: new Error('provedor recusou') });
+    montar();
+    await waitFor(() => expect(prontos().length).toBeGreaterThan(0));
+
+    await acionarNoInspetor('Fator Criativo');
+
+    expect(toast).not.toHaveBeenCalledWith(expect.objectContaining({ title: 'Fator Criativo pronto' }));
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({
+      title: 'Nenhuma das 5 variações foi gerada', variant: 'destructive',
     }));
   });
 

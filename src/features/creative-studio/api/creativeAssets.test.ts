@@ -36,7 +36,7 @@ vi.mock('@/integrations/supabase/client', () => ({
   },
 }));
 
-const { listCreativeAssets, updateCreativeAsset, deleteCreativeAsset } = await import('./creativeAssets');
+const { listCreativeAssets, updateCreativeAsset, deleteCreativeAsset, createCreativeAsset } = await import('./creativeAssets');
 
 const linhaBase = {
   id: 'a1', project_id: 'p1', client_id: null, type: 'original', status: 'ready',
@@ -107,5 +107,59 @@ describe('deleteCreativeAsset', () => {
   it('propaga erro do banco', async () => {
     respostas = [{ data: null, error: new Error('RLS negou') }];
     await expect(deleteCreativeAsset('a1')).rejects.toThrow('RLS negou');
+  });
+});
+
+describe('createCreativeAsset — banco sem a migração do Fator V2', () => {
+  const entradaV2 = {
+    projectId: 'p1',
+    type: 'factor' as const,
+    strategicAngle: 'cost_of_inaction',
+    qualityScore: 8.7,
+    strategyJson: { strategy: { angle: 'cost_of_inaction' } },
+    generationVersion: 'factor-v2',
+    metadata: { strategy: { angle: 'cost_of_inaction' } },
+  };
+
+  it('coluna inexistente: regrava sem os campos V2 em vez de perder a arte', async () => {
+    // A migração vive no repositório, mas quem a aplica no banco é um passo
+    // de deploy separado. Com o banco atrasado, os CINCO inserts do lote
+    // morriam juntos — depois de a geração de texto já ter sido paga, e sem
+    // deixar um único card na tela.
+    respostas = [
+      { data: null, error: { code: 'PGRST204', message: "Could not find the 'strategic_angle' column" } },
+      { data: { ...linhaBase, id: 'salvo' }, error: null },
+    ];
+
+    const arte = await createCreativeAsset(entradaV2);
+
+    expect(arte.id).toBe('salvo');
+    const inserts = chamadas.filter((c) => c.op === 'insert');
+    expect(inserts).toHaveLength(2);
+    // A segunda tentativa larga as colunas novas...
+    expect(inserts[1].args[0]).not.toHaveProperty('strategic_angle');
+    expect(inserts[1].args[0]).not.toHaveProperty('quality_score');
+    // ...mas a estratégia sobrevive em `metadata`, que é jsonb e sempre existe.
+    expect((inserts[1].args[0] as any).metadata.strategy.angle).toBe('cost_of_inaction');
+  });
+
+  it('erro que NÃO é de coluna sobe — RLS e CHECK não podem ser mascarados', async () => {
+    respostas = [
+      { data: null, error: { code: '42501', message: 'violates row-level security policy' } },
+    ];
+
+    await expect(createCreativeAsset(entradaV2)).rejects.toMatchObject({ code: '42501' });
+    expect(chamadas.filter((c) => c.op === 'insert')).toHaveLength(1);
+  });
+
+  it('banco em dia: um insert só, com as colunas novas', async () => {
+    respostas = [{ data: { ...linhaBase, id: 'direto' }, error: null }];
+
+    const arte = await createCreativeAsset(entradaV2);
+
+    expect(arte.id).toBe('direto');
+    const inserts = chamadas.filter((c) => c.op === 'insert');
+    expect(inserts).toHaveLength(1);
+    expect((inserts[0].args[0] as any).strategic_angle).toBe('cost_of_inaction');
   });
 });

@@ -96,9 +96,13 @@ describe('FatorCriativoDialog', () => {
     expect(screen.getByRole('button', { name: 'Identidade' })).toBeDisabled();
   });
 
-  it('sem descrever a oferta, não deixa gerar', () => {
+  it('oferta em branco NÃO trava o botão — quem deduz é o servidor', () => {
+    // Regressão real: quando a leitura da oferta falhava, o formulário vinha
+    // vazio e o botão ficava desabilitado em "Descreva a oferta para
+    // continuar". O usuário ficava sem saída num recurso que devia ser de um
+    // clique. Sem briefing, a própria função deduz a oferta da arte.
     montar({ briefing: emptyOfferIntelligence() });
-    expect(screen.getByRole('button', { name: /Gerar 5 variações/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Gerar 5 variações/ })).not.toBeDisabled();
   });
 
   it('falha na análise mostra o motivo e ainda deixa preencher à mão', () => {

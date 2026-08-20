@@ -114,8 +114,10 @@ function Formulario({
       return [...atual, a];
     });
 
-  const podeGerar = !busy && briefing.offerDescription.trim().length > 0
-    && (modo === 'automatic' || angulos.length > 0);
+  // Sem exigir a oferta preenchida: quando ela vem vazia, a própria função
+  // deduz o briefing da arte. Travar o botão aqui transformava uma leitura
+  // de oferta que falhou num beco sem saída.
+  const podeGerar = !busy && (modo === 'automatic' || angulos.length > 0);
 
   return (
     <div className="mt-2 space-y-5">
@@ -235,7 +237,7 @@ function Formulario({
 
       <div className="flex items-center justify-between gap-3 border-t border-white/10 pt-4">
         <span className="text-xs text-muted-foreground">
-          {podeGerar ? '5 variações, uma por tese' : 'Descreva a oferta para continuar'}
+          {podeGerar ? '5 variações, uma por tese' : 'Escolha ao menos um ângulo'}
         </span>
         <button
           type="button"

@@ -1,6 +1,7 @@
 import { buildCreativePrompt, buildSafeZoneBlock } from '../lib/promptBuilder';
 import { buildAvatarPrompt } from '../lib/avatarPromptBuilder';
 import type { AvatarPersona } from '../types/avatarPersona';
+import type { FactorVariation } from '../types/factorCreative';
 import { getBackendAspectFromSelectedRatio } from '../constants/formats';
 import { IMAGE_GENERATION_MODEL } from './capabilities';
 import type { BackendAspect, CreativeAspectRatio, CreativeResolution } from '../types/creative';
@@ -207,6 +208,95 @@ export function buildResizeRequest(input: { originalPrompt: string }): Generatio
       productImages: [],
       logoImage: null,
       storyReference: null,
+    },
+  };
+}
+
+/**
+ * Uma variação do Fator Criativo virando prompt de imagem.
+ *
+ * Este montador existe porque o motor DEIXOU de escrever o prompt. Antes,
+ * o modelo devolvia o `promptCompleto` de cada uma das cinco — o prompt
+ * inteiro, com safe zone, tipografia e sistema de design — o que passava de
+ * 20k tokens de saída e estourava o tempo antes de entregar. Agora ele
+ * devolve só a tese, a copy e a direção visual, e o prompt sai daqui.
+ *
+ * Duas consequências que valem mais que a velocidade: a arte do Fator passa
+ * pelo MESMO `buildCreativePrompt` da geração normal — mesma safe zone,
+ * mesma escala tipográfica, mesmo sistema — e a safe zone deixa de ser
+ * duplicada, porque quem a injeta agora é um só.
+ */
+export function buildFactorVariationRequest(input: {
+  variation: FactorVariation;
+  /** Prompt da arte-base: é dele que sai o DNA visual a preservar. */
+  originalPrompt: string;
+  aspectRatio: CreativeAspectRatio;
+  resolution?: CreativeResolution | null;
+  language?: string;
+  logoImageUrl?: string | null;
+  productImageUrls?: string[];
+  /** A base, quando o alvo é quadrado: mesma verdade visual do Story. */
+  storyReferenceUrl?: string | null;
+}): GenerationRequest {
+  const v = input.variation;
+  const backendAspect = getBackendAspectFromSelectedRatio(input.aspectRatio);
+  const produtos = input.productImageUrls ?? [];
+
+  // O contexto carrega o DNA da arte aprovada E a tese nova. Sem o original
+  // a variação vira outra marca; sem a tese vira a mesma peça repintada.
+  const contexto = [
+    'PEÇA APROVADA QUE SERVE DE BASE VISUAL (preserve marca, paleta e tratamento):',
+    input.originalPrompt.trim().slice(0, 6000),
+    '',
+    `NOVA TESE (${v.strategy.angle} · ${v.strategy.angleSubtype}): ${v.strategy.strategicThesis}`,
+    `PARA QUEM: ${v.audience.persona} — consciência ${v.audience.awarenessLevel}.`,
+    `EMOÇÃO DOMINANTE: ${v.execution.dominantEmotion}.`,
+    '',
+    `SUJEITO PRINCIPAL: ${v.visualDirection.mainSubject}`,
+    `COMPOSIÇÃO: ${v.visualDirection.composition}`,
+    v.visualDirection.differencesFromOriginal?.length
+      ? `O QUE MUDA EM RELAÇÃO À PEÇA BASE: ${v.visualDirection.differencesFromOriginal.join('; ')}`
+      : '',
+  ].filter(Boolean).join('\n');
+
+  const prompt = buildCreativePrompt({
+    aspect: backendAspect,
+    aspectRatio: input.aspectRatio,
+    resolution: input.resolution ?? '2K',
+    language: input.language ?? 'pt-BR',
+    businessContext: contexto,
+    productImageCount: produtos.length,
+    hasLogo: !!input.logoImageUrl,
+    hasStoryReference: backendAspect === 'square' && !!input.storyReferenceUrl,
+    // A copy da variação é texto FINAL escrito pelo estrategista, com papel
+    // definido por bloco — é exatamente o que o modo `ai` representa.
+    copy: {
+      source: 'ai',
+      blocks: {
+        label: v.copy.label,
+        titulo: v.copy.title,
+        subtitulo: v.copy.subtitle,
+        dados: v.copy.data?.join(' · ') || v.copy.price,
+        cta: v.copy.cta,
+      },
+    },
+    mood: {
+      adjetivos: [v.visualDirection.mood, v.execution.dominantEmotion].filter(Boolean),
+      referencias: [],
+      evita: [],
+    },
+  });
+
+  return {
+    prompt,
+    body: {
+      prompt,
+      aspectRatio: backendAspect,
+      formatRatio: input.aspectRatio,
+      model: IMAGE_GENERATION_MODEL.id,
+      productImages: produtos,
+      logoImage: input.logoImageUrl ?? null,
+      storyReference: backendAspect === 'square' ? (input.storyReferenceUrl ?? null) : null,
     },
   };
 }

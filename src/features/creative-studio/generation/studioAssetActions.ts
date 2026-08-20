@@ -1,6 +1,7 @@
 import type { CreativeAsset, CreativeAspectRatio, CreativeResolution } from '../types/creative';
 import { IMAGE_GENERATION_MODEL, IMAGE_EDIT_MODEL } from './capabilities';
 import {
+  buildFactorVariationRequest,
   buildAvatarRequest,
   buildEditRequest,
   buildGenerationRequest,
@@ -9,7 +10,7 @@ import {
 } from './generationRequests';
 import type { AvatarPersona } from '../types/avatarPersona';
 import type { FactorCreativeOutput, FactorVariation } from '../types/factorCreative';
-import { buildSafeZoneBlock } from '../lib/promptBuilder';
+
 
 /**
  * Orquestra gerar/editar/redimensionar/retentar contra as edge functions
@@ -155,10 +156,6 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
       const projectId = await deps.ensureProjectId();
       const ratio = (base.aspectRatio as CreativeAspectRatio) || '4:5';
       const backendAspect = ratio === '1:1' ? 'square' : 'story';
-      // Cinto de segurança da §12: o bloco autoritativo é reanexado a cada
-      // prompt aqui, porque `promptCompleto` é texto livre do modelo e não
-      // há como validar que ele copiou o bloco de verdade.
-      const safeZone = buildSafeZoneBlock(ratio);
 
       // O grupo é o que torna as 5 irmãs, não cinco artes soltas. Falhar
       // aqui não impede a geração — só perde o agrupamento.
@@ -180,17 +177,32 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
         groupId = null;
       }
 
+      // Cada variação vira prompt pelo mesmo montador da geração normal.
+      const pedidos = variations.map((v) => buildFactorVariationRequest({
+        variation: v,
+        originalPrompt: base.prompt ?? '',
+        aspectRatio: ratio,
+        resolution: base.resolution as CreativeResolution | null,
+        logoImageUrl: base.metadata?.logoImage ?? null,
+        productImageUrls: base.metadata?.productImages ?? [],
+        storyReferenceUrl: base.url,
+      }));
+
       // As 5 linhas nascem ANTES de qualquer imagem: é o que faz o lote
       // inteiro aparecer no canvas de uma vez, gerando de verdade.
-      const linhas = await Promise.all(variations.map((v) => deps.createAsset({
+      const linhas = await Promise.all(variations.map((v, i) => deps.createAsset({
         projectId,
         clientId: deps.clientId,
         type: 'factor',
         status: 'generating',
         parentAssetId: base.id,
         groupId,
-        // §20: `factor_axis` segue preenchido, agora com o ângulo V2.
-        factorAxis: v.strategy.angle,
+        // `factor_axis` fica NULO nas linhas V2. O CHECK dessa coluna só
+        // conhece os cinco eixos da V1, então gravar um ângulo novo aí
+        // derrubava o insert inteiro (23514) em qualquer banco onde a
+        // migração da V2 ainda não tivesse rodado. O rótulo sai de
+        // `strategic_angle`, com `metadata.strategy` como última queda.
+        factorAxis: null,
         strategicAngle: v.strategy.angle,
         angleSubtype: v.strategy.angleSubtype,
         strategicThesis: v.strategy.strategicThesis,
@@ -202,30 +214,35 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
         generationVersion: 'factor-v2',
         aspectRatio: ratio,
         resolution: base.resolution,
-        prompt: `${v.promptCompleto}\n\n${safeZone}`,
+        prompt: pedidos[i].prompt,
         model: IMAGE_GENERATION_MODEL.id,
         filename: v.label,
+        // A estratégia inteira também vive aqui. `metadata` é jsonb e
+        // sempre existe — é o que mantém a arte legível mesmo quando as
+        // colunas dedicadas não existirem no banco.
         metadata: {
           slot: v.slot,
           label: v.label,
           copy: v.copy,
+          strategy: v.strategy,
+          audience: v.audience,
+          execution: v.execution,
           visualDirection: v.visualDirection,
-          promptCompleto: v.promptCompleto,
+          validation: v.validation,
+          logoImage: base.metadata?.logoImage ?? null,
+          productImages: base.metadata?.productImages ?? [],
         },
       })));
 
       // Falha ISOLADA por slot: uma variação recusada não derruba as outras
       // quatro, e o card dela fica `failed` com o botão de retentar.
-      return Promise.all(linhas.map(async (linha) => {
+      return Promise.all(linhas.map(async (linha, i) => {
         const pronta = await runGeneration(deps, linha, {
+          ...pedidos[i].body,
           prompt: linha.prompt,
           aspectRatio: backendAspect,
           formatRatio: ratio,
-          model: IMAGE_GENERATION_MODEL.id,
           isVariation: true,
-          productImages: base.metadata?.productImages ?? [],
-          logoImage: base.metadata?.logoImage ?? null,
-          storyReference: backendAspect === 'square' ? base.url : null,
         });
         onSlotDone?.(pronta);
         return pronta;
