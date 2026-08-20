@@ -13,6 +13,7 @@ import {
 import { CreativeStudioShell } from '@/features/creative-studio/shell/CreativeStudioShell';
 import { StudioPreviewBanner } from '@/features/creative-studio/shell/StudioPreviewBanner';
 import {
+  createAssetGroup,
   createCreativeAsset,
   deleteCreativeAsset,
   listCreativeAssets,
@@ -20,6 +21,9 @@ import {
 } from '@/features/creative-studio/api/creativeAssets';
 import { listCopyBank, saveCopyToBank, type CopyBankEntry } from '@/features/creative-studio/api/copyBank';
 import { uploadDataUrlToCreativeStorage } from '@/features/creative-studio/api/storageUpload';
+import { analyzeOffer, generateFactorVariations } from '@/features/creative-studio/api/factorCreative';
+import { FatorCriativoDialog, type FatorCriativoSubmit } from '@/features/creative-studio/factor/FatorCriativoDialog';
+import type { OfferIntelligence } from '@/features/creative-studio/types/factorCreative';
 import {
   createProject,
   listRecentProjects,
@@ -28,6 +32,7 @@ import {
 } from '@/features/creative-studio/api/projectRepository';
 import { libraryAssets, visibleCanvasAssets, type SelectionAction } from '@/features/creative-studio/state/canvasSelectors';
 import { childrenByParentId } from '@/features/creative-studio/state/lineage';
+import { buildSafeZoneBlock } from '@/features/creative-studio/lib/promptBuilder';
 import { createStudioAssetActions, type StudioAssetActionsDeps } from '@/features/creative-studio/generation/studioAssetActions';
 import { IMAGE_GENERATION_MODEL } from '@/features/creative-studio/generation/capabilities';
 import type { CreativeAsset, CreativeAspectRatio, CreativeResolution } from '@/features/creative-studio/types/creative';
@@ -37,9 +42,8 @@ import type { AvatarPersona } from '@/features/creative-studio/types/avatarPerso
 /**
  * Criativo Studio V2 — funcional.
  *
- * Mostra o acervo REAL e agora também GERA, EDITA e REDIMENSIONA de
- * verdade, chamando as mesmas edge functions do Studio atual. Fator
- * Criativo continua no Studio atual — ligá-lo é a próxima fatia.
+ * Mostra o acervo REAL e GERA, EDITA, REDIMENSIONA e aplica FATOR CRIATIVO
+ * de verdade, chamando as mesmas edge functions do Studio atual.
  *
  * Cada ação grava o ciclo `generating` → `ready`/`failed` no banco antes de
  * atualizar a tela: o card aparece gerando de verdade, e uma falha do
@@ -63,6 +67,13 @@ export default function CriativoStudioV2Page() {
   const [resolution, setResolution] = useState<CreativeResolution>('2K');
   const [modelId, setModelId] = useState<string>(IMAGE_GENERATION_MODEL.id);
   const [attachments, setAttachments] = useState<DockAttachment[]>([]);
+
+  // Fator Criativo: a arte-base fica guardada enquanto o diálogo decide o
+  // briefing; a análise roda assim que o diálogo abre.
+  const [fatorBase, setFatorBase] = useState<CreativeAsset | null>(null);
+  const [fatorBriefing, setFatorBriefing] = useState<OfferIntelligence | null>(null);
+  const [fatorAnalisando, setFatorAnalisando] = useState(false);
+  const [fatorErroAnalise, setFatorErroAnalise] = useState<string | null>(null);
 
   // Confirmação de apagar arte: abrir o diálogo não apaga nada — só a
   // confirmação chama `deleteCreativeAsset`.
@@ -243,6 +254,7 @@ export default function CriativoStudioV2Page() {
       extractErrorMessage: extractFunctionErrorMessage,
       createAsset: createCreativeAsset,
       updateAsset: updateCreativeAsset,
+      createGroup: createAssetGroup,
       recordUsage: (usageKey) => { void recordAiUsage(usageKey as AiUsageType); },
     };
     return createStudioAssetActions(deps);
@@ -255,13 +267,6 @@ export default function CriativoStudioV2Page() {
   // mensagem só dele.
   const avisarIndisponivel = useCallback((mensagem: string) => {
     toast({ title: 'Ainda não disponível', description: mensagem });
-  }, []);
-
-  const avisarFatorCriativo = useCallback(() => {
-    toast({
-      title: 'Fator Criativo chega em breve',
-      description: 'Vai ganhar um fluxo de ativação próprio nesta versão — por enquanto continua no Studio atual.',
-    });
   }, []);
 
   const voltarAoAtual = useCallback(() => navigate('/criativo-studio'), [navigate]);
@@ -347,6 +352,67 @@ export default function CriativoStudioV2Page() {
       setBusy(false);
     }
   }, [busy, actions, upsertAsset]);
+
+  // Abrir o diálogo já dispara a leitura da oferta: o usuário revisa um
+  // briefing pronto em vez de encarar um formulário em branco.
+  const abrirFator = useCallback(async (alvo: CreativeAsset) => {
+    setFatorBase(alvo);
+    setFatorBriefing(null);
+    setFatorErroAnalise(null);
+    setFatorAnalisando(true);
+    try {
+      const { offerIntelligence } = await analyzeOffer({
+        originalPrompt: alvo.prompt ?? '',
+        copy: (alvo.metadata as any)?.copy ?? null,
+        businessContext: alvo.prompt ?? null,
+        clientName,
+        language: 'pt-BR',
+      });
+      setFatorBriefing(offerIntelligence);
+    } catch (e: any) {
+      // Falhar aqui não impede o fluxo — o diálogo cai no formulário vazio
+      // com o motivo à vista.
+      setFatorErroAnalise(e?.message ?? 'erro desconhecido');
+    } finally {
+      setFatorAnalisando(false);
+    }
+  }, [clientName]);
+
+  const handleFatorSubmit = useCallback(async (entrada: FatorCriativoSubmit) => {
+    const alvo = fatorBase;
+    if (!alvo || busy) return;
+    setFatorBase(null); // fecha o diálogo: o progresso vive no canvas
+    setBusy(true);
+    try {
+      const ratio = (alvo.aspectRatio as CreativeAspectRatio) || '4:5';
+      toast({ title: 'Montando as 5 teses…', description: 'A escrita estratégica leva alguns instantes.' });
+      const saida = await generateFactorVariations({
+        originalPrompt: alvo.prompt ?? '',
+        copy: (alvo.metadata as any)?.copy ?? null,
+        offerIntelligence: entrada.offerIntelligence,
+        mode: entrada.mode,
+        selectedAngles: entrada.selectedAngles,
+        aspect: ratio === '1:1' ? 'square' : 'story',
+        aspectRatio: ratio,
+        safeZoneBlock: buildSafeZoneBlock(ratio),
+      });
+
+      toast({ title: '5 variações planejadas', description: 'Gerando as artes…' });
+      await actions.factorCriativo({
+        base: alvo,
+        variations: saida.variations,
+        diagnosis: saida.originalDiagnosis,
+        // Cada slot resolve sozinho no canvas, em vez de tudo aparecer no fim.
+        onSlotDone: (asset) => upsertAsset(asset),
+      });
+      toast({ title: 'Fator Criativo pronto' });
+    } catch (e: any) {
+      toast({ title: 'Erro no Fator Criativo', description: e?.message, variant: 'destructive' });
+    } finally {
+      setBusy(false);
+      void carregar();
+    }
+  }, [fatorBase, busy, actions, upsertAsset, carregar]);
 
   const hasCopy = attachments.some((a) => a.kind === 'copy');
 
@@ -457,7 +523,7 @@ export default function CriativoStudioV2Page() {
     }
 
     if (acao === 'factor') {
-      avisarFatorCriativo();
+      void abrirFator(alvo);
       return;
     }
 
@@ -483,7 +549,7 @@ export default function CriativoStudioV2Page() {
     }
 
     avisarIndisponivel('Esta ação ainda não está disponível nesta versão.');
-  }, [actions, upsertAsset, avisarIndisponivel, avisarFatorCriativo, handleAttach]);
+  }, [actions, upsertAsset, avisarIndisponivel, abrirFator, handleAttach]);
 
   const filhosDoAlvo = useMemo(
     () => (deleteTarget ? childrenByParentId(assets).get(deleteTarget.id)?.length ?? 0 : 0),
@@ -558,6 +624,16 @@ export default function CriativoStudioV2Page() {
         avatarLibrary={avatarLibrary}
         onGenerateAvatar={handleGenerateAvatar}
         onAssetAction={handleAssetAction}
+      />
+
+      <FatorCriativoDialog
+        open={!!fatorBase}
+        briefing={fatorBriefing}
+        analisando={fatorAnalisando}
+        erroAnalise={fatorErroAnalise}
+        busy={busy}
+        onClose={() => setFatorBase(null)}
+        onSubmit={handleFatorSubmit}
       />
 
       <AlertDialog

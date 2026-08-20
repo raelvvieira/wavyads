@@ -14,11 +14,13 @@ const listCreativeAssets = vi.fn();
 const createCreativeAsset = vi.fn();
 const updateCreativeAsset = vi.fn();
 const deleteCreativeAsset = vi.fn();
+const createAssetGroup = vi.fn();
 vi.mock('@/features/creative-studio/api/creativeAssets', () => ({
   listCreativeAssets: (...a: any[]) => listCreativeAssets(...a),
   createCreativeAsset: (...a: any[]) => createCreativeAsset(...a),
   updateCreativeAsset: (...a: any[]) => updateCreativeAsset(...a),
   deleteCreativeAsset: (...a: any[]) => deleteCreativeAsset(...a),
+  createAssetGroup: (...a: any[]) => createAssetGroup(...a),
 }));
 
 const listRecentProjects = vi.fn();
@@ -50,6 +52,13 @@ vi.mock('@/hooks/use-toast', () => ({ toast: (...a: any[]) => toast(...a) }));
 
 const useClients = vi.fn();
 vi.mock('@/hooks/useClients', () => ({ useClients: (...a: any[]) => useClients(...a) }));
+
+const analyzeOffer = vi.fn();
+const generateFactorVariations = vi.fn();
+vi.mock('@/features/creative-studio/api/factorCreative', () => ({
+  analyzeOffer: (...a: any[]) => analyzeOffer(...a),
+  generateFactorVariations: (...a: any[]) => generateFactorVariations(...a),
+}));
 
 const listCopyBank = vi.fn();
 const saveCopyToBank = vi.fn();
@@ -89,7 +98,16 @@ describe('CriativoStudioV2Page', () => {
     // Só entra em jogo quando uma geração de fato precisa de um projeto —
     // nenhum teste depende do id em si, exceto quando sobrescrito localmente.
     createProject.mockResolvedValue({ id: 'proj-1', title: 'Novo projeto' });
+    createAssetGroup.mockResolvedValue({ id: 'grupo-fator' });
     listCopyBank.mockResolvedValue([]);
+    analyzeOffer.mockResolvedValue({
+      offerIntelligence: {
+        productName: 'Películas', category: 'serviço', offerDescription: 'Instalação de película',
+        audience: [], customerSituations: [], pains: [], desires: [], objections: [],
+        differentiators: [], proofs: [], callToAction: 'Fale conosco', prohibitedClaims: [],
+      },
+      originalDiagnosis: null,
+    });
     saveCopyToBank.mockResolvedValue(null);
     useClients.mockReturnValue({ data: [{ id: 'c1', name: 'Boutique Aurora' }, { id: 'c2', name: 'Loja do João' }] });
   });
@@ -107,7 +125,10 @@ describe('CriativoStudioV2Page', () => {
   it('diz na cara que é prévia, mas nomeia o que já funciona', async () => {
     montar();
     await waitFor(() => expect(screen.getByText('Prévia')).toBeTruthy());
-    expect(screen.getByText(/Gerar, editar e redimensionar já funcionam aqui/)).toBeTruthy();
+    // O aviso lista só o que de fato funciona. O Fator Criativo entrou nessa
+    // lista quando deixou de ser um toast de "em breve" — um aviso de prévia
+    // desatualizado ensina o usuário a não confiar no que a tela diz de si.
+    expect(screen.getByText(/o Fator Criativo já funcionam aqui/)).toBeTruthy();
   });
 
   it('a biblioteca de referências mostra insumo, que o canvas esconde', async () => {
@@ -497,19 +518,74 @@ describe('CriativoStudioV2Page', () => {
     }));
   });
 
-  it('Fator Criativo tem a própria mensagem, sobre o próprio fluxo futuro', async () => {
+  it('Fator Criativo abre o diálogo e lê a oferta da arte — não avisa mais "em breve"', async () => {
     montar();
     await waitFor(() => expect(prontos().length).toBeGreaterThan(0));
 
     fireEvent.click(prontos()[0].querySelector('.studio-asset-surface')!);
-    // "Fator Criativo" também existe como ação rápida do card, no hover —
-    // este teste fala do botão do inspetor.
     const painel = screen.getByRole('complementary', { name: /inspetor/i });
-    fireEvent.click([...painel.querySelectorAll('.studio-inspector-action')].find((b) => b.textContent === 'Fator Criativo')!);
+    await act(async () => {
+      fireEvent.click([...painel.querySelectorAll('.studio-inspector-action')].find((b) => b.textContent === 'Fator Criativo')!);
+    });
 
-    expect(toast).toHaveBeenLastCalledWith(expect.objectContaining({
+    expect(analyzeOffer).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy());
+    expect(screen.getByDisplayValue('Instalação de película')).toBeTruthy();
+    expect(toast).not.toHaveBeenCalledWith(expect.objectContaining({
       title: 'Fator Criativo chega em breve',
-      description: expect.stringContaining('fluxo de ativação próprio'),
+    }));
+  });
+
+  it('confirmar o Fator gera as 5 variações e elas entram no canvas', async () => {
+    const variacao = (slot: number, angle: string) => ({
+      slot, label: `V${slot}`,
+      strategy: {
+        angle, angleSubtype: 's', angleViability: 'valid', strategicThesis: `t${slot}`,
+        whySelected: 'w', recognition: 'r', beliefBefore: 'a', beliefAfter: 'b', reasonToBelieve: 'c',
+      },
+      audience: { persona: 'p', awarenessLevel: 'n', situation: 's' },
+      execution: { dominantEmotion: 'e', offerFrame: 'f', argumentStructure: ['x'], visualHookType: 'h' },
+      copy: { title: `T${slot}`, cta: 'CTA' },
+      visualDirection: {
+        dominantHook: 'h', mainSubject: 'm', composition: 'c', hierarchy: ['1'], mood: 'mo',
+        relationshipToThesis: 'r', differencesFromOriginal: ['d'], differencesFromOtherVariations: ['o'],
+      },
+      validation: {
+        supportedFactsUsed: [], unsupportedClaims: [],
+        changedDimensions: ['thesis', 'message', 'visual'], scores: {}, qualityScore: 8.5,
+      },
+      promptCompleto: `PROMPT ${slot}`,
+    });
+    generateFactorVariations.mockResolvedValue({
+      originalDiagnosis: null,
+      strategySummary: {},
+      variations: ['problem', 'mechanism', 'proof', 'contrast', 'ease'].map((a, i) => variacao(i + 1, a)),
+    });
+    createCreativeAsset.mockImplementation(async (input: any) => ({
+      id: `fator-${input.strategicAngle}`, ...input, status: 'generating',
+      url: null, thumbnailUrl: null, rootAssetId: null, metadata: input.metadata ?? {},
+      createdAt: '2026-08-20T12:00:00.000Z', updatedAt: '2026-08-20T12:00:00.000Z',
+    }));
+    invoke.mockResolvedValue({ data: { imageUrl: 'https://x/fator.png' }, error: null });
+    updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({ id, ...patch }));
+
+    montar();
+    await waitFor(() => expect(prontos().length).toBeGreaterThan(0));
+    fireEvent.click(prontos()[0].querySelector('.studio-asset-surface')!);
+    const painel = screen.getByRole('complementary', { name: /inspetor/i });
+    await act(async () => {
+      fireEvent.click([...painel.querySelectorAll('.studio-inspector-action')].find((b) => b.textContent === 'Fator Criativo')!);
+    });
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy());
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Gerar 5 variações/ }));
+    });
+
+    expect(generateFactorVariations).toHaveBeenCalledWith(expect.objectContaining({ mode: 'automatic' }));
+    expect(createCreativeAsset).toHaveBeenCalledTimes(5);
+    expect(createCreativeAsset).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'factor', strategicAngle: 'problem', generationVersion: 'factor-v2',
     }));
   });
 

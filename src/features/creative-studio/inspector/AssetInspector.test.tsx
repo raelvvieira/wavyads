@@ -60,6 +60,24 @@ describe('AssetInspector — visualização em tamanho completo', () => {
     expect(screen.queryByRole('button', { name: 'Ver arte em tamanho completo' })).toBeNull();
   });
 
+  it('a arte cabe inteira: o botão não encolhe e a imagem não é recortada', () => {
+    // O corpo do inspetor é um flex column e a imagem é o único item alto e
+    // encolhível dele. Sem `shrink-0`, o flex espremia a imagem para caber
+    // fatos/linhagem/prompt, e o `object-cover` transformava a altura que
+    // sobrava em recorte — a arte virava uma faixa fina. jsdom não calcula
+    // flex, então o que dá para travar aqui são as duas classes: elas são o
+    // motivo de a arte aparecer inteira, e removê-las traz o recorte de volta.
+    const pronta = asset({ id: 'a1', status: 'ready', url: 'https://x/a.png' });
+    montar([pronta]);
+
+    const botao = screen.getByRole('button', { name: 'Ver arte em tamanho completo' });
+    expect(botao.className).toContain('shrink-0');
+
+    const img = botao.querySelector('img')!;
+    expect(img.className).toContain('h-auto');
+    expect(img.className).not.toContain('object-cover');
+  });
+
   it('seleção múltipla não mostra imagem nem botão de ampliar', () => {
     const duas = [
       asset({ id: 'a1', status: 'ready', url: 'https://x/a.png' }),
