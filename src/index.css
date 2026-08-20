@@ -781,9 +781,12 @@
     border-bottom: 1px solid var(--wavy-border);
   }
 
+  /* 192px não é número redondo: é 176px da barra de ações (6 × 26px + 5
+     gaps de 4px) mais os 8px de recuo de cada lado. Abaixo disso os ícones
+     não cabem numa linha só. */
   .studio-canvas-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(192px, 1fr));
     gap: 14px;
     align-items: start;
   }
@@ -862,11 +865,21 @@
     color: #fff;
   }
 
+  /* A barra é ancorada nos DOIS lados e pode quebrar linha.
+     Antes ela só tinha `right`, então crescia para a esquerda sem limite:
+     seis ícones de 26px com 4px de gap dão 176px, e o card mínimo tinha
+     168px — os ícones vazavam pela borda esquerda por construção. Com
+     `left` definido a largura passa a ser a do card, e o `wrap` garante
+     que qualquer combinação de ações caiba dentro dele, em qualquer
+     largura, mesmo que amanhã surja uma sétima ação. */
   .studio-asset-actions {
     position: absolute;
     top: 8px;
     right: 8px;
+    left: 8px;
     display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     gap: 4px;
     opacity: 0;
     transform: translateY(-4px);
@@ -1287,8 +1300,12 @@
       padding-bottom: 120px;
     }
 
+    /* No telefone não cabem os 192px: 156px mantém duas colunas num 390 e
+       já dá cards maiores. A barra de ações quebra em duas linhas aqui —
+       contida, que é o que importa. Sem hover no toque, ela é sobretudo
+       uma conveniência de desktop; quem age no telefone usa o inspetor. */
     .studio-canvas-grid {
-      grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
       gap: 10px;
     }
 
