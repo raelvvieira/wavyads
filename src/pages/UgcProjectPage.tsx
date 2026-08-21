@@ -199,12 +199,12 @@ export default function UgcProjectPage() {
   }, [acoes, upsertClip]);
 
   if (carregando) {
-    return <div className="ugc-page"><div className="ugc-empty"><Loader2 className="h-5 w-5 animate-spin text-white/45" /></div></div>;
+    return <div className="ugc-page ugc-page-narrow"><div className="ugc-empty"><Loader2 className="h-5 w-5 animate-spin text-white/45" /></div></div>;
   }
 
   if (erro || !projeto) {
     return (
-      <div className="ugc-page">
+      <div className="ugc-page ugc-page-narrow">
         <button type="button" onClick={() => navigate('/ugc-studio')} className="btn-glass inline-flex w-fit items-center gap-2 rounded-full px-3.5 py-1.5 text-[12px]">
           <ArrowLeft className="h-3.5 w-3.5" /> Voltar
         </button>
@@ -222,7 +222,7 @@ export default function UgcProjectPage() {
   };
 
   return (
-    <div className="ugc-page">
+    <div className="ugc-page ugc-page-narrow">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <button type="button" onClick={() => navigate('/ugc-studio')} aria-label="Voltar aos projetos" className="rounded-full p-1.5 text-white/50 hover:bg-white/[0.08] hover:text-white/90">
@@ -230,7 +230,7 @@ export default function UgcProjectPage() {
           </button>
           {avatarUrl && <img src={avatarUrl} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" />}
           <div className="min-w-0">
-            <h1 className="truncate text-base font-semibold text-white/92">{projeto.title}</h1>
+            <h1 className="truncate text-xl font-semibold text-white/92">{projeto.title}</h1>
             <p className="text-[11px] text-white/45">
               {clips.length} clipe{clips.length === 1 ? '' : 's'}
               {avatarNome ? ` · ${avatarNome}` : ''}

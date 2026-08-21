@@ -57,7 +57,7 @@ export default function UgcStudioPage() {
     <div className="ugc-page">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold text-white/92">UGC Studio</h1>
+          <h1 className="text-2xl font-semibold text-white/92">UGC Studio</h1>
           <p className="text-[13px] text-white/50">Clipes de avatar falando e de produto, com a mesma pessoa do começo ao fim</p>
         </div>
         <button
@@ -98,6 +98,16 @@ export default function UgcStudioPage() {
               </button>
             </li>
           ))}
+          <li>
+            <button
+              type="button"
+              onClick={() => { setTitulo(''); setNovoAberto(true); }}
+              className="ugc-project-new"
+            >
+              <Plus className="h-5 w-5" />
+              <span className="text-[12px] font-medium">Novo projeto</span>
+            </button>
+          </li>
         </ul>
       )}
 

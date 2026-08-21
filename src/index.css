@@ -1067,13 +1067,24 @@
      e as bordas `--wavy-border`, então trocar o tema troca a tela inteira.
      ========================================================================== */
 
+  /* `--wavy-page-pad` é o mesmo respiro de `.studio-page` e do `p-6` das
+     demais telas. Antes havia um `4px` inventado aqui, e o resultado era a
+     única página do sistema colada na borda superior. Número solto onde
+     existe token é como uma tela sai do compasso das outras. */
   .ugc-page {
     display: flex;
     flex-direction: column;
-    gap: 20px;
-    max-width: 980px;
-    margin: 0 auto;
-    padding: 4px 4px 48px;
+    gap: 24px;
+    padding: var(--wavy-page-pad);
+    padding-bottom: 56px;
+  }
+
+  /* A oficina é leitura e formulário — linha longa cansa. A galeria, ao
+     contrário, quer largura para a grade respirar. Um `max-width` só na
+     base servia mal aos dois: deixava a galeria à deriva no meio de uma
+     tela larga. */
+  .ugc-page-narrow {
+    max-width: 900px;
   }
 
   .ugc-step {
@@ -1230,8 +1241,27 @@
   .ugc-clip-grid,
   .ugc-project-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 10px;
+    gap: 12px;
+  }
+
+  /* Ângulo e avatar são escolha rápida: ver os oito de uma vez é o ponto,
+     então o card fica pequeno de propósito. */
+  .ugc-angle-grid,
+  .ugc-avatar-grid {
+    grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
+  }
+
+  /* Clipe é para assistir. Menor que isso, não se vê o que foi gerado. */
+  .ugc-clip-grid {
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  }
+
+  /* Projeto é o objeto principal da galeria — a 150px ele virava um selo
+     perdido no vazio. O teto impede que dois projetos estiquem em faixas
+     absurdas numa tela ultrawide. */
+  .ugc-project-grid {
+    grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+    max-width: 1240px;
   }
 
   .ugc-angle-card,
@@ -1310,6 +1340,31 @@
     text-align: left;
   }
 
+  /* Slot de "novo projeto" como última célula da grade.
+     Veio da referência: com poucos projetos, um card sozinho num grid largo
+     parece erro de carregamento. O slot dá à galeria uma âncora e põe a
+     ação primária onde o olho já está — em vez de só no canto superior. */
+  .ugc-project-new {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    border-radius: var(--wavy-radius-card);
+    border: 1px dashed var(--wavy-border);
+    background: var(--wavy-surface-soft);
+    color: hsl(var(--wavy-ink) / 0.5);
+    transition: border-color var(--wavy-duration-fast) var(--wavy-ease),
+                color var(--wavy-duration-fast) var(--wavy-ease);
+  }
+
+  .ugc-project-new:hover {
+    border-color: var(--wavy-brand-orange);
+    color: var(--wavy-brand-orange);
+  }
+
   .ugc-project-thumb {
     display: flex;
     align-items: center;
@@ -1327,7 +1382,7 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    min-height: 200px;
+    min-height: 280px;
     border-radius: var(--wavy-radius-card);
     border: 1px solid var(--wavy-border);
     background: var(--wavy-surface-soft);

@@ -52,22 +52,60 @@ const CLIPES: UgcClip[] = [
   clipe({ kind: 'broll', segment: null, anglePreset: 'night_moody', durationSeconds: 5, status: 'generating' }),
 ];
 
+const PROJETOS_FALSOS = [
+  { id: '1', title: 'Campanha de verão', updatedAt: '2026-08-20T10:00:00.000Z' },
+  { id: '2', title: 'Lançamento película', updatedAt: '2026-08-19T10:00:00.000Z' },
+  { id: '3', title: 'Black Friday', updatedAt: '2026-08-18T10:00:00.000Z' },
+];
+
 export function UgcStudioPreview() {
   const [etapa, setEtapa] = useState<UgcStep>('script');
-  const [vista, setVista] = useState<'wizard' | 'avatar' | 'geracoes'>('wizard');
+  const [vista, setVista] = useState<'galeria' | 'wizard' | 'avatar' | 'geracoes'>('galeria');
   const [segmento, setSegmento] = useState<any>(null);
   const [script, setScript] = useState<UgcScript | null>(ROTEIRO);
   const [descricao, setDescricao] = useState('Película de controle solar para janelas residenciais');
 
   return (
-    <div className="ugc-page">
+    <div className={vista === 'galeria' ? 'ugc-page' : 'ugc-page ugc-page-narrow'}>
       <div className="ugc-view-toggle self-start">
-        {(['wizard', 'avatar', 'geracoes'] as const).map((v) => (
+        {(['galeria', 'wizard', 'avatar', 'geracoes'] as const).map((v) => (
           <button key={v} type="button" onClick={() => setVista(v)} data-active={vista === v} className="ugc-view-btn">
-            {v === 'wizard' ? 'Etapas' : v === 'avatar' ? 'Escolher avatar' : 'Gerações'}
+            {v === 'galeria' ? 'Projetos' : v === 'wizard' ? 'Etapas' : v === 'avatar' ? 'Escolher avatar' : 'Gerações'}
           </button>
         ))}
       </div>
+
+      {vista === 'galeria' && (
+        <>
+          <header className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-semibold text-white/92">UGC Studio</h1>
+              <p className="text-[13px] text-white/50">
+                Clipes de avatar falando e de produto, com a mesma pessoa do começo ao fim
+              </p>
+            </div>
+            <span className="btn-accent inline-flex items-center gap-2 rounded-xl px-4 py-2 text-[13px] font-semibold">
+              + Novo projeto
+            </span>
+          </header>
+          <ul className="ugc-project-grid">
+            {PROJETOS_FALSOS.map((p) => (
+              <li key={p.id}>
+                <span className="ugc-project-card block">
+                  <span className="ugc-project-thumb" aria-hidden />
+                  <span className="block truncate text-[13px] font-medium text-white/88">{p.title}</span>
+                  <span className="block text-[11px] text-white/45">20 de ago.</span>
+                </span>
+              </li>
+            ))}
+            <li>
+              <span className="ugc-project-new">
+                <span className="text-[12px] font-medium">+ Novo projeto</span>
+              </span>
+            </li>
+          </ul>
+        </>
+      )}
 
       {vista === 'avatar' && (
         <AvatarPicker
