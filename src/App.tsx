@@ -68,7 +68,7 @@ const App = () => (
                 path="/__ugc-studio"
                 element={
                   <div className="wavy-shell relative min-h-screen bg-background">
-                    <div className="wavy-app-content relative z-10 min-h-screen p-6">
+                    <div className="wavy-app-content relative z-10 min-h-screen">
                       <UgcStudioPreview />
                     </div>
                   </div>
