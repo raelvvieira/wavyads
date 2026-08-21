@@ -8,6 +8,13 @@ import { CreativeStudioShell } from './CreativeStudioShell';
 import { FatorCriativoDialog } from '../factor/FatorCriativoDialog';
 import type { OfferIntelligence } from '../types/factorCreative';
 import { StudioVersionBanner } from './StudioVersionBanner';
+import {
+  SEM_FILTROS_AVANCADOS,
+  advancedFilterChips,
+  availableAspectRatios,
+  toAssetFilters,
+  type StudioAdvancedFilters,
+} from '../state/advancedFilters';
 import { PREVIEW_ASSETS, PREVIEW_LIBRARIES } from './studioPreviewFixtures';
 
 /** Briefing de exemplo — o que a análise devolveria numa arte real. */
@@ -45,6 +52,7 @@ const PREVIEW_COPY_BANK: CopyBankEntry[] = [
  */
 export function StudioShellPreview() {
   const [query, setQuery] = useState('');
+  const [filtros, setFiltros] = useState<StudioAdvancedFilters>(SEM_FILTROS_AVANCADOS);
   const [command, setCommand] = useState('');
   const [library, setLibrary] = useState<StudioLibraryId>('all');
   const [ratio, setRatio] = useState<CreativeAspectRatio>('4:5');
@@ -58,8 +66,8 @@ export function StudioShellPreview() {
   const clients = [{ id: 'c1', name: 'Boutique Aurora' }, { id: 'c2', name: 'Loja do João' }];
 
   const visiveis = useMemo(
-    () => visibleCanvasAssets(PREVIEW_ASSETS, query ? { query } : {}),
-    [query],
+    () => visibleCanvasAssets(PREVIEW_ASSETS, { ...toAssetFilters(filtros), ...(query ? { query } : {}) }),
+    [query, filtros],
   );
   const referenceLibrary = useMemo(() => libraryAssets(PREVIEW_ASSETS, { types: ['reference'] }), []);
   const logoLibrary = useMemo(() => libraryAssets(PREVIEW_ASSETS, { types: ['logo'] }), []);
@@ -81,12 +89,14 @@ export function StudioShellPreview() {
       onSelectLibrary={setLibrary}
       query={query}
       onQueryChange={setQuery}
-      filters={[{ id: 'ratio', label: '4:5' }]}
-      onRemoveFilter={() => {}}
-      onClearFilters={() => setQuery('')}
-      onOpenFilters={() => {}}
-      onOpenHistory={() => {}}
-      onNewProject={() => {}}
+      filters={advancedFilterChips(filtros)}
+      onRemoveFilter={(id) => setFiltros((f) => ({
+        ...f, ...(id === 'formato' ? { aspectRatio: null } : { status: null }),
+      }))}
+      onClearFilters={() => { setQuery(''); setFiltros(SEM_FILTROS_AVANCADOS); }}
+      advancedFilters={filtros}
+      onAdvancedFiltersChange={setFiltros}
+      availableRatios={availableAspectRatios(PREVIEW_ASSETS)}
       command={command}
       onCommandChange={setCommand}
       onSubmitCommand={() => {}}

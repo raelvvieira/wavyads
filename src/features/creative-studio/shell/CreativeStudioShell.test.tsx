@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { CreativeStudioShell, type CreativeStudioShellProps } from './CreativeStudioShell';
 import { PREVIEW_ASSETS, PREVIEW_LIBRARIES } from './studioPreviewFixtures';
 import { visibleCanvasAssets } from '../state/canvasSelectors';
+import { SEM_FILTROS_AVANCADOS } from '../state/advancedFilters';
 
 const visiveis = visibleCanvasAssets(PREVIEW_ASSETS);
 
@@ -24,9 +25,9 @@ function montar(patch: Partial<CreativeStudioShellProps> = {}) {
     filters: [],
     onRemoveFilter: vi.fn(),
     onClearFilters: vi.fn(),
-    onOpenFilters: vi.fn(),
-    onOpenHistory: vi.fn(),
-    onNewProject: vi.fn(),
+    advancedFilters: SEM_FILTROS_AVANCADOS,
+    onAdvancedFiltersChange: vi.fn(),
+    availableRatios: ['9:16', '1:1'],
     command: '',
     onCommandChange: vi.fn(),
     onSubmitCommand,
