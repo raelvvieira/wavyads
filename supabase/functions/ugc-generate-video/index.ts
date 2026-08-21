@@ -24,7 +24,12 @@ const STORAGE_BUCKET = "creative-assets";
  * o erro diz exatamente o que foi tentado, que é o diagnóstico de que
  * precisamos para escolher outro provedor.
  */
-const MODELOS_VIDEO = ["veo-3.1", "kling-v2.5", "seedance-2.0-pro", "sora-2"];
+const MODELOS_VIDEO = [
+  "veo3.1-fast",
+  "kling-v3-image-to-video",
+  "wan2.6-image-to-video",
+  "seedance-2.0-text-to-video",
+];
 
 // Vídeo leva de 1 a 5 minutos, não os ~60s de uma imagem. Manter a janela da
 // imagem aqui faria toda geração "falhar" por tempo justamente quando o
@@ -78,8 +83,11 @@ function extrairUrlDeVideo(payload: any): string | null {
 }
 
 function ehModeloInexistente(status: number, corpo: string): boolean {
-  return (status === 404 || status === 400)
-    && /not_found|no longer available|not found|unknown model|invalid model/i.test(corpo);
+  // 403 `model_access_denied` entra aqui de propósito: na EvoLink é assim que
+  // um modelo fora do plano aparece, e o certo é descer para o próximo da
+  // fila em vez de tratar como chave inválida.
+  return (status === 404 || status === 400 || status === 403)
+    && /not_found|no longer available|not found|unknown model|invalid model|model_access_denied/i.test(corpo);
 }
 
 /**
@@ -211,6 +219,7 @@ serve(async (req) => {
       if (ehModeloInexistente(r.status, ultimoCorpo)) continue;
 
       if (r.status === 401 || r.status === 403) throw new Error("Chave da API EvoLink inválida ou sem permissão para vídeo.");
+      if (r.status === 402) throw new Error("Créditos EvoLink insuficientes para gerar vídeo.");
       if (r.status === 429) throw new Error("Limite de requisições EvoLink atingido. Tente novamente em instantes.");
       throw new Error(`EvoLink erro ${r.status}: ${ultimoCorpo.slice(0, 400)}`);
     }
