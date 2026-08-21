@@ -63,8 +63,14 @@ export default function CriativoStudioV2Page() {
   const [command, setCommand] = useState('');
   const [library, setLibrary] = useState<StudioLibraryId>('all');
 
-  const [ratio, setRatio] = useState<CreativeAspectRatio>('4:5');
-  const [resolution, setResolution] = useState<CreativeResolution>('2K');
+  // 9:16 e 4K por padrão, a pedido: é o formato de story/reels, que é onde a
+  // maior parte do que sai daqui é veiculada. Sobre o 4K vale a ressalva de
+  // que a resolução hoje NÃO é parâmetro da API — ela vira a frase de
+  // qualidade dentro do prompt (ver `capabilities.ts`, `resolutions: []`),
+  // então o efeito é sobre o capricho pedido ao modelo, não sobre o número
+  // de pixels do arquivo.
+  const [ratio, setRatio] = useState<CreativeAspectRatio>('9:16');
+  const [resolution, setResolution] = useState<CreativeResolution>('4K');
   const [modelId, setModelId] = useState<string>(IMAGE_GENERATION_MODEL.id);
   const [attachments, setAttachments] = useState<DockAttachment[]>([]);
 
@@ -135,8 +141,8 @@ export default function CriativoStudioV2Page() {
     if (!projectId) return;
     const p = projects.find((x) => x.id === projectId);
     if (!p) return;
-    setRatio((p.selected_aspect_ratio as CreativeAspectRatio) || '4:5');
-    setResolution((p.selected_resolution as CreativeResolution) || '2K');
+    setRatio((p.selected_aspect_ratio as CreativeAspectRatio) || '9:16');
+    setResolution((p.selected_resolution as CreativeResolution) || '4K');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
@@ -150,15 +156,15 @@ export default function CriativoStudioV2Page() {
         title: 'Novo projeto',
         initialPrompt: '',
         currentStage: 'canvas-v2',
-        aspectRatio: '4:5',
-        resolution: '2K',
+        aspectRatio: '9:16',
+        resolution: '4K',
         language: 'pt-BR',
         model: 'gemini-3.1-flash-image-preview',
         userId: userData.user?.id ?? null,
         clientId: selectedClientId,
       });
       setProjectId(id);
-      setProjects((prev) => [{ id, title: 'Novo projeto', status: 'in_progress', selected_aspect_ratio: '4:5', selected_resolution: '2K', thumbnail_url: null, updated_at: new Date().toISOString() }, ...prev]);
+      setProjects((prev) => [{ id, title: 'Novo projeto', status: 'in_progress', selected_aspect_ratio: '9:16', selected_resolution: '4K', thumbnail_url: null, updated_at: new Date().toISOString() }, ...prev]);
       return id;
     })();
 
@@ -367,7 +373,7 @@ export default function CriativoStudioV2Page() {
     if (busy) return;
     setBusy(true);
     try {
-      const ratio = (alvo.aspectRatio as CreativeAspectRatio) || '4:5';
+      const ratio = (alvo.aspectRatio as CreativeAspectRatio) || '9:16';
       toast({ title: 'Lendo a oferta e montando 5 teses…', description: 'A escrita estratégica leva alguns instantes.' });
       const saida = await generateFactorVariations({
         originalPrompt: alvo.prompt ?? '',

@@ -166,7 +166,7 @@ describe('CriativoStudioV2Page', () => {
 
     expect(createCreativeAsset).toHaveBeenCalledWith(expect.objectContaining({ type: 'original', status: 'generating' }));
     expect(invoke).toHaveBeenCalledWith('criativo-generate', expect.objectContaining({
-      body: expect.objectContaining({ formatRatio: '4:5' }),
+      body: expect.objectContaining({ formatRatio: '9:16' }),
     }));
     await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Arte gerada' })));
   });
@@ -272,9 +272,11 @@ describe('CriativoStudioV2Page', () => {
     expect(createProject).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole('button', { name: 'Abrir configurações de geração' }));
-    fireEvent.click(screen.getByRole('button', { name: '9:16' }));
+    // 4:5, e não 9:16: este último virou o padrão do dock, e clicar no que
+    // já está ativo não provaria que a troca funciona.
+    fireEvent.click(screen.getByRole('button', { name: '4:5' }));
 
-    expect(updateProjectFormat).toHaveBeenCalledWith('proj-1', { aspectRatio: '9:16', resolution: '2K' });
+    expect(updateProjectFormat).toHaveBeenCalledWith('proj-1', { aspectRatio: '4:5', resolution: '4K' });
 
     fireEvent.change(screen.getByPlaceholderText('O que você quer criar?'), { target: { value: 'story' } });
     await act(async () => {
@@ -282,7 +284,7 @@ describe('CriativoStudioV2Page', () => {
     });
 
     const chamada = invoke.mock.calls.filter((c) => c[0] === 'criativo-generate').at(-1)!;
-    expect(chamada[1].body.formatRatio).toBe('9:16');
+    expect(chamada[1].body.formatRatio).toBe('4:5');
   });
 
   it('gerar sem projeto ainda existente cria o projeto primeiro', async () => {

@@ -34,6 +34,15 @@ export interface CreativePromptInput {
   productImageCount?: number;
   /** Quantas das fotos anexadas são avatares de persona. */
   avatarCount?: number;
+  /**
+   * Quantas são produto de verdade.
+   *
+   * Existe porque `productImageCount` é a SOMA de produtos e avatares — as
+   * duas coisas viajam no mesmo canal do backend. Sem separar, não há como
+   * dizer ao modelo QUAIS imagens são o produto, e o bloco [PRODUCT] não
+   * teria o que indexar.
+   */
+  productCount?: number;
   preserveFaces?: boolean;
   hasLogo?: boolean;
   /** Story usado como verdade visual quando se gera a versão quadrada. */
@@ -128,6 +137,7 @@ export function buildCreativePrompt(input: CreativePromptInput): string {
     copy = null,
     productImageCount = 0,
     avatarCount = 0,
+    productCount = 0,
     preserveFaces = true,
     hasLogo = false,
     hasStoryReference = false,
@@ -152,10 +162,15 @@ export function buildCreativePrompt(input: CreativePromptInput): string {
 Create a ${aspectConfig.promptDims} advertisement image for ${businessContext.trim() || 'a professional brand'}.
 Quality target: ${resolutionConfig.promptQuality}.`;
 
+  // A frase sobre rosto e pele só entra quando há PESSOA anexada. Antes ela
+  // era emitida sempre que houvesse qualquer imagem, então uma lata de
+  // refrigerante recebia "do not alter faces, skin tone, body shape" — ruído
+  // que gasta atenção do modelo em algo que não existe no quadro.
+  const temPessoa = avatarCount > 0;
   const photoBlock = productImageCount > 0
     ? `[ATTACHED PHOTOS]
 ${productImageCount} reference image(s) provided showing the product/person/scene that must appear in the composition.
-${preserveFaces ? 'Preserve their exact likeness. Do NOT alter faces, skin tone, body shape or appearance in any way. Treat the subject as a fixed reference.' : ''}
+${preserveFaces && temPessoa ? 'Preserve their exact likeness. Do NOT alter faces, skin tone, body shape or appearance in any way. Treat the subject as a fixed reference.' : ''}
 Integrate the subject naturally into the composition described below.`
     : '';
 
@@ -211,6 +226,30 @@ Preserve their facial structure, skin tone, hair and overall likeness exactly. D
 Place them naturally in the scene described above, at a scale and pose that fits the composition, with lighting that matches the rest of the artwork.`
     : '';
 
+  /**
+   * O produto tem a mesma proteção que a pessoa e o logo.
+   *
+   * Até aqui, `[ATTACHED PHOTOS]` era a única instrução que o produto
+   * recebia — e ela só pede para "integrar naturalmente". Enquanto isso o
+   * avatar ganhava [TALENT] com "preserve exactly / do NOT swap, average or
+   * beautify", e o logo ganhava "do NOT distort, recolor, recreate or
+   * redesign". O item que o anúncio de fato vende era o menos protegido dos
+   * três, e o modelo tratava a embalagem como sugestão: redesenhava rótulo,
+   * mudava proporção, inventava tipografia.
+   *
+   * A indexação por ORDEM é o que torna o bloco executável. O backend
+   * recebe `[...avatares, ...produtos]`, então [TALENT] fala das PRIMEIRAS
+   * imagens e este fala das ÚLTIMAS. Sem isso, com avatar e produto
+   * anexados juntos, os dois blocos apontariam para o mesmo lugar.
+   */
+  const productBlock = productCount > 0
+    ? `[PRODUCT — CRITICAL]
+The last ${productCount} attached reference image(s) are the PRODUCT being advertised. That exact product must appear in the artwork.
+Treat it as visual ground truth: preserve its shape, proportions, colour, material, finish, and every label, logo and piece of text printed on it, exactly as photographed.
+Do NOT redesign, restyle, simplify, "improve" or re-letter the packaging. Do NOT invent variants, flavours or sizes that are not in the reference.
+You may change how it is lit, framed, angled and staged to fit the composition — but the object itself is fixed.`
+    : '';
+
   const logoBlock = hasLogo
     ? `[BRAND LOGO]
 A brand logo is provided as a separate reference. Place it discreetly in a corner (top-left or bottom-right preferred), small, clean. Do NOT distort, recolor, recreate or redesign it — treat as a fixed brand asset.`
@@ -252,6 +291,7 @@ A reference Story version of this same creative is attached as the FIRST image. 
     safe,
     consistency,
     talentBlock,
+    productBlock,
     logoBlock,
     textBlocks,
     moodBlock,

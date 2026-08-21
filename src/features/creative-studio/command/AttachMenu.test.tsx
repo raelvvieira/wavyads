@@ -205,6 +205,49 @@ describe('AttachMenu', () => {
     expect(screen.getByPlaceholderText(/Cole o texto final/)).toHaveValue('Garanta já o seu desconto');
   });
 
+  it('copy: sugerir liga com texto DIGITADO, sem precisar escolher da lista', async () => {
+    // Era assim que o recurso parecia quebrado: `disabled={!selecionada}`
+    // mantinha o botão em 40% de opacidade até você clicar numa entrada do
+    // histórico, e nada dizia por quê. Quem cola um texto quer variações
+    // dele tanto quanto quem reaproveita uma copy antiga.
+    suggestCopyVariations.mockResolvedValue([{ angulo: 'Curiosidade/Hook', texto: 'E se fosse hoje?' }]);
+    montar({ copyBank: [copyEntry('cb1', 'Até 50% OFF')] });
+    abrir();
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar copy' }));
+
+    fireEvent.change(screen.getByPlaceholderText(/Cole o texto final/), {
+      target: { value: 'Sua janela sem privacidade' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Sugerir variações' }));
+
+    expect(suggestCopyVariations).toHaveBeenCalledWith(expect.objectContaining({
+      referenceCopy: 'Sua janela sem privacidade',
+    }));
+    await waitFor(() => expect(screen.getByText('E se fosse hoje?')).toBeTruthy());
+  });
+
+  it('copy: sem copy escolhida nem texto, o botão diz o que falta', () => {
+    // Botão apagado sem explicação é indistinguível de botão quebrado.
+    montar({ copyBank: [copyEntry('cb1', 'Até 50% OFF')] });
+    abrir();
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar copy' }));
+
+    expect(screen.getByRole('button', { name: 'Sugerir variações' })).toBeDisabled();
+    expect(screen.getByText(/Escolha uma copy acima ou escreva um texto/)).toBeTruthy();
+  });
+
+  it('copy: as alternativas abrem numa coluna própria, com rótulo', async () => {
+    suggestCopyVariations.mockResolvedValue([{ angulo: 'Prova/Autoridade', texto: 'Mais de 400 janelas' }]);
+    montar({ copyBank: [copyEntry('cb1', 'Até 50% OFF')] });
+    abrir();
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar copy' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Até 50% OFF' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sugerir variações' }));
+
+    await waitFor(() => expect(screen.getByText('Alternativas')).toBeTruthy());
+    expect(screen.getByText('Mais de 400 janelas')).toBeTruthy();
+  });
+
   it('copy: erro ao sugerir mostra mensagem, sem travar o painel', async () => {
     suggestCopyVariations.mockRejectedValue(new Error('IA não retornou variações'));
     montar({ copyBank: [copyEntry('cb1', 'Até 50% OFF')] });

@@ -58,10 +58,15 @@ export function AttachMenu({
 }: AttachMenuProps) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<'lista' | DockAttachmentKind>('lista');
+  // O painel só alarga quando há sugestões na tela. Deixá-lo largo o tempo
+  // todo desperdiçaria espaço nos outros quatro modos de anexo, que são
+  // grades de miniatura e cabem bem em 288px.
+  const [copyExpandido, setCopyExpandido] = useState(false);
 
   const fechar = () => {
     setOpen(false);
     setStep('lista');
+    setCopyExpandido(false);
   };
 
   const anexar = (attachment: Omit<DockAttachment, 'id'>) => {
@@ -74,11 +79,20 @@ export function AttachMenu({
       open={open}
       onOpenChange={(proximo) => {
         setOpen(proximo);
-        if (!proximo) setStep('lista');
+        if (!proximo) { setStep('lista'); setCopyExpandido(false); }
       }}
     >
       <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent align="start" className="glass w-72 border-white/10 p-0">
+      <PopoverContent
+        align="start"
+        className={cn(
+          'glass border-white/10 p-0 transition-[width] duration-200',
+          // Copy precisa de mais largura que uma grade de miniaturas: uma
+          // copy de anúncio tem título, subtítulo e CTA, e a 288px isso vira
+          // reticências. Com sugestões abertas, abre a segunda coluna.
+          step === 'copy' ? (copyExpandido ? 'w-[620px]' : 'w-[380px]') : 'w-72',
+        )}
+      >
         {step === 'lista' ? (
           <ul className="p-1.5">
             {OPCOES.map(({ kind, label, icon: Icon }) => (
@@ -103,9 +117,10 @@ export function AttachMenu({
             productLibrary={productLibrary}
             avatarLibrary={avatarLibrary}
             copyBank={copyBank}
-            onVoltar={() => setStep('lista')}
+            onVoltar={() => { setStep('lista'); setCopyExpandido(false); }}
             onAnexar={anexar}
             onNovoUpload={onNewLibraryUpload}
+            onSugestoesAbertas={setCopyExpandido}
           />
         )}
       </PopoverContent>
@@ -139,6 +154,7 @@ function SubPainel({
   onVoltar,
   onAnexar,
   onNovoUpload,
+  onSugestoesAbertas,
 }: {
   kind: DockAttachmentKind;
   referenceLibrary: CreativeAsset[];
@@ -149,6 +165,7 @@ function SubPainel({
   onVoltar: () => void;
   onAnexar: (attachment: Omit<DockAttachment, 'id'>) => void;
   onNovoUpload: (kind: 'logo' | 'product', url: string) => void;
+  onSugestoesAbertas: (aberto: boolean) => void;
 }) {
   if (kind === 'reference') return <PainelReferencia referenceLibrary={referenceLibrary} onVoltar={onVoltar} onAnexar={onAnexar} />;
   if (kind === 'logo') {
@@ -159,7 +176,7 @@ function SubPainel({
       />
     );
   }
-  if (kind === 'copy') return <PainelCopy copyBank={copyBank} onVoltar={onVoltar} onAnexar={onAnexar} />;
+  if (kind === 'copy') return <PainelCopy copyBank={copyBank} onVoltar={onVoltar} onAnexar={onAnexar} onSugestoesAbertas={onSugestoesAbertas} />;
   if (kind === 'avatar') return <PainelAvatar library={avatarLibrary} onVoltar={onVoltar} onAnexar={onAnexar} />;
   return (
     <PainelBiblioteca
@@ -344,10 +361,12 @@ function PainelCopy({
   copyBank,
   onVoltar,
   onAnexar,
+  onSugestoesAbertas,
 }: {
   copyBank: CopyBankEntry[];
   onVoltar: () => void;
   onAnexar: (attachment: Omit<DockAttachment, 'id'>) => void;
+  onSugestoesAbertas: (aberto: boolean) => void;
 }) {
   const [texto, setTexto] = useState('');
   const [selecionada, setSelecionada] = useState<CopyBankEntry | null>(null);
@@ -359,20 +378,32 @@ function PainelCopy({
     setSelecionada(entry);
     setTexto(entry.copyText);
     setSugestoes(null);
+    onSugestoesAbertas(false);
     setErroSugestao(null);
   };
 
+  // Variar a partir da copy SELECIONADA ou do texto DIGITADO.
+  //
+  // Antes só a seleção valia, e o botão ficava apagado até você clicar numa
+  // entrada da lista — indistinguível de um botão quebrado, que foi
+  // exatamente como o recurso foi reportado. As duas são partidas legítimas:
+  // quem colou um texto quer variações dele tanto quanto quem reaproveita
+  // uma copy antiga.
+  const referencia = selecionada?.copyText ?? texto.trim();
+  const podeSugerir = referencia.length > 0 && !sugerindo;
+
   const sugerirVariacoes = async () => {
-    if (!selecionada) return;
+    if (!referencia) return;
     setSugerindo(true);
     setErroSugestao(null);
     try {
       const variacoes = await suggestCopyVariations({
-        referenceCopy: selecionada.copyText,
-        tema: selecionada.tema,
+        referenceCopy: referencia,
+        tema: selecionada?.tema ?? null,
         language: 'pt-BR',
       });
       setSugestoes(variacoes);
+      onSugestoesAbertas(true);
     } catch (e: any) {
       setErroSugestao(e?.message ?? 'Não consegui sugerir variações agora.');
     } finally {
@@ -383,20 +414,21 @@ function PainelCopy({
   return (
     <div>
       <VoltarHeader titulo="Anexar copy" onVoltar={onVoltar} />
-      <div className="space-y-2 p-2.5">
+      <div className={cn('p-2.5', sugestoes && 'flex gap-3')}>
+      <div className={cn('space-y-2', sugestoes && 'min-w-0 flex-1')}>
         {copyBank.length > 0 && (
           <div>
             <p className="wavy-caps mb-1 text-[10px] font-semibold uppercase text-white/45">
               Já usadas com este cliente
             </p>
-            <div className="max-h-28 space-y-1 overflow-y-auto">
+            <div className="max-h-52 space-y-1 overflow-y-auto">
               {copyBank.map((entry) => (
                 <button
                   key={entry.id}
                   type="button"
                   onClick={() => escolherSalva(entry)}
                   className={cn(
-                    'block w-full rounded-[var(--wavy-radius-control)] border px-2 py-1.5 text-left text-[12px] leading-snug line-clamp-2 transition-colors duration-150',
+                    'block w-full rounded-[var(--wavy-radius-control)] border px-2.5 py-2 text-left text-[12px] leading-relaxed line-clamp-3 transition-colors duration-150',
                     selecionada?.id === entry.id
                       ? 'border-accent/50 bg-accent/10 text-white/90'
                       : 'border-white/8 bg-white/[0.03] text-white/68 hover:border-white/20',
@@ -409,28 +441,18 @@ function PainelCopy({
             <button
               type="button"
               onClick={sugerirVariacoes}
-              disabled={!selecionada || sugerindo}
+              disabled={!podeSugerir}
               className="mt-1.5 flex items-center gap-1.5 text-[12px] font-medium text-white/70 transition-colors duration-150 hover:text-white/90 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {sugerindo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
               Sugerir variações
             </button>
-            {erroSugestao && <p className="mt-1 text-[11px] text-destructive">{erroSugestao}</p>}
-            {sugestoes && (
-              <div className="mt-1.5 grid grid-cols-2 gap-1.5">
-                {sugestoes.map((s, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setTexto(s.texto)}
-                    className="rounded-[var(--wavy-radius-control)] border border-white/8 bg-white/[0.03] p-2 text-left text-[11px] leading-snug text-white/68 transition-colors duration-150 hover:border-white/20"
-                  >
-                    <span className="wavy-caps block text-[9px] font-semibold uppercase text-white/40">{s.angulo}</span>
-                    <span className="line-clamp-3">{s.texto}</span>
-                  </button>
-                ))}
-              </div>
+            {!podeSugerir && !sugerindo && (
+              <p className="mt-1 text-[11px] text-white/40">
+                Escolha uma copy acima ou escreva um texto abaixo para variar.
+              </p>
             )}
+            {erroSugestao && <p className="mt-1 text-[11px] text-destructive">{erroSugestao}</p>}
           </div>
         )}
         <Textarea
@@ -449,6 +471,34 @@ function PainelCopy({
         >
           Anexar
         </button>
+      </div>
+
+      {/* A coluna das alternativas. Antes elas entravam numa grade de duas
+          colunas dentro dos 288px do painel, com `line-clamp-3` — ou seja,
+          quatro copies cortadas lado a lado, que é o mesmo problema de
+          leitura que a lista de usadas já tinha. Aqui cada uma tem largura
+          para ser lida inteira. */}
+      {sugestoes && (
+        <div className="min-w-0 flex-1 border-l border-white/10 pl-3">
+          <p className="wavy-caps mb-1.5 text-[10px] font-semibold uppercase text-white/45">
+            Alternativas
+          </p>
+          <div className="max-h-72 space-y-1.5 overflow-y-auto pr-1">
+            {sugestoes.map((s, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setTexto(s.texto)}
+                className="block w-full rounded-[var(--wavy-radius-control)] border border-white/8 bg-white/[0.03] p-2.5 text-left transition-colors duration-150 hover:border-white/20"
+              >
+                <span className="wavy-caps block text-[9px] font-semibold uppercase text-white/40">{s.angulo}</span>
+                <span className="mt-0.5 block text-[12px] leading-relaxed text-white/72">{s.texto}</span>
+              </button>
+            ))}
+          </div>
+          <p className="mt-1.5 text-[10px] text-white/35">Clique para usar — o texto vai para o campo ao lado.</p>
+        </div>
+      )}
       </div>
     </div>
   );

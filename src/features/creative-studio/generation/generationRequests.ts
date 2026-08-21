@@ -65,6 +65,10 @@ export function buildGenerationRequest(input: {
     // imagens vieram, e omitir os avatares faria o prompt mentir.
     productImageCount: produtos.length + avatares.length,
     avatarCount: avatares.length,
+    // Separado da soma acima: é o que permite ao bloco [PRODUCT] dizer
+    // QUAIS imagens são o produto, já que produtos e avatares chegam ao
+    // backend no mesmo canal.
+    productCount: produtos.length,
     hasLogo: !!input.logoImageUrl,
     copy: copyTexto ? { source: 'original', text: copyTexto } : null,
   });
@@ -266,6 +270,9 @@ export function buildFactorVariationRequest(input: {
     language: input.language ?? 'pt-BR',
     businessContext: contexto,
     productImageCount: produtos.length,
+    // O Fator gera cinco variações da MESMA oferta: se o produto muda de
+    // uma para outra, o lote deixa de ser comparável.
+    productCount: produtos.length,
     hasLogo: !!input.logoImageUrl,
     hasStoryReference: backendAspect === 'square' && !!input.storyReferenceUrl,
     // A copy da variação é texto FINAL escrito pelo estrategista, com papel
