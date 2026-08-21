@@ -31,6 +31,13 @@ import {
   type ProjectSummary,
 } from '@/features/creative-studio/api/projectRepository';
 import { libraryAssets, visibleCanvasAssets, type SelectionAction } from '@/features/creative-studio/state/canvasSelectors';
+import {
+  SEM_FILTROS_AVANCADOS,
+  advancedFilterChips,
+  availableAspectRatios,
+  toAssetFilters,
+  type StudioAdvancedFilters,
+} from '@/features/creative-studio/state/advancedFilters';
 import { childrenByParentId } from '@/features/creative-studio/state/lineage';
 import { buildSafeZoneBlock } from '@/features/creative-studio/lib/promptBuilder';
 import { createStudioAssetActions, type StudioAssetActionsDeps } from '@/features/creative-studio/generation/studioAssetActions';
@@ -55,6 +62,7 @@ export default function CriativoStudioV2Page() {
   const [assets, setAssets] = useState<CreativeAsset[]>([]);
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [filtrosAvancados, setFiltrosAvancados] = useState<StudioAdvancedFilters>(SEM_FILTROS_AVANCADOS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -191,10 +199,15 @@ export default function CriativoStudioV2Page() {
   );
   const visiveis = useMemo(() => {
     const filtro = filtroDaBiblioteca(library);
+    const avancados = toAssetFilters(filtrosAvancados);
     return filtro.types
-      ? libraryAssets(doProjeto, { ...filtro, query })
-      : visibleCanvasAssets(doProjeto, { query });
-  }, [doProjeto, query, library]);
+      ? libraryAssets(doProjeto, { ...filtro, ...avancados, query })
+      : visibleCanvasAssets(doProjeto, { ...avancados, query });
+  }, [doProjeto, query, library, filtrosAvancados]);
+
+  // Os formatos vêm do acervo em vista ANTES do corte por formato — senão a
+  // lista encolheria para a própria escolha e não haveria como trocar.
+  const formatosDisponiveis = useMemo(() => availableAspectRatios(doProjeto), [doProjeto]);
 
   const referenceLibrary = useMemo(
     () => libraryAssets(doProjeto, { types: ['reference'] }),
@@ -267,10 +280,9 @@ export default function CriativoStudioV2Page() {
   }, [ensureProjectId, selectedClientId]);
 
   // Cada gatilho tem a própria frase — um aviso genérico citando "Fator
-  // Criativo" estava disparando para trocar de projeto, abrir filtros e
-  // abrir histórico, que não têm nada a ver com Fator Criativo. Ele vai
-  // ganhar um fluxo de ativação PRÓPRIO mais adiante, então merece uma
-  // mensagem só dele.
+  // Criativo" já disparou para ações que não têm nada a ver com ele. Os
+  // avisos que sobraram são de ações em lote, que o backend de fato ainda
+  // não faz.
   const avisarIndisponivel = useCallback((mensagem: string) => {
     toast({ title: 'Ainda não disponível', description: mensagem });
   }, []);
@@ -288,6 +300,8 @@ export default function CriativoStudioV2Page() {
 
   const handleRemoveFilter = useCallback((id: string) => {
     if (id === 'cliente') { setSelectedClientId(null); setProjectId(null); return; }
+    if (id === 'formato') { setFiltrosAvancados((f) => ({ ...f, aspectRatio: null })); return; }
+    if (id === 'status') { setFiltrosAvancados((f) => ({ ...f, status: null })); return; }
     setProjectId(null);
   }, []);
 
@@ -643,12 +657,16 @@ export default function CriativoStudioV2Page() {
         filters={[
           ...(projeto ? [{ id: 'projeto', label: 'Só este projeto' }] : []),
           ...(clientName ? [{ id: 'cliente', label: clientName }] : []),
+          ...advancedFilterChips(filtrosAvancados),
         ]}
         onRemoveFilter={handleRemoveFilter}
-        onClearFilters={() => { setQuery(''); setLibrary('all'); setProjectId(null); setSelectedClientId(null); }}
-        onOpenFilters={() => avisarIndisponivel('Filtros avançados ainda não estão disponíveis nesta versão.')}
-        onOpenHistory={() => avisarIndisponivel('Histórico de projetos ainda não está disponível nesta versão.')}
-        onNewProject={() => setProjectId(null)}
+        onClearFilters={() => {
+          setQuery(''); setLibrary('all'); setProjectId(null); setSelectedClientId(null);
+          setFiltrosAvancados(SEM_FILTROS_AVANCADOS);
+        }}
+        advancedFilters={filtrosAvancados}
+        onAdvancedFiltersChange={setFiltrosAvancados}
+        availableRatios={formatosDisponiveis}
         loading={loading}
         error={error}
         command={command}

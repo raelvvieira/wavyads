@@ -505,24 +505,47 @@ describe('CriativoStudioV2Page', () => {
     await waitFor(() => expect(screen.queryByText('Só este projeto')).toBeNull());
   });
 
-  it('Filtros e Histórico avisam sobre si mesmos, não sobre o Fator Criativo', async () => {
-    // O aviso genérico citava "Fator Criativo" para qualquer gatilho não
-    // ligado — inclusive estes dois, que não têm nada a ver com ele.
+  it('o menu de filtros corta o canvas de verdade e deixa um chip removível', async () => {
+    // O ícone existia e só emitia "ainda não disponível". O dado sempre
+    // esteve lá — `matchesFilters` já cortava por situação —, então o botão
+    // prometia menos do que a tela já sabia fazer.
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+    const total = cards().length;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Filtros' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Com falha' }));
+
+    await waitFor(() => expect(cards().length).toBeLessThan(total));
+    expect(cards().length).toBe(1);
+
+    // Sem a volta pelo chip, um corte esquecido dentro do popover deixaria
+    // o canvas quase vazio sem nada na tela explicando por quê.
+    const chip = screen.getByRole('button', { name: 'Remover filtro Com falha' });
+    fireEvent.click(chip);
+    await waitFor(() => expect(cards().length).toBe(total));
+  });
+
+  it('o menu só oferece formatos que existem no acervo em vista', async () => {
+    // Oferecer 21:9 num acervo sem nenhum 21:9 esvazia o canvas e não
+    // explica por quê.
     montar();
     await waitFor(() => expect(cards().length).toBeGreaterThan(0));
 
     fireEvent.click(screen.getByRole('button', { name: 'Filtros' }));
-    expect(toast).toHaveBeenLastCalledWith(expect.objectContaining({
-      description: expect.stringContaining('Filtros avançados'),
-    }));
-    expect(toast).not.toHaveBeenLastCalledWith(expect.objectContaining({
-      description: expect.stringContaining('Fator Criativo'),
-    }));
+    expect(await screen.findByRole('button', { name: '4:5' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '21:9' })).toBeNull();
+  });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Histórico de projetos' }));
-    expect(toast).toHaveBeenLastCalledWith(expect.objectContaining({
-      description: expect.stringContaining('Histórico de projetos'),
-    }));
+  it('não há gatilho de projeto na barra além do chip que sai dele', async () => {
+    // "Novo projeto" era o botão mais chamativo da barra e só desprendia o
+    // canvas do projeto atual, sem mudar nada visível. Projeto é recipiente
+    // interno aqui: nasce sozinho na primeira geração e ninguém o batiza.
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+
+    expect(screen.queryByRole('button', { name: 'Novo projeto' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Histórico de projetos' })).toBeNull();
   });
 
   const variacaoFator = (slot: number, angle: string) => ({

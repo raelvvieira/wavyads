@@ -1,6 +1,8 @@
-import { History, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Search, X } from 'lucide-react';
+import type { CreativeAspectRatio } from '../types/creative';
+import type { StudioAdvancedFilters } from '../state/advancedFilters';
 import { StudioClientSelector, type StudioClientOption } from './StudioClientSelector';
+import { StudioFiltersMenu } from './StudioFiltersMenu';
 
 export interface StudioFilterChip {
   id: string;
@@ -16,9 +18,9 @@ interface StudioTopBarProps {
   onQueryChange: (value: string) => void;
   filters: StudioFilterChip[];
   onRemoveFilter: (id: string) => void;
-  onOpenFilters: () => void;
-  onOpenHistory: () => void;
-  onNewProject: () => void;
+  advancedFilters: StudioAdvancedFilters;
+  onAdvancedFiltersChange: (value: StudioAdvancedFilters) => void;
+  availableRatios: CreativeAspectRatio[];
 }
 
 /**
@@ -28,10 +30,20 @@ interface StudioTopBarProps {
  * projeto, sem nada por trás; outro, o de cliente, que já funcionava. Um
  * gatilho quebrado ao lado de um que funciona lê como os dois quebrados.
  * Ficou só o `StudioClientSelector`, que herdou o destaque visual do que
- * saiu. A noção de projeto não sumiu da tela: o chip "Só este projeto" (em
- * `filters`) continua mostrando e permitindo sair do projeto atual — só o
- * gatilho de trocar para OUTRO projeto específico saiu, porque não existia
- * de verdade.
+ * saiu.
+ *
+ * A direita passou pela mesma limpeza, e pelo mesmo motivo. Havia três
+ * gatilhos: "Filtros" e "Histórico de projetos", que só emitiam um aviso de
+ * indisponível, e um "Novo projeto" em cor de destaque que apenas
+ * desprendia o canvas do projeto atual — nada mudava na tela, então o botão
+ * mais chamativo da barra era o que mais parecia quebrado.
+ *
+ * Sobrou o que tem dado por trás: os filtros, que `matchesFilters` já sabia
+ * aplicar. Projeto continua sendo um recipiente interno — criado sozinho na
+ * primeira geração, nunca batizado por ninguém —, e a única alça que o
+ * usuário precisa dele é sair: o chip "Só este projeto", que já está em
+ * `filters` e já é removível. Um histórico de doze linhas todas chamadas
+ * "Novo projeto" seria pior que nenhum.
  *
  * É ilha de vidro porque é controle, não conteúdo.
  */
@@ -44,9 +56,9 @@ export function StudioTopBar({
   onQueryChange,
   filters,
   onRemoveFilter,
-  onOpenFilters,
-  onOpenHistory,
-  onNewProject,
+  advancedFilters,
+  onAdvancedFiltersChange,
+  availableRatios,
 }: StudioTopBarProps) {
   return (
     <header className="studio-topbar glass-island">
@@ -94,50 +106,12 @@ export function StudioTopBar({
       )}
 
       <div className="ml-auto flex items-center gap-1.5">
-        <TopBarIcon label="Filtros" onClick={onOpenFilters} active={filters.length > 0}>
-          <SlidersHorizontal className="h-4 w-4" />
-        </TopBarIcon>
-        <TopBarIcon label="Histórico de projetos" onClick={onOpenHistory}>
-          <History className="h-4 w-4" />
-        </TopBarIcon>
-        <button
-          type="button"
-          onClick={onNewProject}
-          className="btn-accent inline-flex h-9 items-center gap-1.5 rounded-[var(--wavy-radius-pill)] px-3.5 text-[13px] font-semibold"
-        >
-          <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Novo projeto</span>
-        </button>
+        <StudioFiltersMenu
+          value={advancedFilters}
+          onChange={onAdvancedFiltersChange}
+          availableRatios={availableRatios}
+        />
       </div>
     </header>
-  );
-}
-
-function TopBarIcon({
-  label,
-  onClick,
-  active,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  active?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      title={label}
-      className={cn(
-        'inline-flex h-9 w-9 items-center justify-center rounded-full border transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wavy-focus)]',
-        active
-          ? 'border-white/20 bg-white/[0.10] text-white/92'
-          : 'border-white/10 bg-white/[0.04] text-white/62 hover:bg-white/[0.08] hover:text-white/90',
-      )}
-    >
-      {children}
-    </button>
   );
 }

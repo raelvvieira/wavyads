@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import type { CreativeAsset, CreativeAspectRatio, CreativeResolution } from '../types/creative';
 import type { CanvasViewMode, DockAttachment, SidePanelMode, StudioLibraryEntry, StudioLibraryId } from '../types/studioUi';
 import type { SelectionAction } from '../state/canvasSelectors';
+import type { StudioAdvancedFilters } from '../state/advancedFilters';
 import type { CopyBankEntry } from '../api/copyBank';
 import type { AvatarPersona } from '../types/avatarPersona';
 import { summarizeSelection } from '../state/canvasSelectors';
@@ -32,9 +33,10 @@ export interface CreativeStudioShellProps {
   filters: StudioFilterChip[];
   onRemoveFilter: (id: string) => void;
   onClearFilters: () => void;
-  onOpenFilters: () => void;
-  onOpenHistory: () => void;
-  onNewProject: () => void;
+  advancedFilters: StudioAdvancedFilters;
+  onAdvancedFiltersChange: (value: StudioAdvancedFilters) => void;
+  /** Formatos presentes no acervo em vista — alimenta o menu de filtros. */
+  availableRatios: CreativeAspectRatio[];
   loading?: boolean;
   error?: string | null;
   command: string;
@@ -124,9 +126,9 @@ export function CreativeStudioShell(props: CreativeStudioShellProps) {
         onQueryChange={props.onQueryChange}
         filters={props.filters}
         onRemoveFilter={props.onRemoveFilter}
-        onOpenFilters={props.onOpenFilters}
-        onOpenHistory={props.onOpenHistory}
-        onNewProject={props.onNewProject}
+        advancedFilters={props.advancedFilters}
+        onAdvancedFiltersChange={props.onAdvancedFiltersChange}
+        availableRatios={props.availableRatios}
       />
 
       {/* As três regiões do meio dividem a mesma faixa. Ficarem juntas num
