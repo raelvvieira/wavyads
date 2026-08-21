@@ -122,13 +122,16 @@ describe('CriativoStudioV2Page', () => {
     expect(screen.queryByText('Só este projeto')).toBeNull();
   });
 
-  it('diz na cara que é prévia, mas nomeia o que já funciona', async () => {
+  it('a faixa anuncia versão nova, não prévia', async () => {
+    // Esta tela deixou de ser prévia quando virou a rota principal do
+    // Criativo Studio. Uma faixa que continua dizendo "PRÉVIA" ensina o
+    // usuário a não confiar no que a tela afirma sobre si mesma — foi assim
+    // que ela já chegou a dizer que o Fator Criativo "segue no Studio atual"
+    // depois de ele funcionar aqui.
     montar();
-    await waitFor(() => expect(screen.getByText('Prévia')).toBeTruthy());
-    // O aviso lista só o que de fato funciona. O Fator Criativo entrou nessa
-    // lista quando deixou de ser um toast de "em breve" — um aviso de prévia
-    // desatualizado ensina o usuário a não confiar no que a tela diz de si.
-    expect(screen.getByText(/o Fator Criativo já funcionam aqui/)).toBeTruthy();
+    await waitFor(() => expect(screen.getByText('Novo')).toBeTruthy());
+    expect(screen.queryByText('Prévia')).toBeNull();
+    expect(screen.getByText(/A anterior continua disponível/)).toBeTruthy();
   });
 
   it('a biblioteca de referências mostra insumo, que o canvas esconde', async () => {
@@ -412,11 +415,13 @@ describe('CriativoStudioV2Page', () => {
     expect(screen.queryByText(/O canvas está vazio/)).toBeNull();
   });
 
-  it('leva de volta ao Studio atual', async () => {
+  it('a faixa dá a saída para a versão antiga', async () => {
+    // `/criativo-studio` agora é ESTA tela. A antiga mudou de endereço, e
+    // mandar o botão para a raiz recarregaria a própria página.
     montar();
-    await waitFor(() => expect(screen.getByText('Prévia')).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: 'Abrir o Studio atual' }));
-    expect(navigate).toHaveBeenCalledWith('/criativo-studio');
+    await waitFor(() => expect(screen.getByText('Novo')).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir versão antiga' }));
+    expect(navigate).toHaveBeenCalledWith('/criativo-studio/v1');
   });
 
   it('selecionar um cliente filtra o canvas e as contagens da ilha ao que é dele', async () => {

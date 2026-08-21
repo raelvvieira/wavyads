@@ -7,7 +7,7 @@ import { IMAGE_GENERATION_MODEL } from '../generation/capabilities';
 import { CreativeStudioShell } from './CreativeStudioShell';
 import { FatorCriativoDialog } from '../factor/FatorCriativoDialog';
 import type { OfferIntelligence } from '../types/factorCreative';
-import { StudioPreviewBanner } from './StudioPreviewBanner';
+import { StudioVersionBanner } from './StudioVersionBanner';
 import { PREVIEW_ASSETS, PREVIEW_LIBRARIES } from './studioPreviewFixtures';
 
 /** Briefing de exemplo — o que a análise devolveria numa arte real. */
@@ -68,7 +68,7 @@ export function StudioShellPreview() {
 
   return (
     <div className="studio-page">
-      <StudioPreviewBanner onOpenCurrent={() => {}} />
+      <StudioVersionBanner onOpenLegacy={() => {}} />
       <CreativeStudioShell
       clientName={clients.find((c) => c.id === clientId)?.name ?? null}
       clientId={clientId}
