@@ -49,11 +49,17 @@ const App = () => (
               <Route path="/crm" element={<CrmPage />} />
               <Route path="/crm/:clientId" element={<CrmPage />} />
               <Route path="/google-ads-ai" element={<GoogleAdsAIPage />} />
-              <Route path="/criativo-studio" element={<CriativoStudioPage />} />
-              {/* Prévia do shell V2 com o acervo real, somente leitura.
-                  Dentro do ProtectedRoute como qualquer outra tela do produto:
-                  ela lê `creative_assets`, e isso pede sessão. */}
-              <Route path="/criativo-studio/v2" element={<CriativoStudioV2Page />} />
+              {/* A V2 é o Criativo Studio. A ilha de navegação já aponta para
+                  esta rota, então o menu passou a levar à versão nova sem
+                  precisar mudar a navegação. */}
+              <Route path="/criativo-studio" element={<CriativoStudioV2Page />} />
+              {/* A antiga continua alcançável enquanto ela for necessária —
+                  é a saída de emergência que o botão da faixa oferece. */}
+              <Route path="/criativo-studio/v1" element={<CriativoStudioPage />} />
+              {/* Redireciona em vez de renderizar: manter duas rotas servindo
+                  a mesma tela cria dois endereços canônicos e, com eles, dois
+                  lugares para corrigir na próxima mudança. */}
+              <Route path="/criativo-studio/v2" element={<Navigate to="/criativo-studio" replace />} />
               <Route path="/ugc-studio" element={<UgcStudioPage />} />
               <Route path="/ugc-studio/:id" element={<UgcProjectPage />} />
               <Route path="/social-midia-studio" element={<SocialMidiaStudioPage />} />

@@ -11,7 +11,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { CreativeStudioShell } from '@/features/creative-studio/shell/CreativeStudioShell';
-import { StudioPreviewBanner } from '@/features/creative-studio/shell/StudioPreviewBanner';
+import { StudioVersionBanner } from '@/features/creative-studio/shell/StudioVersionBanner';
 import {
   createAssetGroup,
   createCreativeAsset,
@@ -275,7 +275,7 @@ export default function CriativoStudioV2Page() {
     toast({ title: 'Ainda não disponível', description: mensagem });
   }, []);
 
-  const voltarAoAtual = useCallback(() => navigate('/criativo-studio'), [navigate]);
+  const abrirVersaoAntiga = useCallback(() => navigate('/criativo-studio/v1'), [navigate]);
 
   // Trocar de cliente zera o projeto ativo. Sem isso, o canvas continuaria
   // preso a um projeto do cliente ANTERIOR, filtrado pelo cliente NOVO —
@@ -626,7 +626,7 @@ export default function CriativoStudioV2Page() {
 
   return (
     <div className="studio-page">
-      <StudioPreviewBanner onOpenCurrent={voltarAoAtual} />
+      <StudioVersionBanner onOpenLegacy={abrirVersaoAntiga} />
 
       <CreativeStudioShell
         clientName={clientName}
