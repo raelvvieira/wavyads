@@ -10,11 +10,34 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   const key = Deno.env.get("EVOLINK_API_KEY");
   if (!key) return new Response(JSON.stringify({ error: "sem chave" }), { status: 500, headers: cors });
-  const r = await fetch("https://api.evolink.ai/v1/models", {
-    headers: { Authorization: `Bearer ${key}` },
-  });
-  const texto = await r.text();
-  return new Response(JSON.stringify({ status: r.status, body: texto.slice(0, 20000) }), {
+  const alvos = [
+    "https://api.evolink.ai/v1/models?type=video",
+    "https://api.evolink.ai/v1/video/models",
+    "https://api.evolink.ai/v1/videos/models",
+    "https://api.evolink.ai/v1/models/video",
+  ];
+  const out: any[] = [];
+  for (const u of alvos) {
+    try {
+      const r = await fetch(u, { headers: { Authorization: `Bearer ${key}` } });
+      out.push({ url: u, status: r.status, body: (await r.text()).slice(0, 4000) });
+    } catch (e) {
+      out.push({ url: u, error: String(e) });
+    }
+  }
+  // Sonda barata: modelo inexistente. Se a API validar o nome antes de
+  // cobrar, o erro revela o vocabulário aceito sem gerar nada.
+  try {
+    const r = await fetch("https://api.evolink.ai/v1/videos/generations", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "__inexistente__", prompt: "x" }),
+    });
+    out.push({ url: "POST /videos/generations", status: r.status, body: (await r.text()).slice(0, 4000) });
+  } catch (e) {
+    out.push({ url: "POST /videos/generations", error: String(e) });
+  }
+  return new Response(JSON.stringify({ out }, null, 2), {
     headers: { ...cors, "Content-Type": "application/json" },
   });
 });
