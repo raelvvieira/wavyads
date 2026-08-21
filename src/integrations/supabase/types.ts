@@ -936,6 +936,137 @@ export type Database = {
         }
         Relationships: []
       }
+      ugc_clips: {
+        Row: {
+          angle_preset: string | null
+          audio: boolean
+          created_at: string
+          created_by: string | null
+          duration_seconds: number
+          error_message: string | null
+          id: string
+          kind: string
+          metadata: Json
+          model: string | null
+          project_id: string
+          prompt: string | null
+          resolution: string
+          segment: string | null
+          speech: string | null
+          status: string
+          thumbnail_url: string | null
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          angle_preset?: string | null
+          audio?: boolean
+          created_at?: string
+          created_by?: string | null
+          duration_seconds?: number
+          error_message?: string | null
+          id?: string
+          kind: string
+          metadata?: Json
+          model?: string | null
+          project_id: string
+          prompt?: string | null
+          resolution?: string
+          segment?: string | null
+          speech?: string | null
+          status?: string
+          thumbnail_url?: string | null
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          angle_preset?: string | null
+          audio?: boolean
+          created_at?: string
+          created_by?: string | null
+          duration_seconds?: number
+          error_message?: string | null
+          id?: string
+          kind?: string
+          metadata?: Json
+          model?: string | null
+          project_id?: string
+          prompt?: string | null
+          resolution?: string
+          segment?: string | null
+          speech?: string | null
+          status?: string
+          thumbnail_url?: string | null
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ugc_clips_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "ugc_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ugc_projects: {
+        Row: {
+          avatar_asset_id: string | null
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          product_image_url: string | null
+          script_json: Json | null
+          status: string
+          tier: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_asset_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          product_image_url?: string | null
+          script_json?: Json | null
+          status?: string
+          tier?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_asset_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          product_image_url?: string | null
+          script_json?: Json | null
+          status?: string
+          tier?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ugc_projects_avatar_asset_id_fkey"
+            columns: ["avatar_asset_id"]
+            isOneToOne: false
+            referencedRelation: "creative_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ugc_projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_dashboard_prefs: {
         Row: {
           client_id: string
