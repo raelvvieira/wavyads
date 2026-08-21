@@ -61,10 +61,54 @@ describe('buildCreativePrompt', () => {
   });
 
   it('omite a instrução de preservar identidade quando preserveFaces é falso', () => {
-    const comPreservacao = buildCreativePrompt({ aspect: 'story', productImageCount: 1, preserveFaces: true });
-    const semPreservacao = buildCreativePrompt({ aspect: 'story', productImageCount: 1, preserveFaces: false });
-    expect(comPreservacao).toContain('Preserve their exact likeness');
-    expect(semPreservacao).not.toContain('Preserve their exact likeness');
+    const base = { aspect: 'story' as const, productImageCount: 1, avatarCount: 1 };
+    expect(buildCreativePrompt({ ...base, preserveFaces: true })).toContain('Preserve their exact likeness');
+    expect(buildCreativePrompt({ ...base, preserveFaces: false })).not.toContain('Preserve their exact likeness');
+  });
+
+  it('produto anexado NÃO recebe instrução sobre rosto e pele', () => {
+    // A frase de preservação enumera "faces, skin tone, body shape" — quando
+    // o anexo é uma embalagem, ela é ruído que gasta atenção do modelo com
+    // algo que não existe no quadro. Só entra quando há pessoa.
+    const soProduto = buildCreativePrompt({ aspect: 'story', productImageCount: 1, productCount: 1 });
+    expect(soProduto).not.toContain('skin tone, body shape');
+  });
+
+  it('produto anexado ganha o bloco [PRODUCT], com a proibição de redesenhar', () => {
+    // Até aqui o produto — que é o que o anúncio vende — tinha a instrução
+    // mais fraca das três: o avatar ganhava [TALENT] e o logo ganhava "do
+    // NOT distort, recolor, recreate or redesign", e a embalagem só um
+    // "integrate naturally".
+    const comProduto = buildCreativePrompt({ aspect: 'story', productImageCount: 1, productCount: 1 });
+    expect(comProduto).toContain('[PRODUCT — CRITICAL]');
+    expect(comProduto).toContain('Do NOT redesign');
+    expect(comProduto).toContain('visual ground truth');
+  });
+
+  it('sem produto, o bloco [PRODUCT] não existe', () => {
+    expect(buildCreativePrompt({ aspect: 'story' })).not.toContain('[PRODUCT');
+  });
+
+  it('avatar sozinho não dispara o bloco de produto', () => {
+    // `productImageCount` é a SOMA de produtos e avatares — os dois viajam no
+    // mesmo canal. Sem a contagem separada, um avatar sozinho faria o prompt
+    // afirmar que existe um produto na referência.
+    const soAvatar = buildCreativePrompt({
+      aspect: 'story', productImageCount: 1, avatarCount: 1, productCount: 0,
+    });
+    expect(soAvatar).toContain('[TALENT]');
+    expect(soAvatar).not.toContain('[PRODUCT');
+  });
+
+  it('produto e avatar juntos são indexados por pontas opostas', () => {
+    // O backend recebe [...avatares, ...produtos]. [TALENT] fala das
+    // PRIMEIRAS imagens e [PRODUCT] das ÚLTIMAS — sem isso, com os dois
+    // anexados, os blocos apontariam para o mesmo lugar.
+    const ambos = buildCreativePrompt({
+      aspect: 'story', productImageCount: 3, avatarCount: 1, productCount: 2,
+    });
+    expect(ambos).toContain('The first 1 attached reference image(s) are the TALENT');
+    expect(ambos).toContain('The last 2 attached reference image(s) are the PRODUCT');
   });
 
   it('traduz o idioma exigido em todos os blocos', () => {
