@@ -8,6 +8,7 @@ import {
   LogOut,
   Sparkles,
   Users,
+  Clapperboard,
   Wand2,
   PlayCircle,
   Zap,
@@ -81,6 +82,7 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
   const adminItems: NavItem[] = [
     { to: '/google-ads-ai', icon: Sparkles, label: 'Google Ads I.A' },
     { to: '/criativo-studio', icon: Wand2, label: 'Criativo Studio' },
+    { to: '/ugc-studio', icon: Clapperboard, label: 'UGC Studio' },
     { to: '/social-midia-studio', icon: PlayCircle, label: 'Social Mídia Studio' },
     { to: '/configuracoes', icon: Settings, label: 'Configurações' },
   ];
@@ -93,8 +95,10 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
   const mobilePrimary = allItems.slice(0, 4);
   const mobileSecondary = allItems.slice(4);
 
+  // Prefixo, não igualdade: telas com sub-rota (`/ugc-studio/:id`) deixavam
+  // a ilha inteira apagada, e o usuário perdia a noção de onde estava.
   const isItemActive = (to: string) =>
-    location.pathname === to || (to === '/dashboard' && location.pathname.startsWith('/dashboard'));
+    location.pathname === to || location.pathname.startsWith(`${to}/`);
 
   // O shell afasta o conteúdo sempre que a ilha estiver larga — inclusive na
   // espiada. Antes só o estado fixado avisava, e a ilha aberta pelo mouse
