@@ -23,6 +23,14 @@ function montar(selected: CreativeAsset[]) {
 
 const corpo = () => document.querySelector('.studio-side-panel-body') as HTMLElement;
 
+/**
+ * As ações vivem num menu, não empilhadas no rodapé.
+ *
+ * Eram nove botões de 34px que empurravam a arte para fora da vista, num
+ * painel cujo propósito é justamente olhar a peça.
+ */
+const abrirAcoes = () => fireEvent.click(screen.getByRole('button', { name: 'Ações desta arte' }));
+
 describe('AssetInspector — visualização em tamanho completo', () => {
   it('clicar na imagem abre o diálogo com a arte inteira', () => {
     const pronta = asset({ id: 'a1', status: 'ready', url: 'https://x/a.png' });
@@ -150,9 +158,11 @@ describe('AssetInspector — rodapé de ações', () => {
     const pronta = asset({ id: 'a1', status: 'ready', url: 'https://x/a.png' });
     render(<AssetInspector selected={[pronta]} allAssets={[pronta]} onAction={onAction} onClose={vi.fn()} />);
 
+    abrirAcoes();
     fireEvent.click(screen.getByRole('button', { name: 'Usar como referência' }));
     expect(onAction).toHaveBeenCalledWith('use-as-reference', [pronta]);
 
+    abrirAcoes();
     fireEvent.click(screen.getByRole('button', { name: 'Apagar arte' }));
     expect(onAction).toHaveBeenCalledWith('delete', [pronta]);
   });
@@ -161,6 +171,7 @@ describe('AssetInspector — rodapé de ações', () => {
     const falhou = asset({ id: 'f1', status: 'failed', url: null, errorMessage: 'erro' });
     render(<AssetInspector selected={[falhou]} allAssets={[falhou]} onAction={vi.fn()} onClose={vi.fn()} />);
 
+    abrirAcoes();
     expect(screen.getByRole('button', { name: 'Apagar arte' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Usar como referência' })).toBeNull();
   });

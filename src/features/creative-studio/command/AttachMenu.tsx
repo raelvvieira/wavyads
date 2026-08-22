@@ -1,5 +1,5 @@
-import { useState, type ReactElement } from 'react';
-import { BadgeCheck, Boxes, ChevronLeft, ChevronRight, Images, Loader2, Sparkles, Type, UserRound } from 'lucide-react';
+import { useCallback, useEffect, useState, type ReactElement } from 'react';
+import { BadgeCheck, Boxes, ChevronLeft, ChevronRight, Images, Loader2, Sparkles, Trash2, Type, UserRound } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
 import { ImageDropzone } from '@/components/criativo/ImageDropzone';
@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { uploadDataUrlToCreativeStorage } from '../api/storageUpload';
 import type { CopyBankEntry } from '../api/copyBank';
 import { suggestCopyVariations, type CopyVariation } from '../api/copySuggestions';
+import { countAssetUsage, usageSentence } from '../state/assetUsage';
 import type { CreativeAsset } from '../types/creative';
 import type { DockAttachment, DockAttachmentKind } from '../types/studioUi';
 
@@ -20,7 +21,16 @@ interface AttachMenuProps {
   avatarLibrary: CreativeAsset[];
   /** Copies já usadas por este cliente, mais recente primeiro. */
   copyBank: CopyBankEntry[];
+  /** Acervo carregado — só para contar em quantas artes um insumo entrou. */
+  allAssets: CreativeAsset[];
   onAttach: (attachment: DockAttachment) => void;
+  /**
+   * Apaga um insumo de vez. Ausente = as miniaturas não mostram lixeira.
+   *
+   * A exclusão é a mesma do card do canvas (`deleteCreativeAsset`), não um
+   * segundo conceito de "remover da biblioteca" — não há soft-delete aqui.
+   */
+  onDeleteAsset?: (asset: CreativeAsset) => Promise<void>;
   /** Upload NOVO de logo/produto — além de virar anexo desta vez, some
    * pra biblioteca do cliente reutilizar depois. */
   onNewLibraryUpload: (kind: 'logo' | 'product', url: string) => void;
@@ -52,12 +62,17 @@ export function AttachMenu({
   productLibrary,
   avatarLibrary,
   copyBank,
+  allAssets,
   onAttach,
   onNewLibraryUpload,
+  onDeleteAsset,
   children,
 }: AttachMenuProps) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<'lista' | DockAttachmentKind>('lista');
+  // Mesma ideia do `copyExpandido`: a grade de miniaturas cabe em 288px, e
+  // só quem abriu um item precisa da coluna de detalhe do lado.
+  const [detalheAberto, setDetalheAberto] = useState(false);
   // O painel só alarga quando há sugestões na tela. Deixá-lo largo o tempo
   // todo desperdiçaria espaço nos outros quatro modos de anexo, que são
   // grades de miniatura e cabem bem em 288px.
@@ -67,6 +82,7 @@ export function AttachMenu({
     setOpen(false);
     setStep('lista');
     setCopyExpandido(false);
+    setDetalheAberto(false);
   };
 
   const anexar = (attachment: Omit<DockAttachment, 'id'>) => {
@@ -79,7 +95,7 @@ export function AttachMenu({
       open={open}
       onOpenChange={(proximo) => {
         setOpen(proximo);
-        if (!proximo) { setStep('lista'); setCopyExpandido(false); }
+        if (!proximo) { setStep('lista'); setCopyExpandido(false); setDetalheAberto(false); }
       }}
     >
       <PopoverTrigger asChild>{children}</PopoverTrigger>
@@ -90,7 +106,9 @@ export function AttachMenu({
           // Copy precisa de mais largura que uma grade de miniaturas: uma
           // copy de anúncio tem título, subtítulo e CTA, e a 288px isso vira
           // reticências. Com sugestões abertas, abre a segunda coluna.
-          step === 'copy' ? (copyExpandido ? 'w-[620px]' : 'w-[380px]') : 'w-72',
+          step === 'copy'
+            ? (copyExpandido ? 'w-[620px]' : 'w-[380px]')
+            : detalheAberto ? 'w-[560px]' : 'w-72',
         )}
       >
         {step === 'lista' ? (
@@ -117,10 +135,13 @@ export function AttachMenu({
             productLibrary={productLibrary}
             avatarLibrary={avatarLibrary}
             copyBank={copyBank}
-            onVoltar={() => { setStep('lista'); setCopyExpandido(false); }}
+            allAssets={allAssets}
+            onVoltar={() => { setStep('lista'); setCopyExpandido(false); setDetalheAberto(false); }}
             onAnexar={anexar}
             onNovoUpload={onNewLibraryUpload}
+            onApagar={onDeleteAsset}
             onSugestoesAbertas={setCopyExpandido}
+            onDetalheAberto={setDetalheAberto}
           />
         )}
       </PopoverContent>
@@ -151,10 +172,13 @@ function SubPainel({
   productLibrary,
   avatarLibrary,
   copyBank,
+  allAssets,
   onVoltar,
   onAnexar,
   onNovoUpload,
+  onApagar,
   onSugestoesAbertas,
+  onDetalheAberto,
 }: {
   kind: DockAttachmentKind;
   referenceLibrary: CreativeAsset[];
@@ -162,76 +186,256 @@ function SubPainel({
   productLibrary: CreativeAsset[];
   avatarLibrary: CreativeAsset[];
   copyBank: CopyBankEntry[];
+  allAssets: CreativeAsset[];
   onVoltar: () => void;
   onAnexar: (attachment: Omit<DockAttachment, 'id'>) => void;
   onNovoUpload: (kind: 'logo' | 'product', url: string) => void;
+  onApagar?: (asset: CreativeAsset) => Promise<void>;
   onSugestoesAbertas: (aberto: boolean) => void;
+  onDetalheAberto: (aberto: boolean) => void;
 }) {
-  if (kind === 'reference') return <PainelReferencia referenceLibrary={referenceLibrary} onVoltar={onVoltar} onAnexar={onAnexar} />;
+  const comuns = { allAssets, onVoltar, onAnexar, onApagar, onDetalheAberto };
+  if (kind === 'reference') return <PainelReferencia referenceLibrary={referenceLibrary} {...comuns} />;
   if (kind === 'logo') {
     return (
       <PainelBiblioteca
         titulo="Anexar logo" maxImages={1} texto="Solte, clique ou cole o logo" kind="logo"
-        library={logoLibrary} onVoltar={onVoltar} onAnexar={onAnexar} onNovoUpload={onNovoUpload}
+        library={logoLibrary} onNovoUpload={onNovoUpload} {...comuns}
       />
     );
   }
   if (kind === 'copy') return <PainelCopy copyBank={copyBank} onVoltar={onVoltar} onAnexar={onAnexar} onSugestoesAbertas={onSugestoesAbertas} />;
-  if (kind === 'avatar') return <PainelAvatar library={avatarLibrary} onVoltar={onVoltar} onAnexar={onAnexar} />;
+  if (kind === 'avatar') return <PainelAvatar library={avatarLibrary} {...comuns} />;
   return (
     <PainelBiblioteca
       titulo="Anexar produto" maxImages={6} texto="Solte, clique ou cole imagens do produto" kind="product"
-      library={productLibrary} onVoltar={onVoltar} onAnexar={onAnexar} onNovoUpload={onNovoUpload}
+      library={productLibrary} onNovoUpload={onNovoUpload} {...comuns}
     />
+  );
+}
+
+/** O substantivo que a confirmação usa. */
+const NOME_DO_INSUMO: Record<'reference' | 'logo' | 'product' | 'avatar', string> = {
+  reference: 'referência',
+  logo: 'logo',
+  product: 'produto',
+  avatar: 'avatar',
+};
+
+interface FocoDaGrade {
+  id: string;
+  modo: 'ver' | 'apagar';
+}
+
+/**
+ * A grade de insumos salvos, com coluna de detalhe.
+ *
+ * Referência, logo, produto e avatar tinham três grades iguais em três
+ * lugares — mesma estrutura, mesmo `aspect-square`, mesmo `object-cover`.
+ * Duplicar isso uma quarta vez para acrescentar lixeira e preview seria
+ * garantir que as quatro divergissem na próxima mudança.
+ *
+ * Duas coisas mudam em relação ao que existia:
+ *
+ * A miniatura deixa de anexar no clique. Ela abre o item na coluna da
+ * direita, inteiro e sem recorte — `object-cover` num quadrado é ótimo para
+ * caber, e péssimo para reconhecer qual das cinco referências é aquela. O
+ * anexo passa a sair do botão da coluna. É um clique a mais, e em troca o
+ * que se anexa é o que se viu.
+ *
+ * A lixeira vive no canto da miniatura, e não apaga direto: ela põe a
+ * coluna em modo de confirmação COM A IMAGEM À VISTA. `deleteCreativeAsset`
+ * é exclusão de verdade, sem lixeira e sem desfazer — confirmar sobre uma
+ * miniatura de 80px seria confirmar no escuro.
+ */
+function GradeDeInsumos({
+  itens,
+  kind,
+  allAssets,
+  alturaLista = 'max-h-64',
+  onAnexar,
+  onApagar,
+  onDetalheAberto,
+}: {
+  itens: { asset: CreativeAsset; label: string }[];
+  kind: 'reference' | 'logo' | 'product' | 'avatar';
+  /** Acervo carregado — só para contar em quantas artes o insumo entrou. */
+  allAssets: CreativeAsset[];
+  alturaLista?: string;
+  onAnexar: (attachment: Omit<DockAttachment, 'id'>) => void;
+  /** Ausente = sem lixeira. Quem não sabe apagar não oferece o botão. */
+  onApagar?: (asset: CreativeAsset) => Promise<void>;
+  onDetalheAberto: (aberto: boolean) => void;
+}) {
+  const [foco, setFoco] = useState<FocoDaGrade | null>(null);
+  const [apagando, setApagando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const focado = itens.find((i) => i.asset.id === foco?.id) ?? null;
+
+  // O item em foco pode sumir da lista — por ter sido apagado aqui mesmo, ou
+  // por uma recarga do acervo. A coluna some junto, em vez de ficar
+  // mostrando algo que não existe mais.
+  useEffect(() => {
+    if (foco && !focado) setFoco(null);
+    onDetalheAberto(!!focado);
+  }, [foco, focado, onDetalheAberto]);
+
+  const confirmarExclusao = async () => {
+    if (!focado || !onApagar) return;
+    setApagando(true);
+    setErro(null);
+    try {
+      await onApagar(focado.asset);
+      setFoco(null);
+    } catch (e: any) {
+      setErro(e?.message ?? 'Não foi possível apagar.');
+    } finally {
+      setApagando(false);
+    }
+  };
+
+  const usos = focado ? countAssetUsage(allAssets, focado.asset.url) : 0;
+
+  return (
+    <div className="flex items-stretch">
+      <div className={cn('min-w-0 flex-1 overflow-y-auto p-2.5', alturaLista)}>
+        <div className="grid grid-cols-3 gap-1.5">
+          {itens.map(({ asset, label }) => (
+            <div key={asset.id} className="group relative">
+              <button
+                type="button"
+                onClick={() => setFoco({ id: asset.id, modo: 'ver' })}
+                disabled={!asset.url}
+                aria-label={`Ver ${label}`}
+                aria-pressed={foco?.id === asset.id}
+                className={cn(
+                  'block aspect-square w-full overflow-hidden rounded-[var(--wavy-radius-control)] border transition-[border-color] duration-150 disabled:opacity-40',
+                  foco?.id === asset.id ? 'border-accent/60' : 'border-white/10 hover:border-white/25',
+                )}
+              >
+                {asset.url && <img src={asset.thumbnailUrl ?? asset.url} alt="" className="h-full w-full object-cover" />}
+              </button>
+
+              {onApagar && (
+                <button
+                  type="button"
+                  onClick={() => setFoco({ id: asset.id, modo: 'apagar' })}
+                  aria-label={`Apagar ${label}`}
+                  title="Apagar"
+                  className="absolute right-1 top-1 rounded-full bg-black/55 p-1 text-white/80 opacity-0 backdrop-blur transition-all duration-150 hover:bg-destructive hover:text-white focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wavy-focus)] group-hover:opacity-100"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {focado && (
+        <aside className="flex w-[248px] shrink-0 flex-col gap-2 border-l border-white/10 p-2.5">
+          {focado.asset.url && (
+            <img
+              // A URL original, não a miniatura: o ponto da coluna é ver a
+              // imagem de verdade.
+              src={focado.asset.url}
+              alt={focado.label}
+              className="block h-auto max-h-[240px] w-full rounded-[var(--wavy-radius-control)] border border-white/10 object-contain"
+            />
+          )}
+
+          {foco?.modo === 'apagar' ? (
+            <>
+              <p className="text-[12px] font-medium text-white/88">
+                Apagar {kind === 'logo' ? 'este' : kind === 'product' ? 'este' : 'esta'} {NOME_DO_INSUMO[kind]}?
+              </p>
+              <p className="text-[11px] leading-relaxed text-white/55">
+                {usageSentence(usos) || 'Some do acervo deste cliente. Não dá para desfazer.'}
+              </p>
+              {erro && <p className="text-[11px] text-destructive">{erro}</p>}
+              <div className="mt-auto flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setFoco({ id: focado.asset.id, modo: 'ver' })}
+                  className="btn-glass flex-1 rounded-[var(--wavy-radius-control)] py-1.5 text-[12px] font-medium"
+                >
+                  Não
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void confirmarExclusao()}
+                  disabled={apagando}
+                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-[var(--wavy-radius-control)] bg-destructive py-1.5 text-[12px] font-semibold text-destructive-foreground transition-opacity duration-150 hover:bg-destructive/90 disabled:opacity-50"
+                >
+                  {apagando && <Loader2 className="h-3 w-3 animate-spin" />}
+                  Sim, apagar
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="truncate text-[12px] font-medium text-white/88" title={focado.label}>
+                {focado.label}
+              </p>
+              <button
+                type="button"
+                onClick={() => focado.asset.url && onAnexar({
+                  kind,
+                  label: focado.label,
+                  thumbnailUrl: focado.asset.thumbnailUrl ?? focado.asset.url,
+                  value: focado.asset.url,
+                })}
+                className="btn-accent mt-auto rounded-[var(--wavy-radius-control)] py-1.5 text-[12px] font-semibold"
+              >
+                Anexar
+              </button>
+            </>
+          )}
+        </aside>
+      )}
+    </div>
   );
 }
 
 function PainelReferencia({
   referenceLibrary,
+  allAssets,
   onVoltar,
   onAnexar,
+  onApagar,
+  onDetalheAberto,
 }: {
   referenceLibrary: CreativeAsset[];
+  allAssets: CreativeAsset[];
   onVoltar: () => void;
   onAnexar: (attachment: Omit<DockAttachment, 'id'>) => void;
+  onApagar?: (asset: CreativeAsset) => Promise<void>;
+  onDetalheAberto: (aberto: boolean) => void;
 }) {
   return (
     <div>
       <VoltarHeader titulo="Anexar referência" onVoltar={onVoltar} />
-      <div className="max-h-64 overflow-y-auto p-2.5">
-        {referenceLibrary.length === 0 ? (
-          <p className="px-1 py-3 text-center text-[12px] text-white/45">Nenhuma referência salva ainda.</p>
-        ) : (
-          <div className="grid grid-cols-3 gap-1.5">
-            {referenceLibrary.map((ref) => (
-              <button
-                key={ref.id}
-                type="button"
-                onClick={() => ref.url && onAnexar({
-                  kind: 'reference',
-                  label: ref.filename ?? 'Referência',
-                  thumbnailUrl: ref.thumbnailUrl ?? ref.url,
-                  value: ref.url,
-                })}
-                disabled={!ref.url}
-                aria-label={`Anexar ${ref.filename ?? 'referência'}`}
-                className="aspect-square overflow-hidden rounded-[var(--wavy-radius-control)] border border-white/10 transition-[border-color] duration-150 hover:border-white/25 disabled:opacity-40"
-              >
-                {ref.url && <img src={ref.thumbnailUrl ?? ref.url} alt="" className="h-full w-full object-cover" />}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      {referenceLibrary.length === 0 ? (
+        <p className="px-3 py-4 text-center text-[12px] text-white/45">Nenhuma referência salva ainda.</p>
+      ) : (
+        <GradeDeInsumos
+          itens={referenceLibrary.map((ref) => ({ asset: ref, label: ref.filename ?? 'Referência' }))}
+          kind="reference"
+          allAssets={allAssets}
+          onAnexar={onAnexar}
+          onApagar={onApagar}
+          onDetalheAberto={onDetalheAberto}
+        />
+      )}
     </div>
   );
 }
 
 /**
  * Logo e produto compartilham a mesma mecânica: uma grade do que já foi
- * salvo para este cliente (clique anexa na hora, igual referência), e um
- * upload embaixo pra adicionar um novo — que também vira reutilizável,
- * via `onNovoUpload`.
+ * salvo para este cliente, e um upload embaixo pra adicionar um novo — que
+ * também vira reutilizável, via `onNovoUpload`.
  */
 function PainelBiblioteca({
   titulo,
@@ -239,18 +443,24 @@ function PainelBiblioteca({
   texto,
   kind,
   library,
+  allAssets,
   onVoltar,
   onAnexar,
   onNovoUpload,
+  onApagar,
+  onDetalheAberto,
 }: {
   titulo: string;
   maxImages: number;
   texto: string;
   kind: 'logo' | 'product';
   library: CreativeAsset[];
+  allAssets: CreativeAsset[];
   onVoltar: () => void;
   onAnexar: (attachment: Omit<DockAttachment, 'id'>) => void;
   onNovoUpload: (kind: 'logo' | 'product', url: string) => void;
+  onApagar?: (asset: CreativeAsset) => Promise<void>;
+  onDetalheAberto: (aberto: boolean) => void;
 }) {
   const [enviando, setEnviando] = useState(false);
   const rotuloPadrao = kind === 'logo' ? 'Logo' : 'Produto';
@@ -277,27 +487,15 @@ function PainelBiblioteca({
     <div>
       <VoltarHeader titulo={titulo} onVoltar={onVoltar} />
       {library.length > 0 && (
-        <div className="max-h-40 overflow-y-auto p-2.5 pb-0">
-          <div className="grid grid-cols-3 gap-1.5">
-            {library.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => item.url && onAnexar({
-                  kind,
-                  label: item.filename ?? rotuloPadrao,
-                  thumbnailUrl: item.thumbnailUrl ?? item.url,
-                  value: item.url,
-                })}
-                disabled={!item.url}
-                aria-label={`Anexar ${item.filename ?? (kind === 'logo' ? 'logo salvo' : 'produto salvo')}`}
-                className="aspect-square overflow-hidden rounded-[var(--wavy-radius-control)] border border-white/10 transition-[border-color] duration-150 hover:border-white/25 disabled:opacity-40"
-              >
-                {item.url && <img src={item.thumbnailUrl ?? item.url} alt="" className="h-full w-full object-cover" />}
-              </button>
-            ))}
-          </div>
-        </div>
+        <GradeDeInsumos
+          itens={library.map((item) => ({ asset: item, label: item.filename ?? rotuloPadrao }))}
+          kind={kind}
+          allAssets={allAssets}
+          alturaLista="max-h-40"
+          onAnexar={onAnexar}
+          onApagar={onApagar}
+          onDetalheAberto={onDetalheAberto}
+        />
       )}
       <div className="p-2.5">
         <ImageDropzone images={[]} onChange={handleChange} label={enviando ? 'Enviando…' : texto} maxImages={maxImages} />
@@ -313,46 +511,40 @@ function PainelBiblioteca({
  */
 function PainelAvatar({
   library,
+  allAssets,
   onVoltar,
   onAnexar,
+  onApagar,
+  onDetalheAberto,
 }: {
   library: CreativeAsset[];
+  allAssets: CreativeAsset[];
   onVoltar: () => void;
   onAnexar: (attachment: Omit<DockAttachment, 'id'>) => void;
+  onApagar?: (asset: CreativeAsset) => Promise<void>;
+  onDetalheAberto: (aberto: boolean) => void;
 }) {
   const prontos = library.filter((a) => a.status === 'ready' && !!a.url);
   return (
     <div>
       <VoltarHeader titulo="Anexar avatar" onVoltar={onVoltar} />
-      <div className="max-h-64 overflow-y-auto p-2.5">
-        {prontos.length === 0 ? (
-          <p className="px-1 py-3 text-center text-[12px] text-white/45">
-            Nenhum avatar ainda. Crie um na biblioteca "Avatares".
-          </p>
-        ) : (
-          <div className="grid grid-cols-3 gap-1.5">
-            {prontos.map((item) => {
-              const nome = (item.metadata as any)?.persona?.name ?? item.filename ?? 'Avatar';
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => item.url && onAnexar({
-                    kind: 'avatar',
-                    label: nome,
-                    thumbnailUrl: item.thumbnailUrl ?? item.url,
-                    value: item.url,
-                  })}
-                  aria-label={`Anexar ${nome}`}
-                  className="aspect-square overflow-hidden rounded-[var(--wavy-radius-control)] border border-white/10 transition-[border-color] duration-150 hover:border-white/25"
-                >
-                  <img src={item.thumbnailUrl ?? item.url ?? ''} alt="" className="h-full w-full object-cover" />
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      {prontos.length === 0 ? (
+        <p className="px-3 py-4 text-center text-[12px] text-white/45">
+          Nenhum avatar ainda. Crie um na biblioteca "Avatares".
+        </p>
+      ) : (
+        <GradeDeInsumos
+          itens={prontos.map((item) => ({
+            asset: item,
+            label: (item.metadata as any)?.persona?.name ?? item.filename ?? 'Avatar',
+          }))}
+          kind="avatar"
+          allAssets={allAssets}
+          onAnexar={onAnexar}
+          onApagar={onApagar}
+          onDetalheAberto={onDetalheAberto}
+        />
+      )}
     </div>
   );
 }
@@ -438,23 +630,34 @@ function PainelCopy({
                 </button>
               ))}
             </div>
-            <button
-              type="button"
-              onClick={sugerirVariacoes}
-              disabled={!podeSugerir}
-              className="mt-1.5 flex items-center gap-1.5 text-[12px] font-medium text-white/70 transition-colors duration-150 hover:text-white/90 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {sugerindo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-              Sugerir variações
-            </button>
-            {!podeSugerir && !sugerindo && (
-              <p className="mt-1 text-[11px] text-white/40">
-                Escolha uma copy acima ou escreva um texto abaixo para variar.
-              </p>
-            )}
-            {erroSugestao && <p className="mt-1 text-[11px] text-destructive">{erroSugestao}</p>}
           </div>
         )}
+
+        {/* Fora do bloco do histórico de propósito. "Sugerir variações"
+            trabalha a partir do texto DIGITADO tanto quanto de uma copy
+            escolhida — mas vivia dentro do `copyBank.length > 0` e sumia
+            junto com o histórico, deixando o painel virar um textarea nu
+            para todo cliente que ainda não tinha copy salva. */}
+        <div>
+          <button
+            type="button"
+            onClick={sugerirVariacoes}
+            disabled={!podeSugerir}
+            className="flex items-center gap-1.5 text-[12px] font-medium text-white/70 transition-colors duration-150 hover:text-white/90 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {sugerindo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            Sugerir variações
+          </button>
+          {!podeSugerir && !sugerindo && (
+            <p className="mt-1 text-[11px] text-white/40">
+              {copyBank.length > 0
+                ? 'Escolha uma copy acima ou escreva um texto abaixo para variar.'
+                : 'Escreva um texto abaixo para a IA variar.'}
+            </p>
+          )}
+          {erroSugestao && <p className="mt-1 text-[11px] text-destructive">{erroSugestao}</p>}
+        </div>
+
         <Textarea
           value={texto}
           onChange={(e) => setTexto(e.target.value)}

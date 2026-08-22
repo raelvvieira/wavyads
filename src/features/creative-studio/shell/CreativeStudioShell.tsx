@@ -63,6 +63,8 @@ export interface CreativeStudioShellProps {
   /** Copies já usadas por este cliente — alimenta o sub-painel de copy. */
   copyBank: CopyBankEntry[];
   onNewLibraryUpload: (kind: 'logo' | 'product', url: string) => void;
+  /** Apaga um insumo da biblioteca do cliente, de vez. */
+  onDeleteAsset?: (asset: CreativeAsset) => Promise<void>;
   /** Avatares deste cliente — alimentam o Avatar Studio e o menu de anexos. */
   avatarLibrary: CreativeAsset[];
   onGenerateAvatar: (persona: AvatarPersona, referenceImages: string[]) => void;
@@ -208,6 +210,8 @@ export function CreativeStudioShell(props: CreativeStudioShellProps) {
             productLibrary={props.productLibrary}
             avatarLibrary={props.avatarLibrary}
             copyBank={props.copyBank}
+            allAssets={props.allAssets}
+            onDeleteAsset={props.onDeleteAsset}
             onNewLibraryUpload={props.onNewLibraryUpload}
             onOpenCopilot={() => setSidePanel('copilot')}
           />

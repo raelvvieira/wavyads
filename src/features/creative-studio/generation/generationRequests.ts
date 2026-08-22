@@ -243,13 +243,59 @@ export function buildEditRequest(input: {
 /**
  * Redimensionamento para 1:1.
  *
- * Reaproveitar o prompt original sem corrigir faria a arte quadrada nascer
- * com a zona segura do formato de origem — por exemplo, a margem inferior
- * de 35% de um Story. O bloco de override manda o modelo IGNORAR toda
- * instrução de enquadramento anterior no prompt e usar só o que vem depois.
+ * Isto NÃO é gerar de novo em outro formato — é reenquadrar a arte que já
+ * existe. A diferença parece sutil e não é: a arte nunca ia anexada, então
+ * tudo o que o modelo recebia era o TEXTO do prompt original. E um prompt
+ * descreve uma intenção, não uma peça. Ele reinterpretava a intenção do
+ * zero e devolvia outro anúncio — mesma marca, mesma copy, composição
+ * inteiramente nova, às vezes com objetos que nunca estiveram na peça
+ * aprovada.
+ *
+ * Duas coisas consertam isso, e as duas eram necessárias:
+ *
+ * A arte vai anexada, em `storyReference` — o canal que a edge function já
+ * entende como "referência de consistência visual", e que o bloco
+ * `[VISUAL CONSISTENCY]` do montador já previa. Ninguém preenchia aqui.
+ *
+ * E o prompt passa a liderar pelo reenquadramento, com o briefing original
+ * rebaixado a contexto no fim. O que vem primeiro pesa mais, e o que
+ * precisa pesar mais aqui é "a verdade é a imagem anexada", não "faça um
+ * anúncio para tal negócio".
+ *
+ * O override de enquadramento continua: sem ele a arte quadrada nasceria
+ * com a zona segura do formato de origem — a margem inferior de 35% de um
+ * Story, por exemplo.
  */
-export function buildResizeRequest(input: { originalPrompt: string }): GenerationRequest {
-  const prompt = `${input.originalPrompt}\n\n[FRAMING OVERRIDE — THIS RENDER IS 1:1]\nThis render is a 1:1 square (1080x1080). Ignore every framing and safe-zone instruction stated earlier in this prompt; the block below replaces them.\n\n${buildSafeZoneBlock('1:1')}`;
+export function buildResizeRequest(input: {
+  originalPrompt: string;
+  /** A arte aprovada. Sem ela isto vira uma geração nova disfarçada. */
+  originalImageUrl?: string | null;
+}): GenerationRequest {
+  const temArte = !!input.originalImageUrl;
+
+  const reframe = temArte
+    ? `[REFRAME — THIS IS NOT A NEW ARTWORK]
+The attached reference image IS the artwork. It is already approved. This render is that SAME artwork re-composed for a square canvas — not a new interpretation of the brief below.
+Keep every element that appears in the attached image: the same person and their exact likeness, the same product, the same background, the same colour palette, the same photographic treatment, the same typefaces, and the same words rendered exactly as they appear there.
+Do NOT add any object, prop, person, badge or line of text that is not visible in the attached image. Do NOT remove any either. Nothing enters and nothing leaves.
+What changes is ONLY the arrangement: reposition and rescale the existing elements to fit the square frame and to respect the safe area below, and extend the existing background naturally into the space the new proportion opens up.`
+    : `[REFRAME — THIS IS NOT A NEW ARTWORK]
+Re-compose the artwork described below for a square canvas, keeping every element, colour and word it specifies. Do not introduce anything new.`;
+
+  const override = `[FRAMING OVERRIDE — THIS RENDER IS 1:1]
+This render is a 1:1 square (1080x1080). Ignore every framing and safe-zone instruction stated in the brief below; the block that follows replaces them.`;
+
+  // O briefing original vem por último e rotulado: ele carrega paleta,
+  // tipografia e a copy exata, que continuam valendo — mas quem manda na
+  // composição é a imagem anexada, não este texto.
+  const briefing = `[ORIGINAL BRIEF — CONTEXT ONLY]
+${temArte
+    ? 'The brief that produced the attached artwork. Use it to keep palette, typography and wording consistent — never to re-invent the composition.'
+    : 'The brief that produced the artwork.'}
+${input.originalPrompt}`;
+
+  const prompt = [reframe, override, buildSafeZoneBlock('1:1'), briefing].join('\n\n');
+
   return {
     prompt,
     body: {
@@ -257,9 +303,12 @@ export function buildResizeRequest(input: { originalPrompt: string }): Generatio
       aspectRatio: 'square',
       formatRatio: '1:1',
       model: IMAGE_GENERATION_MODEL.id,
+      // A arte inteira já contém produto e logo renderizados. Reanexá-los
+      // como referência separada convidaria o modelo a desenhá-los de novo,
+      // que é o oposto de reenquadrar.
       productImages: [],
       logoImage: null,
-      storyReference: null,
+      storyReference: input.originalImageUrl ?? null,
     },
   };
 }

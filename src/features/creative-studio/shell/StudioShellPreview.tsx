@@ -116,6 +116,7 @@ export function StudioShellPreview() {
       productLibrary={productLibrary}
       copyBank={PREVIEW_COPY_BANK}
       onNewLibraryUpload={() => {}}
+      onDeleteAsset={async () => {}}
       avatarLibrary={avatarLibrary}
       onGenerateAvatar={() => {}}
       onAssetAction={(acao) => { if (acao === 'factor') setFatorAberto(true); }}
