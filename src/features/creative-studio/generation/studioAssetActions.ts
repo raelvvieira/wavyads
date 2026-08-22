@@ -10,6 +10,8 @@ import {
 } from './generationRequests';
 import type { AvatarPersona } from '../types/avatarPersona';
 import type { FactorCreativeOutput, FactorVariation } from '../types/factorCreative';
+import type { ArtDirectionInput, ArtDirectionResult } from '../api/artDirection';
+import type { ReferenceAnalysis } from '../api/referenceAnalysis';
 
 
 /**
@@ -33,8 +35,20 @@ export interface StudioAssetActionsDeps {
   updateAsset(id: string, patch: any): Promise<CreativeAsset>;
   /** Só o Fator usa: as 5 variações nascem irmãs de um lote. */
   createGroup?(input: any): Promise<{ id: string }>;
+  /**
+   * Escreve o que aparece no quadro antes da imagem existir.
+   *
+   * Opcional porque a geração precisa continuar funcionando sem ela — é
+   * uma camada a mais de qualidade, não um pré-requisito.
+   */
+  directArt?(input: ArtDirectionInput): Promise<ArtDirectionResult>;
+  /** Lê as referências anexadas e devolve o sistema visual delas. */
+  analyzeReferences?(urls: string[]): Promise<ReferenceAnalysis | null>;
   recordUsage(usageKey: string): void;
 }
+
+/** Os estágios que o dock mostra enquanto a arte não existe. */
+export type GenerationStage = 'reading-references' | 'directing' | 'generating';
 
 export interface GenerationOptions {
   resolution?: CreativeResolution;
@@ -46,6 +60,17 @@ export interface GenerationOptions {
   productImageUrls?: string[];
   /** Avatares anexados — entram como talento do anúncio. */
   avatarImageUrls?: string[];
+  /** Contexto que ajuda a direção de arte a acertar o tom. */
+  clientName?: string | null;
+  language?: string;
+  /**
+   * Avisa em que etapa a geração está.
+   *
+   * Sem isso, ler referência e dirigir a arte somam segundos em que a tela
+   * fica parada dizendo só "gerando" — e um usuário que não vê progresso
+   * clica de novo.
+   */
+  onStage?: (stage: GenerationStage) => void;
 }
 
 export interface StudioAssetActions {
@@ -99,6 +124,46 @@ async function runGeneration(
 export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAssetActions {
   return {
     async generate(brief, aspectRatio, options = {}) {
+      const produtos = options.productImageUrls ?? [];
+      const avatares = options.avatarImageUrls ?? [];
+
+      // As duas etapas abaixo melhoram a arte; nenhuma delas pode impedi-la.
+      // Uma IA fora do ar, um modelo descontinuado ou uma referência que o
+      // provedor não conseguiu ler viram uma geração mais simples, nunca
+      // uma geração a menos — o usuário pediu uma arte, não um relatório de
+      // indisponibilidade.
+      let analise: ReferenceAnalysis | null = null;
+      if (produtos.length > 0 && deps.analyzeReferences) {
+        options.onStage?.('reading-references');
+        try {
+          analise = await deps.analyzeReferences(produtos);
+        } catch {
+          analise = null;
+        }
+      }
+
+      let direcao: ArtDirectionResult = { artDirection: null, copyBlocks: null };
+      if (deps.directArt) {
+        options.onStage?.('directing');
+        try {
+          direcao = await deps.directArt({
+            brief,
+            copy: options.copy ?? null,
+            clientName: options.clientName ?? null,
+            language: options.language,
+            aspectRatio,
+            designSystemDoc: analise?.designSystemDoc ?? null,
+            hasReferences: produtos.length > 0,
+            hasProduct: produtos.length > 0,
+            hasAvatar: avatares.length > 0,
+            hasLogo: !!options.logoImageUrl,
+          });
+        } catch {
+          direcao = { artDirection: null, copyBlocks: null };
+        }
+      }
+
+      options.onStage?.('generating');
       const { prompt, body } = buildGenerationRequest({
         brief,
         aspectRatio,
@@ -108,6 +173,11 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
         logoImageUrl: options.logoImageUrl,
         productImageUrls: options.productImageUrls,
         avatarImageUrls: options.avatarImageUrls,
+        artDirection: direcao.artDirection,
+        copyBlocks: direcao.copyBlocks,
+        designSystemDoc: analise?.designSystemDoc ?? null,
+        antiPadroes: analise?.antiPadroes ?? null,
+        mood: analise?.mood ?? null,
       });
       const projectId = await deps.ensureProjectId();
       const row = await deps.createAsset({
@@ -126,6 +196,14 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
           logoImage: options.logoImageUrl ?? null,
           productImages: options.productImageUrls ?? [],
           avatarImages: options.avatarImageUrls ?? [],
+          // O que a arte recebeu de direção fica gravado com ela. É o que
+          // permite ao inspetor explicar por que a peça saiu como saiu — e
+          // é sobre isso que o usuário vai querer iterar, não sobre o
+          // prompt de 4 mil caracteres.
+          artDirection: direcao.artDirection,
+          copyBlocks: direcao.copyBlocks,
+          designSystemDoc: analise?.designSystemDoc ?? null,
+          antiPadroes: analise?.antiPadroes ?? null,
         },
       });
       return runGeneration(deps, row, body);
@@ -186,6 +264,8 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
         logoImageUrl: base.metadata?.logoImage ?? null,
         productImageUrls: base.metadata?.productImages ?? [],
         storyReferenceUrl: base.url,
+        designSystemDoc: base.metadata?.designSystemDoc ?? null,
+        antiPadroes: base.metadata?.antiPadroes ?? null,
       }));
 
       // As 5 linhas nascem ANTES de qualquer imagem: é o que faz o lote

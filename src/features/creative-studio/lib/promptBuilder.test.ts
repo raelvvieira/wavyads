@@ -111,6 +111,93 @@ describe('buildCreativePrompt', () => {
     expect(ambos).toContain('The last 2 attached reference image(s) are the PRODUCT');
   });
 
+  it('a direção de arte vira bloco próprio, antes da parede de restrições', () => {
+    // Era a única camada que o Fator Criativo tinha e a geração normal não.
+    // Vir cedo é parte da mudança: tudo depois dela é restrição, e um prompt
+    // só de restrição produz arte tímida.
+    const prompt = buildCreativePrompt({
+      aspect: 'story',
+      productImageCount: 1,
+      artDirection: {
+        mainSubject: 'Um dentista de luvas segurando uma escala de cor',
+        composition: 'Clean e minimalista, texto no centro superior',
+      },
+    });
+    expect(prompt).toContain('[ART DIRECTION]\nMain subject: Um dentista de luvas segurando uma escala de cor\nComposition: Clean e minimalista, texto no centro superior');
+    expect(prompt.indexOf('[ART DIRECTION]')).toBeLessThan(prompt.indexOf('[SAFE ZONE]'));
+    expect(prompt.indexOf('[ART DIRECTION]')).toBeLessThan(prompt.indexOf('[DO NOT INCLUDE]'));
+  });
+
+  it('sem direção de arte, o bloco não aparece', () => {
+    expect(buildCreativePrompt({ aspect: 'story' })).not.toContain('[ART DIRECTION]');
+    expect(buildCreativePrompt({ aspect: 'story', artDirection: { mainSubject: '  ', composition: '' } }))
+      .not.toContain('[ART DIRECTION]');
+  });
+
+  it('a copy do usuário continua intocável, mas o desenho dela deixa de ser proibido', () => {
+    // A frase antiga proibia texto novo E hierarquia na mesma respiração —
+    // e a arte saía com todas as linhas no mesmo tamanho porque o modelo
+    // obedecia. As palavras seguem fixas; a tipografia não.
+    const prompt = buildCreativePrompt({
+      aspect: 'story',
+      copy: { source: 'original', text: 'Diga adeus aos dentes amarelados\nAgende sua avaliação' },
+    });
+    expect(prompt).toContain('THE WORDS ARE FIXED.');
+    expect(prompt).toContain('Do not paraphrase, shorten, expand or reword it.');
+    expect(prompt).toContain('do not invent one');
+    expect(prompt).toContain('THE TYPOGRAPHY IS YOURS TO DESIGN.');
+    expect(prompt).toContain('render THAT line inside a pill or button in the accent colour — do not write a new one');
+    expect(prompt).not.toContain('do not add new text elements to fill the layout');
+  });
+
+  it('a copy literal só cita o design system quando existe um', () => {
+    // O bloco mandava seguir "the typography system from the design system
+    // above" mesmo quando o cabeçalho acima estava vazio — ponteiro solto.
+    const semDoc = buildCreativePrompt({
+      aspect: 'story', copy: { source: 'original', text: 'Uma linha' },
+    });
+    expect(semDoc).not.toContain('design system above');
+
+    const comDoc = buildCreativePrompt({
+      aspect: 'story', designSystemDoc: 'DOC: paleta quente', copy: { source: 'original', text: 'Uma linha' },
+    });
+    expect(comDoc).toContain('Follow the typography system and hierarchy from the design system above.');
+  });
+
+  it('não emite cabeçalho de design system sem design system', () => {
+    // `'[DESIGN SYSTEM]\n' + ''` é truthy e passava pelo filtro: todo prompt
+    // do sistema carregava um cabeçalho com nada embaixo.
+    expect(buildCreativePrompt({ aspect: 'story' })).not.toContain('[DESIGN SYSTEM]');
+    expect(buildCreativePrompt({ aspect: 'story', designSystemDoc: '   ' })).not.toContain('[DESIGN SYSTEM]');
+    expect(buildCreativePrompt({ aspect: 'story', designSystemDoc: 'DOC' })).toContain('[DESIGN SYSTEM]\nDOC');
+  });
+
+  it('[DO NOT INCLUDE] não abre com linha em branco', () => {
+    const prompt = buildCreativePrompt({ aspect: 'story' });
+    expect(prompt).toContain('[DO NOT INCLUDE]\n- Any headline, body copy');
+  });
+
+  it('[MOOD] não emite linha sem objeto', () => {
+    // Com `evita` vazio saía um literal `Not: .` — instrução sem objeto,
+    // que ensina o modelo a ler o resto do prompt com menos rigor.
+    const prompt = buildCreativePrompt({
+      aspect: 'story',
+      mood: { adjetivos: ['higiênico', 'educativo'], referencias: [], evita: [] },
+    });
+    expect(prompt).toContain('Tone: higiênico, educativo.');
+    expect(prompt).not.toContain('Not: .');
+
+    // E some inteiro quando não sobra nenhuma linha com conteúdo.
+    expect(buildCreativePrompt({
+      aspect: 'story', mood: { adjetivos: [], referencias: [], evita: [] },
+    })).toContain('Feels like: professional advertising.');
+  });
+
+  it('[ATTACHED PHOTOS] sem pessoa não deixa buraco no meio do bloco', () => {
+    const prompt = buildCreativePrompt({ aspect: 'story', productImageCount: 2, avatarCount: 0 });
+    expect(prompt).toContain('must appear in the composition.\nIntegrate the subject naturally');
+  });
+
   it('traduz o idioma exigido em todos os blocos', () => {
     expect(buildCreativePrompt({ aspect: 'story', language: 'en' })).toContain('other than English');
     expect(buildCreativePrompt({ aspect: 'story', language: 'es' })).toContain('other than Spanish');

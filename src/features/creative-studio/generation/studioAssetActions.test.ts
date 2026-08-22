@@ -57,6 +57,92 @@ describe('generate', () => {
     expect(deps.linhas.size).toBe(1); // uma linha só, não duas
   });
 
+  it('a direção de arte entra no prompt e fica gravada na linha', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    deps.directArt = vi.fn(async () => ({
+      artDirection: { mainSubject: 'Dentista com escala de cor', composition: 'Clean, texto no topo', mood: 'higiênico' },
+      copyBlocks: { titulo: 'Diga adeus', subtitulo: 'aos dentes amarelados' },
+    }));
+
+    const resultado = await createStudioAssetActions(deps).generate('clínica odontológica', '9:16', {
+      copy: 'Diga adeus aos dentes amarelados',
+    });
+
+    const enviado = (deps.invoke as any).mock.calls[0][1];
+    expect(enviado.prompt).toContain('[ART DIRECTION]\nMain subject: Dentista com escala de cor');
+    // Papéis validados substituem o bloco literal — nunca convivem com ele,
+    // ou a arte sairia com o texto duas vezes.
+    expect(enviado.prompt).toContain('MAIN TITLE (dominant');
+    expect(enviado.prompt).not.toContain('THE WORDS ARE FIXED');
+    expect(resultado.metadata?.artDirection?.mainSubject).toBe('Dentista com escala de cor');
+  });
+
+  it('direção de arte fora do ar não impede a arte — ela sai pelo caminho literal', async () => {
+    // O usuário pediu uma arte, não um relatório de indisponibilidade. Uma
+    // IA caída aqui vira uma peça mais simples, nunca uma peça a menos.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    deps.directArt = vi.fn(async () => { throw new Error('modelo descontinuado'); });
+
+    const resultado = await createStudioAssetActions(deps).generate('clínica', '9:16', {
+      copy: 'Diga adeus aos dentes amarelados',
+    });
+
+    expect(resultado.status).toBe('ready');
+    const enviado = (deps.invoke as any).mock.calls[0][1];
+    expect(enviado.prompt).toContain('THE WORDS ARE FIXED');
+    expect(enviado.prompt).not.toContain('[ART DIRECTION]');
+  });
+
+  it('referência ilegível não impede a arte, só a deixa sem design system', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    deps.analyzeReferences = vi.fn(async () => { throw new Error('provedor recusou a imagem'); });
+
+    const resultado = await createStudioAssetActions(deps).generate('x', '9:16', {
+      productImageUrls: ['https://x/ref.png'],
+    });
+
+    expect(resultado.status).toBe('ready');
+    expect((deps.invoke as any).mock.calls[0][1].prompt).not.toContain('[DESIGN SYSTEM]');
+  });
+
+  it('o sistema visual lido das referências chega ao prompt e à linha', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    deps.analyzeReferences = vi.fn(async () => ({
+      designSystemDoc: 'Layer 1 — Background: full-bleed warm photo',
+      antiPadroes: ['NEVER use neon gradients'],
+      mood: { adjetivos: ['sofisticado'], referencias: ['Kinfolk'], evita: ['clipart'] },
+    }));
+
+    const resultado = await createStudioAssetActions(deps).generate('x', '9:16', {
+      productImageUrls: ['https://x/ref.png'],
+    });
+
+    const prompt = (deps.invoke as any).mock.calls[0][1].prompt;
+    expect(prompt).toContain('[DESIGN SYSTEM]\nLayer 1 — Background: full-bleed warm photo');
+    expect(prompt).toContain('- NEVER use neon gradients');
+    expect(prompt).toContain('Feels like: Kinfolk.');
+    expect(resultado.metadata?.designSystemDoc).toContain('full-bleed warm photo');
+  });
+
+  it('anuncia cada etapa antes de entrar nela', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    deps.analyzeReferences = vi.fn(async () => null);
+    deps.directArt = vi.fn(async () => ({ artDirection: null, copyBlocks: null }));
+    const estagios: string[] = [];
+
+    await createStudioAssetActions(deps).generate('x', '9:16', {
+      productImageUrls: ['https://x/ref.png'],
+      onStage: (e) => estagios.push(e),
+    });
+
+    expect(estagios).toEqual(['reading-references', 'directing', 'generating']);
+  });
+
   it('falha do provedor grava a MESMA linha como failed, com a mensagem real', async () => {
     const deps = fakeDeps();
     (deps.invoke as any).mockResolvedValue({ data: null, error: new Error('formato recusado') });
@@ -108,7 +194,7 @@ describe('generate', () => {
       productImages: ['https://x/p1.png'],
     }), expect.any(Number));
     const linha = [...deps.linhas.values()][0];
-    expect(linha.metadata).toEqual({
+    expect(linha.metadata).toMatchObject({
       logoImage: 'https://x/logo.png',
       productImages: ['https://x/p1.png'],
       avatarImages: [],

@@ -192,4 +192,16 @@ describe('CreativeStudioShell', () => {
     expect(screen.getByText(/Falha de rede/)).toBeTruthy();
     expect(screen.queryByText(/O canvas está vazio/i)).toBeNull();
   });
+  it('o botão de gerar diz em que etapa a arte está, não só "gerando"', () => {
+    // Ler as referências e dirigir a arte acontecem ANTES do gerador. Sem
+    // nomear a etapa, a tela fica parada por segundos dizendo "gerando" —
+    // e quem não vê progresso clica de novo.
+    montar({ busy: true, stage: 'reading-references' });
+    expect(screen.getByRole('button', { name: 'Lendo as referências…' })).toBeTruthy();
+  });
+
+  it('sem etapa informada, o botão ocupado continua dizendo que está gerando', () => {
+    montar({ busy: true });
+    expect(screen.getByRole('button', { name: 'Gerando…' })).toBeTruthy();
+  });
 });

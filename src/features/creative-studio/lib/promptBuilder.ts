@@ -30,6 +30,16 @@ export interface CreativePromptInput {
   language?: string;
   businessContext?: string;
   designSystemDoc?: string;
+  /**
+   * O que aparece no quadro e como está composto.
+   *
+   * É a camada que separava a arte do Fator Criativo da geração normal. O
+   * Fator sempre teve uma direção escrita por um modelo de raciocínio — a
+   * geração normal recebia só o que o usuário digitasse no dock, e quando
+   * ele não digitava nada o prompt caía em "a professional brand", que não
+   * diz ao modelo de imagem uma palavra sobre o que desenhar.
+   */
+  artDirection?: { mainSubject: string; composition: string } | null;
   copy?: PromptCopy;
   productImageCount?: number;
   /** Quantas das fotos anexadas são avatares de persona. */
@@ -134,6 +144,7 @@ export function buildCreativePrompt(input: CreativePromptInput): string {
     language = 'pt-BR',
     businessContext = '',
     designSystemDoc = '',
+    artDirection = null,
     copy = null,
     productImageCount = 0,
     avatarCount = 0,
@@ -168,10 +179,34 @@ Quality target: ${resolutionConfig.promptQuality}.`;
   // que gasta atenção do modelo em algo que não existe no quadro.
   const temPessoa = avatarCount > 0;
   const photoBlock = productImageCount > 0
-    ? `[ATTACHED PHOTOS]
-${productImageCount} reference image(s) provided showing the product/person/scene that must appear in the composition.
-${preserveFaces && temPessoa ? 'Preserve their exact likeness. Do NOT alter faces, skin tone, body shape or appearance in any way. Treat the subject as a fixed reference.' : ''}
-Integrate the subject naturally into the composition described below.`
+    ? [
+        '[ATTACHED PHOTOS]',
+        `${productImageCount} reference image(s) provided showing the product/person/scene that must appear in the composition.`,
+        // Sem a lista, o ternário sem pessoa deixava uma linha em branco no
+        // meio do bloco — mesma classe de ruído do `Not: .` e do
+        // `[DESIGN SYSTEM]` órfão.
+        preserveFaces && temPessoa
+          ? 'Preserve their exact likeness. Do NOT alter faces, skin tone, body shape or appearance in any way. Treat the subject as a fixed reference.'
+          : '',
+        'Integrate the subject naturally into the composition described below.',
+      ].filter(Boolean).join('\n')
+    : '';
+
+  /**
+   * A única camada positiva do prompt — e ela vem cedo de propósito.
+   *
+   * Tudo o que segue é restrição: onde o texto NÃO pode ficar, o que NÃO
+   * incluir, o que NÃO alterar. Um prompt feito só de restrição produz arte
+   * tímida, porque o modelo não recebe nada para construir, só coisas para
+   * evitar. Esta é a instrução que diz o que desenhar, então ela vem antes
+   * da parede.
+   */
+  const artDirectionBlock = artDirection && (artDirection.mainSubject.trim() || artDirection.composition.trim())
+    ? [
+        '[ART DIRECTION]',
+        artDirection.mainSubject.trim() ? `Main subject: ${artDirection.mainSubject.trim()}` : '',
+        artDirection.composition.trim() ? `Composition: ${artDirection.composition.trim()}` : '',
+      ].filter(Boolean).join('\n')
     : '';
 
   // IMPORTANTE: nunca injetar copy_structure/base_prompt do template — ambos
@@ -208,12 +243,21 @@ This structure defines LAYOUT AND STYLE ONLY. Do NOT reuse, reference or render 
 All text must be rendered exactly as written, in ${lang}, with professional typography and perfect legibility.
 ${parts.join('\n')}`;
   } else if (copy?.source === 'original' && copy.text.trim()) {
+    // Uma frase só fazia duas coisas aqui, e só uma delas estava certa:
+    // proibia texto novo (certo) e, na mesma respiração, proibia hierarquia
+    // (errado). O resultado era arte lisa — o modelo obedecia. Agora as
+    // duas regras estão separadas: as PALAVRAS são intocáveis, o DESENHO
+    // delas não é.
+    const referenciaAoSistema = designSystemDoc.trim()
+      ? ' Follow the typography system and hierarchy from the design system above.'
+      : '';
     textBlocks = `[TEXT BLOCKS — USER-WRITTEN COPY, FINAL]
 Render ONLY the exact text below as overlay on the creative, in ${lang}, professional typography, perfect legibility. Do not paraphrase, shorten, expand or reword it.
 """
 ${copy.text.trim()}
 """
-This is the COMPLETE and FINAL copy — the user wrote it themselves and it must not be changed. Do NOT add any headline, kicker, tagline, subtitle, CTA button, price, offer or any other text that is not written above, even if the composition seems to have room for it or a reference/template suggests one. If the text above has no explicit call-to-action line, do not invent one. Distribute exactly this text across the composition following the typography system and hierarchy from the design system above — do not add new text elements to fill the layout.`;
+THE WORDS ARE FIXED. This is the COMPLETE and FINAL copy — the user wrote it themselves. Do NOT add any headline, kicker, tagline, subtitle, CTA label, price, offer or any other text that is not written above, even if the composition seems to have room for it or a reference or template suggests one. If the text above has no explicit call-to-action line, do not invent one.
+THE TYPOGRAPHY IS YOURS TO DESIGN. Distribute this exact text across the composition as a designer would: give each line or segment a distinct typographic role — size, weight, case, colour and spacing — instead of setting it all at one size. A short opening line is a label: small, uppercase, wide tracking, secondary colour. The most important line is dominant: large, high contrast, primary typeface. Supporting lines are medium and quieter. If a line above already reads as a call to action, render THAT line inside a pill or button in the accent colour — do not write a new one. A rule, divider or colour accent on a single word is welcome; new words are not.${referenciaAoSistema}`;
   }
 
   // O [ATTACHED PHOTOS] fala de "product/person/scene" genericamente —
@@ -255,12 +299,17 @@ You may change how it is lit, framed, angled and staged to fit the composition �
 A brand logo is provided as a separate reference. Place it discreetly in a corner (top-left or bottom-right preferred), small, clean. Do NOT distort, recolor, recreate or redesign it — treat as a fixed brand asset.`
     : '';
 
-  const moodBlock = mood
-    ? `[MOOD]
-Feels like: ${mood.referencias.join(', ') || 'professional advertising'}.
-Tone: ${mood.adjetivos.join(', ')}.
-Not: ${mood.evita.join(', ')}.`
-    : '';
+  // Cada linha só entra se tiver conteúdo. Com `evita` vazio o bloco saía
+  // com um literal `Not: .` — instrução sem objeto, que ensina o modelo a
+  // ler o resto do prompt com menos rigor.
+  const moodLinhas = mood
+    ? [
+        `Feels like: ${mood.referencias.join(', ') || 'professional advertising'}.`,
+        mood.adjetivos.length ? `Tone: ${mood.adjetivos.join(', ')}.` : '',
+        mood.evita.length ? `Not: ${mood.evita.join(', ')}.` : '',
+      ].filter(Boolean)
+    : [];
+  const moodBlock = moodLinhas.length ? `[MOOD]\n${moodLinhas.join('\n')}` : '';
 
   const userNegatives = negativePrompt.trim()
     ? negativePrompt.split('\n').map((line) => `- ${line.trim().replace(/^-+\s*/, '')}`).filter((line) => line.length > 2)
@@ -268,13 +317,20 @@ Not: ${mood.evita.join(', ')}.`
   const evitaList = mood?.evita.map((item) => `- ${item}`) || [];
   const antiPadroesList = antiPadroes?.map((item) => `- ${item}`) || [];
 
-  const doNot = `[DO NOT INCLUDE]
-${[...evitaList, ...antiPadroesList, ...userNegatives].join('\n')}
-${safeAreaViolationLine(safeAreaFor(safeRatio))}
-- Any text in a language other than ${lang}
-- Misspelled, garbled or fake-looking text
-- Watermarks, signatures, low-resolution artifacts
-- Generic stock-photo aesthetic`;
+  // Junta como lista, não como template: com as três primeiras fontes
+  // vazias — que é o caso comum — o template deixava uma linha em branco
+  // logo abaixo do cabeçalho, no meio de uma lista de itens.
+  const doNot = [
+    '[DO NOT INCLUDE]',
+    ...evitaList,
+    ...antiPadroesList,
+    ...userNegatives,
+    safeAreaViolationLine(safeAreaFor(safeRatio)),
+    `- Any text in a language other than ${lang}`,
+    '- Misspelled, garbled or fake-looking text',
+    '- Watermarks, signatures, low-resolution artifacts',
+    '- Generic stock-photo aesthetic',
+  ].join('\n');
 
   const closing = `All text in the artwork MUST be written in ${lang}. Final result: ${resolutionConfig.promptQuality}, polished, professional advertising design, sharp typography, brand-grade composition.`;
 
@@ -283,10 +339,16 @@ ${safeAreaViolationLine(safeAreaFor(safeRatio))}
 A reference Story version of this same creative is attached as the FIRST image. The square version MUST replicate its EXACT color palette, lighting, color grading, photographic treatment, typography choices and overall mood. Only the framing/composition changes to fit a 1:1 square. Treat that Story as the visual ground truth — do NOT shift hues, saturation, contrast or styling.`
     : '';
 
+  // `'[DESIGN SYSTEM]\n' + ''` é truthy e passava pelo `.filter(Boolean)`:
+  // todo prompt do sistema carregava um cabeçalho sem nada embaixo, e o
+  // bloco de copy chegava a mandar seguir "the design system above".
+  const designSystemBlock = designSystemDoc.trim() ? `[DESIGN SYSTEM]\n${designSystemDoc.trim()}` : '';
+
   return [
     intro,
     photoBlock,
-    '[DESIGN SYSTEM]\n' + designSystemDoc,
+    artDirectionBlock,
+    designSystemBlock,
     templateBlock,
     safe,
     consistency,
