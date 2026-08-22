@@ -195,7 +195,7 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      throw new Error(`Gemini: ${response.status}`);
+      throw new Error(`Gemini: ${response.status} ${t.slice(0, 300)}`);
     }
 
     const data = await response.json();
