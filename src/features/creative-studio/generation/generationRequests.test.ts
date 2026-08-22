@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildAvatarRequest,
   buildEditRequest,
+  buildFactorVariationRequest,
   buildGenerationRequest,
   buildResizeRequest,
   buildRetryRequest,
@@ -197,3 +198,83 @@ describe('buildAvatarRequest', () => {
     expect(body.storyReference).toBeNull();
   });
 });
+
+describe('buildGenerationRequest — as camadas que vieram do Fator', () => {
+  it('papéis validados substituem o bloco literal, nunca convivem com ele', () => {
+    // Os dois juntos fariam a arte renderizar o texto duas vezes: uma pelo
+    // modo `ai`, papel por papel, e outra pelo bloco literal inteiro.
+    const { prompt } = buildGenerationRequest({
+      brief: 'clínica odontológica',
+      aspectRatio: '9:16',
+      copy: 'Diga adeus aos dentes amarelados',
+      copyBlocks: { titulo: 'Diga adeus', subtitulo: 'aos dentes amarelados' },
+    });
+    expect(prompt).toContain('MAIN TITLE (dominant, large, primary typeface, high contrast): "Diga adeus"');
+    expect(prompt).not.toContain('THE WORDS ARE FIXED');
+  });
+
+  it('sem papéis, a copy do usuário continua saindo literal', () => {
+    const { prompt } = buildGenerationRequest({
+      brief: 'x', aspectRatio: '9:16', copy: 'Diga adeus aos dentes amarelados',
+    });
+    expect(prompt).toContain('THE WORDS ARE FIXED');
+    expect(prompt).not.toContain('MAIN TITLE (dominant');
+  });
+
+  it('o mood da referência e o da peça somam, em vez de um apagar o outro', () => {
+    // A análise traz o mood do ESTILO; a direção traz o desta peça.
+    const { prompt } = buildGenerationRequest({
+      brief: 'x',
+      aspectRatio: '9:16',
+      mood: { adjetivos: ['sofisticado'], referencias: ['Kinfolk'], evita: ['clipart'] },
+      artDirection: { mainSubject: 'S', composition: 'C', mood: 'higiênico' },
+    });
+    expect(prompt).toContain('Tone: sofisticado, higiênico.');
+    expect(prompt).toContain('Feels like: Kinfolk.');
+    expect(prompt).toContain('Not: clipart.');
+  });
+
+  it('a direção sozinha já produz um [MOOD], mesmo sem referência lida', () => {
+    const { prompt } = buildGenerationRequest({
+      brief: 'x', aspectRatio: '9:16',
+      artDirection: { mainSubject: 'S', composition: 'C', mood: 'higiênico, claro' },
+    });
+    expect(prompt).toContain('Tone: higiênico, claro.');
+    expect(prompt).not.toContain('Not: .');
+  });
+});
+
+describe('buildFactorVariationRequest — herança do sistema visual', () => {
+  it('as 5 variações herdam o design system da peça-base', () => {
+    // Elas são da mesma oferta e da mesma marca: sem o documento que a base
+    // teve, o lote divergiria do original justamente no que deveria manter.
+    const { prompt } = buildFactorVariationRequest({
+      variation: variacao(),
+      originalPrompt: 'prompt da base',
+      aspectRatio: '9:16',
+      designSystemDoc: 'Layer 1 — Background: full-bleed warm photo',
+      antiPadroes: ['NEVER use neon gradients'],
+    });
+    expect(prompt).toContain('[DESIGN SYSTEM]\nLayer 1 — Background: full-bleed warm photo');
+    expect(prompt).toContain('- NEVER use neon gradients');
+  });
+
+  it('sem design system na base, o cabeçalho não aparece', () => {
+    const { prompt } = buildFactorVariationRequest({
+      variation: variacao(), originalPrompt: 'prompt da base', aspectRatio: '9:16',
+    });
+    expect(prompt).not.toContain('[DESIGN SYSTEM]');
+  });
+});
+
+function variacao() {
+  return {
+    slot: 1, label: 'V1',
+    strategy: { angle: 'mechanism', angleSubtype: 'sinergia', strategicThesis: 'tese' },
+    audience: { persona: 'p', awarenessLevel: 'solution' },
+    execution: { dominantEmotion: 'clareza' },
+    copy: { title: 'Título', cta: 'Agendar' },
+    visualDirection: { mainSubject: 'S', composition: 'C', mood: 'limpo' },
+    validation: { changedDimensions: ['thesis'], qualityScore: 9 },
+  } as any;
+}

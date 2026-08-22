@@ -5,9 +5,6 @@ exports[`buildCreativePrompt > adiciona o bloco de consistência quando o quadra
 Create a 1:1 perfect square Instagram post, 1080x1080px advertisement image for a professional brand.
 Quality target: standard high-quality digital advertising image.
 
-[DESIGN SYSTEM]
-
-
 [SAFE ZONE]
 LAYOUT RULE — READ FIRST: the top 9.3% and the bottom 9.3% of the image are EMPTY BACKGROUND. No text, no logo, no badge, no button, nothing readable may appear in those bands — they contain only the continuation of the background artwork. Every readable element is grouped together in the band between 9.3% and 90.7% of the image height, and no closer than 9.3% to the left or right edge.
 IMAGERY IS NOT RESTRICTED. The photograph, background, gradient, texture and any purely visual element MUST fill the entire frame, edge to edge, full bleed. Never shrink, letterbox or inset the artwork to respect the margins below. A full-bleed background is preferred.
@@ -20,7 +17,6 @@ LEAVE BREATHING ROOM. Do not push elements right up against the safe boundary �
 A reference Story version of this same creative is attached as the FIRST image. The square version MUST replicate its EXACT color palette, lighting, color grading, photographic treatment, typography choices and overall mood. Only the framing/composition changes to fit a 1:1 square. Treat that Story as the visual ground truth — do NOT shift hues, saturation, contrast or styling.
 
 [DO NOT INCLUDE]
-
 - Any headline, body copy, logo, badge or call-to-action outside the safe area (outside x 100-980, y 100-980 on the nominal canvas)
 - Any text in a language other than Portuguese (Brazil)
 - Misspelled, garbled or fake-looking text
@@ -79,11 +75,7 @@ Quality target: ultra high-resolution 4K advertising image, crisp details, sharp
 
 [ATTACHED PHOTOS]
 2 reference image(s) provided showing the product/person/scene that must appear in the composition.
-
 Integrate the subject naturally into the composition described below.
-
-[DESIGN SYSTEM]
-
 
 [TEMPLATE STRUCTURE]
 Use the following reusable template structure as the creative foundation — layout, visual hierarchy, typography rhythm, spacing and composition only.
@@ -121,9 +113,6 @@ exports[`buildCreativePrompt > monta o prompt mínimo 1`] = `
 Create a 9:16 vertical Instagram Story, 1080x1920px advertisement image for a professional brand.
 Quality target: ultra high-resolution 4K advertising image, crisp details, sharp typography, premium finish.
 
-[DESIGN SYSTEM]
-
-
 [SAFE ZONE]
 LAYOUT RULE — READ FIRST: the top 14% and the bottom 35% of the image are EMPTY BACKGROUND. No text, no logo, no badge, no button, nothing readable may appear in those bands — they contain only the continuation of the background artwork. Every readable element is grouped together in the band between 14% and 65% of the image height, and no closer than 6% to the left or right edge.
 IMAGERY IS NOT RESTRICTED. The photograph, background, gradient, texture and any purely visual element MUST fill the entire frame, edge to edge, full bleed. Never shrink, letterbox or inset the artwork to respect the margins below. A full-bleed background is preferred.
@@ -135,7 +124,6 @@ LEAVE BREATHING ROOM. Do not push elements right up against the safe boundary. P
 BOTTOM-RIGHT CORNER: reserve 40% instead of 35% on the right-hand side of the lower area — the like, comment, share and audio controls stack there.
 
 [DO NOT INCLUDE]
-
 - Any headline, body copy, logo, badge or call-to-action outside the safe area (outside x 65-1015, y 269-1248 on the nominal canvas)
 - Any text in a language other than Portuguese (Brazil)
 - Misspelled, garbled or fake-looking text
@@ -149,9 +137,6 @@ exports[`buildCreativePrompt > trata a copy do usuário como final e literal 1`]
 "[INTRODUCTION]
 Create a 9:16 vertical Instagram Story, 1080x1920px advertisement image for a professional brand.
 Quality target: high-resolution polished advertising image with crisp typography and clean details.
-
-[DESIGN SYSTEM]
-
 
 [SAFE ZONE]
 LAYOUT RULE — READ FIRST: the top 14% and the bottom 35% of the image are EMPTY BACKGROUND. No text, no logo, no badge, no button, nothing readable may appear in those bands — they contain only the continuation of the background artwork. Every readable element is grouped together in the band between 14% and 65% of the image height, and no closer than 6% to the left or right edge.
@@ -169,10 +154,10 @@ Render ONLY the exact text below as overlay on the creative, in Portuguese (Braz
 Linha 1
 Linha 2
 """
-This is the COMPLETE and FINAL copy — the user wrote it themselves and it must not be changed. Do NOT add any headline, kicker, tagline, subtitle, CTA button, price, offer or any other text that is not written above, even if the composition seems to have room for it or a reference/template suggests one. If the text above has no explicit call-to-action line, do not invent one. Distribute exactly this text across the composition following the typography system and hierarchy from the design system above — do not add new text elements to fill the layout.
+THE WORDS ARE FIXED. This is the COMPLETE and FINAL copy — the user wrote it themselves. Do NOT add any headline, kicker, tagline, subtitle, CTA label, price, offer or any other text that is not written above, even if the composition seems to have room for it or a reference or template suggests one. If the text above has no explicit call-to-action line, do not invent one.
+THE TYPOGRAPHY IS YOURS TO DESIGN. Distribute this exact text across the composition as a designer would: give each line or segment a distinct typographic role — size, weight, case, colour and spacing — instead of setting it all at one size. A short opening line is a label: small, uppercase, wide tracking, secondary colour. The most important line is dominant: large, high contrast, primary typeface. Supporting lines are medium and quieter. If a line above already reads as a call to action, render THAT line inside a pill or button in the accent colour — do not write a new one. A rule, divider or colour accent on a single word is welcome; new words are not.
 
 [DO NOT INCLUDE]
-
 - Any headline, body copy, logo, badge or call-to-action outside the safe area (outside x 65-1015, y 269-1248 on the nominal canvas)
 - Any text in a language other than Portuguese (Brazil)
 - Misspelled, garbled or fake-looking text

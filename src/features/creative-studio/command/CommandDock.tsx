@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { ArrowUp, Loader2, MessageSquare, Paperclip, Settings2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { GenerationStage } from '../generation/studioAssetActions';
 import type { CreativeAspectRatio, CreativeAsset, CreativeResolution } from '../types/creative';
 import type { DockAttachment } from '../types/studioUi';
 import type { CopyBankEntry } from '../api/copyBank';
@@ -11,11 +12,26 @@ import { GenerationSettingsPopover } from './GenerationSettingsPopover';
 
 export type { DockAttachment, DockAttachmentKind } from '../types/studioUi';
 
+/**
+ * O que o botão diz enquanto a arte não existe.
+ *
+ * Antes de chegar ao gerador, a arte passa por ler as referências e por
+ * escrever a direção — segundos em que a tela ficaria parada dizendo
+ * "gerando", e um usuário que não vê progresso clica de novo.
+ */
+const ROTULO_DO_ESTAGIO: Record<GenerationStage, string> = {
+  'reading-references': 'Lendo as referências…',
+  directing: 'Dirigindo a arte…',
+  generating: 'Gerando…',
+};
+
 interface CommandDockProps {
   value: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
   busy: boolean;
+  /** Em que etapa a geração está — ver `GenerationStage`. */
+  stage?: GenerationStage | null;
   hasCopy: boolean;
   ratio: CreativeAspectRatio;
   resolution: CreativeResolution;
@@ -62,6 +78,7 @@ export function CommandDock({
   onChange,
   onSubmit,
   busy,
+  stage = null,
   hasCopy,
   ratio,
   resolution,
@@ -167,7 +184,8 @@ export function CommandDock({
           type="button"
           onClick={onSubmit}
           disabled={!podeEnviar}
-          aria-label={busy ? 'Gerando' : 'Gerar'}
+          aria-label={busy ? ROTULO_DO_ESTAGIO[stage ?? 'generating'] : 'Gerar'}
+          title={busy ? ROTULO_DO_ESTAGIO[stage ?? 'generating'] : undefined}
           className={cn(
             'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-opacity duration-200',
             podeEnviar ? 'btn-accent' : 'cursor-not-allowed bg-white/[0.07] text-white/30',

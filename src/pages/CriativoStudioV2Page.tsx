@@ -22,6 +22,8 @@ import {
 import { listCopyBank, saveCopyToBank, type CopyBankEntry } from '@/features/creative-studio/api/copyBank';
 import { uploadDataUrlToCreativeStorage } from '@/features/creative-studio/api/storageUpload';
 import { analyzeOffer, generateFactorVariations } from '@/features/creative-studio/api/factorCreative';
+import { directArt } from '@/features/creative-studio/api/artDirection';
+import { analyzeReferences } from '@/features/creative-studio/api/referenceAnalysis';
 import { FatorCriativoDialog, type FatorCriativoSubmit } from '@/features/creative-studio/factor/FatorCriativoDialog';
 import type { OfferIntelligence } from '@/features/creative-studio/types/factorCreative';
 import {
@@ -40,7 +42,11 @@ import {
 } from '@/features/creative-studio/state/advancedFilters';
 import { childrenByParentId } from '@/features/creative-studio/state/lineage';
 import { buildSafeZoneBlock } from '@/features/creative-studio/lib/promptBuilder';
-import { createStudioAssetActions, type StudioAssetActionsDeps } from '@/features/creative-studio/generation/studioAssetActions';
+import {
+  createStudioAssetActions,
+  type GenerationStage,
+  type StudioAssetActionsDeps,
+} from '@/features/creative-studio/generation/studioAssetActions';
 import { IMAGE_GENERATION_MODEL } from '@/features/creative-studio/generation/capabilities';
 import type { CreativeAsset, CreativeAspectRatio, CreativeResolution } from '@/features/creative-studio/types/creative';
 import type { DockAttachment, StudioLibraryEntry, StudioLibraryId } from '@/features/creative-studio/types/studioUi';
@@ -63,6 +69,10 @@ export default function CriativoStudioV2Page() {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [filtrosAvancados, setFiltrosAvancados] = useState<StudioAdvancedFilters>(SEM_FILTROS_AVANCADOS);
+  // Ler referência e dirigir a arte somam segundos antes de o gerador sequer
+  // começar. Sem dizer em que etapa está, a tela fica parada e o usuário
+  // clica de novo.
+  const [estagio, setEstagio] = useState<GenerationStage | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -274,6 +284,8 @@ export default function CriativoStudioV2Page() {
       createAsset: createCreativeAsset,
       updateAsset: updateCreativeAsset,
       createGroup: createAssetGroup,
+      directArt,
+      analyzeReferences,
       recordUsage: (usageKey) => { void recordAiUsage(usageKey as AiUsageType); },
     };
     return createStudioAssetActions(deps);
@@ -486,7 +498,6 @@ export default function CriativoStudioV2Page() {
         const imagens = attachments.filter((a) => a.kind === 'reference' || a.kind === 'product').map((a) => a.value);
         const avatares = attachments.filter((a) => a.kind === 'avatar').map((a) => a.value);
 
-        toast({ title: 'Gerando arte…' });
         const resultado = await actions.generate(texto, ratio, {
           resolution,
           modelId,
@@ -494,6 +505,8 @@ export default function CriativoStudioV2Page() {
           logoImageUrl: logo?.value ?? null,
           productImageUrls: imagens,
           avatarImageUrls: avatares,
+          clientName,
+          onStage: setEstagio,
         });
         upsertAsset(resultado);
         if (resultado.status === 'failed') {
@@ -532,9 +545,10 @@ export default function CriativoStudioV2Page() {
       toast({ title: 'Erro', description: e?.message ?? 'Não foi possível concluir.', variant: 'destructive' });
     } finally {
       setBusy(false);
+      setEstagio(null);
       setCommand('');
     }
-  }, [command, hasCopy, busy, attachments, ratio, resolution, modelId, actions, assets, upsertAsset, avisarIndisponivel]);
+  }, [command, hasCopy, busy, attachments, ratio, resolution, modelId, actions, assets, upsertAsset, avisarIndisponivel, clientName, selectedClientId]);
 
   const handleAssetAction = useCallback(async (acao: SelectionAction, selecionados: CreativeAsset[]) => {
     if (acao === 'download') {
@@ -673,6 +687,7 @@ export default function CriativoStudioV2Page() {
         onCommandChange={setCommand}
         onSubmitCommand={handleSubmitCommand}
         busy={busy}
+        stage={estagio}
         hasCopy={hasCopy}
         ratio={ratio}
         resolution={resolution}

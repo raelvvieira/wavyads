@@ -25,6 +25,7 @@ import MetaCallbackPage from "@/pages/MetaCallbackPage";
 import GoogleAdsCallbackPage from "@/pages/GoogleAdsCallbackPage";
 import NotFound from "./pages/NotFound";
 import { StudioShellPreview } from "@/features/creative-studio/shell/StudioShellPreview";
+import { PromptLab } from '@/features/creative-studio/shell/PromptLab';
 
 const queryClient = new QueryClient();
 
@@ -76,6 +77,18 @@ const App = () => (
                   <div className="wavy-shell relative min-h-screen bg-background">
                     <div className="wavy-app-content relative z-10 min-h-screen">
                       <UgcStudioPreview />
+                    </div>
+                  </div>
+                }
+              />
+            )}
+            {import.meta.env.DEV && (
+              <Route
+                path="/__prompt-lab"
+                element={
+                  <div className="wavy-shell relative min-h-screen bg-background">
+                    <div className="wavy-app-content relative z-10 min-h-screen">
+                      <PromptLab />
                     </div>
                   </div>
                 }

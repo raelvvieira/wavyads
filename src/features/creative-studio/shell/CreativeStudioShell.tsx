@@ -5,6 +5,7 @@ import type { CreativeAsset, CreativeAspectRatio, CreativeResolution } from '../
 import type { CanvasViewMode, DockAttachment, SidePanelMode, StudioLibraryEntry, StudioLibraryId } from '../types/studioUi';
 import type { SelectionAction } from '../state/canvasSelectors';
 import type { StudioAdvancedFilters } from '../state/advancedFilters';
+import type { GenerationStage } from '../generation/studioAssetActions';
 import type { CopyBankEntry } from '../api/copyBank';
 import type { AvatarPersona } from '../types/avatarPersona';
 import { summarizeSelection } from '../state/canvasSelectors';
@@ -43,6 +44,7 @@ export interface CreativeStudioShellProps {
   onCommandChange: (value: string) => void;
   onSubmitCommand: (selectedIds: string[]) => void;
   busy: boolean;
+  stage?: GenerationStage | null;
   hasCopy: boolean;
   ratio: CreativeAspectRatio;
   resolution: CreativeResolution;
@@ -188,6 +190,7 @@ export function CreativeStudioShell(props: CreativeStudioShellProps) {
             onChange={props.onCommandChange}
             onSubmit={() => props.onSubmitCommand(selectedIds)}
             busy={props.busy}
+            stage={props.stage}
             hasCopy={props.hasCopy}
             ratio={props.ratio}
             resolution={props.resolution}

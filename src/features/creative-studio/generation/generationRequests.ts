@@ -1,4 +1,4 @@
-import { buildCreativePrompt, buildSafeZoneBlock } from '../lib/promptBuilder';
+import { buildCreativePrompt, buildSafeZoneBlock, type PromptCopyBlocks } from '../lib/promptBuilder';
 import { buildAvatarPrompt } from '../lib/avatarPromptBuilder';
 import type { AvatarPersona } from '../types/avatarPersona';
 import type { FactorVariation } from '../types/factorCreative';
@@ -37,6 +37,25 @@ export interface GenerationRequest {
  * distinção existe porque tratar o texto do dock como copy sem um anexo
  * explícito renderizaria a frase de comando na arte.
  */
+/**
+ * O `[MOOD]` da peça, vindo de duas fontes que não se anulam.
+ *
+ * A análise de referência traz o mood do ESTILO (o que aquele conjunto de
+ * imagens é); a direção de arte traz o mood DESTA peça. Perder a segunda
+ * apagaria o acabamento pedido para o criativo específico; perder a
+ * primeira apagaria a leitura das referências que o usuário anexou.
+ */
+function moodDoPedido(
+  daReferencia: { adjetivos: string[]; referencias: string[]; evita: string[] } | null | undefined,
+  direcao: { mood?: string } | null | undefined,
+): { adjetivos: string[]; referencias: string[]; evita: string[] } | null {
+  const daDirecao = direcao?.mood?.trim();
+  if (!daReferencia && !daDirecao) return null;
+  const base = daReferencia ?? { adjetivos: [], referencias: [], evita: [] };
+  if (!daDirecao) return base;
+  return { ...base, adjetivos: [...base.adjetivos, daDirecao] };
+}
+
 export function buildGenerationRequest(input: {
   brief: string;
   aspectRatio: CreativeAspectRatio;
@@ -48,6 +67,26 @@ export function buildGenerationRequest(input: {
    *  (`productImages`), mas ganham um bloco próprio no prompt. */
   avatarImageUrls?: string[];
   copy?: string | null;
+  /**
+   * O que aparece no quadro, escrito antes da imagem.
+   *
+   * Opcional porque a direção pode falhar (IA fora do ar, modelo
+   * descontinuado) e uma geração que só sai com direção de arte seria uma
+   * geração a menos por um motivo que não é do usuário.
+   */
+  artDirection?: { mainSubject: string; composition: string; mood?: string } | null;
+  /**
+   * A copy do usuário já repartida em papéis tipográficos.
+   *
+   * Só chega aqui depois de `rolesArePartitionOf` confirmar que os papéis
+   * reproduzem o texto original — ver `api/artDirection.ts`. Quando vem,
+   * substitui o bloco literal pelo modo `ai`, que é o que faz a arte sair
+   * com label, hierarquia e botão em vez de linhas do mesmo tamanho.
+   */
+  copyBlocks?: PromptCopyBlocks | null;
+  designSystemDoc?: string | null;
+  antiPadroes?: string[] | null;
+  mood?: { adjetivos: string[]; referencias: string[]; evita: string[] } | null;
   /** Default `IMAGE_GENERATION_MODEL.id` — parametrizável para a Fase 7. */
   modelId?: string;
 }): GenerationRequest {
@@ -70,7 +109,16 @@ export function buildGenerationRequest(input: {
     // backend no mesmo canal.
     productCount: produtos.length,
     hasLogo: !!input.logoImageUrl,
-    copy: copyTexto ? { source: 'original', text: copyTexto } : null,
+    artDirection: input.artDirection ?? null,
+    designSystemDoc: input.designSystemDoc ?? '',
+    antiPadroes: input.antiPadroes ?? null,
+    mood: moodDoPedido(input.mood, input.artDirection),
+    // Papéis quando eles foram validados; o texto cru quando não. Nunca os
+    // dois: o modo `ai` já renderiza cada pedaço, e repetir a copy inteira
+    // logo abaixo faria a arte sair com o texto duplicado.
+    copy: input.copyBlocks
+      ? { source: 'ai', blocks: input.copyBlocks }
+      : copyTexto ? { source: 'original', text: copyTexto } : null,
   });
   return {
     prompt,
@@ -241,6 +289,15 @@ export function buildFactorVariationRequest(input: {
   productImageUrls?: string[];
   /** A base, quando o alvo é quadrado: mesma verdade visual do Story. */
   storyReferenceUrl?: string | null;
+  /**
+   * O sistema visual lido das referências da peça-base.
+   *
+   * As cinco variações são da mesma oferta e da mesma marca: deixá-las sem
+   * o documento que a base teve faria o lote divergir do original
+   * justamente no que ele deveria preservar.
+   */
+  designSystemDoc?: string | null;
+  antiPadroes?: string[] | null;
 }): GenerationRequest {
   const v = input.variation;
   const backendAspect = getBackendAspectFromSelectedRatio(input.aspectRatio);
@@ -274,6 +331,8 @@ export function buildFactorVariationRequest(input: {
     // uma para outra, o lote deixa de ser comparável.
     productCount: produtos.length,
     hasLogo: !!input.logoImageUrl,
+    designSystemDoc: input.designSystemDoc ?? '',
+    antiPadroes: input.antiPadroes ?? null,
     hasStoryReference: backendAspect === 'square' && !!input.storyReferenceUrl,
     // A copy da variação é texto FINAL escrito pelo estrategista, com papel
     // definido por bloco — é exatamente o que o modo `ai` representa.
