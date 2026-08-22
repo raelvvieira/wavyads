@@ -69,7 +69,14 @@ export function AssetInspector({ selected, allAssets, onAction, onClose }: Asset
                 <button
                   type="button"
                   aria-label="Ações desta arte"
-                  className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.06] px-2.5 py-1 text-[11px] font-medium text-white/78 transition-colors duration-150 hover:bg-white/[0.10] hover:text-white/92"
+                  // `btn-accent` é o degradê da marca, o mesmo de "Gerar" e
+                  // "Anexar". Aqui ele cabe: com as ações recolhidas num
+                  // menu, este virou o único gatilho do inspetor — e um
+                  // gatilho único que se veste de secundário some no
+                  // cabeçalho. `rounded-full` vence o raio do componente
+                  // porque utilitário do Tailwind entra depois da camada de
+                  // componentes.
+                  className="btn-accent inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold"
                 >
                   Ações
                   <ChevronDown className="h-3 w-3" />
