@@ -347,6 +347,7 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
 
     async edit(asset, feedback) {
       if (!asset.url) throw new Error('Esta arte ainda não tem imagem para editar.');
+      if (!feedback.trim()) throw new Error('Descreva o que você quer alterar nesta arte.');
       const ratio = (asset.aspectRatio as CreativeAspectRatio) || '4:5';
       const { body } = buildEditRequest({
         imageUrl: asset.url,

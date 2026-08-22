@@ -593,6 +593,16 @@ export default function CriativoStudioV2Page() {
       } else if (selectedIds.length === 1) {
         const alvo = assets.find((a) => a.id === selectedIds[0]);
         if (!alvo) return;
+        // Editar exige instrução em texto: uma copy anexada não descreve a
+        // alteração, e mandar feedback vazio faz a edge function recusar.
+        if (!texto) {
+          toast({
+            title: 'Descreva a edição',
+            description: 'Escreva o que você quer alterar nesta arte antes de gerar.',
+            variant: 'destructive',
+          });
+          return;
+        }
         toast({ title: 'Editando arte…' });
         const resultado = await actions.edit(alvo, texto);
         upsertAsset(resultado);
