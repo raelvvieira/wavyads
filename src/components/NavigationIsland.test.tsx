@@ -50,9 +50,42 @@ describe('NavigationIsland', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('marca só a rota atual como página corrente', () => {
+    // Era /crm até o CRM virar link para outro sistema. Um destino externo
+    // nunca é a página corrente, então o teste precisava de uma rota que
+    // ainda seja deste app.
+    renderAt('/comercial');
+    expect(within('Comercial').getAttribute('aria-current')).toBe('page');
+    expect(within('Dashboard').getAttribute('aria-current')).toBeNull();
+  });
+
+  it('o CRM leva ao sistema de verdade, em nova aba', () => {
+    // O item apontava para /crm, uma página que embutia o CRM num iframe
+    // com URL por cliente — e que terminava em "nenhum cliente vinculado"
+    // para quem não tivesse o vínculo configurado.
+    renderAt('/dashboard');
+    const crm = within('CRM');
+    expect(crm.getAttribute('href')).toBe('https://crm.wavymarketing.com.br/');
+    expect(crm.getAttribute('target')).toBe('_blank');
+    // Sem `noopener` a aba aberta recebe `window.opener` e pode navegar a
+    // aba de origem.
+    expect(crm.getAttribute('rel')).toContain('noopener');
+  });
+
+  it('o CRM parece igual aos vizinhos — link para fora não é link decorado', () => {
+    // A decisão foi item externo SEM sinal visual. Como a ilha vive atrás
+    // de autenticação e não dá para fotografá-la, a paridade de classe é o
+    // que sustenta essa escolha: uma âncora crua herdaria estilo de link
+    // (sublinhado, cor) e destoaria da fileira.
+    renderAt('/dashboard');
+    expect(within('CRM').className).toBe(within('Comercial').className);
+  });
+
+  it('o CRM não se marca como página corrente nem estando em /crm', () => {
+    // A rota /crm ainda existe, só para favoritos antigos redirecionarem.
+    // Acender o item ali faria a ilha afirmar que o usuário está numa
+    // página deste app quando ele está saindo dele.
     renderAt('/crm');
-    expect(within('CRM').getAttribute('aria-current')).toBe('page');
-    expect(within('Comercial').getAttribute('aria-current')).toBeNull();
+    expect(within('CRM').getAttribute('aria-current')).toBeNull();
   });
 
   it('trata as sub-rotas do dashboard como o mesmo destino', () => {
@@ -166,5 +199,21 @@ describe('NavigationIsland', () => {
     const island = container.querySelector('aside[data-expanded]')!;
     expect(island.querySelector('a[href="/dashboard"]')).not.toBeNull();
     expect(island.querySelector('a[href="/criativo-studio"]')).toBeNull();
+  });
+
+  it('o CRM aparece para quem NÃO é admin — é de toda a base', async () => {
+    // Hoje isso é verdade por acaso: o item vive em `clientItems`, que não
+    // passa por filtro nenhum. Nada impediria alguém de movê-lo para
+    // `adminItems` sem perceber que estava tirando o CRM dos clientes.
+    vi.doMock('@/hooks/useRole', () => ({ useRole: () => ({ isAdmin: false }) }));
+    vi.resetModules();
+    const { NavigationIsland: ClientIsland } = await import('./NavigationIsland');
+    const { container } = render(
+      <Shell path="/dashboard">
+        <ClientIsland />
+      </Shell>
+    );
+    const island = container.querySelector('aside[data-expanded]')!;
+    expect(island.querySelector('a[href="https://crm.wavymarketing.com.br/"]')).not.toBeNull();
   });
 });

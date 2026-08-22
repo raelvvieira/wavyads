@@ -23,12 +23,24 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import wavyLogo from '@/assets/wavy-logo.png';
+import { CRM_URL } from '@/config/externalLinks';
 
+/**
+ * Um destino da ilha.
+ *
+ * `to` é rota deste app; `href` é um sistema que não é este app. O tipo
+ * separa os dois porque o comportamento difere em três pontos que não dá
+ * para improvisar no JSX: um abre em nova aba, o outro não; um precisa de
+ * `rel` contra `window.opener`, o outro não tem opener; e um NUNCA é a
+ * página corrente, porque não é página daqui.
+ */
 type NavItem = {
-  to: string;
   icon: typeof LayoutDashboard;
   label: string;
-};
+} & ({ to: string; href?: never } | { href: string; to?: never });
+
+/** A chave e o alvo de comparação de rota — o que existir. */
+const destinoDe = (item: NavItem) => item.to ?? item.href;
 
 /**
  * Ilha de navegação WAVY.
@@ -76,7 +88,10 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
   const clientItems: NavItem[] = [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/comercial', icon: Users, label: 'Comercial' },
-    { to: '/crm', icon: Contact, label: 'CRM' },
+    // O CRM é outro sistema, noutro domínio: leva ao login dele, não a uma
+    // página daqui. Fica em `clientItems` — sem filtro de perfil — porque
+    // toda a base precisa dele.
+    { href: CRM_URL, icon: Contact, label: 'CRM' },
   ];
 
   const adminItems: NavItem[] = [
@@ -127,13 +142,10 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
   }, [showLabels]);
 
   const renderItem = (item: NavItem) => {
-    const active = isItemActive(item.to);
-    const link = (
-      <NavLink
-        to={item.to}
-        aria-current={active ? 'page' : undefined}
-        data-active={active}
-        className={cn(
+    // Um destino externo nunca está "ativo": ele não é uma página deste
+    // app, e marcá-lo como corrente faria a ilha mentir sobre onde se está.
+    const active = !!item.to && isItemActive(item.to);
+    const classes = cn(
           'wavy-nav-item group relative flex h-12 w-full items-center overflow-hidden rounded-[14px]',
           'text-sm font-medium transition-[background-color,color] duration-200 ease-[cubic-bezier(0.2,0.8,0.2,1)]',
           active
@@ -142,8 +154,11 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
             // ênfase que pertence à ação primária da página.
             ? 'bg-[var(--wavy-nav-active-bg)] text-white shadow-[var(--wavy-nav-active-shadow)]'
             : 'text-white/65 hover:bg-white/[0.06] hover:text-white'
-        )}
-      >
+    );
+
+    // Mesmo miolo nos dois casos — o que muda é só o elemento em volta.
+    const miolo = (
+      <>
         {/* Trilho ativo: continuidade espacial sem repintar a linha toda. */}
         <span
           aria-hidden="true"
@@ -158,15 +173,37 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
           <item.icon className="h-5 w-5" />
         </span>
         <span className="wavy-nav-label pr-3">{item.label}</span>
+      </>
+    );
+
+    const link = item.href ? (
+      <a
+        href={item.href}
+        target="_blank"
+        // `noopener` não é enfeite: sem ele a aba aberta recebe
+        // `window.opener` e pode navegar a aba de origem.
+        rel="noreferrer noopener"
+        className={classes}
+      >
+        {miolo}
+      </a>
+    ) : (
+      <NavLink
+        to={item.to!}
+        aria-current={active ? 'page' : undefined}
+        data-active={active}
+        className={classes}
+      >
+        {miolo}
       </NavLink>
     );
 
     // Tooltip só faz sentido recolhido. Com a espiada do ponteiro o rótulo já
     // está na tela, e mostrar os dois ao mesmo tempo é ruído.
     return showLabels ? (
-      <div key={item.to}>{link}</div>
+      <div key={destinoDe(item)}>{link}</div>
     ) : (
-      <Tooltip key={item.to} delayDuration={200}>
+      <Tooltip key={destinoDe(item)} delayDuration={200}>
         <TooltipTrigger asChild>{link}</TooltipTrigger>
         <TooltipContent side="right" sideOffset={12}>
           {item.label}
@@ -298,28 +335,38 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
         className="wavy-nav-island flex lg:hidden"
       >
         {mobilePrimary.map((item) => {
-          const active = isItemActive(item.to);
-          return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              aria-current={active ? 'page' : undefined}
-              data-active={active}
-              className={cn(
-                // min-w-0 é o que permite o truncate funcionar dentro do flex:
-                // com admin são 5 destinos em 360px, e sem isso "COMERCIAL"
-                // empurra os vizinhos em vez de cortar.
-                'wavy-nav-item flex h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[14px] px-1',
-                'transition-colors duration-200',
-                active
-                  ? 'bg-[var(--wavy-nav-active-bg)] text-white'
-                  : 'text-white/60'
-              )}
-            >
+          const active = !!item.to && isItemActive(item.to);
+          const classes = cn(
+            // min-w-0 é o que permite o truncate funcionar dentro do flex:
+            // com admin são 5 destinos em 360px, e sem isso "COMERCIAL"
+            // empurra os vizinhos em vez de cortar.
+            'wavy-nav-item flex h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[14px] px-1',
+            'transition-colors duration-200',
+            active ? 'bg-[var(--wavy-nav-active-bg)] text-white' : 'text-white/60',
+          );
+          const miolo = (
+            <>
               <item.icon className="h-5 w-5 shrink-0" />
               <span className="wavy-caps w-full truncate text-center text-[9px] font-medium">
                 {item.label.split(' ')[0]}
               </span>
+            </>
+          );
+          // O mesmo ramo do desktop. Tratar só lá deixaria o CRM morto no
+          // celular — e é no celular que o cliente mais abre o Dash.
+          return item.href ? (
+            <a key={item.href} href={item.href} target="_blank" rel="noreferrer noopener" className={classes}>
+              {miolo}
+            </a>
+          ) : (
+            <NavLink
+              key={item.to}
+              to={item.to!}
+              aria-current={active ? 'page' : undefined}
+              data-active={active}
+              className={classes}
+            >
+              {miolo}
             </NavLink>
           );
         })}
@@ -339,24 +386,40 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
               <SheetTitle className="wavy-title text-left">Navegação</SheetTitle>
             </SheetHeader>
             <div className="mt-4 space-y-1">
-              {mobileSecondary.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  onClick={() => setMoreOpen(false)}
-                  aria-current={isItemActive(item.to) ? 'page' : undefined}
-                  className={cn(
-                    'flex min-h-[44px] items-center gap-3 rounded-[14px] px-4 text-sm font-medium',
-                    'transition-colors duration-200',
-                    isItemActive(item.to)
-                      ? 'bg-[var(--wavy-nav-active-bg)] text-white'
-                      : 'text-white/70 hover:bg-white/[0.06] hover:text-white'
-                  )}
-                >
-                  <item.icon className="h-5 w-5" />
-                  {item.label}
-                </NavLink>
-              ))}
+              {mobileSecondary.map((item) => {
+                const ativo = !!item.to && isItemActive(item.to);
+                const classes = cn(
+                  'flex min-h-[44px] items-center gap-3 rounded-[14px] px-4 text-sm font-medium',
+                  'transition-colors duration-200',
+                  ativo
+                    ? 'bg-[var(--wavy-nav-active-bg)] text-white'
+                    : 'text-white/70 hover:bg-white/[0.06] hover:text-white',
+                );
+                return item.href ? (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    onClick={() => setMoreOpen(false)}
+                    className={classes}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    {item.label}
+                  </a>
+                ) : (
+                  <NavLink
+                    key={item.to}
+                    to={item.to!}
+                    onClick={() => setMoreOpen(false)}
+                    aria-current={ativo ? 'page' : undefined}
+                    className={classes}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    {item.label}
+                  </NavLink>
+                );
+              })}
 
               {usageBlock}
 
