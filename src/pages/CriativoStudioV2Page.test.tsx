@@ -181,6 +181,73 @@ describe('CriativoStudioV2Page', () => {
     expect(naGrade).toBeGreaterThan(1);
   });
 
+  it('o card cinza aparece NA TELA antes de o provedor responder', async () => {
+    // O teste que faltava. O anterior afirmava que `onAssetCreated` dispara
+    // — e disparar o callback não é o card aparecer: entre os dois estão o
+    // filtro por cliente, o filtro por projeto, os filtros avançados e o
+    // agrupamento do canvas. Se algum engolisse a linha nova, aquele teste
+    // passava e a tela continuava parada.
+    const novaLinha: CreativeAsset = {
+      id: 'nova', projectId: 'proj-1', clientId: null, type: 'original', status: 'generating',
+      url: null, thumbnailUrl: null, parentAssetId: null, rootAssetId: null, groupId: null,
+      factorAxis: null, aspectRatio: '9:16', resolution: '2K', width: null, height: null,
+      prompt: 'p', negativePrompt: null, model: 'gpt-image-2', errorMessage: null, filename: null,
+      isClientIntelligence: false, metadata: {},
+      createdAt: '2026-08-22T12:00:00.000Z', updatedAt: '2026-08-22T12:00:00.000Z',
+    };
+    createCreativeAsset.mockResolvedValue(novaLinha);
+    updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({ ...novaLinha, id, ...patch }));
+
+    // O provedor fica preso: é o que permite olhar a tela no meio do caminho.
+    let liberar!: (v: any) => void;
+    invoke.mockReturnValue(new Promise((r) => { liberar = r; }));
+
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+    const antes = cards().length;
+
+    fireEvent.change(screen.getByPlaceholderText('O que você quer criar?'), {
+      target: { value: 'lançamento de verão' },
+    });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Gerar' })); });
+
+    const gerando = () =>
+      [...document.querySelectorAll('figure')].filter((f) => f.getAttribute('data-status') === 'generating');
+    expect(gerando().length).toBeGreaterThan(0);
+    expect(cards().length).toBe(antes + 1);
+
+    await act(async () => {
+      liberar({ data: { imageUrl: 'https://x/nova.png' }, error: null });
+    });
+
+    // A MESMA linha vira pronta — não um card a mais ao lado do cinza.
+    await waitFor(() => expect(cards().length).toBe(antes + 1));
+    expect(prontos().some((f) => f.querySelector('img')?.getAttribute('src') === 'https://x/nova.png')).toBe(true);
+  });
+
+  it('o Fator põe as cinco cinzas na tela antes de qualquer imagem', async () => {
+    prepararFator();
+    let liberar!: (v: any) => void;
+    const presa = new Promise((r) => { liberar = r; });
+    invoke.mockReturnValue(presa);
+
+    const gerando = () =>
+      [...document.querySelectorAll('figure')].filter((f) => f.getAttribute('data-status') === 'generating');
+
+    montar();
+    await waitFor(() => expect(prontos().length).toBeGreaterThan(0));
+    // O acervo de exemplo já tem uma arte gerando; o que importa é o DELTA.
+    const antes = cards().length;
+    const gerandoAntes = gerando().length;
+
+    await acionarNoInspetor('Fator Criativo');
+
+    await waitFor(() => expect(gerando().length).toBe(gerandoAntes + 5));
+    expect(cards().length).toBe(antes + 5);
+
+    await act(async () => { liberar({ data: { imageUrl: 'https://x/v.png' }, error: null }); });
+  });
+
   it('gerar sem seleção cria a arte e a mostra pronta', async () => {
     createCreativeAsset.mockResolvedValue({
       id: 'nova', projectId: 'proj-1', clientId: null, type: 'original', status: 'generating',
