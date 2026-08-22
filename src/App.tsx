@@ -12,7 +12,7 @@ import DashboardPage from "@/pages/DashboardPage";
 import SettingsPage from "@/pages/SettingsPage";
 import ComercialPage from "@/pages/ComercialPage";
 import ComercialIndexPage from "@/pages/ComercialIndexPage";
-import CrmPage from "@/pages/CrmPage";
+import CrmRedirect from "@/pages/CrmRedirect";
 import GoogleAdsAIPage from "@/pages/GoogleAdsAIPage";
 import CriativoStudioPage from "@/pages/CriativoStudioPage";
 import CriativoStudioV2Page from "@/pages/CriativoStudioV2Page";
@@ -47,8 +47,10 @@ const App = () => (
               <Route path="/dashboard/:clientId" element={<DashboardPage />} />
               <Route path="/comercial" element={<ComercialIndexPage />} />
               <Route path="/comercial/:clientId" element={<ComercialPage />} />
-              <Route path="/crm" element={<CrmPage />} />
-              <Route path="/crm/:clientId" element={<CrmPage />} />
+              {/* O CRM é outro sistema: o menu leva ao login dele. Esta rota
+                  só existe para favoritos antigos não caírem no NotFound. */}
+              <Route path="/crm" element={<CrmRedirect />} />
+              <Route path="/crm/:clientId" element={<CrmRedirect />} />
               <Route path="/google-ads-ai" element={<GoogleAdsAIPage />} />
               {/* A V2 é o Criativo Studio. A ilha de navegação já aponta para
                   esta rota, então o menu passou a levar à versão nova sem
