@@ -107,7 +107,42 @@ describe('buildResizeRequest', () => {
     const { prompt } = buildResizeRequest({ originalPrompt: 'anúncio vertical com margem de Story' });
     expect(prompt).toContain('anúncio vertical com margem de Story');
     expect(prompt).toContain('FRAMING OVERRIDE');
-    expect(prompt).toContain('Ignore every framing and safe-zone instruction stated earlier');
+    expect(prompt).toContain('Ignore every framing and safe-zone instruction stated in the brief below');
+  });
+
+  it('anexa a arte aprovada — sem ela, redimensionar era gerar de novo', () => {
+    // O bug: nada ia anexado, então o modelo recebia só o TEXTO do prompt.
+    // Um prompt descreve uma intenção, não uma peça — e ele reinterpretava
+    // a intenção do zero, devolvendo outro anúncio com objetos que nunca
+    // estiveram na arte aprovada.
+    const { body, prompt } = buildResizeRequest({
+      originalPrompt: 'anúncio de verão',
+      originalImageUrl: 'https://x/arte-9x16.png',
+    });
+    expect(body.storyReference).toBe('https://x/arte-9x16.png');
+    expect(prompt).toContain('The attached reference image IS the artwork');
+    expect(prompt).toContain('Nothing enters and nothing leaves.');
+  });
+
+  it('o reenquadramento vem antes do briefing, que é rebaixado a contexto', () => {
+    // O que vem primeiro pesa mais. Com o briefing na frente, o modelo lia
+    // "faça um anúncio para tal negócio" antes de "a verdade é a imagem".
+    const { prompt } = buildResizeRequest({
+      originalPrompt: 'anúncio de verão',
+      originalImageUrl: 'https://x/arte.png',
+    });
+    expect(prompt.indexOf('[REFRAME')).toBeLessThan(prompt.indexOf('[ORIGINAL BRIEF'));
+    expect(prompt).toContain('never to re-invent the composition');
+  });
+
+  it('não reanexa produto nem logo — a arte já os contém renderizados', () => {
+    // Mandá-los como referência separada convidaria o modelo a desenhá-los
+    // de novo, que é o oposto de reenquadrar.
+    const { body } = buildResizeRequest({
+      originalPrompt: 'x', originalImageUrl: 'https://x/arte.png',
+    });
+    expect(body.productImages).toEqual([]);
+    expect(body.logoImage).toBeNull();
   });
 });
 

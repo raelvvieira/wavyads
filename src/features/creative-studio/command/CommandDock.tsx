@@ -51,6 +51,9 @@ interface CommandDockProps {
   avatarLibrary: CreativeAsset[];
   /** Copies já usadas por este cliente — alimenta o sub-painel de copy. */
   copyBank: CopyBankEntry[];
+  /** Acervo carregado — o menu de anexos usa para contar uso de um insumo. */
+  allAssets: CreativeAsset[];
+  onDeleteAsset?: (asset: CreativeAsset) => Promise<void>;
   onNewLibraryUpload: (kind: 'logo' | 'product', url: string) => void;
   onOpenCopilot: () => void;
 }
@@ -96,6 +99,8 @@ export function CommandDock({
   productLibrary,
   avatarLibrary,
   copyBank,
+  allAssets,
+  onDeleteAsset,
   onNewLibraryUpload,
   onOpenCopilot,
 }: CommandDockProps) {
@@ -141,8 +146,10 @@ export function CommandDock({
           productLibrary={productLibrary}
           avatarLibrary={avatarLibrary}
           copyBank={copyBank}
+          allAssets={allAssets}
           onAttach={onAttach}
           onNewLibraryUpload={onNewLibraryUpload}
+          onDeleteAsset={onDeleteAsset}
         >
           <button
             type="button"

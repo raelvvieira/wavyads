@@ -381,7 +381,11 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
     async resize(asset) {
       if (!asset.prompt) throw new Error('Esta arte não tem prompt salvo para redimensionar.');
       if (asset.aspectRatio === '1:1') throw new Error('Esta arte já é 1:1.');
-      const { prompt, body } = buildResizeRequest({ originalPrompt: asset.prompt });
+      if (!asset.url) throw new Error('Esta arte ainda não tem imagem para reenquadrar.');
+      const { prompt, body } = buildResizeRequest({
+        originalPrompt: asset.prompt,
+        originalImageUrl: asset.url,
+      });
       const projectId = await deps.ensureProjectId();
       const row = await deps.createAsset({
         projectId,

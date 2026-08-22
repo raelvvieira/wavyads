@@ -67,6 +67,7 @@ vi.mock('@/features/creative-studio/api/copyBank', () => ({
   saveCopyToBank: (...a: any[]) => saveCopyToBank(...a),
 }));
 
+import { SOURCE_ASSET_TYPES } from '@/features/creative-studio/types/creative';
 import CriativoStudioV2Page from './CriativoStudioV2Page';
 
 const PROJETO = {
@@ -132,6 +133,43 @@ describe('CriativoStudioV2Page', () => {
     await waitFor(() => expect(screen.getByText('Novo')).toBeTruthy());
     expect(screen.queryByText('Prévia')).toBeNull();
     expect(screen.getByText(/A anterior continua disponível/)).toBeTruthy();
+  });
+
+  it('o logo do cliente sobrevive à criação do primeiro projeto', async () => {
+    // O bug: `logoLibrary` derivava de `doProjeto`. Antes da primeira arte
+    // `projectId` era nulo e o filtro não fazia nada; na primeira geração
+    // `ensureProjectId` criava um projeto NOVO e vazio, e o menu de anexos
+    // passava a mostrar só o que tivesse nascido lá dentro — ou seja, nada.
+    // O usuário subia o mesmo logo pela terceira vez.
+    const logoAntigo = {
+      ...PREVIEW_ASSETS[0],
+      id: 'logo-antigo', type: 'logo', status: 'ready',
+      url: 'https://x/logo-da-marca.png', thumbnailUrl: null,
+      filename: 'logo-da-marca.png',
+      clientId: 'c1', projectId: 'projeto-de-marco',
+    };
+    listCreativeAssets.mockResolvedValue([...ASSETS_DO_PROJETO, logoAntigo]);
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Filtrar por cliente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Boutique Aurora' }));
+
+    fireEvent.click(screen.getByRole('button', { name: /Anexar referência, logo/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar logo' }));
+
+    expect(screen.getByRole('button', { name: /Ver logo-da-marca\.png/ })).toBeTruthy();
+  });
+
+  it('insumo é lido numa consulta própria, para não disputar a janela do acervo', async () => {
+    // A leitura corta em 300 linhas mais recentes. Cada geração empurra
+    // linhas novas — o Fator sozinho insere cinco — e expulsava insumo
+    // antigo da janela mesmo com o escopo por cliente correto.
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+
+    expect(listCreativeAssets).toHaveBeenCalledWith();
+    expect(listCreativeAssets).toHaveBeenCalledWith({ types: SOURCE_ASSET_TYPES });
   });
 
   it('a biblioteca de referências mostra insumo, que o canvas esconde', async () => {
@@ -401,7 +439,8 @@ describe('CriativoStudioV2Page', () => {
 
     fireEvent.click(prontos()[0].querySelector('.studio-asset-surface')!);
     const painel = screen.getByRole('complementary', { name: /inspetor/i });
-    fireEvent.click([...painel.querySelectorAll('.studio-inspector-action')].find((b) => b.textContent === 'Baixar')!);
+    fireEvent.click(screen.getByRole('button', { name: 'Ações desta arte' }));
+    fireEvent.click([...document.querySelectorAll('.studio-inspector-action')].find((b) => b.textContent === 'Baixar')! as HTMLElement);
 
     expect(open).toHaveBeenCalledTimes(1);
     expect(invoke).not.toHaveBeenCalled();
@@ -576,9 +615,13 @@ describe('CriativoStudioV2Page', () => {
 
   async function acionarNoInspetor(rotulo: string) {
     fireEvent.click(prontos()[0].querySelector('.studio-asset-surface')!);
-    const painel = screen.getByRole('complementary', { name: /inspetor/i });
+    // As ações do inspetor vivem num menu — nove botões empilhados no
+    // rodapé empurravam a arte para fora do painel que existe para vê-la.
+    fireEvent.click(screen.getByRole('button', { name: 'Ações desta arte' }));
     await act(async () => {
-      fireEvent.click([...painel.querySelectorAll('.studio-inspector-action')].find((b) => b.textContent === rotulo)!);
+      fireEvent.click(
+        [...document.querySelectorAll('.studio-inspector-action')].find((b) => b.textContent === rotulo)! as HTMLElement,
+      );
     });
   }
 
@@ -647,7 +690,8 @@ describe('CriativoStudioV2Page', () => {
 
     fireEvent.click(prontos()[0].querySelector('.studio-asset-surface')!);
     const painel = screen.getByRole('complementary', { name: /inspetor/i });
-    fireEvent.click([...painel.querySelectorAll('.studio-inspector-action')].find((b) => b.textContent === 'Usar como referência')!);
+    fireEvent.click(screen.getByRole('button', { name: 'Ações desta arte' }));
+    fireEvent.click([...document.querySelectorAll('.studio-inspector-action')].find((b) => b.textContent === 'Usar como referência')! as HTMLElement);
 
     expect(document.querySelectorAll('.studio-dock-chip')).toHaveLength(antes + 1);
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Adicionada como referência' }));
@@ -660,7 +704,8 @@ describe('CriativoStudioV2Page', () => {
 
     fireEvent.click(prontos()[0].querySelector('.studio-asset-surface')!);
     const painel = screen.getByRole('complementary', { name: /inspetor/i });
-    fireEvent.click([...painel.querySelectorAll('.studio-inspector-action')].find((b) => b.textContent === 'Apagar arte')!);
+    fireEvent.click(screen.getByRole('button', { name: 'Ações desta arte' }));
+    fireEvent.click([...document.querySelectorAll('.studio-inspector-action')].find((b) => b.textContent === 'Apagar arte')! as HTMLElement);
 
     expect(screen.getByRole('alertdialog')).toBeTruthy();
     expect(deleteCreativeAsset).not.toHaveBeenCalled();
@@ -679,7 +724,8 @@ describe('CriativoStudioV2Page', () => {
 
     fireEvent.click(prontos()[0].querySelector('.studio-asset-surface')!);
     const painel = screen.getByRole('complementary', { name: /inspetor/i });
-    fireEvent.click([...painel.querySelectorAll('.studio-inspector-action')].find((b) => b.textContent === 'Apagar arte')!);
+    fireEvent.click(screen.getByRole('button', { name: 'Ações desta arte' }));
+    fireEvent.click([...document.querySelectorAll('.studio-inspector-action')].find((b) => b.textContent === 'Apagar arte')! as HTMLElement);
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Apagar' }));
@@ -701,7 +747,8 @@ describe('CriativoStudioV2Page', () => {
 
     fireEvent.click(prontos()[0].querySelector('.studio-asset-surface')!);
     const painel = screen.getByRole('complementary', { name: /inspetor/i });
-    fireEvent.click([...painel.querySelectorAll('.studio-inspector-action')].find((b) => b.textContent === 'Apagar arte')!);
+    fireEvent.click(screen.getByRole('button', { name: 'Ações desta arte' }));
+    fireEvent.click([...document.querySelectorAll('.studio-inspector-action')].find((b) => b.textContent === 'Apagar arte')! as HTMLElement);
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Apagar' }));

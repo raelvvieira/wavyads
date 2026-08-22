@@ -35,9 +35,12 @@ function montar(opts: {
   productLibrary?: CreativeAsset[];
   avatarLibrary?: CreativeAsset[];
   copyBank?: CopyBankEntry[];
+  allAssets?: CreativeAsset[];
+  onDeleteAsset?: ReturnType<typeof vi.fn>;
 } = {}) {
   const onAttach = vi.fn();
   const onNewLibraryUpload = vi.fn();
+  const onDeleteAsset = opts.onDeleteAsset ?? vi.fn(async () => {});
   render(
     <AttachMenu
       referenceLibrary={opts.referenceLibrary ?? []}
@@ -45,13 +48,15 @@ function montar(opts: {
       productLibrary={opts.productLibrary ?? []}
       avatarLibrary={opts.avatarLibrary ?? []}
       copyBank={opts.copyBank ?? []}
+      allAssets={opts.allAssets ?? []}
       onAttach={onAttach}
       onNewLibraryUpload={onNewLibraryUpload}
+      onDeleteAsset={onDeleteAsset}
     >
       <button type="button">Abrir anexos</button>
     </AttachMenu>,
   );
-  return { onAttach, onNewLibraryUpload };
+  return { onAttach, onNewLibraryUpload, onDeleteAsset };
 }
 
 const abrir = () => fireEvent.click(screen.getByRole('button', { name: 'Abrir anexos' }));
@@ -67,17 +72,103 @@ describe('AttachMenu', () => {
     });
   });
 
-  it('referência: clicar numa miniatura anexa e fecha', () => {
+  it('referência: clicar na miniatura abre a imagem inteira; o anexo vem de lá', () => {
+    // Antes o clique anexava direto. Uma miniatura quadrada com
+    // `object-cover` corta a arte, e a três por linha não dá para saber
+    // qual das cinco referências é aquela — anexava-se no escuro.
     const { onAttach } = montar({ referenceLibrary: [asset('ref1', 'reference')] });
     abrir();
     fireEvent.click(screen.getByRole('button', { name: 'Anexar referência' }));
 
-    fireEvent.click(screen.getByRole('button', { name: /Anexar ref1\.png/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Ver ref1\.png/ }));
+    expect(onAttach).not.toHaveBeenCalled();
 
+    // A coluna mostra a URL ORIGINAL, não a miniatura.
+    const grande = screen.getByAltText('ref1.png') as HTMLImageElement;
+    expect(grande.src).toBe('https://x/ref1.png');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar' }));
     expect(onAttach).toHaveBeenCalledWith(expect.objectContaining({
       kind: 'reference', value: 'https://x/ref1.png',
     }));
     expect(screen.queryByRole('button', { name: 'Anexar referência' })).toBeNull(); // fechou
+  });
+
+  it('a lixeira não apaga no primeiro clique — ela pergunta, com a imagem à vista', async () => {
+    // `deleteCreativeAsset` é exclusão de verdade, sem lixeira e sem
+    // desfazer. Confirmar sobre uma miniatura de 80px seria confirmar no
+    // escuro.
+    const { onDeleteAsset } = montar({ referenceLibrary: [asset('ref1', 'reference')] });
+    abrir();
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apagar ref1.png' }));
+    expect(onDeleteAsset).not.toHaveBeenCalled();
+    expect(screen.getByText('Apagar esta referência?')).toBeTruthy();
+    expect(screen.getByAltText('ref1.png')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sim, apagar' }));
+    await waitFor(() => expect(onDeleteAsset).toHaveBeenCalledTimes(1));
+    expect(onDeleteAsset.mock.calls[0][0].id).toBe('ref1');
+  });
+
+  it('"Não" volta a ver a imagem, sem apagar nada', () => {
+    const { onDeleteAsset } = montar({ referenceLibrary: [asset('ref1', 'reference')] });
+    abrir();
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apagar ref1.png' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Não' }));
+
+    expect(onDeleteAsset).not.toHaveBeenCalled();
+    expect(screen.queryByText('Apagar esta referência?')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Anexar' })).toBeTruthy();
+  });
+
+  it('a confirmação diz em quantas artes a referência entrou', () => {
+    // "Tem certeza?" não muda decisão nenhuma. "Foi usada em 2 artes" muda.
+    const ref = asset('ref1', 'reference');
+    const arteQueUsou = (id: string) => ({
+      ...asset(id, 'original'),
+      metadata: { productImages: ['https://x/ref1.png'] },
+    }) as CreativeAsset;
+    montar({ referenceLibrary: [ref], allAssets: [arteQueUsou('a1'), arteQueUsou('a2')] });
+    abrir();
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apagar ref1.png' }));
+
+    expect(screen.getByText(/Foi usada em 2 artes/)).toBeTruthy();
+  });
+
+  it('sem quem apague, a miniatura não oferece lixeira', () => {
+    // Quem não sabe apagar não mostra o botão — é a diferença entre um
+    // gatilho ausente e um gatilho que falha em silêncio.
+    render(
+      <AttachMenu
+        referenceLibrary={[asset('ref1', 'reference')]}
+        logoLibrary={[]} productLibrary={[]} avatarLibrary={[]} copyBank={[]} allAssets={[]}
+        onAttach={vi.fn()} onNewLibraryUpload={vi.fn()}
+      >
+        <button type="button">Abrir sem apagar</button>
+      </AttachMenu>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir sem apagar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência' }));
+
+    expect(screen.queryByRole('button', { name: 'Apagar ref1.png' })).toBeNull();
+    expect(screen.getByRole('button', { name: /Ver ref1\.png/ })).toBeTruthy();
+  });
+
+  it('erro ao apagar aparece ao lado da imagem, e o item continua lá', async () => {
+    const onDeleteAsset = vi.fn(async () => { throw new Error('RLS negou'); });
+    montar({ referenceLibrary: [asset('ref1', 'reference')], onDeleteAsset });
+    abrir();
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apagar ref1.png' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sim, apagar' }));
+
+    await waitFor(() => expect(screen.getByText('RLS negou')).toBeTruthy());
+    expect(screen.getByRole('button', { name: /Ver ref1\.png/ })).toBeTruthy();
   });
 
   it('referência vazia mostra o aviso, não uma grade em branco', () => {
@@ -125,12 +216,13 @@ describe('AttachMenu', () => {
     expect(onNewLibraryUpload).toHaveBeenCalledWith('logo', 'https://x/logo-enviado.png');
   });
 
-  it('logo: com um já salvo, mostra a grade e anexa direto no clique', () => {
+  it('logo: com um já salvo, ver e anexar', () => {
     const { onAttach } = montar({ logoLibrary: [asset('logo1', 'logo')] });
     abrir();
     fireEvent.click(screen.getByRole('button', { name: 'Anexar logo' }));
 
-    fireEvent.click(screen.getByRole('button', { name: /Anexar logo1\.png/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Ver logo1\.png/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar' }));
 
     expect(onAttach).toHaveBeenCalledWith(expect.objectContaining({
       kind: 'logo', value: 'https://x/logo1.png',
@@ -153,24 +245,30 @@ describe('AttachMenu', () => {
     expect(onNewLibraryUpload).toHaveBeenCalledWith('product', 'https://x/produto-enviado.png');
   });
 
-  it('produto: com um já salvo, mostra a grade e anexa direto no clique', () => {
+  it('produto: com um já salvo, ver e anexar', () => {
     const { onAttach } = montar({ productLibrary: [asset('prod1', 'product')] });
     abrir();
     fireEvent.click(screen.getByRole('button', { name: 'Anexar produto' }));
 
-    fireEvent.click(screen.getByRole('button', { name: /Anexar prod1\.png/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Ver prod1\.png/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar' }));
 
     expect(onAttach).toHaveBeenCalledWith(expect.objectContaining({
       kind: 'product', value: 'https://x/prod1.png',
     }));
   });
 
-  it('copy: sem histórico, não mostra a lista de já usadas', () => {
+  it('copy: sem histórico, some a lista — mas NÃO o "Sugerir variações"', () => {
+    // O botão vivia dentro do bloco do histórico e sumia junto com ele.
+    // Só que ele trabalha a partir do texto digitado tanto quanto de uma
+    // copy escolhida — e para todo cliente que ainda não tinha copy salva o
+    // painel virava um textarea nu.
     montar();
     abrir();
     fireEvent.click(screen.getByRole('button', { name: 'Anexar copy' }));
     expect(screen.queryByText('Já usadas com este cliente')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Sugerir variações' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Sugerir variações' })).toBeTruthy();
+    expect(screen.getByText('Escreva um texto abaixo para a IA variar.')).toBeTruthy();
   });
 
   it('copy: com histórico, clicar numa entrada preenche o texto sem anexar direto', () => {
@@ -267,7 +365,8 @@ describe('AttachMenu', () => {
     abrir();
     fireEvent.click(screen.getByRole('button', { name: 'Anexar avatar' }));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Anexar Ana Editorial' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ver Ana Editorial' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar' }));
 
     expect(onAttach).toHaveBeenCalledWith(expect.objectContaining({
       kind: 'avatar', value: 'https://x/av1.png', label: 'Ana Editorial',

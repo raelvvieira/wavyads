@@ -231,6 +231,15 @@ export async function createAssetGroup(input: {
 export interface ListCreativeAssetsFilter {
   projectId?: string | null;
   clientId?: string | null;
+  /**
+   * Restringe por tipo, no BANCO.
+   *
+   * Existia como parâmetro fantasma: `UgcProjectPage` já passava
+   * `types: ['avatar']` com um `as any`, e a consulta simplesmente ignorava
+   * — o seletor de avatar do UGC recebia o acervo inteiro do cliente,
+   * artes e tudo. O cast escondia justamente o erro que o tipo pegaria.
+   */
+  types?: readonly CreativeAssetType[];
   limit?: number;
 }
 
@@ -253,6 +262,7 @@ export async function listCreativeAssets(
 
   if (filtro.projectId) query = query.eq('project_id', filtro.projectId);
   if (filtro.clientId) query = query.eq('client_id', filtro.clientId);
+  if (filtro.types?.length) query = query.in('type', filtro.types as string[]);
 
   const { data, error } = await query;
   if (error) throw error;

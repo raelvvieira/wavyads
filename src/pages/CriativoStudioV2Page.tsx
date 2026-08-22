@@ -48,6 +48,7 @@ import {
   type StudioAssetActionsDeps,
 } from '@/features/creative-studio/generation/studioAssetActions';
 import { IMAGE_GENERATION_MODEL } from '@/features/creative-studio/generation/capabilities';
+import { SOURCE_ASSET_TYPES } from '@/features/creative-studio/types/creative';
 import type { CreativeAsset, CreativeAspectRatio, CreativeResolution } from '@/features/creative-studio/types/creative';
 import type { DockAttachment, StudioLibraryEntry, StudioLibraryId } from '@/features/creative-studio/types/studioUi';
 import type { AvatarPersona } from '@/features/creative-studio/types/avatarPersona';
@@ -125,8 +126,20 @@ export default function CriativoStudioV2Page() {
     setLoading(true);
     setError(null);
     try {
-      const [lista, recentes] = await Promise.all([listCreativeAssets(), listRecentProjects(20)]);
-      setAssets(lista);
+      // Duas consultas, não uma. A leitura do acervo corta em 300 linhas
+      // mais recentes, e cada geração empurra linhas novas — o Fator sozinho
+      // insere cinco. Com uma consulta só, uma tarde de trabalho expulsa da
+      // janela o logo que a marca usa há meses, e o menu de anexos volta a
+      // parecer vazio mesmo com o escopo por cliente correto.
+      //
+      // Insumo é pouco e dura; arte é muita e gira. Separados, um não
+      // disputa espaço com o outro.
+      const [lista, insumos, recentes] = await Promise.all([
+        listCreativeAssets(),
+        listCreativeAssets({ types: SOURCE_ASSET_TYPES }),
+        listRecentProjects(20),
+      ]);
+      setAssets(mesclarPorId(lista, insumos));
       setProjects(recentes);
       // Sem cliente selecionado o padrão é "Todos Clientes" — auto-selecionar
       // o projeto mais recente aqui prendia o canvas a UM projeto (chip "Só
@@ -149,7 +162,14 @@ export default function CriativoStudioV2Page() {
     let cancelado = false;
     listCopyBank(selectedClientId)
       .then((entradas) => { if (!cancelado) setCopyBank(entradas); })
-      .catch(() => { if (!cancelado) setCopyBank([]); });
+      .catch((e: any) => {
+        if (cancelado) return;
+        setCopyBank([]);
+        // Engolir isto fazia "falha ao ler o histórico" e "este cliente
+        // ainda não tem copy" produzirem exatamente a mesma tela vazia — e
+        // a primeira some sozinha ao recarregar, a segunda não.
+        toast({ title: 'Não consegui ler as copies deste cliente', description: e?.message });
+      });
     return () => { cancelado = true; };
   }, [selectedClientId]);
 
@@ -219,20 +239,37 @@ export default function CriativoStudioV2Page() {
   // lista encolheria para a própria escolha e não haveria como trocar.
   const formatosDisponiveis = useMemo(() => availableAspectRatios(doProjeto), [doProjeto]);
 
+  /**
+   * Insumo é do CLIENTE, não do projeto.
+   *
+   * A persona atravessa campanhas, e o mesmo vale para o logo da marca,
+   * para a foto do produto e para a pasta de referências: são material de
+   * trabalho do cliente, não produto de uma campanha.
+   *
+   * Só o avatar seguia essa regra, e as outras três derivavam de
+   * `doProjeto`. O efeito aparecia exatamente uma vez por sessão e parecia
+   * mágica: enquanto nenhuma arte tinha sido gerada, `projectId` era nulo e
+   * o filtro não fazia nada; na PRIMEIRA geração `ensureProjectId` criava um
+   * projeto novo e vazio, e a partir dali o menu de anexos só mostrava o que
+   * tivesse nascido lá dentro — ou seja, nada. O usuário subia o mesmo logo
+   * pela terceira vez.
+   *
+   * O canvas continua filtrado por projeto: o chip "Só este projeto" segue
+   * significando o que sempre significou. O que mudou é de onde vêm os
+   * insumos.
+   */
   const referenceLibrary = useMemo(
-    () => libraryAssets(doProjeto, { types: ['reference'] }),
-    [doProjeto],
+    () => libraryAssets(assetsDoCliente, { types: ['reference'] }),
+    [assetsDoCliente],
   );
   const logoLibrary = useMemo(
-    () => libraryAssets(doProjeto, { types: ['logo'] }),
-    [doProjeto],
+    () => libraryAssets(assetsDoCliente, { types: ['logo'] }),
+    [assetsDoCliente],
   );
   const productLibrary = useMemo(
-    () => libraryAssets(doProjeto, { types: ['product'] }),
-    [doProjeto],
+    () => libraryAssets(assetsDoCliente, { types: ['product'] }),
+    [assetsDoCliente],
   );
-  // Avatar é do CLIENTE, não do projeto: a persona atravessa campanhas, e
-  // filtrar por projeto esconderia a persona criada na semana passada.
   const avatarLibrary = useMemo(
     () => libraryAssets(assetsDoCliente, { types: ['avatar'] }),
     [assetsDoCliente],
@@ -309,6 +346,24 @@ export default function CriativoStudioV2Page() {
     setSelectedClientId(id);
     setProjectId(null);
   }, []);
+
+  /**
+   * Apaga um insumo direto do menu de anexos.
+   *
+   * Mesma exclusão do card do canvas — `deleteCreativeAsset` + `removeAsset`
+   * —, sem diálogo próprio: a confirmação acontece dentro do popover, com a
+   * imagem à vista. O `AlertDialog` da página é modal e rouba o foco, o que
+   * fecharia o menu a cada exclusão; apagar três referências viraria abrir o
+   * menu três vezes.
+   *
+   * Erro sobe para quem chamou: quem mostra a mensagem é a coluna de
+   * detalhe, ao lado da imagem que não foi apagada.
+   */
+  const apagarInsumo = useCallback(async (asset: CreativeAsset) => {
+    await deleteCreativeAsset(asset.id);
+    removeAsset(asset.id);
+    toast({ title: 'Apagado do acervo' });
+  }, [removeAsset]);
 
   const handleRemoveFilter = useCallback((id: string) => {
     if (id === 'cliente') { setSelectedClientId(null); setProjectId(null); return; }
@@ -703,6 +758,7 @@ export default function CriativoStudioV2Page() {
         productLibrary={productLibrary}
         copyBank={copyBank}
         onNewLibraryUpload={handleNewLibraryUpload}
+        onDeleteAsset={apagarInsumo}
         avatarLibrary={avatarLibrary}
         onGenerateAvatar={handleGenerateAvatar}
         onAssetAction={handleAssetAction}
@@ -751,6 +807,26 @@ export default function CriativoStudioV2Page() {
 }
 
 /** A biblioteca escolhida vira filtro de tipo — exceto "todas". */
+/**
+ * Junta as duas leituras do acervo sem duplicar linha.
+ *
+ * As consultas se sobrepõem de propósito: um insumo recente aparece nas
+ * duas. A primeira lista manda na ordem, porque é ela que define o que o
+ * canvas desenha de cima para baixo.
+ */
+function mesclarPorId(...listas: CreativeAsset[][]): CreativeAsset[] {
+  const vistos = new Set<string>();
+  const saida: CreativeAsset[] = [];
+  for (const lista of listas) {
+    for (const asset of lista) {
+      if (vistos.has(asset.id)) continue;
+      vistos.add(asset.id);
+      saida.push(asset);
+    }
+  }
+  return saida;
+}
+
 function filtroDaBiblioteca(id: StudioLibraryId): { types?: CreativeAsset['type'][] } {
   switch (id) {
     case 'generations': return { types: ['original', 'factor', 'edited', 'resize', 'imported'] };

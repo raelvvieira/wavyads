@@ -160,8 +160,8 @@ describe('CreativeStudioShell', () => {
     fireEvent.click(cardsProntos()[0]);
     fireEvent.click(cardsProntos()[1], { metaKey: true });
 
-    const painel = screen.getByRole('complementary', { name: /inspetor/i });
-    const acoes = [...painel.querySelectorAll('.studio-inspector-action')].map((b) => b.textContent);
+    fireEvent.click(screen.getByRole('button', { name: 'Ações desta arte' }));
+    const acoes = [...document.querySelectorAll('.studio-inspector-action')].map((b) => b.textContent);
     expect(acoes).toEqual(['Baixar']);
   });
 

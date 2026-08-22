@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ChevronDown, Download, Expand, Maximize2, Pencil, RefreshCw, Repeat, SlidersHorizontal, Sparkles, Trash2, X } from 'lucide-react';
+import { ChevronDown, Download, Expand, Maximize2, MoreHorizontal, Pencil, RefreshCw, Repeat, SlidersHorizontal, Sparkles, Trash2, X } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import type { CreativeAsset } from '../types/creative';
 import { ASSET_ORIGIN_LABELS, ASSET_STATUS_LABELS, FACTOR_AXIS_LABELS } from '../types/creative';
@@ -37,12 +38,20 @@ interface AssetInspectorProps {
  * canvas de virar uma parede de metadados. As ações vêm de
  * `availableActionsForSelection`, a mesma função que decide o hover do card,
  * então as duas superfícies não podem divergir.
+ *
+ * As ações ficam num menu, e não empilhadas embaixo. Eram nove botões de
+ * 34px cada, mais o espaçamento: um rodapé de mais de 350px que comia o
+ * painel de cima para baixo e empurrava a arte para fora da vista. O
+ * inspetor existe para olhar a peça — quem abre aqui quer ver a imagem
+ * primeiro e decidir depois, não escolher entre nove verbos antes de
+ * conseguir enxergar o que está julgando.
  */
 export function AssetInspector({ selected, allAssets, onAction, onClose }: AssetInspectorProps) {
   const acoes = availableActionsForSelection(selected);
   const unico = selected.length === 1 ? selected[0] : null;
   const caminho = unico ? pathToRoot(unico.id, allAssets) : [];
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [menuAberto, setMenuAberto] = useState(false);
 
   return (
     <aside className="studio-side-panel" aria-label="Inspetor da seleção">
@@ -53,14 +62,50 @@ export function AssetInspector({ selected, allAssets, onAction, onClose }: Asset
             {unico ? tituloDoAsset(unico) : `${selected.length} artes selecionadas`}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Fechar inspetor"
-          className="shrink-0 rounded-full p-1.5 text-white/50 transition-colors duration-150 hover:bg-white/[0.08] hover:text-white/90"
-        >
-          <X className="h-4 w-4" />
-        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          {acoes.length > 0 && (
+            <Popover open={menuAberto} onOpenChange={setMenuAberto}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Ações desta arte"
+                  className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.06] px-2.5 py-1 text-[11px] font-medium text-white/78 transition-colors duration-150 hover:bg-white/[0.10] hover:text-white/92"
+                >
+                  Ações
+                  <ChevronDown className="h-3 w-3" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="glass w-60 border-white/10 p-1.5">
+                <div className="flex flex-col gap-1">
+                  {acoes.map((a) => {
+                    const spec = ACAO[a];
+                    if (!spec) return null;
+                    const Icon = spec.icon;
+                    return (
+                      <button
+                        key={a}
+                        type="button"
+                        onClick={() => { setMenuAberto(false); onAction(a, selected); }}
+                        className={cn('studio-inspector-action', a === 'delete' && 'hover:text-destructive')}
+                      >
+                        {Icon && <Icon className="h-3.5 w-3.5" />}
+                        {spec.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fechar inspetor"
+            className="rounded-full p-1.5 text-white/50 transition-colors duration-150 hover:bg-white/[0.08] hover:text-white/90"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       </header>
 
       {/* `key` muda a cada seleção — força o React a desmontar e remontar
@@ -71,27 +116,6 @@ export function AssetInspector({ selected, allAssets, onAction, onClose }: Asset
           e o prompt aberto/fechado, que sem isso vazava de uma arte para a
           próxima. */}
       <Corpo key={unico?.id ?? `multi-${selected.length}`} unico={unico} caminho={caminho} onPreview={() => setPreviewOpen(true)} />
-
-      {acoes.length > 0 && (
-        <footer className="studio-side-panel-footer">
-          {acoes.map((a) => {
-            const spec = ACAO[a];
-            if (!spec) return null;
-            const Icon = spec.icon;
-            return (
-              <button
-                key={a}
-                type="button"
-                onClick={() => onAction(a, selected)}
-                className={cn('studio-inspector-action', a === 'delete' && 'hover:text-destructive')}
-              >
-                {Icon && <Icon className="h-3.5 w-3.5" />}
-                {spec.label}
-              </button>
-            );
-          })}
-        </footer>
-      )}
 
       <AssetPreviewDialog asset={previewOpen ? unico : null} onClose={() => setPreviewOpen(false)} />
     </aside>
