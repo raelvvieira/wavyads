@@ -129,13 +129,31 @@ serve(async (req) => {
       });
     }
 
+    // O endpoint OpenAI-compat do Gemini NÃO baixa URL remota: image_url
+    // precisa ser data URI base64, senão volta 400 INVALID_ARGUMENT.
+    async function paraDataUri(url: string): Promise<string> {
+      if (url.startsWith("data:")) return url;
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`Não consegui baixar a imagem de referência (${r.status})`);
+      const mime = r.headers.get("content-type")?.split(";")[0] || "image/jpeg";
+      const bytes = new Uint8Array(await r.arrayBuffer());
+      let bin = "";
+      for (let i = 0; i < bytes.length; i += 0x8000) {
+        bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      }
+      return `data:${mime};base64,${btoa(bin)}`;
+    }
+
+    const dataUris = await Promise.all(images.filter(Boolean).map((u: string) => paraDataUri(u)));
+
     const userContent: any[] = [
       {
         type: "text",
         text: `Analise estas ${images.length} imagem(ns) de referência aplicando a metodologia das 8 dimensões. Decodifique decisões de design — não descreva conteúdo. Documente camadas com opacidade, blur, borda, radius e posição. Devolva também o designSystemDoc em inglês técnico, pronto pra prompt, e antiPadroes: regras explícitas do que a IA geradora nunca deve fazer para não quebrar este estilo específico.`,
       },
-      ...images.map((url: string) => ({ type: "image_url", image_url: { url } })),
+      ...dataUris.map((url: string) => ({ type: "image_url", image_url: { url } })),
     ];
+
 
     const response = await fetch(AI_URL, {
       method: "POST",
