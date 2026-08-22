@@ -434,7 +434,7 @@ export default function CriativoStudioV2Page() {
         }));
       }
       toast({ title: 'Gerando avatar…' });
-      const resultado = await actions.generateAvatar(persona, urls);
+      const resultado = await actions.generateAvatar(persona, urls, upsertAsset);
       upsertAsset(resultado);
       if (resultado.status === 'failed') {
         toast({ title: 'Erro ao gerar avatar', description: resultado.errorMessage ?? undefined, variant: 'destructive' });
@@ -480,6 +480,9 @@ export default function CriativoStudioV2Page() {
         base: alvo,
         variations: saida.variations,
         diagnosis: saida.originalDiagnosis,
+        // Os cinco cards aparecem juntos, em cinza, assim que as linhas
+        // existem — o lote inteiro anuncia que está vindo.
+        onSlotsCreated: (linhas) => linhas.forEach(upsertAsset),
         // Cada slot resolve sozinho no canvas, em vez de tudo aparecer no fim.
         onSlotDone: (asset) => upsertAsset(asset),
       });
@@ -570,6 +573,10 @@ export default function CriativoStudioV2Page() {
           avatarImageUrls: avatares,
           clientName,
           onStage: setEstagio,
+          // O card de carregando ocupa o lugar da arte no instante do
+          // pedido, e não depois dos segundos que ler referência e dirigir
+          // a arte consomem.
+          onAssetCreated: upsertAsset,
         });
         upsertAsset(resultado);
         if (resultado.status === 'failed') {
@@ -604,7 +611,7 @@ export default function CriativoStudioV2Page() {
           return;
         }
         toast({ title: 'Editando arte…' });
-        const resultado = await actions.edit(alvo, texto);
+        const resultado = await actions.edit(alvo, texto, upsertAsset);
         upsertAsset(resultado);
         if (resultado.status === 'failed') {
           toast({ title: 'Erro ao editar', description: resultado.errorMessage ?? undefined, variant: 'destructive' });
@@ -653,7 +660,7 @@ export default function CriativoStudioV2Page() {
     if (acao === 'resize') {
       toast({ title: 'Redimensionando para 1:1…' });
       try {
-        const resultado = await actions.resize(alvo);
+        const resultado = await actions.resize(alvo, upsertAsset);
         upsertAsset(resultado);
         toast({ title: resultado.status === 'ready' ? '1080×1080 pronto' : 'Erro ao redimensionar', variant: resultado.status === 'ready' ? undefined : 'destructive' });
       } catch (e: any) {

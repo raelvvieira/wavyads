@@ -71,12 +71,26 @@ export interface GenerationOptions {
    * clica de novo.
    */
   onStage?: (stage: GenerationStage) => void;
+  /**
+   * Avisa que a linha existe, ainda em `generating`.
+   *
+   * Dispara ANTES de ler referências e de escrever a direção de arte — que
+   * juntas levam segundos. Sem isso o canvas ficava vazio o pedido inteiro
+   * e a arte aparecia do nada no fim; com isso o card de carregando ocupa
+   * desde já o lugar onde ela vai nascer.
+   */
+  onAssetCreated?: (asset: CreativeAsset) => void;
 }
 
 export interface StudioAssetActions {
   generate(brief: string, aspectRatio: CreativeAspectRatio, options?: GenerationOptions): Promise<CreativeAsset>;
   /** Retrato de uma persona — vira asset `avatar`, reutilizável depois. */
-  generateAvatar(persona: AvatarPersona, referenceImageUrls?: string[]): Promise<CreativeAsset>;
+  generateAvatar(
+    persona: AvatarPersona,
+    referenceImageUrls?: string[],
+    /** A linha em `generating`, para o card aparecer antes da imagem. */
+    onCreated?: (asset: CreativeAsset) => void,
+  ): Promise<CreativeAsset>;
   /**
    * Fator Criativo V2: 5 variações estratégicas da arte-base.
    *
@@ -88,11 +102,24 @@ export interface StudioAssetActions {
     base: CreativeAsset;
     variations: FactorVariation[];
     diagnosis?: FactorCreativeOutput['originalDiagnosis'] | null;
+    /**
+     * As 5 linhas assim que existem, todas em `generating`.
+     *
+     * O comentário abaixo dizia que "as 5 linhas nascem ANTES de qualquer
+     * imagem: é o que faz o lote inteiro aparecer no canvas de uma vez" —
+     * e nascer elas nasciam, só que ninguém avisava a tela. O canvas
+     * continuava vazio até a primeira arte ficar pronta.
+     */
+    onSlotsCreated?: (assets: CreativeAsset[]) => void;
     onSlotDone?: (asset: CreativeAsset) => void;
   }): Promise<CreativeAsset[]>;
   retry(asset: CreativeAsset): Promise<CreativeAsset>;
-  edit(asset: CreativeAsset, feedback: string): Promise<CreativeAsset>;
-  resize(asset: CreativeAsset): Promise<CreativeAsset>;
+  edit(
+    asset: CreativeAsset,
+    feedback: string,
+    onCreated?: (asset: CreativeAsset) => void,
+  ): Promise<CreativeAsset>;
+  resize(asset: CreativeAsset, onCreated?: (asset: CreativeAsset) => void): Promise<CreativeAsset>;
 }
 
 /**
@@ -126,6 +153,45 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
     async generate(brief, aspectRatio, options = {}) {
       const produtos = options.productImageUrls ?? [];
       const avatares = options.avatarImageUrls ?? [];
+      const anexos = {
+        logoImage: options.logoImageUrl ?? null,
+        productImages: produtos,
+        avatarImages: avatares,
+      };
+
+      /**
+       * A linha nasce ANTES do enriquecimento.
+       *
+       * O prompt preliminar já é um prompt válido — a direção de arte e o
+       * sistema visual são camadas por cima, não pré-requisitos. Criar a
+       * linha aqui é o que faz o card "gerando" ocupar o lugar da arte no
+       * instante do pedido, em vez de depois dos segundos que a leitura de
+       * referência e a direção consomem. Também é o que faz uma aba fechada
+       * no meio do caminho deixar uma linha recuperável em vez de nada.
+       */
+      const preliminar = buildGenerationRequest({
+        brief,
+        aspectRatio,
+        resolution: options.resolution,
+        modelId: options.modelId,
+        copy: options.copy,
+        logoImageUrl: options.logoImageUrl,
+        productImageUrls: options.productImageUrls,
+        avatarImageUrls: options.avatarImageUrls,
+      });
+      const projectId = await deps.ensureProjectId();
+      const row = await deps.createAsset({
+        projectId,
+        clientId: deps.clientId,
+        type: 'original',
+        status: 'generating',
+        aspectRatio,
+        resolution: options.resolution ?? '2K',
+        prompt: preliminar.prompt,
+        model: options.modelId ?? IMAGE_GENERATION_MODEL.id,
+        metadata: anexos,
+      });
+      options.onAssetCreated?.(row);
 
       // As duas etapas abaixo melhoram a arte; nenhuma delas pode impedi-la.
       // Uma IA fora do ar, um modelo descontinuado ou uma referência que o
@@ -179,23 +245,15 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
         antiPadroes: analise?.antiPadroes ?? null,
         mood: analise?.mood ?? null,
       });
-      const projectId = await deps.ensureProjectId();
-      const row = await deps.createAsset({
-        projectId,
-        clientId: deps.clientId,
-        type: 'original',
-        status: 'generating',
-        aspectRatio,
-        resolution: options.resolution ?? '2K',
+      // A linha já existe; o que muda agora é o prompt definitivo e o que a
+      // arte recebeu de direção. As URLs dos anexos não sobrevivem no
+      // PROMPT — ele só MENCIONA logo/produto ("a brand logo is
+      // provided...") —, e é por isso que o metadata as guarda: é o que
+      // permite o retry devolver os mesmos anexos.
+      const comPrompt = await deps.updateAsset(row.id, {
         prompt,
-        model: options.modelId ?? IMAGE_GENERATION_MODEL.id,
-        // As URLs dos anexos não sobrevivem no PROMPT — ele só MENCIONA
-        // logo/produto ("a brand logo is provided..."). Guardar aqui é o
-        // que permite o retry devolver os mesmos anexos.
         metadata: {
-          logoImage: options.logoImageUrl ?? null,
-          productImages: options.productImageUrls ?? [],
-          avatarImages: options.avatarImageUrls ?? [],
+          ...anexos,
           // O que a arte recebeu de direção fica gravado com ela. É o que
           // permite ao inspetor explicar por que a peça saiu como saiu — e
           // é sobre isso que o usuário vai querer iterar, não sobre o
@@ -206,10 +264,10 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
           antiPadroes: analise?.antiPadroes ?? null,
         },
       });
-      return runGeneration(deps, row, body);
+      return runGeneration(deps, comPrompt, body);
     },
 
-    async generateAvatar(persona, referenceImageUrls = []) {
+    async generateAvatar(persona, referenceImageUrls = [], onCreated) {
       const { prompt, body } = buildAvatarRequest({ persona, referenceImageUrls });
       const projectId = await deps.ensureProjectId();
       const row = await deps.createAsset({
@@ -227,10 +285,11 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
         // persona depois, em vez de só olhar o retrato pronto.
         metadata: { persona, referenceImages: referenceImageUrls },
       });
+      onCreated?.(row);
       return runGeneration(deps, row, body);
     },
 
-    async factorCriativo({ base, variations, diagnosis = null, onSlotDone }) {
+    async factorCriativo({ base, variations, diagnosis = null, onSlotsCreated, onSlotDone }) {
       const projectId = await deps.ensureProjectId();
       const ratio = (base.aspectRatio as CreativeAspectRatio) || '4:5';
       const backendAspect = ratio === '1:1' ? 'square' : 'story';
@@ -314,6 +373,8 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
         },
       })));
 
+      onSlotsCreated?.(linhas);
+
       // Falha ISOLADA por slot: uma variação recusada não derruba as outras
       // quatro, e o card dela fica `failed` com o botão de retentar.
       return Promise.all(linhas.map(async (linha, i) => {
@@ -345,7 +406,7 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
       return runGeneration(deps, retomada, body);
     },
 
-    async edit(asset, feedback) {
+    async edit(asset, feedback, onCreated) {
       if (!asset.url) throw new Error('Esta arte ainda não tem imagem para editar.');
       if (!feedback.trim()) throw new Error('Descreva o que você quer alterar nesta arte.');
       const ratio = (asset.aspectRatio as CreativeAspectRatio) || '4:5';
@@ -377,6 +438,7 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
           avatarImages: asset.metadata?.avatarImages ?? [],
         },
       });
+      onCreated?.(row);
       try {
         const { data, error } = await deps.invoke('criativo-edit-image', body, 90_000);
         if (error) throw new Error(await deps.extractErrorMessage(error));
@@ -390,7 +452,7 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
       }
     },
 
-    async resize(asset) {
+    async resize(asset, onCreated) {
       if (!asset.prompt) throw new Error('Esta arte não tem prompt salvo para redimensionar.');
       if (asset.aspectRatio === '1:1') throw new Error('Esta arte já é 1:1.');
       if (!asset.url) throw new Error('Esta arte ainda não tem imagem para reenquadrar.');
@@ -416,6 +478,7 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
         // pela porta dos fundos.
         metadata: { sourceImage: asset.url },
       });
+      onCreated?.(row);
       return runGeneration(deps, row, body);
     },
   };
