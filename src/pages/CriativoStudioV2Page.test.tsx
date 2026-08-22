@@ -613,8 +613,21 @@ describe('CriativoStudioV2Page', () => {
     updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({ id, ...patch }));
   }
 
+  /** Abre o inspetor da primeira arte pronta, esteja ela selecionada ou não. */
+  function abrirInspetor() {
+    // Clicar num card JÁ selecionado desmarca — é assim que se volta ao
+    // estado "nada selecionado". Num laço isso fecha o inspetor no segundo
+    // giro, então o segundo clique reabre.
+    if (!screen.queryByRole('button', { name: 'Ações desta arte' })) {
+      fireEvent.click(prontos()[0].querySelector('.studio-asset-surface')!);
+    }
+    if (!screen.queryByRole('button', { name: 'Ações desta arte' })) {
+      fireEvent.click(prontos()[0].querySelector('.studio-asset-surface')!);
+    }
+  }
+
   async function acionarNoInspetor(rotulo: string) {
-    fireEvent.click(prontos()[0].querySelector('.studio-asset-surface')!);
+    abrirInspetor();
     // As ações do inspetor vivem num menu — nove botões empilhados no
     // rodapé empurravam a arte para fora do painel que existe para vê-la.
     fireEvent.click(screen.getByRole('button', { name: 'Ações desta arte' }));
@@ -624,6 +637,98 @@ describe('CriativoStudioV2Page', () => {
       );
     });
   }
+
+  it('nenhuma ação oferecida cai no aviso genérico', async () => {
+    // O teste que impede o próximo botão de nascer mudo. "Salvar como
+    // template" e "Salvar na inteligência do cliente" ficaram meses sendo
+    // oferecidos e caindo em "ainda não disponível" — a lista de ações e o
+    // `switch` que as trata viviam em arquivos diferentes e ninguém
+    // percebeu a divergência.
+    montar();
+    await waitFor(() => expect(prontos().length).toBeGreaterThan(0));
+
+    abrirInspetor();
+    fireEvent.click(screen.getByRole('button', { name: 'Ações desta arte' }));
+    const rotulos = [...document.querySelectorAll('.studio-inspector-action')]
+      .map((b) => b.textContent!)
+      .filter((r) => r !== 'Apagar arte');
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+
+    expect(rotulos.length).toBeGreaterThan(4);
+    for (const rotulo of rotulos) {
+      vi.mocked(toast).mockClear();
+      await acionarNoInspetor(rotulo);
+      const avisos = vi.mocked(toast).mock.calls
+        .filter(([arg]) => (arg as any)?.title === 'Ainda não disponível');
+      expect(avisos, `"${rotulo}" caiu no aviso de indisponível`).toEqual([]);
+      // Algumas ações abrem diálogo (template) — fechar antes do próximo giro.
+      fireEvent.keyDown(document.body, { key: 'Escape' });
+      await act(async () => {});
+    }
+  });
+
+  it('salvar na inteligência do cliente marca a arte de verdade', async () => {
+    updateCreativeAsset.mockResolvedValue({ ...ASSETS_DO_PROJETO[0], isClientIntelligence: true });
+    montar();
+    await waitFor(() => expect(prontos().length).toBeGreaterThan(0));
+
+    await acionarNoInspetor('Salvar na inteligência do cliente');
+
+    expect(updateCreativeAsset).toHaveBeenCalledWith(
+      expect.any(String), { isClientIntelligence: true },
+    );
+  });
+
+  it('salvar como template pede um nome antes de criar', async () => {
+    // Sem nome, a biblioteca vira uma lista de "template" indistinguível.
+    montar();
+    await waitFor(() => expect(prontos().length).toBeGreaterThan(0));
+    createCreativeAsset.mockClear();
+
+    await acionarNoInspetor('Salvar como template');
+
+    expect(createCreativeAsset).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText('Nome do template'), {
+      target: { value: 'editorial com faixa' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Salvar template' }));
+    });
+
+    expect(createCreativeAsset).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'template', filename: 'editorial com faixa', projectId: null,
+    }));
+  });
+
+  it('subir um logo não cria projeto nem estreita o canvas', async () => {
+    // `ensureProjectId` aqui criava um "Novo projeto" vazio só para
+    // carimbar a linha — e o projeto novo acendia o chip "Só este projeto",
+    // estreitando o canvas por causa de um upload.
+    uploadDataUrlToCreativeStorage.mockResolvedValue('https://x/logo-enviado.png');
+    createCreativeAsset.mockResolvedValue({
+      ...ASSETS_DO_PROJETO[0], id: 'logo-novo', type: 'logo', projectId: null,
+      url: 'https://x/logo-enviado.png', filename: 'logo.png',
+    });
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+    createProject.mockClear();
+    createCreativeAsset.mockClear();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência, logo, copy, produto ou avatar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar logo' }));
+    const arquivo = new File(['conteudo'], 'logo.png', { type: 'image/png' });
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [arquivo] } });
+    });
+
+    await waitFor(() => expect(createCreativeAsset).toHaveBeenCalled());
+    expect(createCreativeAsset).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'logo', projectId: null,
+    }));
+    expect(createProject).not.toHaveBeenCalled();
+    expect(screen.queryByText('Só este projeto')).toBeNull();
+  });
 
   it('Fator Criativo gera DIRETO — um clique, sem formulário no caminho', async () => {
     // O formulário era um pedágio: exigia a descrição da oferta preenchida à

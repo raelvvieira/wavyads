@@ -69,7 +69,16 @@ function mapGroupRow(row: GroupRow): CreativeAssetGroup {
 }
 
 export interface CreateCreativeAssetInput {
-  projectId: string;
+  /**
+   * Nulo para insumo e template.
+   *
+   * A coluna sempre foi nulável no banco; era o tipo daqui que obrigava um
+   * projeto. Com ele obrigatório, subir um logo criava um "Novo projeto"
+   * vazio só para ter o que carimbar — e o projeto novo acendia o chip
+   * "Só este projeto", estreitando o canvas sem que ninguém tivesse pedido.
+   * Insumo é do cliente e atravessa campanhas; projeto é da arte.
+   */
+  projectId: string | null;
   type: CreativeAssetType;
   url?: string | null;
   thumbnailUrl?: string | null;
@@ -271,6 +280,8 @@ export async function listCreativeAssets(
 
 export interface UpdateCreativeAssetInput {
   status?: CreativeAssetStatus;
+  /** Marca a arte como referência aprovada da marca. */
+  isClientIntelligence?: boolean;
   url?: string | null;
   thumbnailUrl?: string | null;
   errorMessage?: string | null;
@@ -299,6 +310,7 @@ export async function updateCreativeAsset(
   if (patch.width !== undefined) row.width = patch.width;
   if (patch.height !== undefined) row.height = patch.height;
   if (patch.metadata !== undefined) row.metadata = patch.metadata;
+  if (patch.isClientIntelligence !== undefined) row.is_client_intelligence = patch.isClientIntelligence;
 
   const { data, error } = await supabase
     .from('creative_assets')

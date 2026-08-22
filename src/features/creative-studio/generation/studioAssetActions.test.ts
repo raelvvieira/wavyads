@@ -511,3 +511,50 @@ describe('factorCriativo', () => {
     expect([...deps.linhas.values()][0].groupId).toBeNull();
   });
 });
+
+describe('a linha guarda o que o prompt dela pressupõe', () => {
+  it('resize guarda a arte de origem, e o retry dela reanexa', async () => {
+    // Sem isto, "tentar novamente" num resize que falhou mandava um prompt
+    // que abre com "the attached reference image IS the artwork" e NENHUMA
+    // imagem anexada — o bug que o próprio reenquadramento tinha acabado
+    // de corrigir, de volta pela porta dos fundos.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/q.png' }, error: null });
+    const acoes = createStudioAssetActions(deps);
+
+    const quadrada = await acoes.resize(assetBase({ prompt: 'p', aspectRatio: '9:16', url: 'https://x/origem.png' }));
+    expect(quadrada.metadata?.sourceImage).toBe('https://x/origem.png');
+
+    (deps.invoke as any).mockClear();
+    await acoes.retry({ ...quadrada, status: 'failed' } as any);
+    expect((deps.invoke as any).mock.calls[0][1].storyReference).toBe('https://x/origem.png');
+  });
+
+  it('edit herda os anexos da arte de origem, para o retry não os perder', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { editedImageUrl: 'https://x/e.png' }, error: null });
+    const origem = assetBase({
+      url: 'https://x/origem.png',
+      metadata: { logoImage: 'https://x/logo.png', productImages: ['https://x/p.png'], avatarImages: ['https://x/ana.png'] },
+    });
+
+    const editada = await createStudioAssetActions(deps).edit(origem, 'mais contraste');
+
+    expect(editada.metadata?.sourceImage).toBe('https://x/origem.png');
+    expect(editada.metadata?.avatarImages).toEqual(['https://x/ana.png']);
+  });
+
+  it('retry devolve os avatares que a geração original mandou', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    const falhou = assetBase({
+      status: 'failed', prompt: 'p',
+      metadata: { avatarImages: ['https://x/ana.png'], productImages: ['https://x/prod.png'], logoImage: null },
+    });
+
+    await createStudioAssetActions(deps).retry(falhou);
+
+    expect((deps.invoke as any).mock.calls[0][1].productImages)
+      .toEqual(['https://x/ana.png', 'https://x/prod.png']);
+  });
+});
