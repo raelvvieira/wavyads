@@ -338,6 +338,8 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
         aspectRatio: asset.aspectRatio,
         logoImage: asset.metadata?.logoImage ?? null,
         productImages: asset.metadata?.productImages ?? [],
+        avatarImages: asset.metadata?.avatarImages ?? [],
+        sourceImage: asset.metadata?.sourceImage ?? null,
       });
       const retomada = await deps.updateAsset(asset.id, { status: 'generating', errorMessage: null });
       return runGeneration(deps, retomada, body);
@@ -363,7 +365,16 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
         resolution: asset.resolution,
         prompt: asset.prompt,
         model: IMAGE_EDIT_MODEL.id,
-        metadata: { feedback },
+        // A linha guarda o que o prompt dela pressupõe. Sem isto, "tentar
+        // novamente" numa edição que falhou reenviava o prompt da arte
+        // original sem nenhum dos anexos que ele menciona.
+        metadata: {
+          feedback,
+          sourceImage: asset.url,
+          logoImage: asset.metadata?.logoImage ?? null,
+          productImages: asset.metadata?.productImages ?? [],
+          avatarImages: asset.metadata?.avatarImages ?? [],
+        },
       });
       try {
         const { data, error } = await deps.invoke('criativo-edit-image', body, 90_000);
@@ -397,6 +408,12 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
         resolution: asset.resolution,
         prompt,
         model: IMAGE_GENERATION_MODEL.id,
+        // `sourceImage` é o que sustenta o prompt desta linha: ele abre
+        // dizendo que a imagem anexada É a arte. Sem guardar aqui, o
+        // "tentar novamente" mandava esse texto sem anexar imagem nenhuma —
+        // o mesmo bug que o reenquadramento acabou de corrigir, de volta
+        // pela porta dos fundos.
+        metadata: { sourceImage: asset.url },
       });
       return runGeneration(deps, row, body);
     },

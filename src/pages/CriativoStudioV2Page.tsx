@@ -102,6 +102,11 @@ export default function CriativoStudioV2Page() {
 
   // Confirmação de apagar arte: abrir o diálogo não apaga nada — só a
   // confirmação chama `deleteCreativeAsset`.
+  // Nomear o template antes de criá-lo. Sem nome, a biblioteca vira uma
+  // lista de "template" que ninguém consegue distinguir.
+  const [templateAlvo, setTemplateAlvo] = useState<CreativeAsset | null>(null);
+  const [templateNome, setTemplateNome] = useState('');
+  const [salvandoTemplate, setSalvandoTemplate] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CreativeAsset | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -401,9 +406,12 @@ export default function CriativoStudioV2Page() {
   // reutilizável — a grade do menu mostra na próxima vez que abrir.
   const handleNewLibraryUpload = useCallback(async (kind: 'logo' | 'product', url: string) => {
     try {
-      const pid = await ensureProjectId();
+      // Sem projeto de propósito: insumo é do cliente e atravessa
+      // campanhas. Chamar `ensureProjectId` aqui criava um "Novo projeto"
+      // vazio só para carimbar a linha — e o projeto novo acendia o chip
+      // "Só este projeto", estreitando o canvas por causa de um upload.
       const asset = await createCreativeAsset({
-        projectId: pid, type: kind, url, thumbnailUrl: url,
+        projectId: null, type: kind, url, thumbnailUrl: url,
         clientId: selectedClientId, status: 'ready',
       });
       upsertAsset(asset);
@@ -411,7 +419,7 @@ export default function CriativoStudioV2Page() {
       // O anexo em si já aconteceu — só a reutilização futura falhou. Não
       // vale travar o fluxo nem avisar o usuário por isso.
     }
-  }, [ensureProjectId, selectedClientId, upsertAsset]);
+  }, [selectedClientId, upsertAsset]);
 
   const handleGenerateAvatar = useCallback(async (persona: AvatarPersona, referenceImages: string[]) => {
     if (busy) return;
@@ -672,6 +680,29 @@ export default function CriativoStudioV2Page() {
       return;
     }
 
+    if (acao === 'save-to-client-intelligence') {
+      if (!alvo.clientId) {
+        toast({ title: 'Esta arte não está ligada a um cliente', variant: 'destructive' });
+        return;
+      }
+      try {
+        upsertAsset(await updateCreativeAsset(alvo.id, { isClientIntelligence: true }));
+        toast({ title: 'Salva na inteligência do cliente', description: 'Vira referência aprovada da marca.' });
+      } catch (e: any) {
+        toast({ title: 'Erro ao salvar', description: e?.message, variant: 'destructive' });
+      }
+      return;
+    }
+
+    if (acao === 'save-as-template') {
+      // Só abre o diálogo de nome. Um template sem nome vira uma lista de
+      // "template" indistinguível — e a biblioteca já mostra a miniatura,
+      // então o nome é a única coisa que diferencia um do outro.
+      setTemplateAlvo(alvo);
+      setTemplateNome(alvo.filename ?? '');
+      return;
+    }
+
     if (acao === 'delete') {
       // Só abre a confirmação — apagar de verdade só acontece no clique
       // de "Apagar" dentro do diálogo.
@@ -680,8 +711,57 @@ export default function CriativoStudioV2Page() {
       return;
     }
 
+    // Rede para uma ação futura que chegue sem tratamento. Hoje ela é
+    // inalcançável, e um teste afirma isso — ver `handleAssetAction` em
+    // CriativoStudioV2Page.test.tsx.
     avisarIndisponivel('Esta ação ainda não está disponível nesta versão.');
   }, [actions, upsertAsset, avisarIndisponivel, rodarFator, abrirFatorComBriefing, handleAttach]);
+
+  /**
+   * Guarda a arte como template reutilizável.
+   *
+   * O template é um asset como outro qualquer, com `type: 'template'` — é o
+   * que faz a biblioteca "Templates" da ilha já contá-lo e filtrá-lo sem
+   * nenhuma fiação nova. Sem projeto, pela mesma regra do insumo: template
+   * é da marca e atravessa campanhas.
+   *
+   * O `metadata` carrega o que torna um template reutilizável: o prompt que
+   * produziu a arte, e o sistema visual e a direção que ela recebeu. É daí
+   * que uma geração futura consegue herdar o layout sem herdar a copy.
+   */
+  const salvarComoTemplate = useCallback(async () => {
+    const alvo = templateAlvo;
+    const nome = templateNome.trim();
+    if (!alvo || !nome || salvandoTemplate) return;
+    setSalvandoTemplate(true);
+    try {
+      const template = await createCreativeAsset({
+        projectId: null,
+        clientId: alvo.clientId,
+        type: 'template',
+        status: 'ready',
+        url: alvo.url,
+        thumbnailUrl: alvo.thumbnailUrl ?? alvo.url,
+        parentAssetId: alvo.id,
+        aspectRatio: alvo.aspectRatio,
+        filename: nome,
+        prompt: alvo.prompt,
+        metadata: {
+          sourcePrompt: alvo.prompt,
+          designSystemDoc: (alvo.metadata as any)?.designSystemDoc ?? null,
+          artDirection: (alvo.metadata as any)?.artDirection ?? null,
+          antiPadroes: (alvo.metadata as any)?.antiPadroes ?? null,
+        },
+      });
+      upsertAsset(template);
+      setTemplateAlvo(null);
+      toast({ title: 'Template salvo', description: `"${nome}" está na biblioteca de templates.` });
+    } catch (e: any) {
+      toast({ title: 'Erro ao salvar o template', description: e?.message, variant: 'destructive' });
+    } finally {
+      setSalvandoTemplate(false);
+    }
+  }, [templateAlvo, templateNome, salvandoTemplate, upsertAsset]);
 
   const filhosDoAlvo = useMemo(
     () => (deleteTarget ? childrenByParentId(assets).get(deleteTarget.id)?.length ?? 0 : 0),
@@ -773,6 +853,36 @@ export default function CriativoStudioV2Page() {
         onClose={() => setFatorBase(null)}
         onSubmit={handleFatorSubmit}
       />
+
+      <AlertDialog open={!!templateAlvo} onOpenChange={(open) => { if (!open) setTemplateAlvo(null); }}>
+        <AlertDialogContent className="glass border-white/10 bg-card">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Salvar como template</AlertDialogTitle>
+            <AlertDialogDescription>
+              O template guarda o layout e o sistema visual desta arte — não a copy dela.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <input
+            autoFocus
+            value={templateNome}
+            onChange={(e) => setTemplateNome(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') void salvarComoTemplate(); }}
+            placeholder="Ex.: editorial com faixa inferior"
+            aria-label="Nome do template"
+            className="glass-input h-9 w-full rounded-[var(--wavy-radius-control)] px-3 text-[13px]"
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-xl"
+              disabled={!templateNome.trim() || salvandoTemplate}
+              onClick={(e) => { e.preventDefault(); void salvarComoTemplate(); }}
+            >
+              {salvandoTemplate ? 'Salvando…' : 'Salvar template'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={deleteDialogOpen}

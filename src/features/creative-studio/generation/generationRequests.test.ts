@@ -313,3 +313,34 @@ function variacao() {
     validation: { changedDimensions: ['thesis'], qualityScore: 9 },
   } as any;
 }
+
+describe('buildRetryRequest — o que o prompt afirma, o corpo sustenta', () => {
+  it('reenvia os avatares ANTES dos produtos, como na geração original', () => {
+    // O prompt indexa talento pelas PRIMEIRAS imagens e produto pelas
+    // ÚLTIMAS. Sem os avatares, ele continuava afirmando `avatarCount` e a
+    // arte voltava com outro rosto; fora de ordem, [TALENT] apontaria para
+    // o produto.
+    const { body } = buildRetryRequest({
+      prompt: 'p', aspectRatio: '9:16',
+      avatarImages: ['https://x/ana.png'],
+      productImages: ['https://x/prod.png'],
+    });
+    expect(body.productImages).toEqual(['https://x/ana.png', 'https://x/prod.png']);
+  });
+
+  it('reanexa a arte de origem quando o prompt salvo depende de vê-la', () => {
+    // É o caso do reenquadramento: o prompt abre dizendo que a imagem
+    // anexada É a arte. Retentar sem ela mandava esse texto no vazio.
+    const { body } = buildRetryRequest({
+      prompt: 'p', aspectRatio: '1:1', sourceImage: 'https://x/arte.png',
+    });
+    expect(body.storyReference).toBe('https://x/arte.png');
+  });
+
+  it('sem anexos guardados, não inventa nenhum', () => {
+    const { body } = buildRetryRequest({ prompt: 'p', aspectRatio: '4:5' });
+    expect(body.productImages).toEqual([]);
+    expect(body.storyReference).toBeNull();
+    expect(body.logoImage).toBeNull();
+  });
+});

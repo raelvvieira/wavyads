@@ -181,7 +181,20 @@ export function buildRetryRequest(asset: {
   prompt: string | null;
   aspectRatio: string | null;
   productImages?: string[];
+  /**
+   * As pessoas anexadas. Viajam no mesmo canal dos produtos, mas PRIMEIRO —
+   * o bloco [TALENT] indexa as primeiras imagens e o [PRODUCT] as últimas.
+   * Sem elas aqui, o prompt continuava afirmando `avatarCount` e a arte
+   * voltava com outro rosto.
+   */
+  avatarImages?: string[];
   logoImage?: string | null;
+  /**
+   * A arte de origem, quando o prompt salvo depende de ver uma imagem —
+   * é o caso do reenquadramento, cujo texto abre dizendo que a imagem
+   * anexada É a arte.
+   */
+  sourceImage?: string | null;
 }): GenerationRequest {
   if (!asset.prompt) throw new Error('Esta arte não tem prompt salvo para tentar novamente.');
   const ratio = (asset.aspectRatio as CreativeAspectRatio) || '4:5';
@@ -193,9 +206,11 @@ export function buildRetryRequest(asset: {
       aspectRatio: backendAspect,
       formatRatio: ratio,
       model: IMAGE_GENERATION_MODEL.id,
-      productImages: asset.productImages ?? [],
+      // Mesma ordem da geração original. Inverter aqui faria [TALENT] apontar
+      // para o produto e [PRODUCT] para a pessoa.
+      productImages: [...(asset.avatarImages ?? []), ...(asset.productImages ?? [])],
       logoImage: asset.logoImage ?? null,
-      storyReference: null,
+      storyReference: asset.sourceImage ?? null,
     },
   };
 }
