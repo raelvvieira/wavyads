@@ -280,6 +280,14 @@ export async function listCreativeAssets(
 
 export interface UpdateCreativeAssetInput {
   status?: CreativeAssetStatus;
+  /**
+   * O prompt final.
+   *
+   * A linha nasce antes de a direção de arte existir — é o que põe o card
+   * "gerando" no canvas no instante do pedido. O prompt definitivo só fica
+   * pronto depois, e chega por aqui.
+   */
+  prompt?: string | null;
   /** Marca a arte como referência aprovada da marca. */
   isClientIntelligence?: boolean;
   url?: string | null;
@@ -310,6 +318,7 @@ export async function updateCreativeAsset(
   if (patch.width !== undefined) row.width = patch.width;
   if (patch.height !== undefined) row.height = patch.height;
   if (patch.metadata !== undefined) row.metadata = patch.metadata;
+  if (patch.prompt !== undefined) row.prompt = patch.prompt;
   if (patch.isClientIntelligence !== undefined) row.is_client_intelligence = patch.isClientIntelligence;
 
   const { data, error } = await supabase

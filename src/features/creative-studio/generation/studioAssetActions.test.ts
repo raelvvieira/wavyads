@@ -51,7 +51,10 @@ describe('generate', () => {
 
     const resultado = await createStudioAssetActions(deps).generate('lançamento de verão', '4:5');
 
-    expect(deps.ordem).toEqual(['createAsset', 'updateAsset:ready']);
+    // A linha nasce primeiro, recebe o prompt definitivo depois da direção
+    // de arte, e é a MESMA que fica pronta no fim. Uma linha só, três
+    // escritas — não duas linhas.
+    expect(deps.ordem).toEqual(['createAsset', 'updateAsset:-', 'updateAsset:ready']);
     expect(resultado.status).toBe('ready');
     expect(resultado.url).toBe('https://x/nova.png');
     expect(deps.linhas.size).toBe(1); // uma linha só, não duas
@@ -558,3 +561,65 @@ describe('a linha guarda o que o prompt dela pressupõe', () => {
       .toEqual(['https://x/ana.png', 'https://x/prod.png']);
   });
 });
+
+describe('o card ocupa o lugar da arte antes de a arte existir', () => {
+  it('avisa a linha em generating ANTES de ler referência e dirigir a arte', async () => {
+    // Sem isto o canvas ficava vazio o pedido inteiro: as duas etapas de IA
+    // levam segundos, e a arte aparecia do nada só no fim.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    const eventos: string[] = [];
+    deps.analyzeReferences = vi.fn(async () => { eventos.push('analise'); return null; });
+    deps.directArt = vi.fn(async () => {
+      eventos.push('direcao');
+      return { artDirection: null, copyBlocks: null };
+    });
+
+    await createStudioAssetActions(deps).generate('x', '9:16', {
+      productImageUrls: ['https://x/ref.png'],
+      onAssetCreated: (a) => eventos.push(`card:${a.status}`),
+    });
+
+    expect(eventos).toEqual(['card:generating', 'analise', 'direcao']);
+  });
+
+  it('o Fator anuncia as cinco linhas de uma vez, antes de qualquer imagem', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/v.png' }, error: null });
+    let anunciadas: any[] = [];
+
+    await createStudioAssetActions(deps).factorCriativo({
+      base: assetBase({ prompt: 'p' }),
+      variations: Array.from({ length: 5 }, (_, i) => variacaoFalsa(i + 1)),
+      onSlotsCreated: (linhas) => { anunciadas = linhas; },
+    });
+
+    expect(anunciadas).toHaveLength(5);
+    expect(anunciadas.every((a) => a.status === 'generating')).toBe(true);
+  });
+
+  it('editar e redimensionar também anunciam a linha nova', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { editedImageUrl: 'https://x/e.png' }, error: null });
+    const acoes = createStudioAssetActions(deps);
+    const vistos: string[] = [];
+
+    await acoes.edit(assetBase({ url: 'https://x/o.png' }), 'mais contraste', (a) => vistos.push(a.type));
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/q.png' }, error: null });
+    await acoes.resize(assetBase({ prompt: 'p', aspectRatio: '9:16', url: 'https://x/o.png' }), (a) => vistos.push(a.type));
+
+    expect(vistos).toEqual(['edited', 'resize']);
+  });
+});
+
+function variacaoFalsa(slot: number) {
+  return {
+    slot, label: `V${slot}`,
+    strategy: { angle: 'problem', angleSubtype: 's', strategicThesis: 't' },
+    audience: { persona: 'p', awarenessLevel: 'a' },
+    execution: { dominantEmotion: 'e' },
+    copy: { title: 'T', cta: 'C' },
+    visualDirection: { mainSubject: 'S', composition: 'C', mood: 'm' },
+    validation: { changedDimensions: ['thesis'], qualityScore: 9 },
+  } as any;
+}
