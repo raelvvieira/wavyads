@@ -123,6 +123,51 @@ describe('CriativoStudioV2Page', () => {
     expect(screen.queryByText('Só este projeto')).toBeNull();
   });
 
+  it('consulta de insumo lenta NÃO zera o canvas', async () => {
+    // O que aconteceu de verdade: a consulta de insumos estourou o
+    // statement timeout do Postgres, e como as três iam num `Promise.all`,
+    // a tela abriu vazia dizendo "Não deu para carregar as artes" — com as
+    // artes intactas no banco. Insumo alimenta o menu de anexos; não é o
+    // conteúdo da tela, e não pode derrubá-la.
+    listCreativeAssets.mockImplementation(async (filtro?: any) => {
+      if (filtro?.types) throw new Error('canceling statement due to statement timeout');
+      return ASSETS_DO_PROJETO;
+    });
+
+    montar();
+
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+    expect(screen.queryByText('Não deu para carregar as artes')).toBeNull();
+    // Em voz baixa, não em silêncio: um logo sumido sem aviso parece logo
+    // apagado.
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({
+      title: 'Referências e logos podem estar incompletos',
+    }));
+  });
+
+  it('projeto que falha também não zera o canvas', async () => {
+    listRecentProjects.mockRejectedValue(new Error('timeout'));
+
+    montar();
+
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+    expect(screen.queryByText('Não deu para carregar as artes')).toBeNull();
+  });
+
+  it('mas a falha das ARTES continua sendo erro de página', async () => {
+    // Aqui não há o que desenhar — mostrar um canvas vazio e calado faria
+    // o usuário achar que o acervo dele sumiu.
+    listCreativeAssets.mockImplementation(async (filtro?: any) => {
+      if (filtro?.types) return [];
+      throw new Error('canceling statement due to statement timeout');
+    });
+
+    montar();
+
+    await waitFor(() => expect(screen.getByText('Não deu para carregar as artes')).toBeTruthy());
+    expect(screen.getByText(/statement timeout/)).toBeTruthy();
+  });
+
   it('a faixa anuncia versão nova, não prévia', async () => {
     // Esta tela deixou de ser prévia quando virou a rota principal do
     // Criativo Studio. Uma faixa que continua dizendo "PRÉVIA" ensina o
@@ -169,7 +214,7 @@ describe('CriativoStudioV2Page', () => {
     await waitFor(() => expect(cards().length).toBeGreaterThan(0));
 
     expect(listCreativeAssets).toHaveBeenCalledWith();
-    expect(listCreativeAssets).toHaveBeenCalledWith({ types: SOURCE_ASSET_TYPES });
+    expect(listCreativeAssets).toHaveBeenCalledWith({ types: SOURCE_ASSET_TYPES, limit: 120 });
   });
 
   it('a biblioteca de referências mostra insumo, que o canvas esconde', async () => {
@@ -732,7 +777,9 @@ describe('CriativoStudioV2Page', () => {
       fireEvent.keyDown(document.body, { key: 'Escape' });
       await act(async () => {});
     }
-  });
+    // Um giro de render completo por ação, e são oito: lento por desenho,
+    // não por acidente. O timeout padrão de 5s deixa isto instável.
+  }, 20_000);
 
   it('salvar na inteligência do cliente marca a arte de verdade', async () => {
     updateCreativeAsset.mockResolvedValue({ ...ASSETS_DO_PROJETO[0], isClientIntelligence: true });
