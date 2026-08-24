@@ -127,25 +127,53 @@ export default function CriativoStudioV2Page() {
   useEffect(() => { projectIdRef.current = projectId; }, [projectId]);
   const criandoProjetoRef = useRef<Promise<string> | null>(null);
 
+  /**
+   * Lê o acervo — com o secundário fora do caminho crítico.
+   *
+   * Três consultas, e só UMA delas é o conteúdo da tela. As artes são o
+   * canvas; insumos alimentam o menu de anexos e projetos são recipiente
+   * interno. Com `Promise.all`, qualquer uma das três derrubava as outras
+   * duas: uma consulta de insumos lenta fazia a tela abrir vazia dizendo
+   * "Não deu para carregar as artes", com as artes intactas no banco.
+   *
+   * `allSettled` inverte isso. Cada resultado responde por si, e o erro de
+   * página fica reservado ao caso em que não há mesmo o que desenhar.
+   */
   const carregar = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      // Duas consultas, não uma. A leitura do acervo corta em 300 linhas
-      // mais recentes, e cada geração empurra linhas novas — o Fator sozinho
-      // insere cinco. Com uma consulta só, uma tarde de trabalho expulsa da
-      // janela o logo que a marca usa há meses, e o menu de anexos volta a
-      // parecer vazio mesmo com o escopo por cliente correto.
+      // Duas consultas de asset, não uma: a leitura do canvas corta em 300
+      // linhas mais recentes, e cada geração empurra linhas novas — o Fator
+      // sozinho insere cinco. Com uma consulta só, uma tarde de trabalho
+      // expulsa da janela o logo que a marca usa há meses.
       //
-      // Insumo é pouco e dura; arte é muita e gira. Separados, um não
-      // disputa espaço com o outro.
-      const [lista, insumos, recentes] = await Promise.all([
+      // Insumo é pouco e dura; arte é muita e gira.
+      const [artes, insumos, recentes] = await Promise.allSettled([
         listCreativeAssets(),
-        listCreativeAssets({ types: SOURCE_ASSET_TYPES }),
+        listCreativeAssets({ types: SOURCE_ASSET_TYPES, limit: 120 }),
         listRecentProjects(20),
       ]);
-      setAssets(mesclarPorId(lista, insumos));
-      setProjects(recentes);
+
+      if (artes.status === 'rejected') {
+        // Sem artes não há canvas: este é o único caso de erro de página.
+        throw artes.reason;
+      }
+
+      const doInsumo = insumos.status === 'fulfilled' ? insumos.value : [];
+      setAssets(mesclarPorId(artes.value, doInsumo));
+      setProjects(recentes.status === 'fulfilled' ? recentes.value : []);
+
+      // Uma falha aqui degrada o menu de anexos, não a tela. Dizer isso em
+      // voz baixa é melhor que zerar tudo — e melhor que ficar calado, que
+      // faria o logo sumido parecer logo apagado.
+      if (insumos.status === 'rejected') {
+        toast({
+          title: 'Referências e logos podem estar incompletos',
+          description: (insumos.reason as any)?.message,
+        });
+      }
+
       // Sem cliente selecionado o padrão é "Todos Clientes" — auto-selecionar
       // o projeto mais recente aqui prendia o canvas a UM projeto (chip "Só
       // este projeto") antes mesmo do usuário escolher algo, escondendo todo
