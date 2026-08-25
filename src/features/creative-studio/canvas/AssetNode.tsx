@@ -1,7 +1,7 @@
 import { AlertTriangle, Check, Download, Loader2, Maximize2, Pencil, RefreshCw, Repeat, Sparkles, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CreativeAsset } from '../types/creative';
-import { FACTOR_AXIS_LABELS } from '../types/creative';
+import { ASSET_ORIGIN_LABELS, FACTOR_AXIS_LABELS } from '../types/creative';
 import { angleLabelFrom } from '../types/factorCreative';
 import type { SelectionAction } from '../state/canvasSelectors';
 
@@ -71,7 +71,10 @@ export function AssetNode({ asset, selected, onToggleSelect, onAction, actions }
         {pronto && (
           <img
             src={asset.thumbnailUrl ?? asset.url ?? ''}
-            alt={asset.prompt?.slice(0, 120) ?? 'Arte gerada'}
+            // O prompt não vem mais na consulta da grade: eram uns 4 KB por
+            // linha para preencher um `alt`. O nome do arquivo descreve a
+            // arte igual de bem e já estava aqui.
+            alt={asset.filename ?? ASSET_ORIGIN_LABELS[asset.type] ?? 'Arte gerada'}
             loading="lazy"
             className="h-full w-full object-cover"
           />
