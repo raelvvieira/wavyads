@@ -54,6 +54,7 @@ import {
 } from '@/features/creative-studio/state/advancedFilters';
 import { childrenByParentId } from '@/features/creative-studio/state/lineage';
 import { buildSafeZoneBlock } from '@/features/creative-studio/lib/promptBuilder';
+import { baixarArquivo } from '@/features/creative-studio/lib/downloadFile';
 import {
   createStudioAssetActions,
   type GenerationStage,
@@ -689,7 +690,15 @@ export default function CriativoStudioV2Page() {
 
   const handleAssetAction = useCallback(async (acao: SelectionAction, selecionados: CreativeAsset[]) => {
     if (acao === 'download') {
-      for (const a of selecionados) if (a.url) window.open(a.url, '_blank', 'noopener');
+      // Em sequência, e não em paralelo: navegador bloqueia rajada de
+      // downloads programáticos, e o segundo em diante sumiria em silêncio.
+      // Sem hidratar: uma arte sem `url` não chega aqui. O menu só
+      // oferece "Baixar" quando a arte está pronta E tem URL
+      // (`availableActionsForSelection`), então tratar o caso nulo seria
+      // escrever um ramo que nunca executa.
+      for (const a of selecionados) {
+        if (a.url) await baixarArquivo(a.url, a.filename);
+      }
       return;
     }
     if (selecionados.length !== 1) {

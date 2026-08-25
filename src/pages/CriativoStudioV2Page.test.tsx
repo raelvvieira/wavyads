@@ -611,19 +611,35 @@ describe('CriativoStudioV2Page', () => {
     await waitFor(() => expect(cards()).toHaveLength(totalAntes));
   });
 
-  it('baixar funciona de verdade, porque é leitura pura', async () => {
+  it('baixar SALVA o arquivo, em vez de abrir uma aba', async () => {
+    // O atributo `download` de uma âncora é ignorado quando a URL é de
+    // outra origem — e o Storage é outro domínio. O navegador tratava o
+    // clique como navegação: abria a imagem numa aba e o usuário ainda
+    // tinha de salvar à mão.
     const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+    const fetchSpy = vi.fn(async () => ({ ok: true, blob: async () => new Blob(['bytes']) }));
+    vi.stubGlobal('fetch', fetchSpy);
+    // jsdom não implementa nenhum dos dois.
+    (URL as any).createObjectURL = vi.fn(() => 'blob:local/1');
+    (URL as any).revokeObjectURL = vi.fn();
+    const cliques = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      baixados.push(this.download);
+    });
+    const baixados: string[] = [];
+
     montar();
     await waitFor(() => expect(prontos().length).toBeGreaterThan(0));
 
-    fireEvent.click(prontos()[0].querySelector('.studio-asset-surface')!);
-    const painel = screen.getByRole('complementary', { name: /inspetor/i });
-    fireEvent.click(screen.getByRole('button', { name: 'Ações desta arte' }));
-    fireEvent.click([...document.querySelectorAll('.studio-inspector-action')].find((b) => b.textContent === 'Baixar')! as HTMLElement);
+    await acionarNoInspetor('Baixar');
 
-    expect(open).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(baixados.length).toBe(1));
+    expect(baixados[0]).toMatch(/\.png$/);
+    expect(open).not.toHaveBeenCalled();
     expect(invoke).not.toHaveBeenCalled();
+
+    cliques.mockRestore();
     open.mockRestore();
+    vi.unstubAllGlobals();
   });
 
   it('falha de leitura vira erro na tela, não canvas vazio', async () => {
