@@ -18,6 +18,7 @@ function fakeQuery(tabela: string) {
     delete: registrar('delete'),
     select: registrar('select'),
     eq: registrar('eq'),
+    in: registrar('in'),
     // `order`/`limit` continuam encadeáveis: `listCreativeAssets` ainda
     // aplica `.eq()` DEPOIS deles quando há filtro, então terminar a cadeia
     // aqui quebraria exatamente esse caso.
@@ -165,6 +166,15 @@ describe('createCreativeAsset — banco sem a migração do Fator V2', () => {
     expect(inserts).toHaveLength(1);
     expect((inserts[0].args[0] as any).strategic_angle).toBe('cost_of_inaction');
   });
+
+  it('não duplica data URI gigante em thumbnail_url ao criar', async () => {
+    respostas = [{ data: { ...linhaBase, url: 'data:image/png;base64,AAAA', thumbnail_url: null }, error: null }];
+
+    await createCreativeAsset({ projectId: 'p1', type: 'edited', url: 'data:image/png;base64,AAAA' });
+
+    const insert = chamadas.find((c) => c.op === 'insert')?.args[0] as any;
+    expect(insert.thumbnail_url).toBeNull();
+  });
 });
 
 describe('a grade não baixa o que não desenha', () => {
@@ -189,6 +199,14 @@ describe('a grade não baixa o que não desenha', () => {
 
     const faltando = LIDAS_POR_MAP_ASSET_ROW.filter((c) => !pedidas.has(c) && !omitidas.has(c));
     expect(faltando, `colunas lidas e não pedidas: ${faltando.join(', ')}`).toEqual([]);
+  });
+
+  it('a lista lê a view leve, não a tabela pesada direta', async () => {
+    respostas = [{ data: [], error: null }];
+
+    await listCreativeAssets();
+
+    expect(chamadas[0].tabela).toBe('creative_assets_grid');
   });
 
   it('não pede o peso: prompt, metadata e os jsons do Fator ficam de fora', () => {

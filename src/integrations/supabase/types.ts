@@ -300,6 +300,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "creative_asset_groups_parent_asset_id_fkey"
+            columns: ["parent_asset_id"]
+            isOneToOne: false
+            referencedRelation: "creative_assets_grid"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "creative_asset_groups_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
@@ -446,6 +453,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "creative_assets_parent_asset_id_fkey"
+            columns: ["parent_asset_id"]
+            isOneToOne: false
+            referencedRelation: "creative_assets_grid"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "creative_assets_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
@@ -457,6 +471,13 @@ export type Database = {
             columns: ["root_asset_id"]
             isOneToOne: false
             referencedRelation: "creative_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creative_assets_root_asset_id_fkey"
+            columns: ["root_asset_id"]
+            isOneToOne: false
+            referencedRelation: "creative_assets_grid"
             referencedColumns: ["id"]
           },
         ]
@@ -566,6 +587,13 @@ export type Database = {
             columns: ["asset_id"]
             isOneToOne: false
             referencedRelation: "creative_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creative_outputs_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "creative_assets_grid"
             referencedColumns: ["id"]
           },
           {
@@ -718,6 +746,13 @@ export type Database = {
             columns: ["asset_id"]
             isOneToOne: false
             referencedRelation: "creative_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creative_template_assets_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "creative_assets_grid"
             referencedColumns: ["id"]
           },
           {
@@ -1086,6 +1121,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ugc_projects_avatar_asset_id_fkey"
+            columns: ["avatar_asset_id"]
+            isOneToOne: false
+            referencedRelation: "creative_assets_grid"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ugc_projects_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
@@ -1149,7 +1191,140 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      creative_assets_grid: {
+        Row: {
+          aspect_ratio: string | null
+          client_id: string | null
+          created_at: string | null
+          error_message: string | null
+          factor_axis: string | null
+          filename: string | null
+          group_id: string | null
+          height: number | null
+          id: string | null
+          is_client_intelligence: boolean | null
+          model: string | null
+          negative_prompt: string | null
+          parent_asset_id: string | null
+          project_id: string | null
+          quality_score: number | null
+          resolution: string | null
+          root_asset_id: string | null
+          status: string | null
+          strategic_angle: string | null
+          strategic_thesis: string | null
+          thumbnail_url: string | null
+          type: string | null
+          updated_at: string | null
+          url: string | null
+          width: number | null
+        }
+        Insert: {
+          aspect_ratio?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          factor_axis?: string | null
+          filename?: string | null
+          group_id?: string | null
+          height?: number | null
+          id?: string | null
+          is_client_intelligence?: boolean | null
+          model?: string | null
+          negative_prompt?: string | null
+          parent_asset_id?: string | null
+          project_id?: string | null
+          quality_score?: number | null
+          resolution?: string | null
+          root_asset_id?: string | null
+          status?: string | null
+          strategic_angle?: string | null
+          strategic_thesis?: string | null
+          thumbnail_url?: never
+          type?: string | null
+          updated_at?: string | null
+          url?: never
+          width?: number | null
+        }
+        Update: {
+          aspect_ratio?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          factor_axis?: string | null
+          filename?: string | null
+          group_id?: string | null
+          height?: number | null
+          id?: string | null
+          is_client_intelligence?: boolean | null
+          model?: string | null
+          negative_prompt?: string | null
+          parent_asset_id?: string | null
+          project_id?: string | null
+          quality_score?: number | null
+          resolution?: string | null
+          root_asset_id?: string | null
+          status?: string | null
+          strategic_angle?: string | null
+          strategic_thesis?: string | null
+          thumbnail_url?: never
+          type?: string | null
+          updated_at?: string | null
+          url?: never
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creative_assets_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creative_assets_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "creative_asset_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creative_assets_parent_asset_id_fkey"
+            columns: ["parent_asset_id"]
+            isOneToOne: false
+            referencedRelation: "creative_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creative_assets_parent_asset_id_fkey"
+            columns: ["parent_asset_id"]
+            isOneToOne: false
+            referencedRelation: "creative_assets_grid"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creative_assets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "creative_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creative_assets_root_asset_id_fkey"
+            columns: ["root_asset_id"]
+            isOneToOne: false
+            referencedRelation: "creative_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creative_assets_root_asset_id_fkey"
+            columns: ["root_asset_id"]
+            isOneToOne: false
+            referencedRelation: "creative_assets_grid"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       has_role: {
