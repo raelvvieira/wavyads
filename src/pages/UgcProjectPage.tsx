@@ -62,7 +62,9 @@ export default function UgcProjectPage() {
       setErro(null);
       // Os avatares vêm do Criativo Studio: são as personas já criadas para
       // aquele cliente, não uma biblioteca separada.
-      setAvatares(await listCreativeAssets({ clientId: p.clientId ?? null, types: ['avatar'] }));
+      // Limite explícito: sem ele cai no default de 300, e um seletor de
+      // avatar não precisa de trezentos.
+      setAvatares(await listCreativeAssets({ clientId: p.clientId ?? null, types: ['avatar'], limit: 60 }));
     } catch (e: any) {
       setErro(e?.message ?? 'Erro ao carregar o projeto.');
     } finally {

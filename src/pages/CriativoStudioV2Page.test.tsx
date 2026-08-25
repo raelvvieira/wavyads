@@ -12,12 +12,14 @@ vi.mock('react-router-dom', async () => ({
 
 const listCreativeAssets = vi.fn();
 const createCreativeAsset = vi.fn();
+const getCreativeAsset = vi.fn();
 const updateCreativeAsset = vi.fn();
 const deleteCreativeAsset = vi.fn();
 const createAssetGroup = vi.fn();
 vi.mock('@/features/creative-studio/api/creativeAssets', () => ({
   listCreativeAssets: (...a: any[]) => listCreativeAssets(...a),
   createCreativeAsset: (...a: any[]) => createCreativeAsset(...a),
+  getCreativeAsset: (...a: any[]) => getCreativeAsset(...a),
   updateCreativeAsset: (...a: any[]) => updateCreativeAsset(...a),
   deleteCreativeAsset: (...a: any[]) => deleteCreativeAsset(...a),
   createAssetGroup: (...a: any[]) => createAssetGroup(...a),
@@ -100,6 +102,9 @@ describe('CriativoStudioV2Page', () => {
     // nenhum teste depende do id em si, exceto quando sobrescrito localmente.
     createProject.mockResolvedValue({ id: 'proj-1', title: 'Novo projeto' });
     createAssetGroup.mockResolvedValue({ id: 'grupo-fator' });
+    // A grade não traz `prompt` nem `metadata`; quem os pede é este.
+    getCreativeAsset.mockImplementation(async (id: string) =>
+      ASSETS_DO_PROJETO.find((a) => a.id === id) ?? ASSETS_DO_PROJETO[0]);
     listCopyBank.mockResolvedValue([]);
     analyzeOffer.mockResolvedValue({
       offerIntelligence: {
@@ -166,6 +171,68 @@ describe('CriativoStudioV2Page', () => {
 
     await waitFor(() => expect(screen.getByText('Não deu para carregar as artes')).toBeTruthy());
     expect(screen.getByText(/statement timeout/)).toBeTruthy();
+  });
+
+  it('a grade chega sem prompt, e a ação recebe o prompt do banco', async () => {
+    // A consulta do canvas deixou de trazer `prompt` e `metadata` — eram
+    // quilobytes por linha para desenhar miniaturas. Quase toda ação
+    // depende de um dos dois, e sem hidratar o sintoma seria "Esta arte não
+    // tem prompt salvo" em cima de uma arte que tem.
+    const semPeso = ASSETS_DO_PROJETO.map((a) => ({ ...a, prompt: null, metadata: {} }));
+    listCreativeAssets.mockResolvedValue(semPeso);
+    getCreativeAsset.mockImplementation(async (id: string) => ({
+      ...semPeso.find((a) => a.id === id)!,
+      prompt: 'o prompt que estava no banco',
+    }));
+
+    montar();
+    await waitFor(() => expect(prontos().length).toBeGreaterThan(0));
+    createCreativeAsset.mockResolvedValue({ ...semPeso[0], id: 'tpl-1', type: 'template' });
+    createCreativeAsset.mockClear();
+
+    await acionarNoInspetor('Salvar como template');
+    fireEvent.change(screen.getByLabelText('Nome do template'), { target: { value: 'editorial' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Salvar template' }));
+    });
+
+    expect(getCreativeAsset).toHaveBeenCalled();
+    expect(createCreativeAsset).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'template', prompt: 'o prompt que estava no banco',
+    }));
+  });
+
+  it('hidrata uma vez ao focar, e a ação não vai ao banco de novo', async () => {
+    // Selecionar já busca a linha inteira, porque o inspetor mostra o
+    // prompt. A ação encontra o peso já em memória — buscar duas vezes
+    // seria pagar a ida ao banco por um dado que acabou de chegar.
+    listCreativeAssets.mockResolvedValue(
+      ASSETS_DO_PROJETO.map((a) => ({ ...a, prompt: null, metadata: {} })),
+    );
+    getCreativeAsset.mockImplementation(async (id: string) => ({
+      ...ASSETS_DO_PROJETO.find((a) => a.id === id)!, prompt: 'do banco',
+    }));
+
+    montar();
+    await waitFor(() => expect(prontos().length).toBeGreaterThan(0));
+    getCreativeAsset.mockClear();
+
+    await acionarNoInspetor('Usar como referência');
+
+    expect(getCreativeAsset).toHaveBeenCalledTimes(1);
+  });
+
+  it('o canvas desenha normalmente com artes sem prompt nem metadata', async () => {
+    // É assim que elas passam a chegar. Se o desenho dependesse de algum
+    // dos dois, a grade abriria quebrada em vez de leve.
+    listCreativeAssets.mockResolvedValue(
+      ASSETS_DO_PROJETO.map((a) => ({ ...a, prompt: null, metadata: {} })),
+    );
+
+    montar();
+
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+    expect(screen.queryByText('Não deu para carregar as artes')).toBeNull();
   });
 
   it('a faixa anuncia versão nova, não prévia', async () => {

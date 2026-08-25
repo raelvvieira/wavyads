@@ -36,7 +36,10 @@ vi.mock('@/integrations/supabase/client', () => ({
   },
 }));
 
-const { listCreativeAssets, updateCreativeAsset, deleteCreativeAsset, createCreativeAsset } = await import('./creativeAssets');
+const {
+  listCreativeAssets, updateCreativeAsset, deleteCreativeAsset, createCreativeAsset,
+  getCreativeAsset, COLUNAS_DA_GRADE, COLUNAS_PESADAS_OMITIDAS,
+} = await import('./creativeAssets');
 
 const linhaBase = {
   id: 'a1', project_id: 'p1', client_id: null, type: 'original', status: 'ready',
@@ -161,5 +164,60 @@ describe('createCreativeAsset — banco sem a migração do Fator V2', () => {
     const inserts = chamadas.filter((c) => c.op === 'insert');
     expect(inserts).toHaveLength(1);
     expect((inserts[0].args[0] as any).strategic_angle).toBe('cost_of_inaction');
+  });
+});
+
+describe('a grade não baixa o que não desenha', () => {
+  // A lista de colunas e o tradutor de linha vivem no mesmo arquivo e ainda
+  // assim podem divergir: o cliente do Supabase não infere a forma a partir
+  // de uma string de colunas em runtime, então uma coluna esquecida vira
+  // `undefined` no objeto, em silêncio. É esse silêncio que este teste
+  // quebra.
+  const LIDAS_POR_MAP_ASSET_ROW = [
+    'id', 'project_id', 'client_id', 'type', 'status',
+    'url', 'thumbnail_url', 'parent_asset_id', 'root_asset_id', 'group_id',
+    'factor_axis', 'aspect_ratio', 'resolution', 'width', 'height',
+    'prompt', 'negative_prompt', 'model', 'error_message', 'filename',
+    'is_client_intelligence', 'metadata',
+    'strategic_angle', 'strategic_thesis', 'quality_score',
+    'created_at', 'updated_at',
+  ];
+
+  it('pede toda coluna que o tradutor lê, menos as pesadas omitidas de propósito', () => {
+    const pedidas = new Set(COLUNAS_DA_GRADE.split(','));
+    const omitidas = new Set<string>(COLUNAS_PESADAS_OMITIDAS as readonly string[]);
+
+    const faltando = LIDAS_POR_MAP_ASSET_ROW.filter((c) => !pedidas.has(c) && !omitidas.has(c));
+    expect(faltando, `colunas lidas e não pedidas: ${faltando.join(', ')}`).toEqual([]);
+  });
+
+  it('não pede o peso: prompt, metadata e os jsons do Fator ficam de fora', () => {
+    // `prompt` tem uns 4 KB; `metadata` carrega o designSystemDoc inteiro,
+    // um markdown técnico de 3 a 8 KB gravado em toda arte gerada. Com 300
+    // linhas isso vira megabytes para desenhar miniaturas.
+    const pedidas = new Set(COLUNAS_DA_GRADE.split(','));
+    for (const pesada of COLUNAS_PESADAS_OMITIDAS) {
+      expect(pedidas.has(pesada), `${pesada} voltou para a consulta da grade`).toBe(false);
+    }
+  });
+
+  it('não pede coluna que ninguém lê', () => {
+    const pedidas = COLUNAS_DA_GRADE.split(',');
+    const ninguemLe = [
+      'mime_type', 'size_bytes', 'created_by',
+      'angle_subtype', 'awareness_level', 'dominant_emotion', 'generation_version',
+    ];
+    expect(pedidas.filter((c) => ninguemLe.includes(c))).toEqual([]);
+  });
+
+  it('getCreativeAsset traz a linha inteira, que é o par da lista enxuta', async () => {
+    chamadas.length = 0;
+    respostas = [{ data: { id: 'a1', type: 'original', url: 'u', metadata: { designSystemDoc: 'DOC' }, prompt: 'p' }, error: null }];
+
+    const asset = await getCreativeAsset('a1');
+
+    expect(chamadas.find((c) => c.op === 'select')?.args[0]).toBe('*');
+    expect(asset.prompt).toBe('p');
+    expect(asset.metadata?.designSystemDoc).toBe('DOC');
   });
 });

@@ -15,6 +15,7 @@ import { StudioVersionBanner } from '@/features/creative-studio/shell/StudioVers
 import {
   createAssetGroup,
   createCreativeAsset,
+  getCreativeAsset,
   deleteCreativeAsset,
   listCreativeAssets,
   updateCreativeAsset,
@@ -33,6 +34,17 @@ import {
   type ProjectSummary,
 } from '@/features/creative-studio/api/projectRepository';
 import { libraryAssets, visibleCanvasAssets, type SelectionAction } from '@/features/creative-studio/state/canvasSelectors';
+
+/**
+ * Ações que leem `prompt` ou `metadata` — o peso que a grade não carrega.
+ *
+ * `download`, `preview` e `use-as-reference` trabalham só com a URL, e
+ * `save-to-client-intelligence` só marca uma coluna: hidratar para elas
+ * seria uma ida ao banco sem motivo.
+ */
+const PRECISA_DO_PESO = new Set<SelectionAction>([
+  'retry', 'edit', 'resize', 'factor', 'factor-briefing', 'save-as-template',
+]);
 import {
   SEM_FILTROS_AVANCADOS,
   advancedFilterChips,
@@ -658,6 +670,23 @@ export default function CriativoStudioV2Page() {
     }
   }, [command, hasCopy, busy, attachments, ratio, resolution, modelId, actions, assets, upsertAsset, avisarIndisponivel, clientName, selectedClientId]);
 
+  /**
+   * Busca a linha inteira de UMA arte.
+   *
+   * A grade não traz `prompt` nem `metadata` — são quilobytes por linha que
+   * só interessam a uma arte de cada vez. Aqui o peso chega, e só quando
+   * alguém olha.
+   *
+   * Sem `await` de quem chama e sem estado de carregando: o inspetor já
+   * está desenhado com o que a grade tinha, e o prompt aparece quando
+   * chega. Falhar aqui não tira nada da tela.
+   */
+  const hidratarAsset = useCallback((id: string) => {
+    const atual = assets.find((a) => a.id === id);
+    if (atual && atual.prompt !== null && atual.prompt !== undefined) return;
+    void getCreativeAsset(id).then(upsertAsset).catch(() => {});
+  }, [assets, upsertAsset]);
+
   const handleAssetAction = useCallback(async (acao: SelectionAction, selecionados: CreativeAsset[]) => {
     if (acao === 'download') {
       for (const a of selecionados) if (a.url) window.open(a.url, '_blank', 'noopener');
@@ -667,7 +696,32 @@ export default function CriativoStudioV2Page() {
       avisarIndisponivel('Ações em lote ainda não estão disponíveis — selecione uma arte por vez.');
       return;
     }
-    const [alvo] = selecionados;
+    /**
+     * A arte com o peso, não a da grade.
+     *
+     * A lista do canvas não traz `prompt` nem `metadata` — são quilobytes
+     * por linha que só servem a UMA arte de cada vez. Quase toda ação
+     * abaixo depende de um dos dois: `retry` precisa do prompt salvo,
+     * `resize` também, `edit` herda os anexos, o Fator lê o sistema visual
+     * da base.
+     *
+     * A hidratação acontece AQUI, e não em quem chama. Deixar a cargo do
+     * chamador é como se perde: a ação nova esquece, e o sintoma é um
+     * "Esta arte não tem prompt salvo" em cima de uma arte que tem.
+     */
+    let alvo = selecionados[0];
+    // Sem `await` no caminho de quem não precisa: `download`, `preview` e
+    // `use-as-reference` trabalham só com a URL, e um tick a mais aqui
+    // atrasaria todas elas por causa de um dado que nem vão ler.
+    if (PRECISA_DO_PESO.has(acao) && (alvo.prompt === null || alvo.prompt === undefined)) {
+      try {
+        alvo = await getCreativeAsset(alvo.id);
+        upsertAsset(alvo);
+      } catch {
+        // Falhar aqui não pode travar a tela: a ação segue com o que há, e
+        // o erro dela mesma dirá o que faltou.
+      }
+    }
 
     if (acao === 'retry') {
       upsertAsset({ ...alvo, status: 'generating', errorMessage: null });
@@ -884,6 +938,7 @@ export default function CriativoStudioV2Page() {
         copyBank={copyBank}
         onNewLibraryUpload={handleNewLibraryUpload}
         onDeleteAsset={apagarInsumo}
+        onAssetFocused={hidratarAsset}
         avatarLibrary={avatarLibrary}
         onGenerateAvatar={handleGenerateAvatar}
         onAssetAction={handleAssetAction}

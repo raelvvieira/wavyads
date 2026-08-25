@@ -18,6 +18,44 @@ function asRecord(value: unknown): Record<string, any> {
     : {};
 }
 
+/**
+ * As colunas que a GRADE precisa para desenhar.
+ *
+ * `select('*')` custava caro de um jeito invisível: cada linha trazia o
+ * `prompt` (uns 4 KB), o `metadata` com o `designSystemDoc` inteiro (um
+ * markdown técnico de 3 a 8 KB, gravado em toda arte gerada), e ainda
+ * `strategy_json` e `validation_json`, que nenhum lugar do app lê. Com 300
+ * linhas isso vira megabytes de transferência — para desenhar miniaturas.
+ *
+ * Do peso todo, o desenho da grade usava duas fatias minúsculas: 120
+ * caracteres do prompt no `alt` da imagem, e uma string de
+ * `metadata.strategy.angle` que já existe como coluna própria
+ * (`strategic_angle`).
+ *
+ * Quem precisa do peso pede por `getCreativeAsset`, uma linha por vez.
+ *
+ * ATENÇÃO: esta lista precisa cobrir tudo o que `mapAssetRow` lê, menos as
+ * omissões deliberadas abaixo. Uma coluna esquecida aqui chega
+ * `undefined` no objeto, em silêncio — há teste garantindo isso.
+ */
+export const COLUNAS_DA_GRADE = [
+  'id', 'project_id', 'client_id', 'type', 'status',
+  'url', 'thumbnail_url', 'filename',
+  'parent_asset_id', 'root_asset_id', 'group_id', 'factor_axis',
+  'aspect_ratio', 'resolution', 'width', 'height',
+  'negative_prompt', 'model', 'error_message', 'is_client_intelligence',
+  'strategic_angle', 'strategic_thesis', 'quality_score',
+  'created_at', 'updated_at',
+].join(',');
+
+/**
+ * O que fica DE FORA da grade, de propósito.
+ *
+ * Exportado para o teste poder afirmar a omissão como escolha, e não
+ * como esquecimento.
+ */
+export const COLUNAS_PESADAS_OMITIDAS = ['prompt', 'metadata', 'strategy_json', 'validation_json'] as const;
+
 function mapAssetRow(row: AssetRow): CreativeAsset {
   const extra = row as AssetRow & {
     strategic_angle?: string | null;
@@ -265,7 +303,7 @@ export async function listCreativeAssets(
 ): Promise<CreativeAsset[]> {
   let query = supabase
     .from('creative_assets')
-    .select('*')
+    .select(COLUNAS_DA_GRADE)
     .order('created_at', { ascending: false })
     .limit(filtro.limit ?? 300);
 
@@ -275,7 +313,30 @@ export async function listCreativeAssets(
 
   const { data, error } = await query;
   if (error) throw error;
-  return (data || []).map(mapAssetRow);
+  // O cliente tipado do Supabase não infere a forma a partir de uma lista
+  // de colunas em runtime, então aqui há um cast — e é exatamente por isso
+  // que existe o teste que confere `COLUNAS_DA_GRADE` contra o que
+  // `mapAssetRow` lê. Sem ele, uma coluna esquecida vira `undefined` sem
+  // que o compilador diga nada.
+  return ((data ?? []) as unknown as AssetRow[]).map(mapAssetRow);
+}
+
+/**
+ * Uma linha inteira, com o que a grade não carrega.
+ *
+ * É o par de `listCreativeAssets`: a lista traz o que desenha, isto traz o
+ * que uma arte específica precisa quando alguém a seleciona ou dispara uma
+ * ação sobre ela — `prompt` e `metadata` acima de tudo.
+ */
+export async function getCreativeAsset(id: string): Promise<CreativeAsset> {
+  const { data, error } = await supabase
+    .from('creative_assets')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) throw error;
+  return mapAssetRow(data as AssetRow);
 }
 
 export interface UpdateCreativeAssetInput {

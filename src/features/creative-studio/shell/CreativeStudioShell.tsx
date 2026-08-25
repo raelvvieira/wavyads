@@ -65,6 +65,14 @@ export interface CreativeStudioShellProps {
   onNewLibraryUpload: (kind: 'logo' | 'product', url: string) => void;
   /** Apaga um insumo da biblioteca do cliente, de vez. */
   onDeleteAsset?: (asset: CreativeAsset) => Promise<void>;
+  /**
+   * Uma arte entrou em foco sozinha.
+   *
+   * A consulta da grade não traz `prompt` nem `metadata`; o inspetor
+   * mostra o prompt. Este aviso é o gatilho para buscar a linha inteira
+   * dessa arte — uma, não trezentas.
+   */
+  onAssetFocused?: (assetId: string) => void;
   /** Avatares deste cliente — alimentam o Avatar Studio e o menu de anexos. */
   avatarLibrary: CreativeAsset[];
   onGenerateAvatar: (persona: AvatarPersona, referenceImages: string[]) => void;
@@ -108,6 +116,9 @@ export function CreativeStudioShell(props: CreativeStudioShellProps) {
           ? []
           : [asset.id];
       setSidePanel(proximo.length > 0 ? 'inspector' : 'none');
+      // Uma arte só em foco é o momento em que o inspetor precisa do peso
+      // que a grade não carrega — o prompt, acima de tudo.
+      if (proximo.length === 1) props.onAssetFocused?.(proximo[0]);
       return proximo;
     });
   };
