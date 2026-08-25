@@ -305,12 +305,13 @@ async function resolveImageFromPayload(data: any): Promise<string | null> {
 }
 
 const STORAGE_BUCKET = "creative-assets";
+const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 365 * 5;
 
 // A imagem gerada volta do EvoLink como base64. Trafegar esse base64 inteiro
 // (uma imagem 4K passa de 10-20MB) pela resposta do invoke é frágil: chega
 // truncado/corrompido no navegador e o arquivo salvo fica quebrado. Então
-// gravamos a imagem no Storage aqui, no servidor, e devolvemos só a URL
-// pública permanente. Se algo falhar, quem chama volta a devolver o data URI
+// gravamos a imagem no Storage aqui, no servidor, e devolvemos só uma URL
+// assinada longa. Se algo falhar, quem chama volta a devolver o data URI
 // (comportamento antigo) pra não quebrar totalmente a geração.
 async function persistImageToStorage(dataUrl: string): Promise<string | null> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -350,7 +351,30 @@ async function persistImageToStorage(dataUrl: string): Promise<string | null> {
     return null;
   }
 
-  return `${supabaseUrl}/storage/v1/object/public/${STORAGE_BUCKET}/${objectPath}`;
+  const signResp = await fetchWithTimeout(
+    `${supabaseUrl}/storage/v1/object/sign/${STORAGE_BUCKET}/${objectPath}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${serviceKey}`,
+        apikey: serviceKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ expiresIn: SIGNED_URL_TTL_SECONDS }),
+    },
+    20_000,
+  );
+
+  if (!signResp.ok) {
+    const body = await signResp.text();
+    console.error("Falha ao assinar imagem no Storage:", signResp.status, body.slice(0, 400));
+    return null;
+  }
+
+  const signed = safeJsonParse(await signResp.text());
+  const signedPath = signed?.signedURL ?? signed?.signedUrl;
+  if (typeof signedPath !== "string" || !signedPath) return null;
+  return signedPath.startsWith("http") ? signedPath : `${supabaseUrl}/storage/v1${signedPath}`;
 }
 
 async function waitForTaskImage(

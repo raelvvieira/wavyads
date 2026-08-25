@@ -34,6 +34,11 @@ function asRecord(value: unknown): Record<string, any> {
  *
  * Quem precisa do peso pede por `getCreativeAsset`, uma linha por vez.
  *
+ * A consulta usa `creative_assets_grid`, uma view que devolve `url` e
+ * `thumbnail_url` só quando são URLs leves. Linhas antigas com `data:image`
+ * gigantes continuam acessíveis por `getCreativeAsset`, mas não entram mais
+ * na listagem que abre o Studio.
+ *
  * ATENÇÃO: esta lista precisa cobrir tudo o que `mapAssetRow` lê, menos as
  * omissões deliberadas abaixo. Uma coluna esquecida aqui chega
  * `undefined` no objeto, em silêncio — há teste garantindo isso.
@@ -56,6 +61,17 @@ export const COLUNAS_DA_GRADE = [
  */
 export const COLUNAS_PESADAS_OMITIDAS = ['prompt', 'metadata', 'strategy_json', 'validation_json'] as const;
 
+const TABELA_DA_GRADE = 'creative_assets_grid';
+
+function isHeavyInlineUrl(url: string | null | undefined): boolean {
+  return !!url && (url.startsWith('data:') || url.length > 2048);
+}
+
+function safeThumbnailUrl(url: string | null | undefined): string | null {
+  if (!url || isHeavyInlineUrl(url)) return null;
+  return url;
+}
+
 function mapAssetRow(row: AssetRow): CreativeAsset {
   const extra = row as AssetRow & {
     strategic_angle?: string | null;
@@ -69,8 +85,8 @@ function mapAssetRow(row: AssetRow): CreativeAsset {
     clientId: row.client_id,
     type: row.type as CreativeAssetType,
     status: (row.status as CreativeAssetStatus) || 'ready',
-    url: row.url,
-    thumbnailUrl: row.thumbnail_url,
+    url: row.url ?? null,
+    thumbnailUrl: row.thumbnail_url ?? null,
     parentAssetId: row.parent_asset_id,
     rootAssetId: row.root_asset_id,
     groupId: row.group_id,
@@ -79,7 +95,7 @@ function mapAssetRow(row: AssetRow): CreativeAsset {
     resolution: row.resolution,
     width: row.width,
     height: row.height,
-    prompt: row.prompt,
+    prompt: row.prompt ?? null,
     negativePrompt: row.negative_prompt,
     model: row.model,
     errorMessage: row.error_message,
@@ -164,7 +180,7 @@ export async function createCreativeAsset(input: CreateCreativeAssetInput): Prom
       type: input.type,
       status: input.status ?? (url ? 'ready' : 'queued'),
       url,
-      thumbnail_url: input.thumbnailUrl ?? url,
+      thumbnail_url: safeThumbnailUrl(input.thumbnailUrl) ?? safeThumbnailUrl(url),
       parent_asset_id: input.parentAssetId ?? null,
       group_id: input.groupId ?? null,
       factor_axis: input.factorAxis ?? null,
@@ -301,8 +317,8 @@ export interface ListCreativeAssetsFilter {
 export async function listCreativeAssets(
   filtro: ListCreativeAssetsFilter = {},
 ): Promise<CreativeAsset[]> {
-  let query = supabase
-    .from('creative_assets')
+  let query = (supabase as any)
+    .from(TABELA_DA_GRADE)
     .select(COLUNAS_DA_GRADE)
     .order('created_at', { ascending: false })
     .limit(filtro.limit ?? 300);
@@ -374,7 +390,7 @@ export async function updateCreativeAsset(
   const row: Record<string, any> = {};
   if (patch.status !== undefined) row.status = patch.status;
   if (patch.url !== undefined) row.url = patch.url;
-  if (patch.thumbnailUrl !== undefined) row.thumbnail_url = patch.thumbnailUrl;
+  if (patch.thumbnailUrl !== undefined) row.thumbnail_url = safeThumbnailUrl(patch.thumbnailUrl);
   if (patch.errorMessage !== undefined) row.error_message = patch.errorMessage;
   if (patch.width !== undefined) row.width = patch.width;
   if (patch.height !== undefined) row.height = patch.height;

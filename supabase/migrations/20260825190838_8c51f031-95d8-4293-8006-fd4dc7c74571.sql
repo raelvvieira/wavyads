@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.recover_stale_creative_assets(uuid, integer) FROM authenticated;

@@ -9,6 +9,8 @@ const corsHeaders = {
 const AI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 const PROMPT_MODEL = "gemini-3-flash-preview";
 const GEMINI_MODEL = "gemini-3.1-flash-image-preview";
+const STORAGE_BUCKET = "creative-assets";
+const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 365 * 5;
 
 const SYSTEM_BUILDER = `You are a surgical photo-edit prompt writer for an image-generation model. Your job is to convert short user feedback into a precise, IMPERATIVE edit instruction that applies EVERY change the user asked for — additive AND subtractive — while preserving everything else with pixel-level fidelity.
 
@@ -40,6 +42,97 @@ function parseDataUrl(dataUrl: string): { mime: string; data: string } | null {
   const m = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
   if (!m) return null;
   return { mime: m[1], data: m[2] };
+}
+
+function dataUrlToBytes(dataUrl: string): { mime: string; bytes: Uint8Array } | null {
+  const parsed = parseDataUrl(dataUrl);
+  if (!parsed) return null;
+  try {
+    const bin = atob(parsed.data);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return { mime: parsed.mime, bytes };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number): Promise<Response> {
+  try {
+    return await fetch(url, { ...options, signal: AbortSignal.timeout(timeoutMs) });
+  } catch (e) {
+    if (e instanceof DOMException && e.name === "TimeoutError") {
+      let host = url;
+      try { host = new URL(url).hostname; } catch { /* mantém url bruta */ }
+      throw new Error(`Tempo limite (${Math.round(timeoutMs / 1000)}s) ao chamar ${host}`);
+    }
+    throw e;
+  }
+}
+
+async function persistEditedImageToStorage(dataUrl: string): Promise<string | null> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !serviceKey) {
+    console.warn("SUPABASE_URL/SERVICE_ROLE_KEY ausentes — devolvendo data URI");
+    return null;
+  }
+
+  const parsed = dataUrlToBytes(dataUrl);
+  if (!parsed) return null;
+
+  const ext =
+    parsed.mime === "image/jpeg" ? "jpg" :
+    parsed.mime === "image/webp" ? "webp" :
+    parsed.mime === "image/gif" ? "gif" : "png";
+  const objectPath = `edited/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
+
+  const uploadResp = await fetchWithTimeout(
+    `${supabaseUrl}/storage/v1/object/${STORAGE_BUCKET}/${objectPath}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${serviceKey}`,
+        apikey: serviceKey,
+        "Content-Type": parsed.mime,
+        "x-upsert": "true",
+        "cache-control": "3600",
+      },
+      body: parsed.bytes,
+    },
+    20_000,
+  );
+
+  if (!uploadResp.ok) {
+    const body = await uploadResp.text();
+    console.error("Falha ao gravar edição no Storage:", uploadResp.status, body.slice(0, 400));
+    return null;
+  }
+
+  const signResp = await fetchWithTimeout(
+    `${supabaseUrl}/storage/v1/object/sign/${STORAGE_BUCKET}/${objectPath}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${serviceKey}`,
+        apikey: serviceKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ expiresIn: SIGNED_URL_TTL_SECONDS }),
+    },
+    20_000,
+  );
+
+  if (!signResp.ok) {
+    const body = await signResp.text();
+    console.error("Falha ao assinar edição no Storage:", signResp.status, body.slice(0, 400));
+    return null;
+  }
+
+  const signed = await signResp.json().catch(() => null);
+  const signedPath = signed?.signedURL ?? signed?.signedUrl;
+  if (typeof signedPath !== "string" || !signedPath) return null;
+  return signedPath.startsWith("http") ? signedPath : `${supabaseUrl}/storage/v1${signedPath}`;
 }
 
 // criativo-generate agora salva as imagens no Storage e devolve uma URL
@@ -174,6 +267,9 @@ serve(async (req) => {
       }
     }
     if (!imageUrl) throw new Error("Modelo não retornou imagem editada");
+
+    const storedUrl = await persistEditedImageToStorage(imageUrl);
+    if (storedUrl) imageUrl = storedUrl;
 
     return new Response(JSON.stringify({ editedImageUrl: imageUrl, editPrompt }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
