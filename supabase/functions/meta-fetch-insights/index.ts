@@ -8,6 +8,54 @@ const corsHeaders = {
 
 const GRAPH_API = "https://graph.facebook.com/v20.0";
 
+function isTooMuchDataError(err: any): boolean {
+  const msg = String(err?.message || "");
+  return err?.code === 1 || /reduce the amount of data/i.test(msg);
+}
+
+/**
+ * Lista paginada da Graph API.
+ *
+ * Pedir 100-200 objetos com insights aninhados estoura o limite interno da Meta
+ * ("Please reduce the amount of data you're asking for"). Buscamos em páginas
+ * pequenas e, se ainda assim a Meta reclamar, reduzimos o tamanho da página.
+ */
+async function fetchGraphList(
+  endpoint: string,
+  fields: string,
+  accessToken: string,
+  opts: { maxItems: number; pageSize?: number },
+): Promise<{ data: any[] } | { error: any }> {
+  let pageSize = opts.pageSize ?? 25;
+  const items: any[] = [];
+
+  let url = `${endpoint}?fields=${fields}&limit=${pageSize}&access_token=${accessToken}`;
+  let guard = 0;
+
+  while (url && items.length < opts.maxItems && guard < 40) {
+    guard++;
+    const res = await fetch(url);
+    const json = await res.json();
+
+    if (json.error) {
+      if (isTooMuchDataError(json.error) && pageSize > 5) {
+        pageSize = Math.max(5, Math.floor(pageSize / 2));
+        url = `${endpoint}?fields=${fields}&limit=${pageSize}&access_token=${accessToken}`;
+        continue;
+      }
+      if (items.length > 0) break; // já temos dados parciais: melhor que erro
+      return { error: json.error };
+    }
+
+    items.push(...(json.data || []));
+    const next = json.paging?.next;
+    url = next && items.length < opts.maxItems ? next : "";
+  }
+
+  return { data: items.slice(0, opts.maxItems) };
+}
+
+
 const RESULT_TYPES = [
   "onsite_conversion.messaging_conversation_started_7d",
   "lead",
@@ -284,16 +332,19 @@ Deno.serve(async (req) => {
         : `date_preset(${datePreset})`;
 
       const fields = `name,status,daily_budget,created_time,insights.${insightsDateParam}{spend,impressions,reach,clicks,actions,action_values,cost_per_action_type,ctr,cpc,cpm,frequency}`;
-      const res = await fetch(
-        `${GRAPH_API}/${adAccountId}/campaigns?fields=${fields}&limit=100&access_token=${accessToken}`
+      const result = await fetchGraphList(
+        `${GRAPH_API}/${adAccountId}/campaigns`,
+        fields,
+        accessToken,
+        { maxItems: 200, pageSize: 25 },
       );
-      const data = await res.json();
 
-      if (data.error) {
-        return graphErrorResponse(data.error);
+      if ("error" in result) {
+        return graphErrorResponse(result.error);
       }
 
-      const campaigns = (data.data || []).map((c: any) => {
+      const campaigns = result.data.map((c: any) => {
+
         const ins = c.insights?.data?.[0] || {};
         return parseCampaign(c, ins);
       });
@@ -309,21 +360,25 @@ Deno.serve(async (req) => {
         : `date_preset(${datePreset})`;
 
       const fields = `name,status,campaign_id,campaign{name},creative{thumbnail_url,image_url,object_type,video_id,image_hash,object_story_spec},insights.${insightsDateParam}{spend,impressions,reach,clicks,actions,action_values,cost_per_action_type,ctr,cpc,cpm,frequency}`;
-      const res = await fetch(
-        `${GRAPH_API}/${adAccountId}/ads?fields=${fields}&limit=200&access_token=${accessToken}`
+      const result = await fetchGraphList(
+        `${GRAPH_API}/${adAccountId}/ads`,
+        fields,
+        accessToken,
+        { maxItems: 300, pageSize: 15 },
       );
-      const data = await res.json();
 
-      if (data.error) {
-        return graphErrorResponse(data.error);
+      if ("error" in result) {
+        return graphErrorResponse(result.error);
       }
 
-      const rawAds = data.data || [];
+      const rawAds = result.data;
+
 
       // Fetch video sources in parallel for ads that have a video_id
-      const videoIds = Array.from(new Set(
+      const videoIds = (Array.from(new Set(
         rawAds.map((ad: any) => ad.creative?.video_id).filter(Boolean)
-      )) as string[];
+      )) as string[]).slice(0, 80);
+
       const videoMeta = new Map<string, { source?: string; picture?: string }>();
       await Promise.all(videoIds.map(async (vid) => {
         try {
