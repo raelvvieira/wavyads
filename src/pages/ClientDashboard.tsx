@@ -11,9 +11,9 @@ import type { BottomStageOption } from '@/components/ConversionFunnel';
 import { DailyChart } from '@/components/DailyChart';
 import { CampaignsTable } from '@/components/CampaignsTable';
 import { CreativesGallery } from '@/components/CreativesGallery';
+import { creativesCardState } from '@/lib/creativesCardState';
 
 import { ConversionFunnel } from '@/components/ConversionFunnel';
-import { StrategicSummary } from '@/components/StrategicSummary';
 import { GapAlert } from '@/components/GapAlert';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -255,6 +255,18 @@ export default function ClientDashboard() {
     ? ((googleCampaignsError as any)?.message || (googleInsightsError as any)?.message || null)
     : null;
   const isLoading = clientLoading || (isSynced && !metaTokenInvalid && (campaignsLoading || insightsLoading));
+
+  // Criativos só existem no Meta: não há endpoint de anúncios do Google no
+  // sistema (a aba "Anúncios" do Google é um "Em breve"). Fora do Meta o
+  // card não tem o que dizer, e some — mas por decisão, não por acidente.
+  const estadoDosCriativos = platform === 'meta'
+    ? creativesCardState({
+        carregando: metaAdsLoading,
+        erro: metaAdsError,
+        anuncios: metaAds,
+        tokenInvalido: metaTokenInvalid,
+      })
+    : ({ kind: 'oculto' } as const);
 
   // Listen for popup message
   useEffect(() => {
@@ -855,10 +867,18 @@ export default function ClientDashboard() {
                 <ImpressionShareCard campaigns={impressionShareData ?? []} isLoading={impressionShareLoading} />
               )}
 
-              {/* Creatives Gallery — visible for all clients with Meta ads data */}
+              {/* Criativos e desempenho.
+
+                  O `: null` que fechava este bloco fazia erro, consulta
+                  desabilitada e lista vazia produzirem a mesma tela — nada.
+                  O card sumiu para o cliente e ninguém soube por quê.
+                  `creativesCardState` nomeia cada caso, e o `: null` que
+                  restou cobre só 'oculto' — token inválido, que já tem
+                  aviso próprio no topo, e o Google, que não tem endpoint
+                  de anúncios. */}
               {!isLoading && (
                 <>
-                  {metaAdsLoading ? (
+                  {estadoDosCriativos.kind === 'carregando' ? (
                     <GlassCard className="space-y-4">
                       <div className="flex items-center justify-between mb-6">
                         <Skeleton className="h-7 w-48" />
@@ -874,8 +894,16 @@ export default function ClientDashboard() {
                         ))}
                       </div>
                     </GlassCard>
-                  ) : metaAds && metaAds.length > 0 ? (
-                    <CreativesGallery ads={metaAds} />
+                  ) : estadoDosCriativos.kind === 'erro' ? (
+                    <GlassCard className="space-y-2">
+                      <h3 className="text-lg font-semibold">Top Criativos</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Não deu para carregar os criativos deste período.
+                      </p>
+                      <p className="text-xs text-muted-foreground/70">{estadoDosCriativos.mensagem}</p>
+                    </GlassCard>
+                  ) : estadoDosCriativos.kind === 'lista' ? (
+                    <CreativesGallery ads={metaAds ?? []} />
                   ) : null}
                 </>
               )}
@@ -910,20 +938,6 @@ export default function ClientDashboard() {
                 <ConversionBreakdownTable actions={conversionBreakdownData ?? []} isLoading={conversionBreakdownLoading} />
               )}
 
-              {/* Strategic Summary */}
-              {!isLoading && campaignList.length > 0 && (
-                <StrategicSummary
-                  clientName={client.name}
-                  period={selectedPreset}
-                  totalSpend={metricValues.spend}
-                  totalLeads={metricValues.leads}
-                  totalResults={metricValues.results}
-                  totalPurchases={metricValues.purchases}
-                  avgCpl={metricValues.cpl}
-                  costPerResult={metricValues.cost_per_result}
-                  campaigns={campaignList}
-                />
-              )}
             </>
           )}
 
