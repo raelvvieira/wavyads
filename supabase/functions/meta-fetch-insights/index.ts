@@ -360,16 +360,19 @@ Deno.serve(async (req) => {
         : `date_preset(${datePreset})`;
 
       const fields = `name,status,campaign_id,campaign{name},creative{thumbnail_url,image_url,object_type,video_id,image_hash,object_story_spec},insights.${insightsDateParam}{spend,impressions,reach,clicks,actions,action_values,cost_per_action_type,ctr,cpc,cpm,frequency}`;
-      const res = await fetch(
-        `${GRAPH_API}/${adAccountId}/ads?fields=${fields}&limit=200&access_token=${accessToken}`
+      const result = await fetchGraphList(
+        `${GRAPH_API}/${adAccountId}/ads`,
+        fields,
+        accessToken,
+        { maxItems: 300, pageSize: 15 },
       );
-      const data = await res.json();
 
-      if (data.error) {
-        return graphErrorResponse(data.error);
+      if ("error" in result) {
+        return graphErrorResponse(result.error);
       }
 
-      const rawAds = data.data || [];
+      const rawAds = result.data;
+
 
       // Fetch video sources in parallel for ads that have a video_id
       const videoIds = Array.from(new Set(
