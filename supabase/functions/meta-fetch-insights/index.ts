@@ -375,9 +375,10 @@ Deno.serve(async (req) => {
 
 
       // Fetch video sources in parallel for ads that have a video_id
-      const videoIds = Array.from(new Set(
+      const videoIds = (Array.from(new Set(
         rawAds.map((ad: any) => ad.creative?.video_id).filter(Boolean)
-      )) as string[];
+      )) as string[]).slice(0, 80);
+
       const videoMeta = new Map<string, { source?: string; picture?: string }>();
       await Promise.all(videoIds.map(async (vid) => {
         try {
