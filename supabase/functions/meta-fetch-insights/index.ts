@@ -332,16 +332,19 @@ Deno.serve(async (req) => {
         : `date_preset(${datePreset})`;
 
       const fields = `name,status,daily_budget,created_time,insights.${insightsDateParam}{spend,impressions,reach,clicks,actions,action_values,cost_per_action_type,ctr,cpc,cpm,frequency}`;
-      const res = await fetch(
-        `${GRAPH_API}/${adAccountId}/campaigns?fields=${fields}&limit=100&access_token=${accessToken}`
+      const result = await fetchGraphList(
+        `${GRAPH_API}/${adAccountId}/campaigns`,
+        fields,
+        accessToken,
+        { maxItems: 200, pageSize: 25 },
       );
-      const data = await res.json();
 
-      if (data.error) {
-        return graphErrorResponse(data.error);
+      if ("error" in result) {
+        return graphErrorResponse(result.error);
       }
 
-      const campaigns = (data.data || []).map((c: any) => {
+      const campaigns = result.data.map((c: any) => {
+
         const ins = c.insights?.data?.[0] || {};
         return parseCampaign(c, ins);
       });
