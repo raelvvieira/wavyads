@@ -8,6 +8,54 @@ const corsHeaders = {
 
 const GRAPH_API = "https://graph.facebook.com/v20.0";
 
+function isTooMuchDataError(err: any): boolean {
+  const msg = String(err?.message || "");
+  return err?.code === 1 || /reduce the amount of data/i.test(msg);
+}
+
+/**
+ * Lista paginada da Graph API.
+ *
+ * Pedir 100-200 objetos com insights aninhados estoura o limite interno da Meta
+ * ("Please reduce the amount of data you're asking for"). Buscamos em páginas
+ * pequenas e, se ainda assim a Meta reclamar, reduzimos o tamanho da página.
+ */
+async function fetchGraphList(
+  endpoint: string,
+  fields: string,
+  accessToken: string,
+  opts: { maxItems: number; pageSize?: number },
+): Promise<{ data: any[] } | { error: any }> {
+  let pageSize = opts.pageSize ?? 25;
+  const items: any[] = [];
+
+  let url = `${endpoint}?fields=${fields}&limit=${pageSize}&access_token=${accessToken}`;
+  let guard = 0;
+
+  while (url && items.length < opts.maxItems && guard < 40) {
+    guard++;
+    const res = await fetch(url);
+    const json = await res.json();
+
+    if (json.error) {
+      if (isTooMuchDataError(json.error) && pageSize > 5) {
+        pageSize = Math.max(5, Math.floor(pageSize / 2));
+        url = `${endpoint}?fields=${fields}&limit=${pageSize}&access_token=${accessToken}`;
+        continue;
+      }
+      if (items.length > 0) break; // já temos dados parciais: melhor que erro
+      return { error: json.error };
+    }
+
+    items.push(...(json.data || []));
+    const next = json.paging?.next;
+    url = next && items.length < opts.maxItems ? next : "";
+  }
+
+  return { data: items.slice(0, opts.maxItems) };
+}
+
+
 const RESULT_TYPES = [
   "onsite_conversion.messaging_conversation_started_7d",
   "lead",
