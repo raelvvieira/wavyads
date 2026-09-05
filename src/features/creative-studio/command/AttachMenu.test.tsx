@@ -171,12 +171,13 @@ describe('AttachMenu', () => {
     expect(screen.getByRole('button', { name: /Ver ref1\.png/ })).toBeTruthy();
   });
 
-  it('referência vazia mostra o aviso, não uma grade em branco', () => {
+  it('referência sem acervo ainda oferece o envio de imagens', () => {
     montar();
     abrir();
     fireEvent.click(screen.getByRole('button', { name: 'Anexar referência' }));
-    expect(screen.getByText('Nenhuma referência salva ainda.')).toBeTruthy();
+    expect(screen.getByText('Solte, clique ou cole as referências')).toBeTruthy();
   });
+
 
   it('copy: digitar e confirmar anexa o texto literal', () => {
     const { onAttach } = montar();
