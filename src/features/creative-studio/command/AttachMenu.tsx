@@ -11,16 +11,6 @@ import { countAssetUsage, usageSentence } from '../state/assetUsage';
 import type { CreativeAsset } from '../types/creative';
 import type { DockAttachment, DockAttachmentKind } from '../types/studioUi';
 
-/**
- * Os insumos que o usuário pode SUBIR aqui.
- *
- * Avatar fica de fora porque nasce gerado no Avatar Studio, e copy é texto.
- * Referência entrou nesta lista: ela era a única imagem do menu sem
- * dropzone, e por isso o painel só sabia dizer "nenhuma referência salva
- * ainda" — para um cliente novo, sem jeito de salvar a primeira.
- */
-export type InsumoComUpload = 'logo' | 'product' | 'reference';
-
 interface AttachMenuProps {
   /** Já filtrado por `type: 'reference'` — o menu não decide o que é referência. */
   referenceLibrary: CreativeAsset[];
@@ -41,9 +31,9 @@ interface AttachMenuProps {
    * segundo conceito de "remover da biblioteca" — não há soft-delete aqui.
    */
   onDeleteAsset?: (asset: CreativeAsset) => Promise<void>;
-  /** Upload NOVO de referência/logo/produto — além de virar anexo desta
-   * vez, some pra biblioteca do cliente reutilizar depois. */
-  onNewLibraryUpload: (kind: InsumoComUpload, url: string) => void;
+  /** Upload NOVO de logo/produto — além de virar anexo desta vez, some
+   * pra biblioteca do cliente reutilizar depois. */
+  onNewLibraryUpload: (kind: 'reference' | 'logo' | 'product', url: string) => void;
   /** O botão de clipe do dock — o Popover precisa envolver o elemento real. */
   children: ReactElement;
 }
@@ -199,7 +189,7 @@ function SubPainel({
   allAssets: CreativeAsset[];
   onVoltar: () => void;
   onAnexar: (attachment: Omit<DockAttachment, 'id'>) => void;
-  onNovoUpload: (kind: InsumoComUpload, url: string) => void;
+  onNovoUpload: (kind: 'reference' | 'logo' | 'product', url: string) => void;
   onApagar?: (asset: CreativeAsset) => Promise<void>;
   onSugestoesAbertas: (aberto: boolean) => void;
   onDetalheAberto: (aberto: boolean) => void;
@@ -208,7 +198,7 @@ function SubPainel({
   if (kind === 'reference') {
     return (
       <PainelBiblioteca
-        titulo="Anexar referência" maxImages={6} texto="Solte, clique ou cole as referências" kind="reference"
+        titulo="Anexar referência" maxImages={8} texto="Solte, clique ou cole as referências" kind="reference"
         library={referenceLibrary} onNovoUpload={onNovoUpload} {...comuns}
       />
     );
@@ -415,23 +405,10 @@ function GradeDeInsumos({
   );
 }
 
-/** O rótulo de um insumo que chegou sem nome de arquivo. */
-const ROTULO_PADRAO: Record<InsumoComUpload, string> = {
-  reference: 'Referência',
-  logo: 'Logo',
-  product: 'Produto',
-};
-
 /**
- * Referência, logo e produto compartilham a mesma mecânica: uma grade do
- * que já foi salvo para este cliente, e um upload embaixo pra adicionar um
- * novo — que também vira reutilizável, via `onNovoUpload`.
- *
- * Referência tinha um painel próprio, só com a grade. Sem dropzone, a única
- * porta de entrada era a ação "usar como referência" sobre uma arte que já
- * existia — ou seja, quem ainda não tinha arte nenhuma não tinha como
- * anexar referência ANTES de gerar a primeira, que é justamente quando a
- * referência serve para alguma coisa.
+ * Logo e produto compartilham a mesma mecânica: uma grade do que já foi
+ * salvo para este cliente, e um upload embaixo pra adicionar um novo — que
+ * também vira reutilizável, via `onNovoUpload`.
  */
 function PainelBiblioteca({
   titulo,
@@ -449,17 +426,17 @@ function PainelBiblioteca({
   titulo: string;
   maxImages: number;
   texto: string;
-  kind: InsumoComUpload;
+  kind: 'reference' | 'logo' | 'product';
   library: CreativeAsset[];
   allAssets: CreativeAsset[];
   onVoltar: () => void;
   onAnexar: (attachment: Omit<DockAttachment, 'id'>) => void;
-  onNovoUpload: (kind: InsumoComUpload, url: string) => void;
+  onNovoUpload: (kind: 'reference' | 'logo' | 'product', url: string) => void;
   onApagar?: (asset: CreativeAsset) => Promise<void>;
   onDetalheAberto: (aberto: boolean) => void;
 }) {
   const [enviando, setEnviando] = useState(false);
-  const rotuloPadrao = ROTULO_PADRAO[kind];
+  const rotuloPadrao = kind === 'logo' ? 'Logo' : kind === 'reference' ? 'Referência' : 'Produto';
 
   // `ImageDropzone` entrega data URLs, nunca `File` — sobe cada uma assim
   // que aparece e anexa. `images` fica sempre vazio de propósito: o
@@ -487,9 +464,7 @@ function PainelBiblioteca({
           itens={library.map((item) => ({ asset: item, label: item.filename ?? rotuloPadrao }))}
           kind={kind}
           allAssets={allAssets}
-          // Referência é escolha visual: a grade merece mais linhas à vista
-          // que logo e produto, que costumam ser um ou dois itens.
-          alturaLista={kind === 'reference' ? 'max-h-64' : 'max-h-40'}
+          alturaLista="max-h-40"
           onAnexar={onAnexar}
           onApagar={onApagar}
           onDetalheAberto={onDetalheAberto}
