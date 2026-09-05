@@ -62,7 +62,7 @@ export interface CreativeStudioShellProps {
   productLibrary: CreativeAsset[];
   /** Copies já usadas por este cliente — alimenta o sub-painel de copy. */
   copyBank: CopyBankEntry[];
-  onNewLibraryUpload: (kind: 'logo' | 'product', url: string) => void;
+  onNewLibraryUpload: (kind: 'reference' | 'logo' | 'product', url: string) => void;
   /** Apaga um insumo da biblioteca do cliente, de vez. */
   onDeleteAsset?: (asset: CreativeAsset) => Promise<void>;
   /**

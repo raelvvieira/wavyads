@@ -445,7 +445,7 @@ export default function CriativoStudioV2Page() {
   // Upload novo de logo/produto pelo menu de anexos: além de virar anexo
   // desta geração (já feito pelo `onAttach` de sempre), grava como asset
   // reutilizável — a grade do menu mostra na próxima vez que abrir.
-  const handleNewLibraryUpload = useCallback(async (kind: 'logo' | 'product', url: string) => {
+  const handleNewLibraryUpload = useCallback(async (kind: 'reference' | 'logo' | 'product', url: string) => {
     try {
       // Sem projeto de propósito: insumo é do cliente e atravessa
       // campanhas. Chamar `ensureProjectId` aqui criava um "Novo projeto"

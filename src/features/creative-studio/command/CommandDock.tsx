@@ -54,7 +54,7 @@ interface CommandDockProps {
   /** Acervo carregado — o menu de anexos usa para contar uso de um insumo. */
   allAssets: CreativeAsset[];
   onDeleteAsset?: (asset: CreativeAsset) => Promise<void>;
-  onNewLibraryUpload: (kind: 'logo' | 'product', url: string) => void;
+  onNewLibraryUpload: (kind: 'reference' | 'logo' | 'product', url: string) => void;
   onOpenCopilot: () => void;
 }
 
