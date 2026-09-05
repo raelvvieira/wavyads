@@ -15,6 +15,7 @@ import { StudioLibraryIsland } from './StudioLibraryIsland';
 import { CreativeCanvas } from '../canvas/CreativeCanvas';
 import { AvatarStudio } from '../avatar/AvatarStudio';
 import { CommandDock } from '../command/CommandDock';
+import type { InsumoComUpload } from '../command/AttachMenu';
 import { AssetInspector } from '../inspector/AssetInspector';
 
 export interface CreativeStudioShellProps {
@@ -62,7 +63,7 @@ export interface CreativeStudioShellProps {
   productLibrary: CreativeAsset[];
   /** Copies já usadas por este cliente — alimenta o sub-painel de copy. */
   copyBank: CopyBankEntry[];
-  onNewLibraryUpload: (kind: 'logo' | 'product', url: string) => void;
+  onNewLibraryUpload: (kind: InsumoComUpload, url: string) => void;
   /** Apaga um insumo da biblioteca do cliente, de vez. */
   onDeleteAsset?: (asset: CreativeAsset) => Promise<void>;
   /**

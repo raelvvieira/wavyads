@@ -11,6 +11,16 @@ import { countAssetUsage, usageSentence } from '../state/assetUsage';
 import type { CreativeAsset } from '../types/creative';
 import type { DockAttachment, DockAttachmentKind } from '../types/studioUi';
 
+/**
+ * Os insumos que o usuário pode SUBIR aqui.
+ *
+ * Avatar fica de fora porque nasce gerado no Avatar Studio, e copy é texto.
+ * Referência entrou nesta lista: ela era a única imagem do menu sem
+ * dropzone, e por isso o painel só sabia dizer "nenhuma referência salva
+ * ainda" — para um cliente novo, sem jeito de salvar a primeira.
+ */
+export type InsumoComUpload = 'logo' | 'product' | 'reference';
+
 interface AttachMenuProps {
   /** Já filtrado por `type: 'reference'` — o menu não decide o que é referência. */
   referenceLibrary: CreativeAsset[];
@@ -31,9 +41,9 @@ interface AttachMenuProps {
    * segundo conceito de "remover da biblioteca" — não há soft-delete aqui.
    */
   onDeleteAsset?: (asset: CreativeAsset) => Promise<void>;
-  /** Upload NOVO de logo/produto — além de virar anexo desta vez, some
-   * pra biblioteca do cliente reutilizar depois. */
-  onNewLibraryUpload: (kind: 'logo' | 'product', url: string) => void;
+  /** Upload NOVO de referência/logo/produto — além de virar anexo desta
+   * vez, some pra biblioteca do cliente reutilizar depois. */
+  onNewLibraryUpload: (kind: InsumoComUpload, url: string) => void;
   /** O botão de clipe do dock — o Popover precisa envolver o elemento real. */
   children: ReactElement;
 }
@@ -189,13 +199,20 @@ function SubPainel({
   allAssets: CreativeAsset[];
   onVoltar: () => void;
   onAnexar: (attachment: Omit<DockAttachment, 'id'>) => void;
-  onNovoUpload: (kind: 'logo' | 'product', url: string) => void;
+  onNovoUpload: (kind: InsumoComUpload, url: string) => void;
   onApagar?: (asset: CreativeAsset) => Promise<void>;
   onSugestoesAbertas: (aberto: boolean) => void;
   onDetalheAberto: (aberto: boolean) => void;
 }) {
   const comuns = { allAssets, onVoltar, onAnexar, onApagar, onDetalheAberto };
-  if (kind === 'reference') return <PainelReferencia referenceLibrary={referenceLibrary} {...comuns} />;
+  if (kind === 'reference') {
+    return (
+      <PainelBiblioteca
+        titulo="Anexar referência" maxImages={6} texto="Solte, clique ou cole as referências" kind="reference"
+        library={referenceLibrary} onNovoUpload={onNovoUpload} {...comuns}
+      />
+    );
+  }
   if (kind === 'logo') {
     return (
       <PainelBiblioteca
@@ -398,44 +415,23 @@ function GradeDeInsumos({
   );
 }
 
-function PainelReferencia({
-  referenceLibrary,
-  allAssets,
-  onVoltar,
-  onAnexar,
-  onApagar,
-  onDetalheAberto,
-}: {
-  referenceLibrary: CreativeAsset[];
-  allAssets: CreativeAsset[];
-  onVoltar: () => void;
-  onAnexar: (attachment: Omit<DockAttachment, 'id'>) => void;
-  onApagar?: (asset: CreativeAsset) => Promise<void>;
-  onDetalheAberto: (aberto: boolean) => void;
-}) {
-  return (
-    <div>
-      <VoltarHeader titulo="Anexar referência" onVoltar={onVoltar} />
-      {referenceLibrary.length === 0 ? (
-        <p className="px-3 py-4 text-center text-[12px] text-white/45">Nenhuma referência salva ainda.</p>
-      ) : (
-        <GradeDeInsumos
-          itens={referenceLibrary.map((ref) => ({ asset: ref, label: ref.filename ?? 'Referência' }))}
-          kind="reference"
-          allAssets={allAssets}
-          onAnexar={onAnexar}
-          onApagar={onApagar}
-          onDetalheAberto={onDetalheAberto}
-        />
-      )}
-    </div>
-  );
-}
+/** O rótulo de um insumo que chegou sem nome de arquivo. */
+const ROTULO_PADRAO: Record<InsumoComUpload, string> = {
+  reference: 'Referência',
+  logo: 'Logo',
+  product: 'Produto',
+};
 
 /**
- * Logo e produto compartilham a mesma mecânica: uma grade do que já foi
- * salvo para este cliente, e um upload embaixo pra adicionar um novo — que
- * também vira reutilizável, via `onNovoUpload`.
+ * Referência, logo e produto compartilham a mesma mecânica: uma grade do
+ * que já foi salvo para este cliente, e um upload embaixo pra adicionar um
+ * novo — que também vira reutilizável, via `onNovoUpload`.
+ *
+ * Referência tinha um painel próprio, só com a grade. Sem dropzone, a única
+ * porta de entrada era a ação "usar como referência" sobre uma arte que já
+ * existia — ou seja, quem ainda não tinha arte nenhuma não tinha como
+ * anexar referência ANTES de gerar a primeira, que é justamente quando a
+ * referência serve para alguma coisa.
  */
 function PainelBiblioteca({
   titulo,
@@ -453,17 +449,17 @@ function PainelBiblioteca({
   titulo: string;
   maxImages: number;
   texto: string;
-  kind: 'logo' | 'product';
+  kind: InsumoComUpload;
   library: CreativeAsset[];
   allAssets: CreativeAsset[];
   onVoltar: () => void;
   onAnexar: (attachment: Omit<DockAttachment, 'id'>) => void;
-  onNovoUpload: (kind: 'logo' | 'product', url: string) => void;
+  onNovoUpload: (kind: InsumoComUpload, url: string) => void;
   onApagar?: (asset: CreativeAsset) => Promise<void>;
   onDetalheAberto: (aberto: boolean) => void;
 }) {
   const [enviando, setEnviando] = useState(false);
-  const rotuloPadrao = kind === 'logo' ? 'Logo' : 'Produto';
+  const rotuloPadrao = ROTULO_PADRAO[kind];
 
   // `ImageDropzone` entrega data URLs, nunca `File` — sobe cada uma assim
   // que aparece e anexa. `images` fica sempre vazio de propósito: o
@@ -491,7 +487,9 @@ function PainelBiblioteca({
           itens={library.map((item) => ({ asset: item, label: item.filename ?? rotuloPadrao }))}
           kind={kind}
           allAssets={allAssets}
-          alturaLista="max-h-40"
+          // Referência é escolha visual: a grade merece mais linhas à vista
+          // que logo e produto, que costumam ser um ou dois itens.
+          alturaLista={kind === 'reference' ? 'max-h-64' : 'max-h-40'}
           onAnexar={onAnexar}
           onApagar={onApagar}
           onDetalheAberto={onDetalheAberto}

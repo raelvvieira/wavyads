@@ -171,11 +171,54 @@ describe('AttachMenu', () => {
     expect(screen.getByRole('button', { name: /Ver ref1\.png/ })).toBeTruthy();
   });
 
-  it('referência vazia mostra o aviso, não uma grade em branco', () => {
+  it('referência sem nada salvo oferece o upload, e não um beco sem saída', () => {
+    // O bug relatado: o painel dizia "Nenhuma referência salva ainda" e
+    // parava aí. Como nada no Studio V2 criava um insumo do tipo
+    // `reference` — só a ação "usar como referência" sobre uma arte que já
+    // existia —, um cliente novo NUNCA podia anexar referência antes de
+    // gerar a primeira arte, que é justamente quando ela serve.
     montar();
     abrir();
     fireEvent.click(screen.getByRole('button', { name: 'Anexar referência' }));
-    expect(screen.getByText('Nenhuma referência salva ainda.')).toBeTruthy();
+
+    expect(screen.getByText(/Solte, clique ou cole as referências/)).toBeTruthy();
+    expect(document.querySelector('input[type="file"]')).toBeTruthy();
+  });
+
+  it('referência: sobe o arquivo, anexa e também salva pra reuso', async () => {
+    uploadDataUrlToCreativeStorage.mockResolvedValue('https://x/ref-enviada.png');
+    const { onAttach, onNewLibraryUpload } = montar();
+    abrir();
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência' }));
+
+    const arquivo = new File(['conteudo'], 'inspiracao.png', { type: 'image/png' });
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [arquivo] } });
+
+    await waitFor(() => expect(onAttach).toHaveBeenCalledWith(expect.objectContaining({
+      kind: 'reference', value: 'https://x/ref-enviada.png', label: 'Referência',
+    })));
+    // Salvar pra reuso é o que faz a grade existir da próxima vez — sem
+    // isso o upload serviria uma geração só, e o painel voltaria a estar
+    // vazio no dia seguinte.
+    expect(onNewLibraryUpload).toHaveBeenCalledWith('reference', 'https://x/ref-enviada.png');
+  });
+
+  it('referência: com uma já salva, a grade continua ali junto do upload', () => {
+    const { onAttach } = montar({ referenceLibrary: [asset('ref1', 'reference')] });
+    abrir();
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência' }));
+
+    // Grade e upload convivem: ter referência salva não pode ser motivo
+    // para não poder subir a próxima.
+    expect(document.querySelector('input[type="file"]')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /Ver ref1\.png/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar' }));
+
+    expect(onAttach).toHaveBeenCalledWith(expect.objectContaining({
+      kind: 'reference', value: 'https://x/ref1.png',
+    }));
   });
 
   it('copy: digitar e confirmar anexa o texto literal', () => {

@@ -11,6 +11,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { CreativeStudioShell } from '@/features/creative-studio/shell/CreativeStudioShell';
+import type { InsumoComUpload } from '@/features/creative-studio/command/AttachMenu';
 import { StudioVersionBanner } from '@/features/creative-studio/shell/StudioVersionBanner';
 import {
   createAssetGroup,
@@ -442,10 +443,11 @@ export default function CriativoStudioV2Page() {
     setAttachments((prev) => prev.filter((a) => a.id !== id));
   }, []);
 
-  // Upload novo de logo/produto pelo menu de anexos: além de virar anexo
-  // desta geração (já feito pelo `onAttach` de sempre), grava como asset
-  // reutilizável — a grade do menu mostra na próxima vez que abrir.
-  const handleNewLibraryUpload = useCallback(async (kind: 'logo' | 'product', url: string) => {
+  // Upload novo de referência/logo/produto pelo menu de anexos: além de
+  // virar anexo desta geração (já feito pelo `onAttach` de sempre), grava
+  // como asset reutilizável — a grade do menu mostra na próxima vez que
+  // abrir.
+  const handleNewLibraryUpload = useCallback(async (kind: InsumoComUpload, url: string) => {
     try {
       // Sem projeto de propósito: insumo é do cliente e atravessa
       // campanhas. Chamar `ensureProjectId` aqui criava um "Novo projeto"
