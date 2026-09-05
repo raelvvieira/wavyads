@@ -927,6 +927,37 @@ describe('CriativoStudioV2Page', () => {
     expect(screen.queryByText('Só este projeto')).toBeNull();
   });
 
+  it('dá para anexar referência ANTES de existir qualquer arte', async () => {
+    // O relato: "não permitiu que eu inserisse referências antes de criar e
+    // pedir o criativo final". Nada no V2 criava insumo do tipo
+    // `reference` — o painel só sabia listar, e a única porta de entrada
+    // era a ação "usar como referência" sobre uma arte já existente. Para
+    // um cliente novo isso é um círculo: precisa de arte para ter
+    // referência, e a referência serve justamente para fazer a primeira.
+    uploadDataUrlToCreativeStorage.mockResolvedValue('https://x/ref-enviada.png');
+    createCreativeAsset.mockResolvedValue({
+      ...ASSETS_DO_PROJETO[0], id: 'ref-nova', type: 'reference', projectId: null,
+      url: 'https://x/ref-enviada.png', filename: 'inspiracao.png',
+    });
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+    createCreativeAsset.mockClear();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência, logo, copy, produto ou avatar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência' }));
+    const arquivo = new File(['conteudo'], 'inspiracao.png', { type: 'image/png' });
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [arquivo] } });
+    });
+
+    await waitFor(() => expect(createCreativeAsset).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'reference', projectId: null, url: 'https://x/ref-enviada.png',
+    })));
+    // E o anexo entra no pedido desta geração, não só na biblioteca.
+    expect(screen.getByText('Referência')).toBeTruthy();
+  });
+
   it('Fator Criativo gera DIRETO — um clique, sem formulário no caminho', async () => {
     // O formulário era um pedágio: exigia a descrição da oferta preenchida à
     // mão antes de liberar o botão, e quando a leitura automática falhava o

@@ -7,7 +7,7 @@ import type { DockAttachment } from '../types/studioUi';
 import type { CopyBankEntry } from '../api/copyBank';
 import { describeGeneration } from '../generation/capabilities';
 import { canGenerate, type SelectionSummary } from '../state/canvasSelectors';
-import { AttachMenu } from './AttachMenu';
+import { AttachMenu, type InsumoComUpload } from './AttachMenu';
 import { GenerationSettingsPopover } from './GenerationSettingsPopover';
 
 export type { DockAttachment, DockAttachmentKind } from '../types/studioUi';
@@ -54,7 +54,7 @@ interface CommandDockProps {
   /** Acervo carregado — o menu de anexos usa para contar uso de um insumo. */
   allAssets: CreativeAsset[];
   onDeleteAsset?: (asset: CreativeAsset) => Promise<void>;
-  onNewLibraryUpload: (kind: 'logo' | 'product', url: string) => void;
+  onNewLibraryUpload: (kind: InsumoComUpload, url: string) => void;
   onOpenCopilot: () => void;
 }
 
