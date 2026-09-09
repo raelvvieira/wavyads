@@ -427,9 +427,147 @@ describe('CriativoStudioV2Page', () => {
     await waitFor(() => expect(screen.queryByText(/Até 50% OFF/)).toBeNull());
   });
 
+  it('dá para anexar referência ANTES de existir qualquer arte', async () => {
+    // "Não permitiu que eu inserisse referências antes de criar e pedir o
+    // criativo final". Nada no V2 criava insumo do tipo `reference` — o
+    // painel só sabia listar, e a única porta de entrada era a ação "usar
+    // como referência" sobre uma arte já existente. Para um cliente novo
+    // isso é um círculo: precisa de arte para ter referência, e a
+    // referência serve justamente para fazer a primeira.
+    uploadDataUrlToCreativeStorage.mockResolvedValue('https://x/ref-enviada.png');
+    createCreativeAsset.mockResolvedValue({
+      ...ASSETS_DO_PROJETO[0], id: 'ref-nova', type: 'reference', projectId: null,
+      url: 'https://x/ref-enviada.png', filename: 'inspiracao.png',
+    });
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+    createCreativeAsset.mockClear();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência, logo, copy, produto ou avatar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência' }));
+    const arquivo = new File(['conteudo'], 'inspiracao.png', { type: 'image/png' });
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [arquivo] } });
+    });
+
+    await waitFor(() => expect(createCreativeAsset).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'reference', projectId: null, url: 'https://x/ref-enviada.png',
+    })));
+    // E o anexo entra no pedido desta geração, não só na biblioteca.
+    expect(screen.getByText('Referência')).toBeTruthy();
+  });
+
+  it('a referência de estilo não chega ao gerador — o relato do Heiner', async () => {
+    // O relato, reconstruído: logo do cliente, uma arte de terceiros como
+    // referência de estilo, e uma foto do próprio cliente como produto. A
+    // arte voltava com a pessoa e a logo da referência; a foto e a logo do
+    // cliente eram ignoradas.
+    //
+    // A causa era uma linha só, aqui na origem, juntando `kind: 'reference'`
+    // com `kind: 'product'` no mesmo array.
+    createCreativeAsset.mockResolvedValue({
+      id: 'nova', projectId: 'proj-1', clientId: null, type: 'original', status: 'generating',
+      url: null, thumbnailUrl: null, parentAssetId: null, rootAssetId: null, groupId: null,
+      factorAxis: null, aspectRatio: '4:5', resolution: '2K', width: null, height: null,
+      prompt: 'p', negativePrompt: null, model: 'gpt-image-2', errorMessage: null, filename: null,
+      isClientIntelligence: false, metadata: {},
+      createdAt: '2026-08-18T12:00:00.000Z', updatedAt: '2026-08-18T12:00:00.000Z',
+    } satisfies CreativeAsset);
+    invoke.mockResolvedValue({ data: { imageUrl: 'https://x/nova.png' }, error: null });
+    updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({ id, ...patch }));
+
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+
+    const abrirAnexos = () =>
+      fireEvent.click(screen.getByRole('button', { name: 'Anexar referência, logo, copy, produto ou avatar' }));
+    const soltarArquivo = async (nome: string) => {
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [new File(['x'], nome, { type: 'image/png' })] } });
+      });
+    };
+
+    uploadDataUrlToCreativeStorage.mockResolvedValue('https://x/logo-heiner.png');
+    abrirAnexos();
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar logo' }));
+    await soltarArquivo('logo.png');
+
+    uploadDataUrlToCreativeStorage.mockResolvedValue('https://x/arte-kitesurf.png');
+    abrirAnexos();
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência' }));
+    await soltarArquivo('kitesurf.png');
+
+    uploadDataUrlToCreativeStorage.mockResolvedValue('https://x/foto-do-heiner.png');
+    abrirAnexos();
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar produto' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Pessoa' }));
+    await soltarArquivo('heiner.png');
+
+    fireEvent.change(screen.getByPlaceholderText('O que você quer criar?'), {
+      target: { value: 'assinatura de aulas de kitesurf' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Gerar' }));
+    });
+
+    const { body } = invoke.mock.calls.find((c) => c[0] === 'criativo-generate')![1];
+
+    // A arte de terceiros não chega ao modelo por canal nenhum.
+    expect(body.productImages).toEqual(['https://x/foto-do-heiner.png']);
+    expect(JSON.stringify(body)).not.toContain('arte-kitesurf');
+    // A logo do cliente chega, e é a única marca da peça.
+    expect(body.logoImage).toBe('https://x/logo-heiner.png');
+    // A foto do cliente é tratada como pessoa, não como embalagem.
+    expect(body.prompt).toContain('[TALENT]');
+    expect(body.prompt).not.toContain('[PRODUCT — CRITICAL]');
+  });
+
+  it('a referência anexada vai para a leitura de estilo, e só para lá', async () => {
+    createCreativeAsset.mockResolvedValue({
+      id: 'nova', projectId: 'proj-1', clientId: null, type: 'original', status: 'generating',
+      url: null, thumbnailUrl: null, parentAssetId: null, rootAssetId: null, groupId: null,
+      factorAxis: null, aspectRatio: '4:5', resolution: '2K', width: null, height: null,
+      prompt: 'p', negativePrompt: null, model: 'gpt-image-2', errorMessage: null, filename: null,
+      isClientIntelligence: false, metadata: {},
+      createdAt: '2026-08-18T12:00:00.000Z', updatedAt: '2026-08-18T12:00:00.000Z',
+    } satisfies CreativeAsset);
+    invoke.mockResolvedValue({ data: { imageUrl: 'https://x/nova.png' }, error: null });
+    updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({ id, ...patch }));
+    // URL distinta da do teste anterior de propósito: `analyzeReferences`
+    // tem cache por conjunto de URLs, e reusar a mesma faria esta geração
+    // pular a chamada que o teste quer observar.
+    uploadDataUrlToCreativeStorage.mockResolvedValue('https://x/peca-de-terceiros.png');
+
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência, logo, copy, produto ou avatar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência' }));
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [new File(['x'], 'terceiros.png', { type: 'image/png' })] } });
+    });
+
+    fireEvent.change(screen.getByPlaceholderText('O que você quer criar?'), {
+      target: { value: 'aulas de kitesurf' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Gerar' }));
+    });
+
+    const paraAnalise = invoke.mock.calls.find((c) => c[0] === 'criativo-analyze-refs');
+    expect(paraAnalise![1].body.images).toEqual(['https://x/peca-de-terceiros.png']);
+    const paraGerador = invoke.mock.calls.find((c) => c[0] === 'criativo-generate')!;
+    expect(JSON.stringify(paraGerador[1])).not.toContain('peca-de-terceiros');
+  });
+
   it('anexar produto pelo menu do clipe entra em productImageUrls na geração', async () => {
-    // Mesmo canal que "referência" já alimentava — só reforça que renomear
-    // 'file' para 'product' não quebrou o fio até `buildGenerationRequest`.
+    // Canal PRÓPRIO. O comentário aqui dizia "mesmo canal que referência já
+    // alimentava" — que era, literalmente, a descrição do bug: os dois eram
+    // achatados no mesmo array e o prompt declarava o conjunto inteiro como
+    // o produto anunciado.
     createCreativeAsset.mockResolvedValue({
       id: 'nova', projectId: 'proj-1', clientId: null, type: 'original', status: 'generating',
       url: null, thumbnailUrl: null, parentAssetId: null, rootAssetId: null, groupId: null,

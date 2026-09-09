@@ -178,6 +178,42 @@ describe('AttachMenu', () => {
     expect(screen.getByText('Solte, clique ou cole as referências')).toBeTruthy();
   });
 
+  it('referência: sobe o arquivo, anexa e também salva pra reuso', async () => {
+    uploadDataUrlToCreativeStorage.mockResolvedValue('https://x/ref-enviada.png');
+    const { onAttach, onNewLibraryUpload } = montar();
+    abrir();
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência' }));
+
+    const arquivo = new File(['conteudo'], 'inspiracao.png', { type: 'image/png' });
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [arquivo] } });
+
+    await waitFor(() => expect(onAttach).toHaveBeenCalledWith(expect.objectContaining({
+      kind: 'reference', value: 'https://x/ref-enviada.png', label: 'Referência',
+    })));
+    // Salvar pra reuso é o que faz a grade existir da próxima vez — sem
+    // isso o upload serviria uma geração só, e o painel voltaria a estar
+    // vazio no dia seguinte.
+    expect(onNewLibraryUpload).toHaveBeenCalledWith('reference', 'https://x/ref-enviada.png');
+  });
+
+  it('referência: com uma já salva, a grade continua ali junto do upload', () => {
+    const { onAttach } = montar({ referenceLibrary: [asset('ref1', 'reference')] });
+    abrir();
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência' }));
+
+    // Grade e upload convivem: ter referência salva não pode ser motivo
+    // para não poder subir a próxima.
+    expect(document.querySelector('input[type="file"]')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /Ver ref1\.png/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar' }));
+
+    expect(onAttach).toHaveBeenCalledWith(expect.objectContaining({
+      kind: 'reference', value: 'https://x/ref1.png',
+    }));
+  });
+
 
   it('copy: digitar e confirmar anexa o texto literal', () => {
     const { onAttach } = montar();
@@ -244,6 +280,67 @@ describe('AttachMenu', () => {
       kind: 'product', value: 'https://x/produto-enviado.png', label: 'Produto',
     })));
     expect(onNewLibraryUpload).toHaveBeenCalledWith('product', 'https://x/produto-enviado.png');
+  });
+
+  it('produto: o painel pergunta o que é o anexo, e o padrão é objeto', () => {
+    // Não havia canal para foto de pessoa real — "avatar" só aceita persona
+    // gerada. A foto do cliente ia como produto e recebia linguagem de
+    // embalagem: "preserve every label and piece of text printed on it".
+    montar();
+    abrir();
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar produto' }));
+
+    expect(screen.getByRole('radio', { name: 'Produto/objeto' }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByRole('radio', { name: 'Pessoa' }).getAttribute('aria-checked')).toBe('false');
+    expect(screen.getByText(/rótulo, a embalagem e o texto impresso/)).toBeTruthy();
+  });
+
+  it('produto: escolher "Pessoa" muda o anexo e diz o que isso faz', async () => {
+    uploadDataUrlToCreativeStorage.mockResolvedValue('https://x/foto-do-cliente.png');
+    const { onAttach } = montar();
+    abrir();
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar produto' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Pessoa' }));
+
+    // A escolha some da tela depois de anexar: dizer o que ela faz é o que
+    // a torna uma decisão, e não um botão a adivinhar.
+    expect(screen.getByText(/rosto e a aparência desta pessoa/)).toBeTruthy();
+
+    const arquivo = new File(['conteudo'], 'cliente.png', { type: 'image/png' });
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [arquivo] } });
+
+    await waitFor(() => expect(onAttach).toHaveBeenCalledWith(expect.objectContaining({
+      kind: 'product', subject: 'person', label: 'Pessoa', value: 'https://x/foto-do-cliente.png',
+    })));
+  });
+
+  it('produto: a escolha vale também para o que anexa da grade', () => {
+    // O painel tem DUAS portas de anexo — o upload e a grade do que já foi
+    // salvo. Uma escolha que só governasse a primeira seria pior que
+    // nenhuma: a mesma tela produziria anexos diferentes.
+    const { onAttach } = montar({ productLibrary: [asset('prod1', 'product')] });
+    abrir();
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar produto' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Pessoa' }));
+
+    fireEvent.click(screen.getByRole('button', { name: /Ver prod1\.png/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar' }));
+
+    expect(onAttach).toHaveBeenCalledWith(expect.objectContaining({
+      kind: 'product', subject: 'person', value: 'https://x/prod1.png',
+    }));
+  });
+
+  it('referência e logo não perguntam — não há resposta errada possível ali', () => {
+    montar();
+    abrir();
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência' }));
+    expect(screen.queryByRole('radio', { name: 'Pessoa' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Voltar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar logo' }));
+    expect(screen.queryByRole('radio', { name: 'Pessoa' })).toBeNull();
   });
 
   it('produto: com um já salvo, ver e anexar', () => {

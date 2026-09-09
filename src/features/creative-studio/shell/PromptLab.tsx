@@ -66,7 +66,15 @@ export function PromptLab() {
     resolution: '2K',
     copy,
     logoImageUrl: 'https://exemplo/logo.png',
-    productImageUrls: ['https://exemplo/ref-1.png', 'https://exemplo/ref-2.png'],
+    // Um de cada grupo, para os três blocos aparecerem no texto. As duas
+    // URLs daqui se chamavam `ref-1`/`ref-2` e eram passadas como produto —
+    // sintoma, no fixture, da mesma confusão que o prompt tinha.
+    personImageUrls: ['https://exemplo/foto-do-cliente.png'],
+    productImageUrls: ['https://exemplo/produto.png'],
+    // A referência não tem canal de imagem: o que ela vira é o
+    // `designSystemDoc` abaixo, e esta bandeira é o que diz ao prompt que
+    // aquele documento foi lido de arte de terceiros.
+    designSystemIsThirdParty: camadas.sistema,
     artDirection: camadas.direcao ? DIRECAO_DO_CASO : null,
     copyBlocks: camadas.papeis ? PAPEIS_DO_CASO : null,
     designSystemDoc: camadas.sistema ? SISTEMA_DO_CASO : null,
