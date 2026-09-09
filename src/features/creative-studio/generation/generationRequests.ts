@@ -56,13 +56,47 @@ function moodDoPedido(
   return { ...base, adjetivos: [...base.adjetivos, daDirecao] };
 }
 
+/** O teto que a edge function aplica: `productImages.slice(0, 14)`. */
+const TETO_DE_IMAGENS = 14;
+
+/**
+ * Corta na FONTE, não no destino.
+ *
+ * A edge function corta a CAUDA da pilha — que são justamente os objetos, os
+ * mesmos que o bloco [PRODUCT] indexa por trás. Deixar o corte para lá faria
+ * o prompt afirmar "the last 3" sobre uma pilha em que só 1 chegou, e o
+ * modelo apontaria a instrução de embalagem para a pessoa. Cortando aqui, as
+ * contagens do prompt descrevem o que o modelo vai de fato ver.
+ *
+ * A ordem do sacrifício segue a do risco: objeto antes de pessoa, pessoa
+ * antes de avatar. Perder uma foto de embalagem sai caro; perder o rosto do
+ * cliente sai muito mais.
+ */
+function caberNaPilha(avatares: string[], pessoas: string[], produtos: string[]) {
+  if (avatares.length + pessoas.length + produtos.length <= TETO_DE_IMAGENS) {
+    return { avatares, pessoas, produtos };
+  }
+  const a = avatares.slice(0, TETO_DE_IMAGENS);
+  const p = pessoas.slice(0, TETO_DE_IMAGENS - a.length);
+  return { avatares: a, pessoas: p, produtos: produtos.slice(0, TETO_DE_IMAGENS - a.length - p.length) };
+}
+
 export function buildGenerationRequest(input: {
   brief: string;
   aspectRatio: CreativeAspectRatio;
   resolution?: CreativeResolution;
   language?: string;
   logoImageUrl?: string | null;
+  /** Fotos de PRODUTO — objeto, embalagem. Não inclui pessoa nem referência. */
   productImageUrls?: string[];
+  /**
+   * Fotos de PESSOAS reais anexadas pelo painel de produto.
+   *
+   * Viajam no mesmo canal do backend, logo depois dos avatares e antes dos
+   * objetos, porque o bloco [TALENT] indexa as primeiras imagens da pilha e
+   * o [PRODUCT] as últimas.
+   */
+  personImageUrls?: string[];
   /** Avatares anexados. Viajam no mesmo canal de imagem do backend
    *  (`productImages`), mas ganham um bloco próprio no prompt. */
   avatarImageUrls?: string[];
@@ -85,6 +119,15 @@ export function buildGenerationRequest(input: {
    */
   copyBlocks?: PromptCopyBlocks | null;
   designSystemDoc?: string | null;
+  /**
+   * O `designSystemDoc` foi lido de arte de TERCEIROS.
+   *
+   * Liga a cláusula que proíbe reproduzir a marca, o rosto e as palavras da
+   * peça de origem. Note que as REFERÊNCIAS em si não têm parâmetro aqui —
+   * elas não têm canal de imagem, por desenho. O que chega deste lado é o
+   * texto que foi extraído delas, e a bandeira de onde ele veio.
+   */
+  designSystemIsThirdParty?: boolean;
   antiPadroes?: string[] | null;
   mood?: { adjetivos: string[]; referencias: string[]; evita: string[] } | null;
   /** Default `IMAGE_GENERATION_MODEL.id` — parametrizável para a Fase 7. */
@@ -92,8 +135,11 @@ export function buildGenerationRequest(input: {
 }): GenerationRequest {
   const backendAspect = getBackendAspectFromSelectedRatio(input.aspectRatio);
   const copyTexto = input.copy?.trim();
-  const produtos = input.productImageUrls ?? [];
-  const avatares = input.avatarImageUrls ?? [];
+  const { avatares, pessoas, produtos } = caberNaPilha(
+    input.avatarImageUrls ?? [],
+    input.personImageUrls ?? [],
+    input.productImageUrls ?? [],
+  );
   const prompt = buildCreativePrompt({
     aspect: backendAspect,
     aspectRatio: input.aspectRatio,
@@ -101,6 +147,7 @@ export function buildGenerationRequest(input: {
     language: input.language ?? 'pt-BR',
     businessContext: input.brief,
     avatarCount: avatares.length,
+    personCount: pessoas.length,
     // O que permite ao bloco [PRODUCT] dizer QUAIS imagens são o produto,
     // já que os grupos chegam ao backend no mesmo canal. O total do
     // [ATTACHED PHOTOS] é derivado destes dentro do montador — havia um
@@ -110,6 +157,7 @@ export function buildGenerationRequest(input: {
     hasLogo: !!input.logoImageUrl,
     artDirection: input.artDirection ?? null,
     designSystemDoc: input.designSystemDoc ?? '',
+    designSystemIsThirdParty: !!input.designSystemIsThirdParty,
     antiPadroes: input.antiPadroes ?? null,
     mood: moodDoPedido(input.mood, input.artDirection),
     // Papéis quando eles foram validados; o texto cru quando não. Nunca os
@@ -126,9 +174,15 @@ export function buildGenerationRequest(input: {
       aspectRatio: backendAspect,
       formatRatio: input.aspectRatio,
       model: input.modelId ?? IMAGE_GENERATION_MODEL.id,
-      // Avatar primeiro: o modelo pesa mais as primeiras referências, e a
-      // identidade da pessoa é o que menos pode derreter.
-      productImages: [...avatares, ...produtos],
+      // A ORDEM É O CONTRATO com o prompt: [TALENT] fala das primeiras
+      // imagens e [PRODUCT] das últimas. Avatar e pessoa vêm na frente
+      // também porque o modelo pesa mais as primeiras referências, e a
+      // identidade de alguém é o que menos pode derreter.
+      //
+      // Nenhuma referência de estilo entra aqui. Ela não tem canal de
+      // imagem em caminho nenhum — é a única garantia estrutural de que um
+      // rosto ou uma logo de terceiros não podem ser copiados.
+      productImages: [...avatares, ...pessoas, ...produtos],
       logoImage: input.logoImageUrl ?? null,
       storyReference: null,
     },
@@ -145,11 +199,20 @@ export function buildGenerationRequest(input: {
  */
 export function buildAvatarRequest(input: {
   persona: AvatarPersona;
-  referenceImageUrls?: string[];
+  /**
+   * Fotos da pessoa, para o retrato sair com a semelhança dela.
+   *
+   * Chamava-se `referenceImageUrls`, sentido EXATAMENTE OPOSTO ao
+   * `referenceImageUrls` de `GenerationOptions` — lá a referência é estilo a
+   * imitar e nunca conteúdo a copiar; aqui é conteúdo a copiar. Duas coisas
+   * com o mesmo nome e sentidos contrários no mesmo diretório é como a
+   * confusão entre referência e produto nasceu.
+   */
+  likenessImageUrls?: string[];
   modelId?: string;
 }): GenerationRequest {
-  const referencias = input.referenceImageUrls ?? [];
-  const prompt = buildAvatarPrompt({ persona: input.persona, referenceCount: referencias.length });
+  const fotosDaPessoa = input.likenessImageUrls ?? [];
+  const prompt = buildAvatarPrompt({ persona: input.persona, referenceCount: fotosDaPessoa.length });
   return {
     prompt,
     body: {
@@ -157,7 +220,7 @@ export function buildAvatarRequest(input: {
       aspectRatio: 'story',
       formatRatio: '4:5',
       model: input.modelId ?? IMAGE_GENERATION_MODEL.id,
-      productImages: referencias,
+      productImages: fotosDaPessoa,
       logoImage: null,
       storyReference: null,
     },
@@ -180,6 +243,16 @@ export function buildRetryRequest(asset: {
   prompt: string | null;
   aspectRatio: string | null;
   productImages?: string[];
+  /**
+   * As pessoas reais anexadas pelo painel de produto. Entram entre os
+   * avatares e os objetos, na mesma ordem da geração original.
+   *
+   * Ausente em toda arte gerada antes desta separação — e ali não há como
+   * saber quem era quem, porque tudo foi gravado misturado. Um retry dessas
+   * reproduz a arte como ela saiu, que é o que "tentar novamente"
+   * significa; o conserto de uma arte antiga é gerar de novo.
+   */
+  personImages?: string[];
   /**
    * As pessoas anexadas. Viajam no mesmo canal dos produtos, mas PRIMEIRO —
    * o bloco [TALENT] indexa as primeiras imagens e o [PRODUCT] as últimas.
@@ -207,7 +280,11 @@ export function buildRetryRequest(asset: {
       model: IMAGE_GENERATION_MODEL.id,
       // Mesma ordem da geração original. Inverter aqui faria [TALENT] apontar
       // para o produto e [PRODUCT] para a pessoa.
-      productImages: [...(asset.avatarImages ?? []), ...(asset.productImages ?? [])],
+      productImages: [
+        ...(asset.avatarImages ?? []),
+        ...(asset.personImages ?? []),
+        ...(asset.productImages ?? []),
+      ],
       logoImage: asset.logoImage ?? null,
       storyReference: asset.sourceImage ?? null,
     },
@@ -350,6 +427,9 @@ export function buildFactorVariationRequest(input: {
   language?: string;
   logoImageUrl?: string | null;
   productImageUrls?: string[];
+  /** As pessoas reais da peça-base. As cinco variações são da mesma
+   *  campanha: trocar quem aparece nelas descaracterizaria o lote. */
+  personImageUrls?: string[];
   /** A base, quando o alvo é quadrado: mesma verdade visual do Story. */
   storyReferenceUrl?: string | null;
   /**
@@ -360,11 +440,16 @@ export function buildFactorVariationRequest(input: {
    * justamente no que ele deveria preservar.
    */
   designSystemDoc?: string | null;
+  /** O sistema visual da base veio de referência de terceiros — a cláusula
+   *  que proíbe reproduzir a marca de origem precisa vir junto. */
+  designSystemIsThirdParty?: boolean;
   antiPadroes?: string[] | null;
 }): GenerationRequest {
   const v = input.variation;
   const backendAspect = getBackendAspectFromSelectedRatio(input.aspectRatio);
-  const produtos = input.productImageUrls ?? [];
+  // Sem avatar neste caminho: o Fator parte de uma arte pronta, e quem
+  // aparecia nela veio pelo painel de produto ou já está no pixel.
+  const { pessoas, produtos } = caberNaPilha([], input.personImageUrls ?? [], input.productImageUrls ?? []);
 
   // O contexto carrega o DNA da arte aprovada E a tese nova. Sem o original
   // a variação vira outra marca; sem a tese vira a mesma peça repintada.
@@ -389,11 +474,13 @@ export function buildFactorVariationRequest(input: {
     resolution: input.resolution ?? '2K',
     language: input.language ?? 'pt-BR',
     businessContext: contexto,
+    personCount: pessoas.length,
     // O Fator gera cinco variações da MESMA oferta: se o produto muda de
     // uma para outra, o lote deixa de ser comparável.
     productCount: produtos.length,
     hasLogo: !!input.logoImageUrl,
     designSystemDoc: input.designSystemDoc ?? '',
+    designSystemIsThirdParty: !!input.designSystemIsThirdParty,
     antiPadroes: input.antiPadroes ?? null,
     hasStoryReference: backendAspect === 'square' && !!input.storyReferenceUrl,
     // A copy da variação é texto FINAL escrito pelo estrategista, com papel
@@ -422,7 +509,9 @@ export function buildFactorVariationRequest(input: {
       aspectRatio: backendAspect,
       formatRatio: input.aspectRatio,
       model: IMAGE_GENERATION_MODEL.id,
-      productImages: produtos,
+      // Mesma ordem-contrato da geração normal: [TALENT] indexa a frente,
+      // [PRODUCT] a cauda.
+      productImages: [...pessoas, ...produtos],
       logoImage: input.logoImageUrl ?? null,
       storyReference: backendAspect === 'square' ? (input.storyReferenceUrl ?? null) : null,
     },

@@ -30,6 +30,15 @@ describe('countAssetUsage', () => {
     expect(countAssetUsage([arte({ avatarImages: ['https://x/ana.png'] })], 'https://x/ana.png')).toBe(1);
   });
 
+  it('conta a referência e a pessoa, que ganharam campos próprios', () => {
+    // Enquanto referência e produto eram achatados num campo só, este lugar
+    // acertava por acidente. Ao separá-los, esquecer os campos novos zeraria
+    // a contagem — e a confirmação de apagar, que é exclusão SEM desfazer,
+    // voltaria a dizer "tem certeza?" e mais nada.
+    expect(countAssetUsage([arte({ referenceImages: [REF] })], REF)).toBe(1);
+    expect(countAssetUsage([arte({ personImages: ['https://x/heiner.png'] })], 'https://x/heiner.png')).toBe(1);
+  });
+
   it('a mesma arte com o insumo em dois campos conta uma vez', () => {
     // A pergunta é quantas ARTES perdem o anexo, não quantas menções existem.
     const acervo = [arte({ productImages: [LOGO], logoImage: LOGO })];
