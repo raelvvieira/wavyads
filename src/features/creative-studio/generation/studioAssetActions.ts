@@ -57,7 +57,25 @@ export interface GenerationOptions {
   /** Texto final anexado via "Anexar copy" — renderizado verbatim. */
   copy?: string | null;
   logoImageUrl?: string | null;
+  /**
+   * As referências de ESTILO.
+   *
+   * NÃO viajam como imagem para o gerador, em caminho nenhum. São lidas por
+   * `analyzeReferences` e viram texto — `designSystemDoc`, `mood`,
+   * `antiPadroes`. Foi anexá-las ao gerador que fez uma arte sair com a
+   * pessoa e a logo de uma peça de terceiros no lugar das do cliente: o
+   * prompt as declarava como "the PRODUCT being advertised", e o modelo
+   * obedeceu.
+   *
+   * A garantia aqui é estrutural, não uma instrução a ser respeitada: é
+   * impossível copiar um rosto que o modelo nunca viu.
+   */
+  referenceImageUrls?: string[];
+  /** Fotos de PRODUTO — objeto, embalagem. */
   productImageUrls?: string[];
+  /** Fotos de PESSOAS reais, anexadas pelo painel de produto. Recebem a
+   *  mesma proteção de identidade do avatar. */
+  personImageUrls?: string[];
   /** Avatares anexados — entram como talento do anúncio. */
   avatarImageUrls?: string[];
   /** Contexto que ajuda a direção de arte a acertar o tom. */
@@ -87,7 +105,8 @@ export interface StudioAssetActions {
   /** Retrato de uma persona — vira asset `avatar`, reutilizável depois. */
   generateAvatar(
     persona: AvatarPersona,
-    referenceImageUrls?: string[],
+    /** Fotos DA pessoa, para o retrato sair com a semelhança dela. */
+    likenessImageUrls?: string[],
     /** A linha em `generating`, para o card aparecer antes da imagem. */
     onCreated?: (asset: CreativeAsset) => void,
   ): Promise<CreativeAsset>;
@@ -151,12 +170,18 @@ async function runGeneration(
 export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAssetActions {
   return {
     async generate(brief, aspectRatio, options = {}) {
+      const referencias = options.referenceImageUrls ?? [];
       const produtos = options.productImageUrls ?? [];
+      const pessoas = options.personImageUrls ?? [];
       const avatares = options.avatarImageUrls ?? [];
       const anexos = {
         logoImage: options.logoImageUrl ?? null,
         productImages: produtos,
+        personImages: pessoas,
         avatarImages: avatares,
+        // Gravadas para procedência e para a contagem de uso do menu de
+        // anexos — nunca relidas como imagem de geração.
+        referenceImages: referencias,
       };
 
       /**
@@ -176,8 +201,9 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
         modelId: options.modelId,
         copy: options.copy,
         logoImageUrl: options.logoImageUrl,
-        productImageUrls: options.productImageUrls,
-        avatarImageUrls: options.avatarImageUrls,
+        productImageUrls: produtos,
+        personImageUrls: pessoas,
+        avatarImageUrls: avatares,
       });
       const projectId = await deps.ensureProjectId();
       const row = await deps.createAsset({
@@ -198,11 +224,15 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
       // provedor não conseguiu ler viram uma geração mais simples, nunca
       // uma geração a menos — o usuário pediu uma arte, não um relatório de
       // indisponibilidade.
+      // Lê as REFERÊNCIAS, e só elas. Isto lia `produtos` — o erro inverso
+      // do relatado, e igualmente errado: a foto da embalagem do cliente
+      // era decodificada como se fosse a linguagem visual a imitar, e ainda
+      // custava uma chamada de visão em toda geração com produto.
       let analise: ReferenceAnalysis | null = null;
-      if (produtos.length > 0 && deps.analyzeReferences) {
+      if (referencias.length > 0 && deps.analyzeReferences) {
         options.onStage?.('reading-references');
         try {
-          analise = await deps.analyzeReferences(produtos);
+          analise = await deps.analyzeReferences(referencias);
         } catch {
           analise = null;
         }
@@ -219,9 +249,12 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
             language: options.language,
             aspectRatio,
             designSystemDoc: analise?.designSystemDoc ?? null,
-            hasReferences: produtos.length > 0,
+            hasReferences: referencias.length > 0,
             hasProduct: produtos.length > 0,
-            hasAvatar: avatares.length > 0,
+            // Pessoa e avatar são a MESMA pergunta para a direção de arte:
+            // "há um humano real no quadro?". Mapear aqui é o que dispensa
+            // um campo novo — e, com ele, um deploy da edge function.
+            hasAvatar: avatares.length + pessoas.length > 0,
             hasLogo: !!options.logoImageUrl,
           });
         } catch {
@@ -237,11 +270,15 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
         modelId: options.modelId,
         copy: options.copy,
         logoImageUrl: options.logoImageUrl,
-        productImageUrls: options.productImageUrls,
-        avatarImageUrls: options.avatarImageUrls,
+        productImageUrls: produtos,
+        personImageUrls: pessoas,
+        avatarImageUrls: avatares,
         artDirection: direcao.artDirection,
         copyBlocks: direcao.copyBlocks,
         designSystemDoc: analise?.designSystemDoc ?? null,
+        // O documento saiu de arte de terceiros: a cláusula que proíbe
+        // reproduzir a marca de origem só existe quando houve referência.
+        designSystemIsThirdParty: referencias.length > 0,
         antiPadroes: analise?.antiPadroes ?? null,
         mood: analise?.mood ?? null,
       });
@@ -262,13 +299,17 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
           copyBlocks: direcao.copyBlocks,
           designSystemDoc: analise?.designSystemDoc ?? null,
           antiPadroes: analise?.antiPadroes ?? null,
+          // O Fator e o retry precisam saber que o sistema visual veio de
+          // fora, para reemitir a proibição de reproduzir a marca de
+          // origem. `undefined` marca linha gerada antes desta separação.
+          designSystemFromReference: referencias.length > 0,
         },
       });
       return runGeneration(deps, comPrompt, body);
     },
 
-    async generateAvatar(persona, referenceImageUrls = [], onCreated) {
-      const { prompt, body } = buildAvatarRequest({ persona, referenceImageUrls });
+    async generateAvatar(persona, likenessImageUrls = [], onCreated) {
+      const { prompt, body } = buildAvatarRequest({ persona, likenessImageUrls });
       const projectId = await deps.ensureProjectId();
       const row = await deps.createAsset({
         projectId,
@@ -283,7 +324,10 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
         // Os traços ficam guardados, não só o prompt: é o que permite
         // reabrir o customizador com o que foi escolhido e regerar a
         // persona depois, em vez de só olhar o retrato pronto.
-        metadata: { persona, referenceImages: referenceImageUrls },
+        // `likenessImages`, e não `referenceImages`: neste metadata elas são
+        // fotos DA pessoa, a serem copiadas — o oposto do que
+        // `referenceImages` passou a significar numa arte gerada.
+        metadata: { persona, likenessImages: likenessImageUrls },
       });
       onCreated?.(row);
       return runGeneration(deps, row, body);
@@ -322,8 +366,10 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
         resolution: base.resolution as CreativeResolution | null,
         logoImageUrl: base.metadata?.logoImage ?? null,
         productImageUrls: base.metadata?.productImages ?? [],
+        personImageUrls: base.metadata?.personImages ?? [],
         storyReferenceUrl: base.url,
         designSystemDoc: base.metadata?.designSystemDoc ?? null,
+        designSystemIsThirdParty: base.metadata?.designSystemFromReference ?? false,
         antiPadroes: base.metadata?.antiPadroes ?? null,
       }));
 
@@ -370,6 +416,14 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
           validation: v.validation,
           logoImage: base.metadata?.logoImage ?? null,
           productImages: base.metadata?.productImages ?? [],
+          personImages: base.metadata?.personImages ?? [],
+          // O sistema visual e a procedência dele também descem para as
+          // cinco. Sem isto, um retry de variação perdia o design system da
+          // base — ele só vivia no prompt — e reemitia a arte sem a camada
+          // que a fazia parecer com a peça aprovada.
+          designSystemDoc: base.metadata?.designSystemDoc ?? null,
+          antiPadroes: base.metadata?.antiPadroes ?? null,
+          designSystemFromReference: base.metadata?.designSystemFromReference ?? false,
         },
       })));
 
@@ -399,6 +453,7 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
         aspectRatio: asset.aspectRatio,
         logoImage: asset.metadata?.logoImage ?? null,
         productImages: asset.metadata?.productImages ?? [],
+        personImages: asset.metadata?.personImages ?? [],
         avatarImages: asset.metadata?.avatarImages ?? [],
         sourceImage: asset.metadata?.sourceImage ?? null,
       });
@@ -435,7 +490,9 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
           sourceImage: asset.url,
           logoImage: asset.metadata?.logoImage ?? null,
           productImages: asset.metadata?.productImages ?? [],
+          personImages: asset.metadata?.personImages ?? [],
           avatarImages: asset.metadata?.avatarImages ?? [],
+          referenceImages: asset.metadata?.referenceImages ?? [],
         },
       });
       onCreated?.(row);

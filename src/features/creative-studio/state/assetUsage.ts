@@ -16,13 +16,25 @@ import type { CreativeAsset } from '../types/creative';
  * em vez de prometer ser o total do banco.
  */
 
-/** Onde uma URL de insumo pode estar gravada numa arte. */
+/**
+ * Onde uma URL de insumo pode estar gravada numa arte.
+ *
+ * A lista tem de cobrir TODOS os grupos que a geração grava. Enquanto
+ * referência e produto eram achatados num campo só, este lugar acertava por
+ * acidente; ao separá-los, esquecer os campos novos zeraria a contagem — e
+ * a confirmação de apagar, que é uma exclusão sem desfazer, voltaria a
+ * dizer "tem certeza?" e mais nada.
+ */
 function urlsDeInsumo(asset: CreativeAsset): string[] {
   const meta = asset.metadata as any;
   if (!meta) return [];
-  const produtos = Array.isArray(meta.productImages) ? meta.productImages : [];
-  const avatares = Array.isArray(meta.avatarImages) ? meta.avatarImages : [];
-  return [...produtos, ...avatares, meta.logoImage].filter(
+  // `likenessImages` são as fotos que geraram um avatar; `referenceImages`
+  // é o nome antigo delas, ainda gravado nos avatares criados antes da
+  // separação — e, numa arte, as referências de estilo. Papéis diferentes,
+  // mesma pergunta: esta arte depende daquele arquivo?
+  const listas = ['productImages', 'personImages', 'avatarImages', 'referenceImages', 'likenessImages']
+    .flatMap((campo) => (Array.isArray(meta[campo]) ? meta[campo] : []));
+  return [...listas, meta.logoImage].filter(
     (valor): valor is string => typeof valor === 'string' && valor.length > 0,
   );
 }

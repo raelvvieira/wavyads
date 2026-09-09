@@ -104,7 +104,7 @@ describe('generate', () => {
     deps.analyzeReferences = vi.fn(async () => { throw new Error('provedor recusou a imagem'); });
 
     const resultado = await createStudioAssetActions(deps).generate('x', '9:16', {
-      productImageUrls: ['https://x/ref.png'],
+      referenceImageUrls: ['https://x/ref.png'],
     });
 
     expect(resultado.status).toBe('ready');
@@ -121,7 +121,7 @@ describe('generate', () => {
     }));
 
     const resultado = await createStudioAssetActions(deps).generate('x', '9:16', {
-      productImageUrls: ['https://x/ref.png'],
+      referenceImageUrls: ['https://x/ref.png'],
     });
 
     const prompt = (deps.invoke as any).mock.calls[0][1].prompt;
@@ -139,11 +139,161 @@ describe('generate', () => {
     const estagios: string[] = [];
 
     await createStudioAssetActions(deps).generate('x', '9:16', {
-      productImageUrls: ['https://x/ref.png'],
+      referenceImageUrls: ['https://x/ref.png'],
       onStage: (e) => estagios.push(e),
     });
 
     expect(estagios).toEqual(['reading-references', 'directing', 'generating']);
+  });
+
+  it('analyzeReferences recebe as REFERÊNCIAS, e nunca as fotos de produto', async () => {
+    // O erro inverso do relatado, e igualmente presente: a foto da
+    // embalagem do cliente era decodificada como se fosse a linguagem
+    // visual a imitar — e ainda custava uma chamada de visão em toda
+    // geração com produto anexado.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    deps.analyzeReferences = vi.fn(async () => null);
+
+    await createStudioAssetActions(deps).generate('x', '4:5', {
+      referenceImageUrls: ['https://x/ref-kitesurf.png'],
+      productImageUrls: ['https://x/lata.png'],
+    });
+
+    expect(deps.analyzeReferences).toHaveBeenCalledWith(['https://x/ref-kitesurf.png']);
+  });
+
+  it('sem referência anexada, a leitura de estilo nem é chamada', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    deps.analyzeReferences = vi.fn(async () => null);
+
+    await createStudioAssetActions(deps).generate('x', '4:5', {
+      productImageUrls: ['https://x/lata.png'],
+    });
+
+    expect(deps.analyzeReferences).not.toHaveBeenCalled();
+  });
+
+  it('a referência NÃO viaja como imagem para o gerador', async () => {
+    // A regressão de origem, no ponto em que ela sai do sistema. A garantia
+    // é estrutural: não há canal por onde a referência chegue ao modelo.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    deps.analyzeReferences = vi.fn(async () => null);
+
+    await createStudioAssetActions(deps).generate('x', '4:5', {
+      referenceImageUrls: ['https://x/ref-kitesurf.png'],
+      productImageUrls: ['https://x/lata.png'],
+      logoImageUrl: 'https://x/logo-cliente.png',
+    });
+
+    const enviado = (deps.invoke as any).mock.calls.find((c: any[]) => c[0] === 'criativo-generate')[1];
+    expect(enviado.productImages).toEqual(['https://x/lata.png']);
+    expect(JSON.stringify(enviado)).not.toContain('ref-kitesurf');
+  });
+
+  it('hasReferences e hasProduct deixam de ser a mesma expressão', async () => {
+    // Eram literalmente `produtos.length > 0` nas duas, então a direção de
+    // arte nunca soube distinguir o que ia no quadro do que era só estilo.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    deps.analyzeReferences = vi.fn(async () => null);
+    deps.directArt = vi.fn(async () => ({ artDirection: null, copyBlocks: null }));
+
+    await createStudioAssetActions(deps).generate('x', '4:5', {
+      referenceImageUrls: ['https://x/ref.png'],
+    });
+    expect(deps.directArt).toHaveBeenCalledWith(expect.objectContaining({
+      hasReferences: true, hasProduct: false, hasAvatar: false,
+    }));
+
+    (deps.directArt as any).mockClear();
+    await createStudioAssetActions(deps).generate('x', '4:5', {
+      productImageUrls: ['https://x/lata.png'],
+    });
+    expect(deps.directArt).toHaveBeenCalledWith(expect.objectContaining({
+      hasReferences: false, hasProduct: true, hasAvatar: false,
+    }));
+  });
+
+  it('pessoa anexada acende hasAvatar — a direção de arte só pergunta se há humano', async () => {
+    // Mapear pessoa para o booleano que a edge function já conhece é o que
+    // dispensa um campo novo lá, e com ele um deploy.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    deps.directArt = vi.fn(async () => ({ artDirection: null, copyBlocks: null }));
+
+    await createStudioAssetActions(deps).generate('x', '4:5', {
+      personImageUrls: ['https://x/heiner.png'],
+    });
+
+    expect(deps.directArt).toHaveBeenCalledWith(expect.objectContaining({ hasAvatar: true }));
+  });
+
+  it('a pessoa entra no bloco de talento, e o objeto no de produto', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+
+    await createStudioAssetActions(deps).generate('x', '4:5', {
+      personImageUrls: ['https://x/heiner.png'],
+      productImageUrls: ['https://x/prancha.png'],
+    });
+
+    const enviado = (deps.invoke as any).mock.calls[0][1];
+    // A ordem é o contrato: talento na frente, produto na cauda.
+    expect(enviado.productImages).toEqual(['https://x/heiner.png', 'https://x/prancha.png']);
+    expect(enviado.prompt).toContain('The first 1 attached photograph(s) are the TALENT');
+    expect(enviado.prompt).toContain('The last 1 attached photograph(s) are the PRODUCT');
+  });
+
+  it('o metadata da arte distingue os quatro grupos, nas duas gravações', async () => {
+    // A gravação preliminar é a que sobrevive quando a aba fecha no meio do
+    // pedido — se ela guardar a mistura, o retry a herda para sempre.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    deps.analyzeReferences = vi.fn(async () => null);
+
+    const resultado = await createStudioAssetActions(deps).generate('x', '4:5', {
+      referenceImageUrls: ['https://x/ref.png'],
+      personImageUrls: ['https://x/heiner.png'],
+      productImageUrls: ['https://x/prancha.png'],
+      avatarImageUrls: ['https://x/avatar.png'],
+      logoImageUrl: 'https://x/logo.png',
+    });
+
+    expect(resultado.metadata).toMatchObject({
+      referenceImages: ['https://x/ref.png'],
+      personImages: ['https://x/heiner.png'],
+      productImages: ['https://x/prancha.png'],
+      avatarImages: ['https://x/avatar.png'],
+      logoImage: 'https://x/logo.png',
+      designSystemFromReference: true,
+    });
+  });
+
+  it('o retry devolve os três grupos na mesma ordem da geração', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    const arte = assetBase({
+      status: 'failed', prompt: 'prompt salvo',
+      metadata: {
+        avatarImages: ['https://x/avatar.png'],
+        personImages: ['https://x/heiner.png'],
+        productImages: ['https://x/prancha.png'],
+        referenceImages: ['https://x/ref.png'],
+      },
+    });
+    deps.linhas.set(arte.id, arte);
+
+    await createStudioAssetActions(deps).retry(arte);
+
+    const enviado = (deps.invoke as any).mock.calls[0][1];
+    expect(enviado.productImages).toEqual([
+      'https://x/avatar.png', 'https://x/heiner.png', 'https://x/prancha.png',
+    ]);
+    // A referência não volta como imagem nem no retry.
+    expect(JSON.stringify(enviado)).not.toContain('x/ref.png');
   });
 
   it('falha do provedor grava a MESMA linha como failed, com a mensagem real', async () => {
@@ -576,7 +726,7 @@ describe('o card ocupa o lugar da arte antes de a arte existir', () => {
     });
 
     await createStudioAssetActions(deps).generate('x', '9:16', {
-      productImageUrls: ['https://x/ref.png'],
+      referenceImageUrls: ['https://x/ref.png'],
       onAssetCreated: (a) => eventos.push(`card:${a.status}`),
     });
 

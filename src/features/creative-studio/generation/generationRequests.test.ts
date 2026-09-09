@@ -179,6 +179,79 @@ describe('buildRetryRequest', () => {
   });
 });
 
+describe('buildGenerationRequest — a referência não tem canal de imagem', () => {
+  it('uma URL anexada como referência NUNCA aparece em body.productImages', () => {
+    // A regressão de origem: `kind: 'reference'` e `kind: 'product'` eram
+    // achatados no mesmo array, e o prompt declarava o resultado como "the
+    // PRODUCT being advertised". A arte saía com a pessoa e a logo da peça
+    // de terceiros no lugar das do cliente.
+    //
+    // O builder nem tem parâmetro para receber uma referência. Este teste
+    // registra isso como decisão, e não como acidente.
+    const { body } = buildGenerationRequest({
+      brief: 'aula de kitesurf',
+      aspectRatio: '4:5',
+      productImageUrls: ['https://x/prancha.png'],
+      personImageUrls: ['https://x/heiner.png'],
+      avatarImageUrls: ['https://x/avatar.png'],
+      logoImageUrl: 'https://x/logo-heiner.png',
+      designSystemDoc: 'Layered grid, kitesurf wordmark top-left',
+      designSystemIsThirdParty: true,
+    });
+
+    expect(body.productImages).toEqual([
+      'https://x/avatar.png', 'https://x/heiner.png', 'https://x/prancha.png',
+    ]);
+    expect(JSON.stringify(body.productImages)).not.toContain('kitesurf');
+    expect(body.storyReference).toBeNull();
+  });
+
+  it('o que a referência vira é TEXTO, com a cláusula que proíbe copiar a origem', () => {
+    const { prompt } = buildGenerationRequest({
+      brief: 'x', aspectRatio: '4:5',
+      designSystemDoc: 'Layered grid, athlete mid-frame',
+      designSystemIsThirdParty: true,
+    });
+    expect(prompt).toContain('[DESIGN SYSTEM]');
+    expect(prompt).toContain('[STYLE REFERENCE — DESCRIPTION ONLY, NOT SOURCE MATERIAL]');
+  });
+
+  it('a ordem da pilha é avatar, pessoa, objeto — é ela que sustenta os índices', () => {
+    const { prompt, body } = buildGenerationRequest({
+      brief: 'x', aspectRatio: '4:5',
+      avatarImageUrls: ['https://x/av1.png'],
+      personImageUrls: ['https://x/pe1.png', 'https://x/pe2.png'],
+      productImageUrls: ['https://x/ob1.png'],
+    });
+    expect(body.productImages).toEqual([
+      'https://x/av1.png', 'https://x/pe1.png', 'https://x/pe2.png', 'https://x/ob1.png',
+    ]);
+    expect(prompt).toContain('The first 3 attached photograph(s) are the TALENT');
+    expect(prompt).toContain('The last 1 attached photograph(s) are the PRODUCT');
+  });
+
+  it('a pilha respeita o teto de 14 da edge function, sacrificando objeto antes de talento', () => {
+    // A edge function corta a CAUDA (`slice(0, 14)`) — justamente os
+    // objetos que o [PRODUCT] indexa por trás. Sem cortar aqui, o prompt
+    // afirmaria "the last 5" sobre uma pilha em que 2 chegaram, e a
+    // instrução de embalagem apontaria para uma pessoa.
+    const url = (p: string, n: number) => Array.from({ length: n }, (_, i) => `https://x/${p}${i}.png`);
+    const { prompt, body } = buildGenerationRequest({
+      brief: 'x', aspectRatio: '4:5',
+      avatarImageUrls: url('av', 8),
+      personImageUrls: url('pe', 4),
+      productImageUrls: url('ob', 5),
+    });
+
+    expect(body.productImages).toHaveLength(14);
+    expect(prompt).toContain('The first 12 attached photograph(s) are the TALENT');
+    expect(prompt).toContain('The last 2 attached photograph(s) are the PRODUCT');
+    // Os avatares e as pessoas ficam inteiros; o corte cai nos objetos.
+    expect(body.productImages).toContain('https://x/pe3.png');
+    expect(body.productImages).not.toContain('https://x/ob2.png');
+  });
+});
+
 describe('buildGenerationRequest — avatar como talento', () => {
   it('avatar anexado abre o bloco [TALENT] e vem primeiro nas referências', () => {
     // Primeiro na lista de propósito: o modelo pesa mais as primeiras
