@@ -35,6 +35,22 @@ export interface StudioLibraryEntry {
 /** O que o menu de anexos do dock sabe anexar. */
 export type DockAttachmentKind = 'reference' | 'logo' | 'copy' | 'product' | 'avatar';
 
+/**
+ * O que um anexo de produto É.
+ *
+ * A distinção não é cosmética: `person` recebe proteção de identidade —
+ * rosto, pele, cabelo — e `object` recebe linguagem de embalagem — rótulo,
+ * tipografia impressa, variante. Mandar os dois pelo mesmo bloco produzia
+ * "preserve every label and piece of text printed on it" sobre a foto de um
+ * cliente, e "do NOT alter faces" sobre uma lata.
+ *
+ * Existe aqui, no anexo, e não no asset, porque `creative_assets.type` tem
+ * CHECK constraint e a consulta da grade omite `metadata` de propósito: as
+ * duas portas para persistir isso exigiriam migração. O custo de não
+ * persistir é reescolher ao reanexar da grade.
+ */
+export type ProductSubject = 'object' | 'person';
+
 export interface DockAttachment {
   id: string;
   kind: DockAttachmentKind;
@@ -42,4 +58,7 @@ export interface DockAttachment {
   thumbnailUrl?: string | null;
   /** URL para reference/logo/file; o texto em si para copy. */
   value: string;
+  /** Só para `kind: 'product'`. Ausente = `'object'`, que é o
+   *  comportamento que já existia — nenhum anexo antigo muda de sentido. */
+  subject?: ProductSubject;
 }

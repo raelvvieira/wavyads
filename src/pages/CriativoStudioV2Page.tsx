@@ -602,7 +602,26 @@ export default function CriativoStudioV2Page() {
         // Sem seleção: gerar uma arte nova, no formato escolhido no popover.
         const logo = attachments.find((a) => a.kind === 'logo');
         const copyAnexada = attachments.find((a) => a.kind === 'copy');
-        const imagens = attachments.filter((a) => a.kind === 'reference' || a.kind === 'product').map((a) => a.value);
+        /**
+         * Cada papel no seu canal.
+         *
+         * Aqui havia uma linha só, juntando referência e produto no mesmo
+         * array. O `kind: 'reference'` morria nela e nunca mais existia:
+         * daí em diante tudo era `productImages`, o prompt declarava o
+         * conjunto como "the PRODUCT being advertised... preserve every
+         * label, logo and piece of text printed on it", e a arte saía com a
+         * pessoa e a logo da peça de referência no lugar das do cliente.
+         *
+         * A referência sai da pilha de imagens de vez. Ela é LIDA e vira
+         * texto — sistema visual, mood, anti-padrões. É a única garantia
+         * que não depende de o modelo obedecer: ele não vê o que não
+         * recebe.
+         */
+        const referencias = attachments.filter((a) => a.kind === 'reference').map((a) => a.value);
+        // `!== 'person'` e não `=== 'object'`: anexo sem a escolha é objeto,
+        // que é como tudo se comportava antes de a pergunta existir.
+        const pessoas = attachments.filter((a) => a.kind === 'product' && a.subject === 'person').map((a) => a.value);
+        const objetos = attachments.filter((a) => a.kind === 'product' && a.subject !== 'person').map((a) => a.value);
         const avatares = attachments.filter((a) => a.kind === 'avatar').map((a) => a.value);
 
         const resultado = await actions.generate(texto, ratio, {
@@ -610,7 +629,9 @@ export default function CriativoStudioV2Page() {
           modelId,
           copy: copyAnexada?.value ?? null,
           logoImageUrl: logo?.value ?? null,
-          productImageUrls: imagens,
+          referenceImageUrls: referencias,
+          productImageUrls: objetos,
+          personImageUrls: pessoas,
           avatarImageUrls: avatares,
           clientName,
           onStage: setEstagio,
@@ -784,7 +805,13 @@ export default function CriativoStudioV2Page() {
         thumbnailUrl: alvo.thumbnailUrl ?? alvo.url,
         value: alvo.url,
       });
-      toast({ title: 'Adicionada como referência', description: 'Entra no próximo pedido de geração.' });
+      // Diz o que mudou: a referência deixou de ser copiada. Para arte de
+      // terceiros é o conserto; para uma arte do próprio cliente é uma
+      // perda, e o usuário precisa saber qual dos dois vai acontecer.
+      toast({
+        title: 'Adicionada como referência',
+        description: 'Entra no próximo pedido como referência de ESTILO — a imagem não é copiada.',
+      });
       return;
     }
 

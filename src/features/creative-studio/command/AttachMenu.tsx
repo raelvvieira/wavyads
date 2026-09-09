@@ -9,7 +9,7 @@ import type { CopyBankEntry } from '../api/copyBank';
 import { suggestCopyVariations, type CopyVariation } from '../api/copySuggestions';
 import { countAssetUsage, usageSentence } from '../state/assetUsage';
 import type { CreativeAsset } from '../types/creative';
-import type { DockAttachment, DockAttachmentKind } from '../types/studioUi';
+import type { DockAttachment, DockAttachmentKind, ProductSubject } from '../types/studioUi';
 
 interface AttachMenuProps {
   /** Já filtrado por `type: 'reference'` — o menu não decide o que é referência. */
@@ -258,6 +258,7 @@ interface FocoDaGrade {
 function GradeDeInsumos({
   itens,
   kind,
+  subject,
   allAssets,
   alturaLista = 'max-h-64',
   onAnexar,
@@ -266,6 +267,9 @@ function GradeDeInsumos({
 }: {
   itens: { asset: CreativeAsset; label: string }[];
   kind: 'reference' | 'logo' | 'product' | 'avatar';
+  /** Viaja junto no anexo, quando o painel oferece a escolha. O anexo vindo
+   *  da grade precisa carregar a mesma decisão que o vindo do upload. */
+  subject?: ProductSubject;
   /** Acervo carregado — só para contar em quantas artes o insumo entrou. */
   allAssets: CreativeAsset[];
   alturaLista?: string;
@@ -389,6 +393,7 @@ function GradeDeInsumos({
                 type="button"
                 onClick={() => focado.asset.url && onAnexar({
                   kind,
+                  subject,
                   label: focado.label,
                   thumbnailUrl: focado.asset.thumbnailUrl ?? focado.asset.url,
                   value: focado.asset.url,
@@ -405,10 +410,28 @@ function GradeDeInsumos({
   );
 }
 
+/** As duas respostas do painel de produto, na ordem em que aparecem. */
+const SUBJECTS: { valor: ProductSubject; rotulo: string }[] = [
+  { valor: 'object', rotulo: 'Produto/objeto' },
+  { valor: 'person', rotulo: 'Pessoa' },
+];
+
+/** O rótulo de um insumo que chegou sem nome de arquivo. */
+const ROTULO_PADRAO: Record<'reference' | 'logo' | 'product', string> = {
+  reference: 'Referência',
+  logo: 'Logo',
+  product: 'Produto',
+};
+
 /**
- * Logo e produto compartilham a mesma mecânica: uma grade do que já foi
- * salvo para este cliente, e um upload embaixo pra adicionar um novo — que
- * também vira reutilizável, via `onNovoUpload`.
+ * Referência, logo e produto compartilham a mesma mecânica: uma grade do
+ * que já foi salvo para este cliente, e um upload embaixo pra adicionar um
+ * novo — que também vira reutilizável, via `onNovoUpload`.
+ *
+ * Só o de produto pergunta o que o anexo É: uma pessoa recebe proteção de
+ * identidade, um objeto recebe linguagem de embalagem, e mandar os dois
+ * pelo mesmo bloco produzia "preserve every label and piece of text printed
+ * on it" sobre o rosto de um cliente.
  */
 function PainelBiblioteca({
   titulo,
@@ -436,7 +459,15 @@ function PainelBiblioteca({
   onDetalheAberto: (aberto: boolean) => void;
 }) {
   const [enviando, setEnviando] = useState(false);
-  const rotuloPadrao = kind === 'logo' ? 'Logo' : kind === 'reference' ? 'Referência' : 'Produto';
+  /**
+   * Só o painel de produto pergunta. Referência é sempre estilo, logo é
+   * sempre logo — oferecer a escolha ali seria uma pergunta sem resposta
+   * errada possível.
+   */
+  const perguntaOQueE = kind === 'product';
+  const [subject, setSubject] = useState<ProductSubject>('object');
+  const subjectDoAnexo = perguntaOQueE ? subject : undefined;
+  const rotuloPadrao = subjectDoAnexo === 'person' ? 'Pessoa' : ROTULO_PADRAO[kind];
 
   // `ImageDropzone` entrega data URLs, nunca `File` — sobe cada uma assim
   // que aparece e anexa. `images` fica sempre vazio de propósito: o
@@ -448,7 +479,7 @@ function PainelBiblioteca({
       for (const dataUrl of dataUrls) {
         const path = `attachments/${kind}/${crypto.randomUUID()}.png`;
         const url = await uploadDataUrlToCreativeStorage({ dataUrl, path });
-        onAnexar({ kind, label: rotuloPadrao, thumbnailUrl: url, value: url });
+        onAnexar({ kind, subject: subjectDoAnexo, label: rotuloPadrao, thumbnailUrl: url, value: url });
         onNovoUpload(kind, url);
       }
     } finally {
@@ -459,10 +490,40 @@ function PainelBiblioteca({
   return (
     <div>
       <VoltarHeader titulo={titulo} onVoltar={onVoltar} />
+      {perguntaOQueE && (
+        <div className="border-b border-white/10 px-2.5 py-2.5">
+          <div role="radiogroup" aria-label="O que é este anexo" className="flex gap-1.5">
+            {SUBJECTS.map(({ valor, rotulo }) => (
+              <button
+                key={valor}
+                type="button"
+                role="radio"
+                aria-checked={subject === valor}
+                onClick={() => setSubject(valor)}
+                className={cn(
+                  'flex-1 rounded-[var(--wavy-radius-control)] py-1.5 text-[12px] font-medium transition-colors duration-150',
+                  subject === valor ? 'btn-accent' : 'btn-glass text-white/70',
+                )}
+              >
+                {rotulo}
+              </button>
+            ))}
+          </div>
+          {/* A escolha muda o que o modelo recebe e some da tela depois de
+              anexar. Dizer o que ela faz é o que a torna uma decisão, e não
+              um botão a adivinhar. */}
+          <p className="mt-1.5 text-[11px] leading-relaxed text-white/45">
+            {subject === 'person'
+              ? 'O rosto e a aparência desta pessoa são preservados exatamente.'
+              : 'O rótulo, a embalagem e o texto impresso são preservados exatamente.'}
+          </p>
+        </div>
+      )}
       {library.length > 0 && (
         <GradeDeInsumos
           itens={library.map((item) => ({ asset: item, label: item.filename ?? rotuloPadrao }))}
           kind={kind}
+          subject={subjectDoAnexo}
           allAssets={allAssets}
           alturaLista="max-h-40"
           onAnexar={onAnexar}
