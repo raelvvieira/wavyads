@@ -55,13 +55,13 @@ describe('buildCreativePrompt', () => {
       resolution: '4K',
       template: { name: 'Wavy Editorial', category: 'Oferta', layoutStructure: { grid: '12col' } },
       hasLogo: true,
-      productImageCount: 2,
+      productCount: 2,
       negativePrompt: '- sem texto em inglês\nsem moldura',
     })).toMatchSnapshot();
   });
 
   it('omite a instrução de preservar identidade quando preserveFaces é falso', () => {
-    const base = { aspect: 'story' as const, productImageCount: 1, avatarCount: 1 };
+    const base = { aspect: 'story' as const, avatarCount: 1 };
     expect(buildCreativePrompt({ ...base, preserveFaces: true })).toContain('Preserve their exact likeness');
     expect(buildCreativePrompt({ ...base, preserveFaces: false })).not.toContain('Preserve their exact likeness');
   });
@@ -70,7 +70,7 @@ describe('buildCreativePrompt', () => {
     // A frase de preservação enumera "faces, skin tone, body shape" — quando
     // o anexo é uma embalagem, ela é ruído que gasta atenção do modelo com
     // algo que não existe no quadro. Só entra quando há pessoa.
-    const soProduto = buildCreativePrompt({ aspect: 'story', productImageCount: 1, productCount: 1 });
+    const soProduto = buildCreativePrompt({ aspect: 'story', productCount: 1 });
     expect(soProduto).not.toContain('skin tone, body shape');
   });
 
@@ -79,7 +79,7 @@ describe('buildCreativePrompt', () => {
     // mais fraca das três: o avatar ganhava [TALENT] e o logo ganhava "do
     // NOT distort, recolor, recreate or redesign", e a embalagem só um
     // "integrate naturally".
-    const comProduto = buildCreativePrompt({ aspect: 'story', productImageCount: 1, productCount: 1 });
+    const comProduto = buildCreativePrompt({ aspect: 'story', productCount: 1 });
     expect(comProduto).toContain('[PRODUCT — CRITICAL]');
     expect(comProduto).toContain('Do NOT redesign');
     expect(comProduto).toContain('visual ground truth');
@@ -90,25 +90,25 @@ describe('buildCreativePrompt', () => {
   });
 
   it('avatar sozinho não dispara o bloco de produto', () => {
-    // `productImageCount` é a SOMA de produtos e avatares — os dois viajam no
-    // mesmo canal. Sem a contagem separada, um avatar sozinho faria o prompt
-    // afirmar que existe um produto na referência.
+    // Os grupos viajam no mesmo canal do backend. Sem a contagem separada,
+    // um avatar sozinho faria o prompt afirmar que existe um produto
+    // anexado.
     const soAvatar = buildCreativePrompt({
-      aspect: 'story', productImageCount: 1, avatarCount: 1, productCount: 0,
+      aspect: 'story', avatarCount: 1, productCount: 0,
     });
     expect(soAvatar).toContain('[TALENT]');
     expect(soAvatar).not.toContain('[PRODUCT');
   });
 
   it('produto e avatar juntos são indexados por pontas opostas', () => {
-    // O backend recebe [...avatares, ...produtos]. [TALENT] fala das
-    // PRIMEIRAS imagens e [PRODUCT] das ÚLTIMAS — sem isso, com os dois
+    // O backend recebe [...avatares, ...pessoas, ...objetos]. [TALENT] fala
+    // das PRIMEIRAS imagens e [PRODUCT] das ÚLTIMAS — sem isso, com os dois
     // anexados, os blocos apontariam para o mesmo lugar.
     const ambos = buildCreativePrompt({
-      aspect: 'story', productImageCount: 3, avatarCount: 1, productCount: 2,
+      aspect: 'story', avatarCount: 1, productCount: 2,
     });
-    expect(ambos).toContain('The first 1 attached reference image(s) are the TALENT');
-    expect(ambos).toContain('The last 2 attached reference image(s) are the PRODUCT');
+    expect(ambos).toContain('The first 1 attached photograph(s) are the TALENT');
+    expect(ambos).toContain('The last 2 attached photograph(s) are the PRODUCT');
   });
 
   it('a direção de arte vira bloco próprio, antes da parede de restrições', () => {
@@ -117,7 +117,7 @@ describe('buildCreativePrompt', () => {
     // só de restrição produz arte tímida.
     const prompt = buildCreativePrompt({
       aspect: 'story',
-      productImageCount: 1,
+      productCount: 1,
       artDirection: {
         mainSubject: 'Um dentista de luvas segurando uma escala de cor',
         composition: 'Clean e minimalista, texto no centro superior',
@@ -194,8 +194,99 @@ describe('buildCreativePrompt', () => {
   });
 
   it('[ATTACHED PHOTOS] sem pessoa não deixa buraco no meio do bloco', () => {
-    const prompt = buildCreativePrompt({ aspect: 'story', productImageCount: 2, avatarCount: 0 });
-    expect(prompt).toContain('must appear in the composition.\nIntegrate the subject naturally');
+    const prompt = buildCreativePrompt({ aspect: 'story', productCount: 2, avatarCount: 0 });
+    expect(prompt).toContain('not a style sample.\nIntegrate the subject naturally');
+  });
+
+  it('o design system lido de terceiros ganha a cláusula que proíbe copiar a origem', () => {
+    // O relato que originou isto: a arte saiu com a pessoa e a logo da peça
+    // de referência no lugar das do cliente. O [DESIGN SYSTEM] é escrito
+    // lendo arte de terceiros, e nada impedia que o modelo tratasse a marca
+    // descrita ali como o conteúdo a desenhar.
+    const prompt = buildCreativePrompt({
+      aspect: 'story',
+      designSystemDoc: 'Layered grid, kitesurf brand wordmark top-left, athlete mid-frame',
+      designSystemIsThirdParty: true,
+    });
+    expect(prompt).toContain('[STYLE REFERENCE — DESCRIPTION ONLY, NOT SOURCE MATERIAL]');
+    // A peça NÃO está anexada, e o prompt precisa dizer isso com todas as
+    // letras: a edge function apenda, depois de tudo, um [REFERENCE IMAGES]
+    // afirmando que as imagens anexadas são fonte de verdade para rostos e
+    // marcas. As duas frases usam a mesma palavra e não podem colidir.
+    expect(prompt).toContain('is NOT attached to this request');
+    expect(prompt).toContain('Where the description conflicts with an attached photograph, the attached photograph wins');
+  });
+
+  it('a cláusula cita o [MOOD] junto do [DESIGN SYSTEM]', () => {
+    // O vazamento mais provável não está no documento técnico: está no
+    // `Feels like: ...` do [MOOD], que é exatamente onde um modelo escreve
+    // o nome de uma campanha ou de uma marca.
+    const prompt = buildCreativePrompt({
+      aspect: 'story', designSystemDoc: 'DOC', designSystemIsThirdParty: true,
+      mood: { adjetivos: [], referencias: ['Nike Kitesurf 2024'], evita: [] },
+    });
+    expect(prompt).toContain('The [DESIGN SYSTEM] and [MOOD] sections');
+  });
+
+  it('sem sinal de terceiros, a cláusula não aparece', () => {
+    // O Fator Criativo reusa o design system da própria peça-base. Emitir a
+    // proibição ali seria mandar o modelo não copiar o cliente.
+    const prompt = buildCreativePrompt({
+      aspect: 'story', designSystemDoc: 'DOC', designSystemIsThirdParty: false,
+    });
+    expect(prompt).not.toContain('[STYLE REFERENCE');
+  });
+
+  it('sem design system, a cláusula não aparece nem com a bandeira ligada', () => {
+    // Um rider qualificando um bloco que não está na tela é a mesma classe
+    // de ruído do `[DESIGN SYSTEM]` órfão já corrigido aqui.
+    const prompt = buildCreativePrompt({
+      aspect: 'story', designSystemDoc: '   ', designSystemIsThirdParty: true,
+    });
+    expect(prompt).not.toContain('[STYLE REFERENCE');
+    expect(prompt).not.toContain('rather than in an attached photograph');
+  });
+
+  it('a proibição também entra no [DO NOT INCLUDE], que é a última parede', () => {
+    const prompt = buildCreativePrompt({
+      aspect: 'story', designSystemDoc: 'DOC', designSystemIsThirdParty: true,
+    });
+    expect(prompt).toContain('- Any brand name, wordmark, logo, slogan, headline or person that appears in the style description above rather than in an attached photograph');
+  });
+
+  it('pessoa anexada como produto entra no [TALENT], e não no [PRODUCT]', () => {
+    // Não havia canal para foto de pessoa real — avatar só nasce gerado no
+    // Avatar Studio. A foto do cliente ia como produto e recebia linguagem
+    // de embalagem: "preserve every label and piece of text printed on it".
+    const prompt = buildCreativePrompt({ aspect: 'story', personCount: 1, productCount: 0 });
+    expect(prompt).toContain('The first 1 attached photograph(s) are the TALENT');
+    expect(prompt).not.toContain('[PRODUCT');
+    expect(prompt).toContain('Do NOT substitute a model who merely resembles them');
+  });
+
+  it('avatar e pessoa real somam no mesmo bloco de talento', () => {
+    // A proteção que as duas pedem é idêntica: rosto, pele, cabelo,
+    // semelhança. O que as separa é de onde vêm, não o que fazer com elas.
+    const prompt = buildCreativePrompt({ aspect: 'story', avatarCount: 1, personCount: 2 });
+    expect(prompt).toContain('The first 3 attached photograph(s) are the TALENT');
+  });
+
+  it('os três grupos são indexados por pontas opostas da mesma pilha', () => {
+    const prompt = buildCreativePrompt({
+      aspect: 'story', avatarCount: 1, personCount: 1, productCount: 2,
+    });
+    expect(prompt).toContain('The first 2 attached photograph(s) are the TALENT');
+    expect(prompt).toContain('The last 2 attached photograph(s) are the PRODUCT');
+  });
+
+  it('[ATTACHED PHOTOS] declara cada grupo, e o total fecha com a soma', () => {
+    // A contagem era um parâmetro que o chamador somava à mão, e a soma à
+    // mão foi onde o bloco passou a mentir quando um terceiro grupo
+    // apareceu. Agora ela é derivada dos grupos.
+    const prompt = buildCreativePrompt({
+      aspect: 'story', avatarCount: 1, personCount: 1, productCount: 2,
+    });
+    expect(prompt).toContain('4 photograph(s) are attached to this request: 2 of a real person who must appear in the artwork, and 2 of the product being advertised.');
   });
 
   it('traduz o idioma exigido em todos os blocos', () => {

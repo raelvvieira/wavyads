@@ -204,13 +204,15 @@ describe('buildGenerationRequest — avatar como talento', () => {
 
   it('a contagem de fotos anexadas soma produto e avatar', () => {
     // O bloco [ATTACHED PHOTOS] AFIRMA quantas imagens vieram — omitir os
-    // avatares faria o prompt mentir para o modelo.
+    // avatares faria o prompt mentir para o modelo. A soma passou a ser
+    // derivada dentro do montador: era um parâmetro somado à mão aqui, e
+    // foi assim que ela deixou de bater quando um terceiro grupo apareceu.
     const { prompt } = buildGenerationRequest({
       brief: 'x', aspectRatio: '4:5',
       productImageUrls: ['https://x/p1.png'],
       avatarImageUrls: ['https://x/a1.png', 'https://x/a2.png'],
     });
-    expect(prompt).toContain('3 reference image(s) provided');
+    expect(prompt).toContain('3 photograph(s) are attached to this request: 2 of a real person who must appear in the artwork, and 1 of the product being advertised.');
   });
 });
 

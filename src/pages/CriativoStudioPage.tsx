@@ -1807,7 +1807,16 @@ export default function CriativoStudioPage() {
       : copySource === 'original' && rawCopy.trim()
         ? { source: 'original', text: rawCopy }
         : null,
-    productImageCount: productImages.length,
+    // Era `productImageCount`, que só alimentava o [ATTACHED PHOTOS]: o V1
+    // nunca emitia o bloco [PRODUCT — CRITICAL], e a foto de produto ficava
+    // com "integre naturalmente" enquanto o logo já tinha "não redesenhe".
+    // Aqui a contagem é do produto de verdade — o V1 mantém `refImages`
+    // num canal próprio, então nada de referência entra neste número.
+    productCount: productImages.length,
+    // O design system do V1 sempre vem de ler arte de terceiros (é o que
+    // `analyzeRefs` faz), inclusive quando o usuário editou o documento à
+    // mão depois.
+    designSystemIsThirdParty: !!(editedDoc || analysis?.designSystemDoc),
     preserveFaces,
     hasLogo: logoImage.length > 0,
     hasStoryReference: !!storyImage,

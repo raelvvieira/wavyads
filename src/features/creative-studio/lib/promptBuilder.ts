@@ -41,18 +41,36 @@ export interface CreativePromptInput {
    */
   artDirection?: { mainSubject: string; composition: string } | null;
   copy?: PromptCopy;
-  productImageCount?: number;
   /** Quantas das fotos anexadas são avatares de persona. */
   avatarCount?: number;
   /**
-   * Quantas são produto de verdade.
+   * Quantas são fotos de PESSOAS reais, anexadas pelo painel de produto.
    *
-   * Existe porque `productImageCount` é a SOMA de produtos e avatares — as
-   * duas coisas viajam no mesmo canal do backend. Sem separar, não há como
-   * dizer ao modelo QUAIS imagens são o produto, e o bloco [PRODUCT] não
-   * teria o que indexar.
+   * Somam-se ao avatar no bloco [TALENT]: a proteção que as duas pedem é a
+   * mesma — rosto, pele, cabelo, semelhança. Antes não havia canal para
+   * foto de pessoa real (avatar só nasce gerado no Avatar Studio), então
+   * ela ia como produto e recebia linguagem de embalagem: "preserve every
+   * label and piece of text printed on it", sobre o rosto de um cliente.
+   */
+  personCount?: number;
+  /**
+   * Quantas são produto de verdade — objeto, embalagem.
+   *
+   * Separado de `avatarCount`/`personCount` porque os três viajam no mesmo
+   * canal do backend, e é a contagem que permite ao [PRODUCT] dizer QUAIS
+   * imagens são o produto.
    */
   productCount?: number;
+  /**
+   * O [DESIGN SYSTEM] e o [MOOD] foram lidos de arte de TERCEIROS.
+   *
+   * Sem isto, o documento técnico pode citar a marca, o slogan e o atleta
+   * da peça de referência — e o modelo não tem como saber que aquilo é a
+   * ORIGEM do estilo, não o conteúdo do anúncio. Foi exatamente assim que
+   * uma arte saiu com a pessoa e a logo da referência no lugar das do
+   * cliente.
+   */
+  designSystemIsThirdParty?: boolean;
   preserveFaces?: boolean;
   hasLogo?: boolean;
   /** Story usado como verdade visual quando se gera a versão quadrada. */
@@ -146,9 +164,10 @@ export function buildCreativePrompt(input: CreativePromptInput): string {
     designSystemDoc = '',
     artDirection = null,
     copy = null,
-    productImageCount = 0,
     avatarCount = 0,
+    personCount = 0,
     productCount = 0,
+    designSystemIsThirdParty = false,
     preserveFaces = true,
     hasLogo = false,
     hasStoryReference = false,
@@ -173,19 +192,42 @@ export function buildCreativePrompt(input: CreativePromptInput): string {
 Create a ${aspectConfig.promptDims} advertisement image for ${businessContext.trim() || 'a professional brand'}.
 Quality target: ${resolutionConfig.promptQuality}.`;
 
+  /**
+   * Avatar de persona e foto de pessoa real pedem a MESMA proteção, e por
+   * isso ocupam o mesmo bloco. O que os separa é de onde vêm, não o que o
+   * modelo deve fazer com eles.
+   */
+  const talentCount = avatarCount + personCount;
+
+  /**
+   * A contagem é DERIVADA, não recebida.
+   *
+   * Havia um `productImageCount` que o chamador somava à mão, e uma soma à
+   * mão é exatamente onde este bloco passou a mentir quando um terceiro
+   * grupo apareceu: ele afirmava um total que já não batia com os grupos
+   * declarados logo abaixo.
+   */
+  const attachedCount = talentCount + productCount;
+
   // A frase sobre rosto e pele só entra quando há PESSOA anexada. Antes ela
   // era emitida sempre que houvesse qualquer imagem, então uma lata de
   // refrigerante recebia "do not alter faces, skin tone, body shape" — ruído
   // que gasta atenção do modelo em algo que não existe no quadro.
-  const temPessoa = avatarCount > 0;
-  const photoBlock = productImageCount > 0
+  const photoBlock = attachedCount > 0
     ? [
         '[ATTACHED PHOTOS]',
-        `${productImageCount} reference image(s) provided showing the product/person/scene that must appear in the composition.`,
+        `${attachedCount} photograph(s) are attached to this request: ${[
+          talentCount ? `${talentCount} of a real person who must appear in the artwork` : '',
+          productCount ? `${productCount} of the product being advertised` : '',
+        ].filter(Boolean).join(', and ')}.`,
+        // A porta que o [STYLE REFERENCE] fecha do outro lado: o que está
+        // anexado é conteúdo a reproduzir, e o que está apenas descrito é
+        // linguagem visual. Sem esta frase os dois se confundem.
+        'Every attached photograph is content to be reproduced, not a style sample.',
         // Sem a lista, o ternário sem pessoa deixava uma linha em branco no
         // meio do bloco — mesma classe de ruído do `Not: .` e do
         // `[DESIGN SYSTEM]` órfão.
-        preserveFaces && temPessoa
+        preserveFaces && talentCount > 0
           ? 'Preserve their exact likeness. Do NOT alter faces, skin tone, body shape or appearance in any way. Treat the subject as a fixed reference.'
           : '',
         'Integrate the subject naturally into the composition described below.',
@@ -260,13 +302,20 @@ THE WORDS ARE FIXED. This is the COMPLETE and FINAL copy — the user wrote it t
 THE TYPOGRAPHY IS YOURS TO DESIGN. Distribute this exact text across the composition as a designer would: give each line or segment a distinct typographic role — size, weight, case, colour and spacing — instead of setting it all at one size. A short opening line is a label: small, uppercase, wide tracking, secondary colour. The most important line is dominant: large, high contrast, primary typeface. Supporting lines are medium and quieter. If a line above already reads as a call to action, render THAT line inside a pill or button in the accent colour — do not write a new one. A rule, divider or colour accent on a single word is welcome; new words are not.${referenciaAoSistema}`;
   }
 
-  // O [ATTACHED PHOTOS] fala de "product/person/scene" genericamente —
-  // fraco demais para sustentar identidade. Quando há avatar anexado, o
-  // prompt precisa dizer que aquela pessoa É o talento do anúncio.
-  const talentBlock = avatarCount > 0
+  /**
+   * O [ATTACHED PHOTOS] declara quantas fotos são de pessoa, mas não diz o
+   * que fazer com elas — fraco demais para sustentar identidade. Este bloco
+   * diz que aquela pessoa É o talento do anúncio.
+   *
+   * `Do NOT substitute a model who merely resembles them` é acréscimo
+   * dirigido a um caso real: com o [DESIGN SYSTEM] descrevendo a peça de um
+   * atleta, o modelo trocava o cliente por alguém "do tipo certo" — mesma
+   * idade, mesmo esporte, outro rosto.
+   */
+  const talentBlock = talentCount > 0
     ? `[TALENT]
-The first ${avatarCount} attached reference image(s) are the TALENT for this advertisement — the person who must appear in the artwork.
-Preserve their facial structure, skin tone, hair and overall likeness exactly. Do NOT swap, average or beautify the face.
+The first ${talentCount} attached photograph(s) are the TALENT for this advertisement — the real person or people who must appear in the artwork.
+Preserve their facial structure, skin tone, hair, age and overall likeness exactly. Do NOT swap, average, rejuvenate or beautify the face. Do NOT substitute a model who merely resembles them.
 Place them naturally in the scene described above, at a scale and pose that fits the composition, with lighting that matches the rest of the artwork.`
     : '';
 
@@ -282,13 +331,18 @@ Place them naturally in the scene described above, at a scale and pose that fits
    * mudava proporção, inventava tipografia.
    *
    * A indexação por ORDEM é o que torna o bloco executável. O backend
-   * recebe `[...avatares, ...produtos]`, então [TALENT] fala das PRIMEIRAS
-   * imagens e este fala das ÚLTIMAS. Sem isso, com avatar e produto
-   * anexados juntos, os dois blocos apontariam para o mesmo lugar.
+   * recebe `[...avatares, ...pessoas, ...objetos]`, então [TALENT] fala das
+   * PRIMEIRAS imagens e este fala das ÚLTIMAS. Sem isso, com pessoa e
+   * produto anexados juntos, os dois blocos apontariam para o mesmo lugar.
+   *
+   * A linguagem de embalagem abaixo — rótulo, variante, tipografia
+   * impressa — só está correta porque este bloco passou a receber apenas
+   * OBJETO. Enquanto pessoa e referência caíam aqui, ela era aplicada ao
+   * rosto de um cliente e à arte de um terceiro.
    */
   const productBlock = productCount > 0
     ? `[PRODUCT — CRITICAL]
-The last ${productCount} attached reference image(s) are the PRODUCT being advertised. That exact product must appear in the artwork.
+The last ${productCount} attached photograph(s) are the PRODUCT being advertised. That exact product must appear in the artwork.
 Treat it as visual ground truth: preserve its shape, proportions, colour, material, finish, and every label, logo and piece of text printed on it, exactly as photographed.
 Do NOT redesign, restyle, simplify, "improve" or re-letter the packaging. Do NOT invent variants, flavours or sizes that are not in the reference.
 You may change how it is lit, framed, angled and staged to fit the composition — but the object itself is fixed.`
@@ -322,6 +376,11 @@ A brand logo is provided as a separate reference. Place it discreetly in a corne
   // logo abaixo do cabeçalho, no meio de uma lista de itens.
   const doNot = [
     '[DO NOT INCLUDE]',
+    // A última parede. O [STYLE REFERENCE] explica o raciocínio; esta linha
+    // sobrevive mesmo se o modelo tiver lido aquele bloco por alto.
+    ...(designSystemIsThirdParty && designSystemDoc.trim()
+      ? ['- Any brand name, wordmark, logo, slogan, headline or person that appears in the style description above rather than in an attached photograph']
+      : []),
     ...evitaList,
     ...antiPadroesList,
     ...userNegatives,
@@ -344,11 +403,43 @@ A reference Story version of this same creative is attached as the FIRST image. 
   // bloco de copy chegava a mandar seguir "the design system above".
   const designSystemBlock = designSystemDoc.trim() ? `[DESIGN SYSTEM]\n${designSystemDoc.trim()}` : '';
 
+  /**
+   * A cláusula que faltava — e que nunca existiu.
+   *
+   * O [DESIGN SYSTEM] é escrito por `criativo-analyze-refs` lendo ARTE DE
+   * TERCEIROS. O documento é técnico, mas nada impede que cite a marca, o
+   * slogan ou o atleta da peça lida. O [MOOD] cita ainda mais: ele emite
+   * `Feels like: ...`, e "feels like" é justamente onde um modelo escreve o
+   * nome de uma campanha. Por isso a cláusula nomeia os DOIS blocos —
+   * proteger só o primeiro deixaria o vazamento vivo pelo segundo.
+   *
+   * O texto afirma explicitamente que a peça NÃO está anexada. É
+   * deliberado: a edge function concatena, DEPOIS de todo este prompt, um
+   * `[REFERENCE IMAGES] ... exact source of truth for faces, product
+   * appearance and brand logo`. As duas frases usam a mesma palavra, a
+   * segunda é a última que o modelo lê, e elas não podem colidir.
+   *
+   * Só existe com as duas coisas: bandeira ligada E documento não vazio. Um
+   * rider sozinho, qualificando um bloco que não está na tela, é a mesma
+   * classe de ruído do `[DESIGN SYSTEM]` órfão que já foi corrigido aqui.
+   */
+  const styleSourceBlock = designSystemIsThirdParty && designSystemDoc.trim()
+    ? `[STYLE REFERENCE — DESCRIPTION ONLY, NOT SOURCE MATERIAL]
+The [DESIGN SYSTEM] and [MOOD] sections were written by reading advertising artwork produced by a THIRD PARTY. They describe a visual LANGUAGE — grid, palette, type scale, layer treatment, lighting, finish — and nothing else. That artwork is NOT attached to this request and is NOT part of this campaign. There is no image of it for you to copy, and you must not reconstruct one from the description.
+Reproduce ONLY the system: the geometry, the palette, the typographic scale, the layering, the photographic treatment.
+Do NOT reproduce anything that identifies where the system was observed. If those sections name or describe a company, a product, a wordmark, a monogram, a slogan, a tagline, a person, an athlete, a model or a face, treat it as trivia about the source — never as something to render. Do NOT draw that brand's name or logo. Do NOT recreate that person's face, body or likeness. Do NOT reuse its headline, its claim or any words quoted there.
+The ONLY brand in this artwork is the one carried by the attached logo and by the brief. The ONLY people in this artwork are the ones in the attached talent photographs; if none is attached, invent a person — never borrow the one described above.
+Where the description conflicts with an attached photograph, the attached photograph wins. Every time.`
+    : '';
+
   return [
     intro,
     photoBlock,
     artDirectionBlock,
     designSystemBlock,
+    // Imediatamente depois do bloco que qualifica: é um rider, e longe dele
+    // vira uma regra solta sobre um documento que o modelo já passou.
+    styleSourceBlock,
     templateBlock,
     safe,
     consistency,

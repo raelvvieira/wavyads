@@ -100,13 +100,12 @@ export function buildGenerationRequest(input: {
     resolution: input.resolution ?? '2K',
     language: input.language ?? 'pt-BR',
     businessContext: input.brief,
-    // Conta as duas fontes: o bloco [ATTACHED PHOTOS] afirma quantas
-    // imagens vieram, e omitir os avatares faria o prompt mentir.
-    productImageCount: produtos.length + avatares.length,
     avatarCount: avatares.length,
-    // Separado da soma acima: é o que permite ao bloco [PRODUCT] dizer
-    // QUAIS imagens são o produto, já que produtos e avatares chegam ao
-    // backend no mesmo canal.
+    // O que permite ao bloco [PRODUCT] dizer QUAIS imagens são o produto,
+    // já que os grupos chegam ao backend no mesmo canal. O total do
+    // [ATTACHED PHOTOS] é derivado destes dentro do montador — havia um
+    // `productImageCount` somado aqui, e a soma à mão foi onde o bloco
+    // passou a mentir.
     productCount: produtos.length,
     hasLogo: !!input.logoImageUrl,
     artDirection: input.artDirection ?? null,
@@ -390,7 +389,6 @@ export function buildFactorVariationRequest(input: {
     resolution: input.resolution ?? '2K',
     language: input.language ?? 'pt-BR',
     businessContext: contexto,
-    productImageCount: produtos.length,
     // O Fator gera cinco variações da MESMA oferta: se o produto muda de
     // uma para outra, o lote deixa de ser comparável.
     productCount: produtos.length,
