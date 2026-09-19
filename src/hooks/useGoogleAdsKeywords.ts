@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchGoogleInsights } from './useGoogleAdsInsights';
+import { fetchGoogleInsights, googleQueryOptions } from './useGoogleAdsInsights';
 import type { TimeRange } from './useMetaInsights';
 
 export interface GoogleAdsKeyword {
@@ -46,6 +46,7 @@ export function useGoogleAdsKeywords(clientId: string | undefined, enabled: bool
     },
     enabled: enabled && !!clientId && !!timeRange,
     staleTime: 5 * 60 * 1000,
+    ...googleQueryOptions,
   });
 }
 
@@ -58,5 +59,6 @@ export function useGoogleAdsSearchTerms(clientId: string | undefined, enabled: b
     },
     enabled: enabled && !!clientId && !!timeRange,
     staleTime: 5 * 60 * 1000,
+    ...googleQueryOptions,
   });
 }

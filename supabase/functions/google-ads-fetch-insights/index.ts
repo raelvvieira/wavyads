@@ -53,7 +53,17 @@ async function refreshAccessToken(supabase: any, clientRecord: any, clientIdGoog
   const data = await res.json();
 
   if (data.error) {
-    throw new Error(`Token refresh failed: ${data.error_description || data.error}`);
+    // `invalid_grant` = a autorização do Google foi revogada (senha trocada,
+    // acesso removido nas configurações da conta, permissão retirada da
+    // conta de anúncios). Não adianta tentar de novo: alguém precisa
+    // reconectar. Por isso vira erro NOMEADO, e não mais um 500 anônimo.
+    const e: any = new Error(
+      data.error === "invalid_grant"
+        ? "A autorização do Google Ads foi revogada. Reconecte a conta."
+        : `Falha ao renovar o acesso ao Google: ${data.error_description || data.error}`,
+    );
+    e.tokenInvalido = true;
+    throw e;
   }
 
   const newToken = data.access_token;
@@ -208,7 +218,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (!clientRecord.google_ads_access_token || !clientRecord.google_ads_customer_id) {
+    // O que sustenta a conexão é o REFRESH token: o de acesso vive 1 hora e
+    // é renovado logo abaixo. Este guard checava o de acesso, então um
+    // cliente perfeitamente conectado — refresh válido, acesso expirado e
+    // ainda não renovado — era declarado "não sincronizado", e a renovação
+    // que resolveria isso ficava três linhas adiante, inalcançável.
+    if (!clientRecord.google_ads_refresh_token || !clientRecord.google_ads_customer_id) {
       return new Response(JSON.stringify({ error: "Cliente não sincronizado com Google Ads" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -622,8 +637,16 @@ Deno.serve(async (req) => {
     });
   } catch (err) {
     console.error("google-ads-fetch-insights error:", err);
-    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Erro inesperado" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // Token revogado é 401 com código próprio, como o lado Meta já faz com
+    // META_TOKEN_INVALID. É o que permite à tela parar de tentar de novo e
+    // oferecer o botão de reconectar, em vez de repetir um erro genérico.
+    const tokenInvalido = !!(err as any)?.tokenInvalido;
+    return new Response(JSON.stringify({
+      error: err instanceof Error ? err.message : "Erro inesperado",
+      code: tokenInvalido ? "GOOGLE_TOKEN_INVALID" : "GOOGLE_API_ERROR",
+    }), {
+      status: tokenInvalido ? 401 : 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
