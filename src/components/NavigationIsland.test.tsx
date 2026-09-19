@@ -216,4 +216,40 @@ describe('NavigationIsland', () => {
     const island = container.querySelector('aside[data-expanded]')!;
     expect(island.querySelector('a[href="https://crm.wavymarketing.com.br/"]')).not.toBeNull();
   });
+
+  it('o alternador de tema vive na ilha, e não num botão fixo sobre a página', () => {
+    // Ele ficava fixo no canto superior direito — justamente onde mora a
+    // ação primária de cada tela. Para não passar por cima dela, o shell
+    // reservava uma faixa de 56px em TODA página: largura útil gasta por um
+    // controle que se usa uma vez por mês.
+    renderAt('/dashboard');
+    const botao = desktopIsland().querySelector('button[aria-label^="Mudar para o tema"]');
+    expect(botao).toBeTruthy();
+  });
+
+  it('o rótulo diz para onde o clique leva, não onde se está', () => {
+    // Mesmo contrato de um interruptor de luz. No escuro o botão mostra o
+    // sol, porque o clique acende.
+    document.documentElement.setAttribute('data-theme', 'dark');
+    localStorage.setItem('wavy-theme', 'dark');
+    renderAt('/dashboard');
+
+    const botao = desktopIsland().querySelector('button[aria-label^="Mudar para o tema"]')!;
+    expect(botao.getAttribute('aria-label')).toBe('Mudar para o tema claro');
+
+    act(() => { fireEvent.click(botao); });
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    localStorage.removeItem('wavy-theme');
+  });
+
+  it('fica entre as utilidades, e NÃO na lista de seções', () => {
+    // Tema, recolher e sair não são destinos. Dentro da lista de seções ele
+    // seria lido como mais uma página do app — foi esse o erro que já tinha
+    // acontecido com o botão de recolher.
+    renderAt('/dashboard');
+    const seletor = 'button[aria-label^="Mudar para o tema"]';
+
+    expect(desktopIsland().querySelector(`.mt-auto ${seletor}`)).toBeTruthy();
+    expect(desktopIsland().querySelector(`nav[aria-label="Seções"] ${seletor}`)).toBeNull();
+  });
 });

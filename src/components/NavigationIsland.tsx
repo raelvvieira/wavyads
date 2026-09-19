@@ -16,9 +16,12 @@ import {
   PanelLeftOpen,
   PanelLeftClose,
   MoreHorizontal,
+  Moon,
+  Sun,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAiUsage } from '@/lib/aiUsageTracker';
+import { useTheme } from '@/hooks/useTheme';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -73,6 +76,12 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const { isAdmin } = useRole();
+
+  // O ícone mostra o DESTINO, não o estado atual: no escuro aparece o sol,
+  // porque é para lá que o clique leva. Mesmo contrato de um interruptor.
+  const { theme, toggle: toggleTheme } = useTheme();
+  const proximoTema = theme === 'dark' ? 'claro' : 'escuro';
+  const IconeDoTema = theme === 'dark' ? Sun : Moon;
   const usage = useAiUsage();
 
   const fmtTokens = (n: number) =>
@@ -284,6 +293,46 @@ export function NavigationIsland({ onExpandedChange }: { onExpandedChange?: (exp
             acima da lista e era lido como se fosse mais um item de menu. */}
         <div className="mt-auto space-y-1 border-t border-white/10 pt-2">
           {showLabels && usageBlock}
+
+          {/* O tema vive aqui, e não mais num botão fixo no canto superior
+              direito da página. Aquele canto é onde mora a ação primária de
+              cada tela, então o shell precisava reservar uma faixa de 56px em
+              TODA página para o botão não passar por cima dela — 56px de
+              largura útil gastos por um controle que se usa uma vez por mês.
+              Na ilha ele fica ao lado das outras preferências, e a faixa
+              deixou de existir. */}
+          {showLabels ? (
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={`Mudar para o tema ${proximoTema}`}
+              className="flex h-11 w-full items-center rounded-[14px] text-white/50 transition-colors duration-200 hover:bg-white/[0.06] hover:text-white"
+            >
+              <span className="flex w-[52px] min-w-[52px] items-center justify-center">
+                <IconeDoTema className="h-5 w-5" />
+              </span>
+              <span className="wavy-nav-label text-xs">Tema {proximoTema}</span>
+            </button>
+          ) : (
+            <Tooltip delayDuration={200}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  aria-label={`Mudar para o tema ${proximoTema}`}
+                  className="flex h-11 w-full items-center rounded-[14px] text-white/50 transition-colors duration-200 hover:bg-white/[0.06] hover:text-white"
+                >
+                  <span className="flex w-[52px] min-w-[52px] items-center justify-center">
+                    <IconeDoTema className="h-5 w-5" />
+                  </span>
+                </button>
+              </TooltipTrigger>
+              {/* Para a direita: a ilha está encostada na borda esquerda. */}
+              <TooltipContent side="right" sideOffset={12}>
+                Tema {proximoTema}
+              </TooltipContent>
+            </Tooltip>
+          )}
 
           <button
             type="button"
