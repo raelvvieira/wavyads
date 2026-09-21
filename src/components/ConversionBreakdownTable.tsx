@@ -1,6 +1,6 @@
 import { GlassCard } from './GlassCard';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatCurrency } from '@/data/mock';
+import { formatCurrency } from '@/lib/format';
 import type { GoogleAdsConversionAction } from '@/hooks/useGoogleAdsInsights';
 
 interface ConversionBreakdownTableProps {

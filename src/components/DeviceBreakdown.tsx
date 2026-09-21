@@ -1,6 +1,6 @@
 import { GlassCard } from './GlassCard';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatCurrency, formatNumber } from '@/data/mock';
+import { formatCurrency, formatNumber } from '@/lib/format';
 import type { GoogleAdsDevice } from '@/hooks/useGoogleAdsInsights';
 
 interface DeviceBreakdownProps {

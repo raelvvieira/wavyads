@@ -260,11 +260,23 @@ Deno.serve(async (req) => {
         const id = row.campaign?.id;
         if (!id) continue;
         if (!campaignMap.has(id)) {
-          const statusMap: Record<string, string> = { ENABLED: "active", PAUSED: "paused", REMOVED: "ended" };
           campaignMap.set(id, {
             id,
             name: row.campaign.name,
-            status: statusMap[row.campaign.status] || "ended",
+            /*
+             * O status cru, não um veredito. Havia um
+             * `statusMap[...] || "ended"` aqui — o mesmo fallback que, do
+             * lado Meta, transformava qualquer surpresa em "Encerrada".
+             * Quem traduz agora é `src/lib/campaignStatus.ts`, igual para as
+             * duas plataformas, porque as duas dividem esta tabela e este
+             * selo.
+             *
+             * `veiculacao: null` é honesto: o Google tem o mesmo ponto cego
+             * (campanha ENABLED com todos os grupos de anúncios pausados) e
+             * fechá-lo é uma rodada própria.
+             */
+            status_bruto: row.campaign.status ?? null,
+            veiculacao: null,
             spend: 0, impressions: 0, clicks: 0, conversions: 0, reach: 0,
             leads: 0, cpl: 0, purchases: 0, cost_per_purchase: 0,
             results: 0, cost_per_result: 0, result_type: "",

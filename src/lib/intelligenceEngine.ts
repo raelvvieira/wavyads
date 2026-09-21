@@ -1,6 +1,8 @@
 // Intelligence Engine v2.1 — Deep Analysis with 5 Layers
 // Fixed: deduplication, E1 logic, Layer 3 comparisons, lower thresholds, new basic insights
 
+import type { StatusCampanha } from '@/lib/campaignStatus';
+
 export interface MetricComparison {
   label: string;
   atual: string;
@@ -29,7 +31,8 @@ export interface IntelligenceFlag {
 export interface CampaignData {
   id: string;
   name: string;
-  status: string;
+  /** A decisão derivada, não a string crua — ver `src/lib/campaignStatus.ts`. */
+  status: StatusCampanha;
   spend: number;
   impressions: number;
   reach: number;
@@ -57,7 +60,7 @@ export interface CampaignData {
 export interface AdData {
   id: string;
   name: string;
-  status: string;
+  status: StatusCampanha;
   campaign_id: string;
   campaign_name: string;
   spend: number;
@@ -199,7 +202,25 @@ export function runIntelligenceEngine(clientsData: ClientInsightsData[]): {
     const prevIns = cd.insightsPrevious;
     const dailyHistory = cd.dailyHistory;
     const ads = cd.adsCurrent || [];
-    const activeCampaigns = campaigns.filter(c => c.status === 'active');
+    /*
+     * "Está entregando agora", e não "o botão está ligado".
+     *
+     * Era `c.status === 'active'`, o mesmo teste que fazia o filtro da
+     * tabela listar campanhas paradas. Aqui o efeito era pior que visual:
+     * o motor recomendava realocar verba, escalar e pausar campanhas que já
+     * não rodavam — e somava o gasto delas como se fosse investimento vivo.
+     *
+     * `=== true` e não truthy: o estado é tri-valorado, e `null` significa
+     * "não consegui confirmar". Não se recomenda ação sobre o que não se
+     * confirmou.
+     *
+     * Dívida conhecida: as regras retrospectivas (R1, R2, R3 — as que
+     * comparam período atual com anterior) também usam esta lista, e uma
+     * campanha pausada ontem some da análise justamente quando o alerta
+     * seria mais útil. Separar as duas perguntas é uma rodada própria; o
+     * motor está dormente hoje (`useInsightsData` não tem consumidor).
+     */
+    const activeCampaigns = campaigns.filter(c => c.status?.veiculando === true);
     const totalSpend = activeCampaigns.reduce((s, c) => s + c.spend, 0);
     const historicalCPR = computeHistoricalAvgCPR(dailyHistory);
     const historicalCTR = computeHistoricalAvgCTR(dailyHistory);
