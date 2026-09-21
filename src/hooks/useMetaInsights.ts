@@ -1,10 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { derivarStatusCampanha, type CampanhaBruta, type StatusCampanha } from '@/lib/campaignStatus';
 
-export interface MetaCampaign {
+export interface MetaCampaign extends CampanhaBruta {
   id: string;
   name: string;
-  status: 'active' | 'paused' | 'ended';
+  /**
+   * A decisão pronta, derivada dos fatos crus que a borda devolve.
+   *
+   * Era `'active' | 'paused' | 'ended'` — três palavras para onze
+   * situações, e um filtro "Ativas" que listava campanhas paradas.
+   */
+  status: StatusCampanha;
   spend: number;
   budget: number;
   impressions: number;
@@ -99,7 +106,11 @@ export function useMetaCampaigns(clientId: string | undefined, enabled: boolean,
     queryKey: ['meta-campaigns', clientId, timeRange?.since, timeRange?.until],
     queryFn: async () => {
       const data = await fetchInsights('campaigns', clientId!, timeRange!);
-      return data.campaigns as MetaCampaign[];
+      // Derivar aqui, e não em cada componente, é o que mantém uma resposta
+      // só para "esta campanha está no ar?".
+      return (data.campaigns as any[]).map((c) => ({
+        ...c, status: derivarStatusCampanha(c),
+      })) as MetaCampaign[];
     },
     enabled: enabled && !!clientId && !!timeRange,
     staleTime: 5 * 60 * 1000,

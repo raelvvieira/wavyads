@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import { cn } from '@/lib/utils';
-import { formatCurrency, formatNumber } from '@/data/mock';
+import { formatCurrency, formatNumber } from '@/lib/format';
 
 export type MetricKey =
   | 'spend' | 'impressions' | 'reach' | 'clicks' | 'ctr' | 'cpm'

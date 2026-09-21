@@ -5,7 +5,7 @@ import {
 import { GlassCard } from './GlassCard';
 import { chartSeriesPalette, chartSurface } from '@/lib/chartTheme';
 import { cn } from '@/lib/utils';
-import { formatCurrency, formatNumber } from '@/data/mock';
+import { formatCurrency, formatNumber } from '@/lib/format';
 import type { DailyMetric } from '@/hooks/useMetaInsights';
 
 interface LineConfig {

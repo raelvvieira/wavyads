@@ -3,7 +3,7 @@ import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { formatCurrency, formatNumber } from '@/data/mock';
+import { formatCurrency, formatNumber } from '@/lib/format';
 import type { GoogleAdsKeyword } from '@/hooks/useGoogleAdsKeywords';
 
 type SortKey = 'text' | 'impressions' | 'clicks' | 'ctr' | 'cpc' | 'spend' | 'conversions' | 'cost_per_conversion' | 'quality_score';

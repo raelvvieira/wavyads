@@ -3,19 +3,21 @@ import { ImageOff, ArrowUpDown, ChevronDown, ChevronUp } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import { StatusBadge } from './StatusBadge';
 import { cn } from '@/lib/utils';
-import { formatCurrency } from '@/data/mock';
+import { formatCurrency } from '@/lib/format';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import type { MetaAd } from '@/hooks/useMetaAds';
+import { pertenceAoGrupo, type GrupoDeStatus } from '@/lib/campaignStatus';
 
-type StatusFilter = 'all' | 'active' | 'paused';
 type SortKey = 'spend' | 'ctr' | 'cost_per_result' | 'results' | 'purchases' | 'purchase_roas';
 
-const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
-  { value: 'all', label: 'Todos' },
-  { value: 'active', label: 'Ativos' },
-  { value: 'paused', label: 'Pausados' },
+/** Mesmos grupos da tabela de campanhas — a mesma verdade, um nível abaixo. */
+const STATUS_FILTERS: { value: GrupoDeStatus; label: string }[] = [
+  { value: 'todas', label: 'Todos' },
+  { value: 'veiculando', label: 'Veiculando' },
+  { value: 'atencao', label: 'Precisam de atenção' },
+  { value: 'pausadas', label: 'Pausados' },
 ];
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -47,13 +49,13 @@ interface CreativesGalleryProps {
 }
 
 export function CreativesGallery({ ads }: CreativesGalleryProps) {
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<GrupoDeStatus>('todas');
   const [sortKey, setSortKey] = useState<SortKey>('spend');
   const [expanded, setExpanded] = useState(false);
   const [selectedAd, setSelectedAd] = useState<MetaAd | null>(null);
 
   const filtered = useMemo(() => {
-    let list = statusFilter === 'all' ? ads : ads.filter(a => a.status === statusFilter);
+    let list = statusFilter === 'todas' ? ads : ads.filter(a => pertenceAoGrupo(a.status, statusFilter));
 
     list = [...list].sort((a, b) => {
       switch (sortKey) {
@@ -72,7 +74,7 @@ export function CreativesGallery({ ads }: CreativesGalleryProps) {
   }, [ads, statusFilter, sortKey, expanded]);
 
   const totalFiltered = useMemo(() => {
-    const list = statusFilter === 'all' ? ads : ads.filter(a => a.status === statusFilter);
+    const list = statusFilter === 'todas' ? ads : ads.filter(a => pertenceAoGrupo(a.status, statusFilter));
     return list.length;
   }, [ads, statusFilter]);
 
@@ -186,7 +188,10 @@ export function CreativesGallery({ ads }: CreativesGalleryProps) {
 
                 {/* Status */}
                 <div className="flex-shrink-0">
-                  <StatusBadge status={ad.status === 'active' ? 'active' : 'paused'} />
+                  {/* Aqui o anúncio diz "Pausado pelo conjunto" ou
+                      "Não aprovado" — a mesma razão que a campanha anuncia
+                      em cima, agora visível na peça. */}
+                  <StatusBadge status={ad.status} />
                 </div>
               </div>
             );

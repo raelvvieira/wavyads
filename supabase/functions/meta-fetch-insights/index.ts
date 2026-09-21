@@ -225,7 +225,51 @@ async function getClient(supabase: any, userId: string, clientId: string) {
   return { client };
 }
 
-function parseCampaign(c: any, ins: any) {
+/**
+ * Quantos filhos de cada `effective_status`, por campanha.
+ *
+ * A borda só CONTA. Quem decide o que essa contagem significa é
+ * `src/lib/campaignStatus.ts`, que o Vitest alcança — esta função roda em
+ * Deno e fica fora do alcance dos testes.
+ */
+function histograma(itens: any[]): Map<string, { por_status: Record<string, number>; total: number }> {
+  const porCampanha = new Map<string, { por_status: Record<string, number>; total: number }>();
+  for (const it of itens) {
+    const cid = String(it.campaign_id || "");
+    if (!cid) continue;
+    const atual = porCampanha.get(cid) ?? { por_status: {}, total: 0 };
+    const v = String(it.effective_status || "UNKNOWN");
+    atual.por_status[v] = (atual.por_status[v] || 0) + 1;
+    atual.total += 1;
+    porCampanha.set(cid, atual);
+  }
+  return porCampanha;
+}
+
+/** O mesmo, mais o fim programado — um conjunto vencido mantém o anúncio ACTIVE. */
+function histogramaDeConjuntos(itens: any[]) {
+  const base = histograma(itens);
+  const prazos = new Map<string, { ultimo_fim: string | null; algum_sem_fim: boolean }>();
+  for (const it of itens) {
+    const cid = String(it.campaign_id || "");
+    if (!cid) continue;
+    const atual = prazos.get(cid) ?? { ultimo_fim: null, algum_sem_fim: false };
+    if (it.end_time) {
+      if (!atual.ultimo_fim || new Date(it.end_time) > new Date(atual.ultimo_fim)) {
+        atual.ultimo_fim = it.end_time;
+      }
+    } else {
+      // Sem data de término: não há como concluir que o período acabou.
+      atual.algum_sem_fim = true;
+    }
+    prazos.set(cid, atual);
+  }
+  const saida = new Map<string, any>();
+  for (const [cid, h] of base) saida.set(cid, { ...h, ...(prazos.get(cid) ?? { ultimo_fim: null, algum_sem_fim: false }) });
+  return saida;
+}
+
+function parseCampaign(c: any, ins: any, veiculacao: any = null) {
   const leads = extractAction(ins.actions, LEAD_TYPES);
   const purchases = extractAction(ins.actions, PURCHASE_TYPES);
   const cpl = extractCostPerAction(ins.cost_per_action_type, LEAD_TYPES);
@@ -243,7 +287,22 @@ function parseCampaign(c: any, ins: any) {
   return {
     id: c.id,
     name: c.name,
-    status: ({ ACTIVE: "active", PAUSED: "paused", DELETED: "ended", ARCHIVED: "ended" } as Record<string, string>)[c.status] || "ended",
+    /*
+     * Os FATOS, não um veredito.
+     *
+     * Aqui havia `status: {ACTIVE:"active",...}[c.status] || "ended"` — um
+     * mapa que achatava tudo em três palavras e transformava qualquer
+     * surpresa em "Encerrada". Quem decide agora é
+     * `src/lib/campaignStatus.ts`, com o histograma dos filhos em mãos: nem
+     * `status` nem `effective_status` da campanha mudam quando os conjuntos
+     * são desligados, e era exatamente esse o caso relatado.
+     */
+    efeito_bruto: c.effective_status ?? null,
+    status_bruto: c.status ?? null,
+    stop_time: c.stop_time ?? null,
+    spend_cap: c.spend_cap ? parseFloat(c.spend_cap) / 100 : null,
+    budget_remaining: c.budget_remaining != null ? parseFloat(c.budget_remaining) / 100 : null,
+    veiculacao,
     spend,
     budget: parseFloat(c.daily_budget || "0") / 100,
     impressions: parseInt(ins.impressions || "0"),
@@ -331,7 +390,10 @@ Deno.serve(async (req) => {
         ? `time_range({"since":"${timeRange.since}","until":"${timeRange.until}"})`
         : `date_preset(${datePreset})`;
 
-      const fields = `name,status,daily_budget,created_time,insights.${insightsDateParam}{spend,impressions,reach,clicks,actions,action_values,cost_per_action_type,ctr,cpc,cpm,frequency}`;
+      // `effective_status` junto de `status`: o primeiro é o que o
+      // Gerenciador mostra na coluna "Veiculação", o segundo é o botão que
+      // alguém apertou. Quando divergem, a diferença é informação.
+      const fields = `name,status,effective_status,daily_budget,created_time,start_time,stop_time,spend_cap,budget_remaining,insights.${insightsDateParam}{spend,impressions,reach,clicks,actions,action_values,cost_per_action_type,ctr,cpc,cpm,frequency}`;
       const result = await fetchGraphList(
         `${GRAPH_API}/${adAccountId}/campaigns`,
         fields,
@@ -343,10 +405,61 @@ Deno.serve(async (req) => {
         return graphErrorResponse(result.error);
       }
 
-      const campaigns = result.data.map((c: any) => {
+      /*
+       * Quem sabe se a campanha entrega são os FILHOS.
+       *
+       * No nível de campanha o `effective_status` não muda quando os
+       * conjuntos são desligados — e era esse o caso que fazia seis
+       * campanhas paradas aparecerem no filtro "Ativas". O
+       * `effective_status` do anúncio, sim, carrega a hierarquia inteira.
+       *
+       * Duas listas PLANAS: sem `insights` e sem `creative`, elas cabem
+       * centenas por página e não disputam orçamento de payload com a
+       * chamada acima, que já sofre com "too much data". Sem `filtering`
+       * também de propósito: filtrar por ACTIVE devolveria só quem veicula,
+       * e perderíamos o MOTIVO de quem não veicula — que é metade do que o
+       * cliente precisa saber.
+       *
+       * Best-effort por desenho: se uma delas falhar, o resultado é
+       * "não confirmado", nunca uma afirmação de que parou.
+       */
+      const [conjuntosRes, anunciosRes] = await Promise.all([
+        fetchGraphList(
+          `${GRAPH_API}/${adAccountId}/adsets`,
+          "campaign_id,effective_status,end_time,start_time",
+          accessToken,
+          { maxItems: 1000, pageSize: 200 },
+        ).catch(() => ({ error: true } as any)),
+        fetchGraphList(
+          `${GRAPH_API}/${adAccountId}/ads`,
+          "campaign_id,effective_status",
+          accessToken,
+          { maxItems: 3000, pageSize: 500 },
+        ).catch(() => ({ error: true } as any)),
+      ]);
 
+      const conjuntosOk = !("error" in conjuntosRes);
+      const anunciosOk = !("error" in anunciosRes);
+      if (!conjuntosOk || !anunciosOk) {
+        console.warn("Estado de veiculação incompleto:", { conjuntosOk, anunciosOk });
+      }
+      const porConjunto = conjuntosOk ? histogramaDeConjuntos((conjuntosRes as any).data) : null;
+      const porAnuncio = anunciosOk ? histograma((anunciosRes as any).data) : null;
+      // Bateu no teto = pode faltar filho de alguma campanha, e "faltou o
+      // dado" não pode virar "não tem anúncio".
+      const parcial = (conjuntosOk && (conjuntosRes as any).data.length >= 1000)
+        || (anunciosOk && (anunciosRes as any).data.length >= 3000);
+
+      const campaigns = result.data.map((c: any) => {
         const ins = c.insights?.data?.[0] || {};
-        return parseCampaign(c, ins);
+        const veiculacao = {
+          conjuntos: porConjunto
+            ? (porConjunto.get(c.id) ?? { por_status: {}, total: 0, ultimo_fim: null, algum_sem_fim: false })
+            : null,
+          anuncios: porAnuncio ? (porAnuncio.get(c.id) ?? { por_status: {}, total: 0 }) : null,
+          parcial,
+        };
+        return parseCampaign(c, ins, veiculacao);
       });
 
       return new Response(JSON.stringify({ campaigns }),
@@ -359,7 +472,7 @@ Deno.serve(async (req) => {
         ? `time_range({"since":"${timeRange.since}","until":"${timeRange.until}"})`
         : `date_preset(${datePreset})`;
 
-      const fields = `name,status,campaign_id,campaign{name},creative{thumbnail_url,image_url,object_type,video_id,image_hash,object_story_spec},insights.${insightsDateParam}{spend,impressions,reach,clicks,actions,action_values,cost_per_action_type,ctr,cpc,cpm,frequency}`;
+      const fields = `name,status,effective_status,campaign_id,campaign{name},creative{thumbnail_url,image_url,object_type,video_id,image_hash,object_story_spec},insights.${insightsDateParam}{spend,impressions,reach,clicks,actions,action_values,cost_per_action_type,ctr,cpc,cpm,frequency}`;
       const result = await fetchGraphList(
         `${GRAPH_API}/${adAccountId}/ads`,
         fields,
@@ -419,7 +532,10 @@ Deno.serve(async (req) => {
         return {
           id: ad.id,
           name: ad.name,
-          status: ad.status === "ACTIVE" ? "active" : "paused",
+          // Era um booleano onde a Meta oferece onze valores — e é no
+          // anúncio que "reprovado" e "em análise" existem de verdade.
+          efeito_bruto: ad.effective_status ?? null,
+          status_bruto: ad.status ?? null,
           campaign_id: ad.campaign_id,
           campaign_name: ad.campaign?.name || "",
           thumbnail_url: creative.thumbnail_url || null,

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { readFunctionError } from '@/lib/functionError';
+import { derivarStatusGoogle } from '@/lib/campaignStatus';
 import type { MetaCampaign, MetaInsights, DailyMetric, TimeRange } from './useMetaInsights';
 
 /**
@@ -60,7 +61,11 @@ export function useGoogleAdsCampaigns(clientId: string | undefined, enabled: boo
     queryKey: ['google-campaigns', clientId, timeRange?.since, timeRange?.until],
     queryFn: async () => {
       const data = await fetchGoogleInsights('campaigns', clientId!, timeRange!);
-      return data.campaigns as MetaCampaign[];
+      // Mesma tabela, mesmo selo, mesma tradução — só a origem do status
+      // muda (ENABLED/PAUSED/REMOVED em vez dos valores da Meta).
+      return (data.campaigns as any[]).map((c) => ({
+        ...c, status: derivarStatusGoogle(c.status_bruto),
+      })) as MetaCampaign[];
     },
     enabled: enabled && !!clientId && !!timeRange,
     staleTime: 5 * 60 * 1000,

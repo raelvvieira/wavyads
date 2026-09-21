@@ -2,8 +2,9 @@ import { useState, useMemo } from 'react';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import { StatusBadge } from './StatusBadge';
+import { pertenceAoGrupo, type GrupoDeStatus } from '@/lib/campaignStatus';
 import { cn } from '@/lib/utils';
-import { formatCurrency, formatNumber } from '@/data/mock';
+import { formatCurrency, formatNumber } from '@/lib/format';
 import type { MetaCampaign } from '@/hooks/useMetaInsights';
 
 type SortKey = keyof MetaCampaign;
@@ -76,23 +77,30 @@ interface CampaignsTableProps {
   campaigns: MetaCampaign[];
 }
 
-type StatusFilter = 'all' | 'active' | 'paused' | 'ended';
-
-const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
-  { value: 'all', label: 'Todas' },
-  { value: 'active', label: 'Ativas' },
-  { value: 'paused', label: 'Pausadas' },
-  { value: 'ended', label: 'Encerradas' },
+/**
+ * O filtro trabalha por GRUPO, não por estado.
+ *
+ * São onze estados agora, e onze botões não seriam um filtro. "Precisam de
+ * atenção" recolhe tudo que exige ação — inclusive os dois estados de
+ * incerteza, para que o desconhecido fique visível em vez de arquivado em
+ * "Encerradas", que foi exatamente o que o `|| "ended"` fazia.
+ */
+const STATUS_FILTERS: { value: GrupoDeStatus; label: string }[] = [
+  { value: 'todas', label: 'Todas' },
+  { value: 'veiculando', label: 'Veiculando' },
+  { value: 'atencao', label: 'Precisam de atenção' },
+  { value: 'pausadas', label: 'Pausadas' },
+  { value: 'encerradas', label: 'Encerradas' },
 ];
 
 export function CampaignsTable({ campaigns }: CampaignsTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('spend');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<GrupoDeStatus>('todas');
 
   const filtered = useMemo(() => {
-    if (statusFilter === 'all') return campaigns;
-    return campaigns.filter(c => c.status === statusFilter);
+    if (statusFilter === 'todas') return campaigns;
+    return campaigns.filter(c => pertenceAoGrupo(c.status, statusFilter));
   }, [campaigns, statusFilter]);
 
   const toggleSort = (key: SortKey) => {
@@ -153,6 +161,18 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
       purchase_roas: spendTotal > 0 ? purchaseValueTotal / spendTotal : 0,
     };
   }, [filtered]);
+
+  /**
+   * O rodapé soma a lista FILTRADA, e até aqui chamava isso de "Total".
+   *
+   * Com o filtro em "Veiculando", o cliente lia "Total: R$ 22.215,00" e
+   * entendia que era o desempenho da conta — quando era o de um recorte.
+   * Dizer qual recorte é a diferença entre um número e um número com
+   * contexto.
+   */
+  const rotuloDoTotal = statusFilter === 'todas'
+    ? 'Total / Média'
+    : `Total / Média · ${STATUS_FILTERS.find(f => f.value === statusFilter)?.label} (${filtered.length} de ${campaigns.length})`;
 
   const getTags = (c: MetaCampaign) => {
     const tags: { label: string; className: string }[] = [];
@@ -260,7 +280,7 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
         </div>
         {/* Mobile totals */}
         <div className="mt-3 rounded-lg border border-accent/30 bg-accent/5 p-3">
-          <div className="text-[10px] uppercase tracking-widest text-accent font-semibold mb-2">Total / Média</div>
+          <div className="text-[10px] uppercase tracking-widest text-accent font-semibold mb-2">{rotuloDoTotal}</div>
           <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
             <Stat label="Gasto" value={formatCurrency(totals.spend)} valueClass="text-accent" />
             <Stat label="Resultados" value={totals.results.toString()} valueClass="text-accent" />
@@ -361,7 +381,7 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
             </tbody>
             <tfoot className="sticky bottom-0 z-10 bg-[hsl(var(--card))] backdrop-blur-sm">
               <tr className="border-t border-accent/30 bg-accent/5">
-                <td className="py-3 px-3 font-semibold text-accent">Total / Média</td>
+                <td className="py-3 px-3 font-semibold text-accent">{rotuloDoTotal}</td>
                 <td className="py-3 px-3" />
                 <td className={cn('py-3 px-3 text-right font-semibold text-accent metric-number', getHideClass('md'))}>{formatNumber(totals.reach)}</td>
                 <td className={cn('py-3 px-3 text-right font-semibold text-accent metric-number', getHideClass('md'))}>{formatNumber(totals.impressions)}</td>

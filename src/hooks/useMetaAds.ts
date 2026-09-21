@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { derivarStatusAnuncio, type StatusCampanha } from '@/lib/campaignStatus';
 import type { TimeRange } from '@/hooks/useMetaInsights';
 
 export interface MetaAd {
   id: string;
   name: string;
-  status: string;
+  status: StatusCampanha;
   campaign_id: string;
   campaign_name: string;
   thumbnail_url?: string | null;
@@ -46,7 +47,9 @@ export function useMetaAds(clientId: string | undefined, enabled: boolean, timeR
         throw e;
       }
       if (error) throw error;
-      return data.ads as MetaAd[];
+      return (data.ads as any[]).map((a) => ({
+        ...a, status: derivarStatusAnuncio(a.efeito_bruto ?? a.status_bruto),
+      })) as MetaAd[];
     },
     enabled: enabled && !!clientId && !!timeRange,
     staleTime: 15 * 60 * 1000, // 15 minutos (antes: 5)

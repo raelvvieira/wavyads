@@ -35,7 +35,7 @@ import { SearchTermsTable } from '@/components/SearchTermsTable';
 import { ImpressionShareCard } from '@/components/ImpressionShareCard';
 import { ConversionBreakdownTable } from '@/components/ConversionBreakdownTable';
 import { DeviceBreakdown } from '@/components/DeviceBreakdown';
-import { generateDailySpend, formatCurrency, formatNumber, mockCampaigns } from '@/data/mock';
+import { formatCurrency, formatNumber } from '@/lib/format';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -319,45 +319,27 @@ export default function ClientDashboard() {
   };
 
   // Aggregate data
-  const campaignList = useMemo(() => {
-    if (isSynced && campaigns) return campaigns;
-    return isSynced ? [] : mockCampaigns.slice(0, 5).map(c => {
-      const purchases = Math.floor(c.conversions * 0.3);
-      const purchase_value = purchases * 150;
-      return {
-        ...c, reach: c.impressions * 0.8, leads: Math.floor(c.conversions * 0.7),
-        cpl: c.spend / Math.max(1, Math.floor(c.conversions * 0.7)),
-        purchases,
-        cost_per_purchase: c.spend / Math.max(1, purchases),
-        purchase_value,
-        purchase_roas: c.spend > 0 ? purchase_value / c.spend : 0,
-        results: c.conversions,
-        cost_per_result: c.spend / Math.max(1, c.conversions),
-        cpm: (c.spend / c.impressions) * 1000, frequency: 1.5,
-      };
-    });
-  }, [isSynced, campaigns]);
+  /**
+   * Nunca dados inventados.
+   *
+   * Havia aqui um `mockCampaigns.slice(0, 5)` para cliente não sincronizado
+   * — cinco campanhas fictícias com métricas derivadas por multiplicação, e
+   * quatro delas marcadas como "Ativa". Era código já inalcançável (a tela
+   * de "não conectado" retorna antes), mas um fallback que fabrica números
+   * não pode ficar esperando a próxima refatoração reabrir o caminho.
+   */
+  const campaignList = useMemo(
+    () => (isSynced && campaigns ? campaigns : []),
+    [isSynced, campaigns],
+  );
 
-  const dailyData: DailyMetric[] = useMemo(() => {
-    if (isSynced && insights?.daily?.length) return insights.daily;
-    if (!isSynced) {
-      const days = selectedPreset === 'custom' ? 30 : { 'today': 1, 'yesterday': 1, 'last_7d': 7, 'last_14d': 14, 'last_30d': 30, 'this_month': 30, 'last_month': 30 }[selectedPreset] || 30;
-      return generateDailySpend(days).map(d => {
-        const leads = Math.floor(d.value * 0.3);
-        const purchases = Math.floor(d.value * 0.05);
-        const results = leads + purchases;
-        return {
-          date: d.date, spend: d.value,
-          impressions: Math.floor(d.value * 50), reach: Math.floor(d.value * 40),
-          clicks: Math.floor(d.value * 2), leads, purchases, results,
-          conversions: results,
-          cost_per_purchase: purchases > 0 ? d.value / purchases : 0,
-          cost_per_result: results > 0 ? d.value / results : 0,
-        };
-      });
-    }
-    return [];
-  }, [isSynced, insights, selectedPreset]);
+  // `generateDailySpend` era `Math.random()`: um gráfico de gastos diários
+  // redesenhado a cada render. Pior que a tabela, que ao menos repetia os
+  // mesmos números falsos.
+  const dailyData: DailyMetric[] = useMemo(
+    () => (isSynced && insights?.daily?.length ? insights.daily : []),
+    [isSynced, insights],
+  );
 
   // Metric values for KPI cards
   const metricValues: Record<MetricKey, number> = useMemo(() => {

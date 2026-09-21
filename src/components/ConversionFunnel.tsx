@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { GlassCard } from './GlassCard';
 import { cn } from '@/lib/utils';
-import { formatNumber, formatCurrency } from '@/data/mock';
+import { formatNumber, formatCurrency } from '@/lib/format';
 import { ArrowDown, ChevronDown } from 'lucide-react';
 import {
   DropdownMenu,
