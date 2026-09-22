@@ -64,7 +64,7 @@ export function useGoogleAdsCampaigns(clientId: string | undefined, enabled: boo
       // Mesma tabela, mesmo selo, mesma tradução — só a origem do status
       // muda (ENABLED/PAUSED/REMOVED em vez dos valores da Meta).
       return (data.campaigns as any[]).map((c) => ({
-        ...c, status: derivarStatusGoogle(c.status_bruto),
+        ...c, status: derivarStatusGoogle(c.status_bruto, c.status),
       })) as MetaCampaign[];
     },
     enabled: enabled && !!clientId && !!timeRange,

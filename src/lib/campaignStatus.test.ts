@@ -197,6 +197,48 @@ describe('derivarStatusCampanha', () => {
   });
 });
 
+describe('a ponte para o formato antigo', () => {
+  it('payload da função antiga vira "Veiculando", e não "Status não reconhecido"', () => {
+    // A regressão exata: o frontend novo subiu no build do Lovable antes do
+    // deploy da edge function, que ainda devolvia `status: "active"`. Sem
+    // `efeito_bruto`, TODA campanha virava "Status não reconhecido" e o
+    // filtro "Veiculando" ficava vazio — `0 de 200`.
+    const s = derivarStatusCampanha({ status_legado: 'active' }, HOJE);
+    expect(s.estado).toBe('veiculando');
+    expect(s.rotulo).toBe('Veiculando');
+  });
+
+  it('os outros dois estados antigos também traduzem', () => {
+    expect(derivarStatusCampanha({ status_legado: 'paused' }, HOJE).estado).toBe('pausada');
+    expect(derivarStatusCampanha({ status_legado: 'ended' }, HOJE).estado).toBe('encerrada');
+  });
+
+  it('o formato NOVO tem precedência — a ponte não pode anular o conserto', () => {
+    // Se os dois campos chegarem juntos, o legado diria "ativa" por cima de
+    // "sem veiculação", e o bug original voltaria pela porta dos fundos.
+    const s = derivarStatusCampanha(
+      { ...comAnuncios({ ADSET_PAUSED: 3 }), status_legado: 'active' },
+      HOJE,
+    );
+    expect(s.estado).toBe('sem_veiculacao');
+    expect(s.veiculando).toBe(false);
+  });
+
+  it('desconhecido de verdade continua desconhecido — a ponte não é um novo "|| ended"', () => {
+    expect(derivarStatusCampanha({ status_legado: 'coisa_estranha' }, HOJE).estado).toBe('desconhecida');
+    expect(derivarStatusCampanha({}, HOJE).estado).toBe('desconhecida');
+  });
+
+  it('anúncios e Google atravessam a mesma ponte', () => {
+    // As três telas quebraram juntas: campanhas Meta, galeria de criativos
+    // e campanhas Google.
+    expect(derivarStatusAnuncio(null, 'active').estado).toBe('veiculando');
+    expect(derivarStatusAnuncio('ADSET_PAUSED', 'active').rotulo).toBe('Pausado pelo conjunto');
+    expect(derivarStatusGoogle(null, 'active').estado).toBe('veiculando');
+    expect(derivarStatusGoogle('PAUSED', 'active').estado).toBe('pausada');
+  });
+});
+
 describe('derivarStatusAnuncio', () => {
   it('diz de onde veio a pausa — a mesma verdade que a campanha anuncia em cima', () => {
     expect(derivarStatusAnuncio('ADSET_PAUSED').rotulo).toBe('Pausado pelo conjunto');

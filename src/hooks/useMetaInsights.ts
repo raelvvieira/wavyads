@@ -109,7 +109,10 @@ export function useMetaCampaigns(clientId: string | undefined, enabled: boolean,
       // Derivar aqui, e não em cada componente, é o que mantém uma resposta
       // só para "esta campanha está no ar?".
       return (data.campaigns as any[]).map((c) => ({
-        ...c, status: derivarStatusCampanha(c),
+        // `status_legado: c.status` cobre a janela em que a edge function
+        // ainda não foi deployada e devolve o formato antigo. Sem isto,
+        // toda campanha vira "Status não reconhecido".
+        ...c, status: derivarStatusCampanha({ ...c, status_legado: c.status }),
       })) as MetaCampaign[];
     },
     enabled: enabled && !!clientId && !!timeRange,
