@@ -80,6 +80,20 @@ export interface Veiculacao {
 export interface CampanhaBruta {
   efeito_bruto?: string | null;
   status_bruto?: string | null;
+  /**
+   * O formato ANTIGO do payload: `'active' | 'paused' | 'ended'`.
+   *
+   * O frontend e as edge functions **não sobem juntos** — um sai no build,
+   * as outras precisam de deploy manual. Enquanto a função antiga estiver
+   * no ar, é este campo que chega, e sem lê-lo toda campanha virava "Status
+   * não reconhecido" e o filtro "Veiculando" ficava vazio. Foi o que
+   * aconteceu.
+   *
+   * Isto não é remendo para remover depois: é como se muda contrato entre
+   * peças com deploy independente. A função pode ser revertida, um cache
+   * pode servir resposta antiga, um ambiente pode ficar para trás.
+   */
+  status_legado?: string | null;
   /** Fim programado da própria campanha, ISO. */
   stop_time?: string | null;
   spend_cap?: number | null;
@@ -121,6 +135,23 @@ function montar(estado: EstadoCampanha, bruto: string | null, motivo: string | n
   };
 }
 
+/**
+ * O que o formato antigo sabia dizer — e só isso.
+ *
+ * `active` vira "Veiculando" porque é tudo que aquele payload permite
+ * afirmar: ele não distinguia campanha ligada de campanha entregando, que é
+ * justamente o que o formato novo veio resolver. A tela volta ao nível de
+ * detalhe de antes, e melhora sozinha quando a função for deployada.
+ */
+function doLegado(v: string | null | undefined): StatusCampanha | null {
+  switch (v) {
+    case 'active': return montar('veiculando', null);
+    case 'paused': return montar('pausada', null);
+    case 'ended': return montar('encerrada', null);
+    default: return null;
+  }
+}
+
 /** Data no passado, com margem de um dia. */
 function jaPassou(iso: string | null | undefined, agora: Date): boolean {
   if (!iso) return false;
@@ -151,6 +182,14 @@ function temDesconhecido(h: Histograma): boolean {
 
 export function derivarStatusCampanha(c: CampanhaBruta, agora = new Date()): StatusCampanha {
   const bruto = c.efeito_bruto ?? c.status_bruto ?? null;
+
+  // O formato novo tem precedência: quando ele chega, o legado é ignorado.
+  // Sem essa ordem, uma resposta que trouxesse os dois campos anularia o
+  // conserto — o legado diria "ativa" por cima de "sem veiculação".
+  if (!bruto) {
+    const legado = doLegado(c.status_legado);
+    if (legado) return legado;
+  }
 
   // 1. Terminal: a Meta não volta atrás.
   if (bruto === 'ARCHIVED') return montar('encerrada', bruto, 'arquivada na Meta');
@@ -247,8 +286,12 @@ export function derivarStatusCampanha(c: CampanhaBruta, agora = new Date()): Sta
  * Antes isto era `ad.status === 'ACTIVE' ? 'active' : 'paused'`: um booleano
  * onde a Meta oferece onze valores.
  */
-export function derivarStatusAnuncio(bruto: string | null | undefined): StatusCampanha {
+export function derivarStatusAnuncio(bruto: string | null | undefined, legado?: string | null): StatusCampanha {
   const v = bruto ?? null;
+  if (!v) {
+    const antigo = doLegado(legado);
+    if (antigo) return antigo;
+  }
   switch (v) {
     case 'ACTIVE': return montar('veiculando', v);
     case 'PAUSED': return montar('pausada', v);
@@ -275,8 +318,12 @@ export function derivarStatusAnuncio(bruto: string | null | undefined): StatusCa
  * que importa: `REMOVED` e desconhecido param de virar "Encerrada" por
  * acidente, pelo mesmo motivo do item 4 acima.
  */
-export function derivarStatusGoogle(bruto: string | null | undefined): StatusCampanha {
+export function derivarStatusGoogle(bruto: string | null | undefined, legado?: string | null): StatusCampanha {
   const v = bruto ?? null;
+  if (!v) {
+    const antigo = doLegado(legado);
+    if (antigo) return antigo;
+  }
   switch (v) {
     case 'ENABLED': return montar('veiculando', v);
     case 'PAUSED': return montar('pausada', v);

@@ -48,7 +48,7 @@ export function useMetaAds(clientId: string | undefined, enabled: boolean, timeR
       }
       if (error) throw error;
       return (data.ads as any[]).map((a) => ({
-        ...a, status: derivarStatusAnuncio(a.efeito_bruto ?? a.status_bruto),
+        ...a, status: derivarStatusAnuncio(a.efeito_bruto ?? a.status_bruto, a.status),
       })) as MetaAd[];
     },
     enabled: enabled && !!clientId && !!timeRange,
