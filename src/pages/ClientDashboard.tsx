@@ -213,12 +213,12 @@ export default function ClientDashboard() {
   }, [selectedPreset, customDateRange]);
 
   // Meta hooks
-  const { data: metaCampaigns, isLoading: metaCampaignsLoading, error: metaCampaignsError } = useMetaCampaigns(clientId, platform === 'meta' && isMetaSynced, timeRange);
+  const { data: metaCampaigns, isLoading: metaCampaignsLoading, error: metaCampaignsError, dataUpdatedAt: metaAtualizadoEm, refetch: recarregarMeta } = useMetaCampaigns(clientId, platform === 'meta' && isMetaSynced, timeRange);
   const { data: metaInsights, isLoading: metaInsightsLoading, error: metaInsightsError } = useMetaInsights(clientId, platform === 'meta' && isMetaSynced, timeRange);
   const { data: metaPreviousInsights } = useMetaInsightsPrevious(clientId, platform === 'meta' && isMetaSynced, timeRange);
   const { data: metaAds, isLoading: metaAdsLoading, error: metaAdsError } = useMetaAds(clientId, platform === 'meta' && isMetaSynced, timeRange);
   // Google Ads hooks
-  const { data: googleCampaigns, isLoading: googleCampaignsLoading, error: googleCampaignsError } = useGoogleAdsCampaigns(clientId, platform === 'google' && isGoogleSynced, timeRange);
+  const { data: googleCampaigns, isLoading: googleCampaignsLoading, error: googleCampaignsError, dataUpdatedAt: googleAtualizadoEm, refetch: recarregarGoogle } = useGoogleAdsCampaigns(clientId, platform === 'google' && isGoogleSynced, timeRange);
   const { data: googleInsights, isLoading: googleInsightsLoading, error: googleInsightsError } = useGoogleAdsInsights(clientId, platform === 'google' && isGoogleSynced, timeRange);
   const { data: googlePreviousInsights } = useGoogleAdsInsightsPrevious(clientId, platform === 'google' && isGoogleSynced, timeRange);
   const { data: keywordsData, isLoading: keywordsLoading } = useGoogleAdsKeywords(
@@ -841,7 +841,11 @@ export default function ClientDashboard() {
 
               {/* Campaigns Table */}
               {!isLoading && campaignList.length > 0 && (
-                <CampaignsTable campaigns={campaignList} />
+                <CampaignsTable
+          campaigns={campaignList}
+          atualizadoEm={platform === 'meta' ? metaAtualizadoEm : googleAtualizadoEm}
+          onAtualizar={platform === 'meta' ? recarregarMeta : recarregarGoogle}
+        />
               )}
 
               {/* Impression Share (Google Ads apenas) */}
