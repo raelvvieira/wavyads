@@ -174,6 +174,35 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
     ? 'Total / Média'
     : `Total / Média · ${STATUS_FILTERS.find(f => f.value === statusFilter)?.label} (${filtered.length} de ${campaigns.length})`;
 
+  /**
+   * Quais nomes aparecem mais de uma vez.
+   *
+   * Duplicar campanha é rotina na Meta — a conta de um cliente tem
+   * `ACELERADORA - F - 28/09` e `ACELERADORA - F - 28/09 — 2` lado a lado.
+   * A tabela mostrava só o nome, então duas campanhas viravam duas linhas
+   * indistinguíveis: o cliente comparava com o Gerenciador pelo nome,
+   * batia na duplicata errada e concluía que o sistema estava mentindo
+   * sobre o status.
+   *
+   * O desempate só aparece quando há empate. Carimbar data e ID em toda
+   * linha seria ruído nas 99% que não precisam.
+   */
+  const nomesRepetidos = useMemo(() => {
+    const contagem = new Map<string, number>();
+    for (const c of campaigns) contagem.set(c.name, (contagem.get(c.name) ?? 0) + 1);
+    return new Set([...contagem].filter(([, n]) => n > 1).map(([nome]) => nome));
+  }, [campaigns]);
+
+  const criadaEm = (c: MetaCampaign) => {
+    const iso = (c as any).created_time;
+    if (!iso) return null;
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString('pt-BR');
+  };
+
+  /** O ID é o que permite comparar com o Gerenciador sem ambiguidade. */
+  const identidade = (c: MetaCampaign) => `${c.name} · ID ${c.id}`;
+
   const getTags = (c: MetaCampaign) => {
     const tags: { label: string; className: string }[] = [];
     if (c.id === bestCplId) tags.push({ label: 'Melhor CPL', className: 'bg-status-active/20 text-status-active border-status-active/30' });
@@ -249,7 +278,14 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
                 className="rounded-lg border border-white/5 bg-white/[0.02] p-3 transition-colors hover:bg-white/[0.04]"
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <span className="text-sm font-medium whitespace-normal break-words flex-1">{c.name}</span>
+                  <span className="text-sm font-medium whitespace-normal break-words flex-1" title={identidade(c)}>
+                    {c.name}
+                    {nomesRepetidos.has(c.name) && (
+                      <span className="block text-[10px] font-normal text-muted-foreground">
+                        {criadaEm(c) ? `criada em ${criadaEm(c)} · ` : ''}ID {c.id}
+                      </span>
+                    )}
+                  </span>
                   <StatusBadge status={c.status} />
                 </div>
                 {tags.length > 0 && (
@@ -329,7 +365,14 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
                   <tr key={c.id} className="border-b border-white/5 transition-colors duration-200 hover:bg-white/[0.03]">
                     <td className="py-3 px-3 font-medium">
                       <div className="flex flex-col gap-1">
-                        <span className="whitespace-normal break-words min-w-[200px]">{c.name}</span>
+                        <span className="whitespace-normal break-words min-w-[200px]" title={identidade(c)}>
+                          {c.name}
+                        </span>
+                        {nomesRepetidos.has(c.name) && (
+                          <span className="text-[10px] text-muted-foreground">
+                            {criadaEm(c) ? `criada em ${criadaEm(c)} · ` : ''}ID {c.id}
+                          </span>
+                        )}
                         {tags.length > 0 && (
                           <div className="flex gap-1 flex-wrap">
                             {tags.map(t => (
