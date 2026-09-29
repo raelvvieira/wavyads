@@ -24,15 +24,27 @@ async function fetchGraphList(
   endpoint: string,
   fields: string,
   accessToken: string,
-  opts: { maxItems: number; pageSize?: number },
-): Promise<{ data: any[] } | { error: any }> {
+  opts: { maxItems: number; pageSize?: number; filtering?: unknown },
+): Promise<{ data: any[]; truncado: boolean } | { error: any }> {
   let pageSize = opts.pageSize ?? 25;
   const items: any[] = [];
+  const filtro = opts.filtering
+    ? `&filtering=${encodeURIComponent(JSON.stringify(opts.filtering))}`
+    : "";
 
-  let url = `${endpoint}?fields=${fields}&limit=${pageSize}&access_token=${accessToken}`;
+  let url = `${endpoint}?fields=${fields}&limit=${pageSize}${filtro}&access_token=${accessToken}`;
   let guard = 0;
+  /*
+   * Bandeira EXPLÍCITA, e não deduzida no fim.
+   *
+   * Zerar a `url` é o que encerra o laço nos dois casos — "acabou a lista" e
+   * "bati no teto" —, então olhar a `url` depois não distingue um do outro.
+   * Sem essa distinção, "não vi tudo" vira "não tem", e uma campanha cujos
+   * anúncios ficaram fora do corte é declarada sem anúncios.
+   */
+  let truncado = false;
 
-  while (url && items.length < opts.maxItems && guard < 40) {
+  while (url && guard < 40) {
     guard++;
     const res = await fetch(url);
     const json = await res.json();
@@ -40,19 +52,26 @@ async function fetchGraphList(
     if (json.error) {
       if (isTooMuchDataError(json.error) && pageSize > 5) {
         pageSize = Math.max(5, Math.floor(pageSize / 2));
-        url = `${endpoint}?fields=${fields}&limit=${pageSize}&access_token=${accessToken}`;
+        url = `${endpoint}?fields=${fields}&limit=${pageSize}${filtro}&access_token=${accessToken}`;
         continue;
       }
-      if (items.length > 0) break; // já temos dados parciais: melhor que erro
+      // Dados parciais valem mais que um erro — mas só se quem recebe souber
+      // que são parciais.
+      if (items.length > 0) { truncado = true; break; }
       return { error: json.error };
     }
 
     items.push(...(json.data || []));
     const next = json.paging?.next;
-    url = next && items.length < opts.maxItems ? next : "";
+    if (items.length >= opts.maxItems) {
+      truncado = !!next || items.length > opts.maxItems;
+      break;
+    }
+    url = next || "";
   }
 
-  return { data: items.slice(0, opts.maxItems) };
+  if (guard >= 40 && url) truncado = true;
+  return { data: items.slice(0, opts.maxItems), truncado };
 }
 
 
@@ -246,9 +265,16 @@ function histograma(itens: any[]): Map<string, { por_status: Record<string, numb
   return porCampanha;
 }
 
-/** O mesmo, mais o fim programado — um conjunto vencido mantém o anúncio ACTIVE. */
-function histogramaDeConjuntos(itens: any[]) {
-  const base = histograma(itens);
+/**
+ * O prazo dos conjuntos ATIVOS de cada campanha.
+ *
+ * A lista que chega aqui já vem filtrada por `effective_status: ACTIVE`, então
+ * a presença da campanha no mapa já significa "tem conjunto no ar". O que
+ * ainda falta saber é se esse conjunto tem data para acabar: um conjunto
+ * vencido mantém o anúncio como ACTIVE na API, enquanto o Gerenciador já
+ * mostra "Concluída".
+ */
+function prazosPorCampanha(itens: any[]): Map<string, { ultimo_fim: string | null; algum_sem_fim: boolean }> {
   const prazos = new Map<string, { ultimo_fim: string | null; algum_sem_fim: boolean }>();
   for (const it of itens) {
     const cid = String(it.campaign_id || "");
@@ -264,9 +290,7 @@ function histogramaDeConjuntos(itens: any[]) {
     }
     prazos.set(cid, atual);
   }
-  const saida = new Map<string, any>();
-  for (const [cid, h] of base) saida.set(cid, { ...h, ...(prazos.get(cid) ?? { ultimo_fim: null, algum_sem_fim: false }) });
-  return saida;
+  return prazos;
 }
 
 function parseCampaign(c: any, ins: any, veiculacao: any = null) {
@@ -398,7 +422,7 @@ Deno.serve(async (req) => {
         `${GRAPH_API}/${adAccountId}/campaigns`,
         fields,
         accessToken,
-        { maxItems: 200, pageSize: 25 },
+        { maxItems: 500, pageSize: 25 },
       );
 
       if ("error" in result) {
@@ -406,63 +430,80 @@ Deno.serve(async (req) => {
       }
 
       /*
-       * Quem sabe se a campanha entrega são os FILHOS.
+       * Quem sabe se a campanha entrega são os FILHOS — e a pergunta é
+       * binária: existe algum anúncio NO AR?
        *
-       * No nível de campanha o `effective_status` não muda quando os
-       * conjuntos são desligados — e era esse o caso que fazia seis
-       * campanhas paradas aparecerem no filtro "Ativas". O
-       * `effective_status` do anúncio, sim, carrega a hierarquia inteira.
+       * A primeira versão disto baixava TODOS os conjuntos e TODOS os
+       * anúncios da conta e contava em memória. Não escala: numa conta com
+       * 200+ campanhas os tetos são atingidos com folga, e aí o corte decide
+       * arbitrariamente quais campanhas têm resposta — as que ficam de fora
+       * são declaradas "sem anúncios", que é falso.
        *
-       * Duas listas PLANAS: sem `insights` e sem `creative`, elas cabem
-       * centenas por página e não disputam orçamento de payload com a
-       * chamada acima, que já sofre com "too much data". Sem `filtering`
-       * também de propósito: filtrar por ACTIVE devolveria só quem veicula,
-       * e perderíamos o MOTIVO de quem não veicula — que é metade do que o
-       * cliente precisa saber.
+       * Listas FILTRADAS respondem a mesma pergunta e são pequenas: numa
+       * conta com 12 campanhas entregando, a lista de anúncios ativos tem
+       * dezenas de itens, não milhares.
        *
-       * Best-effort por desenho: se uma delas falhar, o resultado é
-       * "não confirmado", nunca uma afirmação de que parou.
+       * A terceira lista preserva os motivos que EXIGEM AÇÃO — reprovado, em
+       * revisão, pagamento pendente. Sem ela, "não aprovada" viraria só
+       * "sem veiculação", e ninguém saberia que precisa mexer.
+       *
+       * Best-effort: se uma delas falhar, o resultado é "não confirmado",
+       * nunca uma afirmação de que parou.
        */
-      const [conjuntosRes, anunciosRes] = await Promise.all([
-        fetchGraphList(
-          `${GRAPH_API}/${adAccountId}/adsets`,
-          "campaign_id,effective_status,end_time,start_time",
-          accessToken,
-          { maxItems: 1000, pageSize: 200 },
-        ).catch(() => ({ error: true } as any)),
-        fetchGraphList(
-          `${GRAPH_API}/${adAccountId}/ads`,
-          "campaign_id,effective_status",
-          accessToken,
-          { maxItems: 3000, pageSize: 500 },
-        ).catch(() => ({ error: true } as any)),
+      const soAtivos = [{ field: "effective_status", operator: "IN", value: ["ACTIVE"] }];
+      const comProblema = [{
+        field: "effective_status",
+        operator: "IN",
+        value: ["DISAPPROVED", "PENDING_REVIEW", "PREAPPROVED", "PENDING_BILLING_INFO", "WITH_ISSUES"],
+      }];
+
+      const [conjuntosRes, anunciosRes, problemasRes] = await Promise.all([
+        fetchGraphList(`${GRAPH_API}/${adAccountId}/adsets`, "campaign_id,end_time", accessToken,
+          { maxItems: 2000, pageSize: 200, filtering: soAtivos }).catch(() => ({ error: true } as any)),
+        fetchGraphList(`${GRAPH_API}/${adAccountId}/ads`, "campaign_id", accessToken,
+          { maxItems: 2000, pageSize: 500, filtering: soAtivos }).catch(() => ({ error: true } as any)),
+        fetchGraphList(`${GRAPH_API}/${adAccountId}/ads`, "campaign_id,effective_status", accessToken,
+          { maxItems: 2000, pageSize: 500, filtering: comProblema }).catch(() => ({ error: true } as any)),
       ]);
 
-      const conjuntosOk = !("error" in conjuntosRes);
-      const anunciosOk = !("error" in anunciosRes);
-      if (!conjuntosOk || !anunciosOk) {
-        console.warn("Estado de veiculação incompleto:", { conjuntosOk, anunciosOk });
+      const ok = (r: any) => !("error" in r);
+      if (!ok(conjuntosRes) || !ok(anunciosRes) || !ok(problemasRes)) {
+        console.warn("Estado de veiculação incompleto:", {
+          conjuntos: ok(conjuntosRes), anuncios: ok(anunciosRes), problemas: ok(problemasRes),
+        });
       }
-      const porConjunto = conjuntosOk ? histogramaDeConjuntos((conjuntosRes as any).data) : null;
-      const porAnuncio = anunciosOk ? histograma((anunciosRes as any).data) : null;
-      // Bateu no teto = pode faltar filho de alguma campanha, e "faltou o
-      // dado" não pode virar "não tem anúncio".
-      const parcial = (conjuntosOk && (conjuntosRes as any).data.length >= 1000)
-        || (anunciosOk && (anunciosRes as any).data.length >= 3000);
+
+      // Truncou = pode faltar filho de alguma campanha, e "faltou o dado"
+      // não pode virar "não tem anúncio".
+      const truncou = [conjuntosRes, anunciosRes, problemasRes].some((r: any) => ok(r) && r.truncado);
+
+      const conjuntosAtivos = ok(conjuntosRes) ? prazosPorCampanha((conjuntosRes as any).data) : null;
+      const anunciosAtivos = ok(anunciosRes)
+        ? new Set((anunciosRes as any).data.map((a: any) => String(a.campaign_id || "")))
+        : null;
+      const problemasPorCampanha = ok(problemasRes) ? histograma((problemasRes as any).data) : null;
 
       const campaigns = result.data.map((c: any) => {
         const ins = c.insights?.data?.[0] || {};
+        const prazo = conjuntosAtivos?.get(c.id) ?? null;
         const veiculacao = {
-          conjuntos: porConjunto
-            ? (porConjunto.get(c.id) ?? { por_status: {}, total: 0, ultimo_fim: null, algum_sem_fim: false })
+          tem_anuncio_ativo: anunciosAtivos ? anunciosAtivos.has(String(c.id)) : null,
+          tem_conjunto_ativo: conjuntosAtivos ? !!prazo : null,
+          anuncios_com_problema: problemasPorCampanha
+            ? (problemasPorCampanha.get(c.id)?.por_status ?? {})
             : null,
-          anuncios: porAnuncio ? (porAnuncio.get(c.id) ?? { por_status: {}, total: 0 }) : null,
-          parcial,
+          ultimo_fim: prazo?.ultimo_fim ?? null,
+          algum_sem_fim: prazo?.algum_sem_fim ?? false,
+          truncado: truncou,
         };
         return parseCampaign(c, ins, veiculacao);
       });
 
-      return new Response(JSON.stringify({ campaigns }),
+      // A lista de campanhas também pode ter sido cortada, e o rodapé da
+      // tabela soma o que está na tela. Chamar de "Total" um recorte imposto
+      // pela API, sem dizer, é a mesma classe de mentira que esta rodada
+      // inteira está consertando.
+      return new Response(JSON.stringify({ campaigns, truncado: result.truncado }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 

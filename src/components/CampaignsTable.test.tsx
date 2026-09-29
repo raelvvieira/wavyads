@@ -22,11 +22,15 @@ function campanha(
   } as MetaCampaign;
 }
 
-const filhos = (por_status: Record<string, number>) => ({
+/** Atalho: descreve o estado dos filhos no formato que a borda devolve. */
+const filhos = (p: { anuncioAtivo?: boolean; conjuntoAtivo?: boolean; problemas?: Record<string, number> }) => ({
   veiculacao: {
-    anuncios: { por_status, total: Object.values(por_status).reduce((s, n) => s + n, 0) },
-    conjuntos: { por_status: { ACTIVE: 1 }, total: 1, ultimo_fim: null, algum_sem_fim: true },
-    parcial: false,
+    tem_anuncio_ativo: p.anuncioAtivo ?? false,
+    tem_conjunto_ativo: p.conjuntoAtivo ?? true,
+    anuncios_com_problema: p.problemas ?? {},
+    ultimo_fim: null,
+    algum_sem_fim: true,
+    truncado: false,
   },
 });
 
@@ -41,8 +45,8 @@ function montar(campaigns: MetaCampaign[]) {
 const linhas = (nome: string) => screen.queryAllByText(nome);
 
 describe('CampaignsTable — o filtro que mentia', () => {
-  const rodando = campanha('CAMPANHA QUE RODA', filhos({ ACTIVE: 2 }), 100);
-  const parada = campanha('CORNEO SP SETEMBRO', filhos({ ADSET_PAUSED: 4 }), 900);
+  const rodando = campanha('CAMPANHA QUE RODA', filhos({ anuncioAtivo: true }), 100);
+  const parada = campanha('CORNEO SP SETEMBRO', filhos({ conjuntoAtivo: false }), 900);
 
   it('"Veiculando" não devolve campanha cujos conjuntos estão pausados', () => {
     // O relato: o cliente clicou em "Ativas" e recebeu seis campanhas que já
@@ -102,10 +106,10 @@ describe('CampaignsTable — o filtro que mentia', () => {
     // `ACELERADORA - F - 28/09` e `— 2` lado a lado. A tabela mostrava só o
     // nome, então o cliente comparava com o Gerenciador, batia na duplicata
     // errada e concluía que o status estava mentindo.
-    const antiga = campanha('CORNEO SP SETEMBRO', filhos({ ACTIVE: 1 }), 100, {
+    const antiga = campanha('CORNEO SP SETEMBRO', filhos({ anuncioAtivo: true }), 100, {
       id: '111', created_time: '2026-07-19T10:00:00Z',
     });
-    const nova = campanha('CORNEO SP SETEMBRO', filhos({ ADSET_PAUSED: 1 }), 50, {
+    const nova = campanha('CORNEO SP SETEMBRO', filhos({ conjuntoAtivo: false }), 50, {
       id: '222', created_time: '2026-09-01T10:00:00Z',
     });
     montar([antiga, nova]);
@@ -118,7 +122,7 @@ describe('CampaignsTable — o filtro que mentia', () => {
 
   it('nome único não ganha carimbo — o desempate só aparece quando há empate', () => {
     // Carimbar data e ID em toda linha seria ruído nas que não precisam.
-    montar([campanha('CAMPANHA SOZINHA', filhos({ ACTIVE: 1 }), 100, { id: '999' })]);
+    montar([campanha('CAMPANHA SOZINHA', filhos({ anuncioAtivo: true }), 100, { id: '999' })]);
     expect(screen.queryByText(/ID 999/)).toBeNull();
   });
 

@@ -5,7 +5,7 @@ import {
   derivarStatusGoogle,
   pertenceAoGrupo,
   type CampanhaBruta,
-  type Histograma,
+  type Veiculacao,
 } from './campaignStatus';
 
 const HOJE = new Date('2026-09-21T12:00:00Z');
@@ -14,24 +14,28 @@ function campanha(patch: Partial<CampanhaBruta> = {}): CampanhaBruta {
   return { efeito_bruto: 'ACTIVE', status_bruto: 'ACTIVE', ...patch };
 }
 
-function comAnuncios(por_status: Histograma, patch: Partial<CampanhaBruta> = {}): CampanhaBruta {
-  const total = Object.values(por_status).reduce((s, n) => s + n, 0);
+/** O estado dos filhos, no formato que a borda devolve. */
+function comFilhos(v: Partial<Veiculacao> = {}, patch: Partial<CampanhaBruta> = {}): CampanhaBruta {
   return campanha({
     veiculacao: {
-      anuncios: { por_status, total },
-      conjuntos: { por_status: { ACTIVE: 1 }, total: 1, ultimo_fim: null, algum_sem_fim: true },
-      parcial: false,
+      tem_anuncio_ativo: false,
+      tem_conjunto_ativo: true,
+      anuncios_com_problema: {},
+      ultimo_fim: null,
+      algum_sem_fim: true,
+      truncado: false,
+      ...v,
     },
     ...patch,
   });
 }
 
 describe('derivarStatusCampanha', () => {
-  it('campanha ligada com todos os conjuntos pausados NÃO aparece como veiculando', () => {
+  it('campanha ligada sem nenhum conjunto ativo NÃO aparece como veiculando', () => {
     // O relato: o cliente clicou no filtro "Ativas" e recebeu seis campanhas
     // que já não rodavam. Nem `status` nem `effective_status` da campanha
-    // mudam quando os conjuntos são desligados — só o anúncio sabe.
-    const s = derivarStatusCampanha(comAnuncios({ ADSET_PAUSED: 4 }), HOJE);
+    // mudam quando os conjuntos são desligados — só os filhos sabem.
+    const s = derivarStatusCampanha(comFilhos({ tem_conjunto_ativo: false }), HOJE);
 
     expect(s.veiculando).toBe(false);
     expect(s.estado).toBe('sem_veiculacao');
@@ -52,8 +56,8 @@ describe('derivarStatusCampanha', () => {
     expect(s.motivo).toContain('FUTURO_QUE_A_META_INVENTOU');
   });
 
-  it('um anúncio ativo entre nove pausados basta para veicular', () => {
-    const s = derivarStatusCampanha(comAnuncios({ ACTIVE: 1, PAUSED: 9 }), HOJE);
+  it('um anúncio no ar basta para veicular', () => {
+    const s = derivarStatusCampanha(comFilhos({ tem_anuncio_ativo: true }), HOJE);
     expect(s.veiculando).toBe(true);
     expect(s.rotulo).toBe('Veiculando');
   });
@@ -61,71 +65,72 @@ describe('derivarStatusCampanha', () => {
   it('a campanha pausada é pausada, mesmo com anúncios ativos dentro', () => {
     // O botão da campanha manda. A Meta às vezes demora a propagar o estado
     // para os filhos, e acreditar neles aqui inverteria a verdade.
-    const s = derivarStatusCampanha(comAnuncios({ ACTIVE: 3 }, { efeito_bruto: 'PAUSED' }), HOJE);
+    const s = derivarStatusCampanha(comFilhos({ tem_anuncio_ativo: true }, { efeito_bruto: 'PAUSED' }), HOJE);
     expect(s.estado).toBe('pausada');
     expect(s.veiculando).toBe(false);
   });
 
+  it('distingue "os anúncios estão pausados" de "os conjuntos estão pausados"', () => {
+    // São dois consertos diferentes para quem cuida da conta.
+    expect(derivarStatusCampanha(comFilhos({ tem_conjunto_ativo: true }), HOJE).motivo)
+      .toContain('anúncios estão pausados');
+    expect(derivarStatusCampanha(comFilhos({ tem_conjunto_ativo: false }), HOJE).motivo)
+      .toContain('conjuntos estão pausados');
+  });
+
   it('em análise tem precedência sobre reprovado', () => {
     // Enquanto houver peça em revisão, a campanha ainda pode entrar no ar.
-    const s = derivarStatusCampanha(comAnuncios({ PENDING_REVIEW: 1, DISAPPROVED: 2 }), HOJE);
+    const s = derivarStatusCampanha(
+      comFilhos({ anuncios_com_problema: { PENDING_REVIEW: 1, DISAPPROVED: 2 } }), HOJE);
     expect(s.estado).toBe('em_analise');
   });
 
   it('tudo reprovado vira "Não aprovada" — que é diferente de "Pausada"', () => {
     // Chamar isto de pausa seria esconder que alguém precisa AGIR.
-    const s = derivarStatusCampanha(comAnuncios({ DISAPPROVED: 3 }), HOJE);
+    const s = derivarStatusCampanha(comFilhos({ anuncios_com_problema: { DISAPPROVED: 3 } }), HOJE);
     expect(s.estado).toBe('nao_aprovada');
     expect(s.motivo).toContain('reprovados');
+  });
+
+  it('pagamento pendente não se disfarça de pausa', () => {
+    const s = derivarStatusCampanha(comFilhos({ anuncios_com_problema: { PENDING_BILLING_INFO: 1 } }), HOJE);
+    expect(s.estado).toBe('com_problemas');
+    expect(s.motivo).toContain('pagamento');
   });
 
   it('chamada de filhos que falhou NÃO vira "sem veiculação"', () => {
     // Ausência de dado nunca pode virar ausência de entrega. Este é o ramo
     // que impede o conserto de criar uma mentira nova.
     const s = derivarStatusCampanha(
-      campanha({ veiculacao: { anuncios: null, conjuntos: null, parcial: false } }),
-      HOJE,
-    );
+      comFilhos({ tem_anuncio_ativo: null, tem_conjunto_ativo: null }), HOJE);
     expect(s.estado).toBe('nao_confirmada');
     expect(s.veiculando).toBeNull();
   });
 
-  it('lista truncada sem filho nenhum também é "não confirmada"', () => {
-    // Uma campanha cujos anúncios ficaram fora do corte apareceria como
-    // "sem anúncios" — mentira nova, criada pelo conserto.
+  it('lista truncada NÃO vira "sem veiculação" — nem com os conjuntos já vistos', () => {
+    // O bug desta rodada. A versão anterior exigia que AS DUAS listas
+    // estivessem vazias para admitir incerteza: uma campanha vista na lista
+    // de conjuntos, mas cujos anúncios ficaram fora do corte, era declarada
+    // "não tem anúncios" — falso, e criado pelo próprio conserto.
     const s = derivarStatusCampanha(
-      campanha({
-        veiculacao: {
-          anuncios: { por_status: {}, total: 0 },
-          conjuntos: { por_status: {}, total: 0, ultimo_fim: null, algum_sem_fim: false },
-          parcial: true,
-        },
-      }),
-      HOJE,
-    );
-    expect(s.estado).toBe('nao_confirmada');
-  });
-
-  it('status de anúncio que este código não conhece não deixa concluir "parou"', () => {
-    // A chave desconhecida pode ser uma entrega. Mesmo princípio, um nível
-    // abaixo.
-    const s = derivarStatusCampanha(comAnuncios({ ALGO_NOVO: 2 }), HOJE);
+      comFilhos({ tem_anuncio_ativo: false, tem_conjunto_ativo: true, truncado: true }), HOJE);
     expect(s.estado).toBe('nao_confirmada');
     expect(s.veiculando).toBeNull();
+    expect(s.motivo).toContain('incompleta');
   });
 
-  it('conjuntos vencidos vencem anúncios ACTIVE — a API não desliga o filho', () => {
+  it('truncado não apaga uma entrega já observada', () => {
+    // Se eu VI um anúncio no ar, o corte na lista não muda esse fato.
+    const s = derivarStatusCampanha(comFilhos({ tem_anuncio_ativo: true, truncado: true }), HOJE);
+    expect(s.estado).toBe('veiculando');
+  });
+
+  it('conjuntos vencidos vencem anúncios ativos — a API não desliga o filho', () => {
     // Um conjunto com fim no passado mantém o anúncio como ACTIVE, enquanto
     // o Gerenciador já mostra "Concluída". Sem este degrau, o caso vira
     // exatamente o falso "Veiculando" que estamos eliminando.
     const s = derivarStatusCampanha(
-      campanha({
-        veiculacao: {
-          anuncios: { por_status: { ACTIVE: 2 }, total: 2 },
-          conjuntos: { por_status: { ACTIVE: 1 }, total: 1, ultimo_fim: '2026-08-30T00:00:00Z', algum_sem_fim: false },
-          parcial: false,
-        },
-      }),
+      comFilhos({ tem_anuncio_ativo: true, ultimo_fim: '2026-08-30T00:00:00Z', algum_sem_fim: false }),
       HOJE,
     );
     expect(s.estado).toBe('fora_do_periodo');
@@ -134,13 +139,7 @@ describe('derivarStatusCampanha', () => {
 
   it('um conjunto sem data de término impede a conclusão de "fora do período"', () => {
     const s = derivarStatusCampanha(
-      campanha({
-        veiculacao: {
-          anuncios: { por_status: { ACTIVE: 1 }, total: 1 },
-          conjuntos: { por_status: { ACTIVE: 2 }, total: 2, ultimo_fim: '2026-08-30T00:00:00Z', algum_sem_fim: true },
-          parcial: false,
-        },
-      }),
+      comFilhos({ tem_anuncio_ativo: true, ultimo_fim: '2026-08-30T00:00:00Z', algum_sem_fim: true }),
       HOJE,
     );
     expect(s.estado).toBe('veiculando');
@@ -165,29 +164,14 @@ describe('derivarStatusCampanha', () => {
     expect(derivarStatusCampanha(campanha({ efeito_bruto: 'DELETED' }), HOJE).motivo).toContain('excluída');
   });
 
-  it('campanha sem anúncio nenhum diz exatamente isso', () => {
-    const s = derivarStatusCampanha(
-      campanha({
-        veiculacao: {
-          anuncios: { por_status: {}, total: 0 },
-          conjuntos: { por_status: { ACTIVE: 1 }, total: 1, ultimo_fim: null, algum_sem_fim: true },
-          parcial: false,
-        },
-      }),
-      HOJE,
-    );
-    expect(s.estado).toBe('sem_veiculacao');
-    expect(s.motivo).toContain('não tem anúncios');
-  });
-
   it('todo caminho devolve um estado com rótulo — nenhum cai no vazio', () => {
     const casos: CampanhaBruta[] = [
       campanha(),
       campanha({ efeito_bruto: null, status_bruto: null }),
       campanha({ efeito_bruto: 'IN_PROCESS' }),
       campanha({ efeito_bruto: 'WITH_ISSUES' }),
-      comAnuncios({ CAMPAIGN_PAUSED: 2 }),
-      comAnuncios({ PENDING_BILLING_INFO: 1 }),
+      comFilhos({ tem_anuncio_ativo: null, tem_conjunto_ativo: null }),
+      comFilhos({ anuncios_com_problema: { WITH_ISSUES: 1 } }),
     ];
     for (const caso of casos) {
       const s = derivarStatusCampanha(caso, HOJE);
@@ -199,10 +183,9 @@ describe('derivarStatusCampanha', () => {
 
 describe('a ponte para o formato antigo', () => {
   it('payload da função antiga vira "Veiculando", e não "Status não reconhecido"', () => {
-    // A regressão exata: o frontend novo subiu no build do Lovable antes do
-    // deploy da edge function, que ainda devolvia `status: "active"`. Sem
-    // `efeito_bruto`, TODA campanha virava "Status não reconhecido" e o
-    // filtro "Veiculando" ficava vazio — `0 de 200`.
+    // A regressão: o frontend novo subiu no build antes do deploy da edge
+    // function, que ainda devolvia `status: "active"`. Sem `efeito_bruto`,
+    // TODA campanha virava "Status não reconhecido" — `0 de 200`.
     const s = derivarStatusCampanha({ status_legado: 'active' }, HOJE);
     expect(s.estado).toBe('veiculando');
     expect(s.rotulo).toBe('Veiculando');
@@ -217,9 +200,7 @@ describe('a ponte para o formato antigo', () => {
     // Se os dois campos chegarem juntos, o legado diria "ativa" por cima de
     // "sem veiculação", e o bug original voltaria pela porta dos fundos.
     const s = derivarStatusCampanha(
-      { ...comAnuncios({ ADSET_PAUSED: 3 }), status_legado: 'active' },
-      HOJE,
-    );
+      { ...comFilhos({ tem_conjunto_ativo: false }), status_legado: 'active' }, HOJE);
     expect(s.estado).toBe('sem_veiculacao');
     expect(s.veiculando).toBe(false);
   });
@@ -276,8 +257,8 @@ describe('derivarStatusGoogle', () => {
 });
 
 describe('pertenceAoGrupo', () => {
-  const sem = derivarStatusCampanha(comAnuncios({ ADSET_PAUSED: 2 }), HOJE);
-  const rodando = derivarStatusCampanha(comAnuncios({ ACTIVE: 1 }), HOJE);
+  const sem = derivarStatusCampanha(comFilhos({ tem_conjunto_ativo: false }), HOJE);
+  const rodando = derivarStatusCampanha(comFilhos({ tem_anuncio_ativo: true }), HOJE);
   const desconhecida = derivarStatusCampanha(campanha({ efeito_bruto: 'XPTO' }), HOJE);
 
   it('"Veiculando" devolve só o que entrega de verdade', () => {
