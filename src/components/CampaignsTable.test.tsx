@@ -5,10 +5,15 @@ import { CampaignsTable } from './CampaignsTable';
 import { derivarStatusCampanha } from '@/lib/campaignStatus';
 import type { MetaCampaign } from '@/hooks/useMetaInsights';
 
-function campanha(nome: string, bruto: Partial<Parameters<typeof derivarStatusCampanha>[0]>, spend = 100): MetaCampaign {
+function campanha(
+  nome: string,
+  bruto: Partial<Parameters<typeof derivarStatusCampanha>[0]>,
+  spend = 100,
+  extra: { id?: string; created_time?: string } = {},
+): MetaCampaign {
   const cru = { efeito_bruto: 'ACTIVE', status_bruto: 'ACTIVE', ...bruto };
   return {
-    id: nome, name: nome, ...cru,
+    id: extra.id ?? nome, name: nome, created_time: extra.created_time, ...cru,
     status: derivarStatusCampanha(cru),
     spend, budget: 0, impressions: 1000, reach: 500, clicks: 50,
     leads: 5, cpl: 20, purchases: 1, cost_per_purchase: 100,
@@ -90,6 +95,31 @@ describe('CampaignsTable — o filtro que mentia', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Precisam de atenção' }));
     expect(linhas('CAMPANHA ESTRANHA').length).toBeGreaterThan(0);
+  });
+
+  it('campanhas com o MESMO nome deixam de ser indistinguíveis', () => {
+    // Duplicar campanha é rotina na Meta — a conta tem
+    // `ACELERADORA - F - 28/09` e `— 2` lado a lado. A tabela mostrava só o
+    // nome, então o cliente comparava com o Gerenciador, batia na duplicata
+    // errada e concluía que o status estava mentindo.
+    const antiga = campanha('CORNEO SP SETEMBRO', filhos({ ACTIVE: 1 }), 100, {
+      id: '111', created_time: '2026-07-19T10:00:00Z',
+    });
+    const nova = campanha('CORNEO SP SETEMBRO', filhos({ ADSET_PAUSED: 1 }), 50, {
+      id: '222', created_time: '2026-09-01T10:00:00Z',
+    });
+    montar([antiga, nova]);
+
+    // O ID é o que permite comparar com o Gerenciador sem ambiguidade.
+    expect(screen.getAllByText(/ID 111/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/ID 222/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/19\/07\/2026/).length).toBeGreaterThan(0);
+  });
+
+  it('nome único não ganha carimbo — o desempate só aparece quando há empate', () => {
+    // Carimbar data e ID em toda linha seria ruído nas que não precisam.
+    montar([campanha('CAMPANHA SOZINHA', filhos({ ACTIVE: 1 }), 100, { id: '999' })]);
+    expect(screen.queryByText(/ID 999/)).toBeNull();
   });
 
   it('não quebra com um estado fora da união', () => {
