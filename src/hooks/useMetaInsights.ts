@@ -116,7 +116,21 @@ export function useMetaCampaigns(clientId: string | undefined, enabled: boolean,
       })) as MetaCampaign[];
     },
     enabled: enabled && !!clientId && !!timeRange,
-    staleTime: 5 * 60 * 1000,
+    /*
+     * Um minuto, e não cinco.
+     *
+     * O status é o dado mais perecível desta tela: quem pausa uma campanha
+     * no Gerenciador volta para cá em segundos para conferir. Com
+     * `staleTime` de 5 minutos o React Query considera o dado fresco e NÃO
+     * refaz a busca nem quando a aba volta ao foco — a tela repetia a
+     * resposta antiga com toda a convicção.
+     *
+     * As outras consultas (insights, período anterior, anúncios) seguem em
+     * 5 e 15 minutos: métrica de ontem não muda enquanto se olha para ela.
+     */
+    staleTime: 60 * 1000,
+    // Explícito: aqui é comportamento desejado, não herança do padrão.
+    refetchOnWindowFocus: true,
     ...metaQueryOptions,
   });
 }

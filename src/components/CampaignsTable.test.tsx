@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { CampaignsTable } from './CampaignsTable';
@@ -124,6 +124,27 @@ describe('CampaignsTable — o filtro que mentia', () => {
     // Carimbar data e ID em toda linha seria ruído nas que não precisam.
     montar([campanha('CAMPANHA SOZINHA', filhos({ anuncioAtivo: true }), 100, { id: '999' })]);
     expect(screen.queryByText(/ID 999/)).toBeNull();
+  });
+
+  it('diz de quando é a resposta, e oferece recarregar', () => {
+    // Quem pausa uma campanha no Gerenciador volta aqui em segundos. Sem o
+    // carimbo, não há como saber se a tela já sabe da mudança.
+    const quando = new Date('2026-09-21T14:35:00').getTime();
+    const onAtualizar = vi.fn();
+    render(
+      <TooltipProvider>
+        <CampaignsTable campaigns={[rodando]} atualizadoEm={quando} onAtualizar={onAtualizar} />
+      </TooltipProvider>,
+    );
+
+    expect(screen.getByText(/Atualizado às 14:35/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Atualizar' }));
+    expect(onAtualizar).toHaveBeenCalled();
+  });
+
+  it('sem saber de quando é, não inventa um horário', () => {
+    montar([rodando]);
+    expect(screen.queryByText(/Atualizado às/)).toBeNull();
   });
 
   it('não quebra com um estado fora da união', () => {

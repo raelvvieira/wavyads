@@ -75,6 +75,9 @@ function getHideClass(hideOn?: string) {
 
 interface CampaignsTableProps {
   campaigns: MetaCampaign[];
+  /** Quando esta lista foi buscada. Opcional: nem todo chamador sabe. */
+  atualizadoEm?: number;
+  onAtualizar?: () => void;
 }
 
 /**
@@ -93,7 +96,7 @@ const STATUS_FILTERS: { value: GrupoDeStatus; label: string }[] = [
   { value: 'encerradas', label: 'Encerradas' },
 ];
 
-export function CampaignsTable({ campaigns }: CampaignsTableProps) {
+export function CampaignsTable({ campaigns, atualizadoEm, onAtualizar }: CampaignsTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('spend');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [statusFilter, setStatusFilter] = useState<GrupoDeStatus>('todas');
@@ -230,7 +233,27 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
   return (
     <GlassCard className="animate-fade-in">
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        <h3 className="text-base sm:text-lg font-semibold mr-auto">Desempenho por Campanha</h3>
+        <h3 className="text-base sm:text-lg font-semibold">Desempenho por Campanha</h3>
+        {/* Status é o dado mais perecível da tela: quem pausa uma campanha
+            volta aqui em segundos para conferir. Dizer de quando é a
+            resposta vale mais do que reduzir o cache — mesmo um dado de um
+            minuto atrás merece ser datado. */}
+        <div className="flex items-center gap-2 mr-auto">
+          {atualizadoEm ? (
+            <span className="text-[10px] text-muted-foreground">
+              Atualizado às {new Date(atualizadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          ) : null}
+          {onAtualizar && (
+            <button
+              type="button"
+              onClick={() => onAtualizar()}
+              className="text-[10px] text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+            >
+              Atualizar
+            </button>
+          )}
+        </div>
         {STATUS_FILTERS.map((f) => (
           <button
             key={f.value}
