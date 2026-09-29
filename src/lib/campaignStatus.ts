@@ -63,18 +63,27 @@ export interface StatusCampanha {
 export type Histograma = Record<string, number>;
 
 export interface Veiculacao {
-  /** `null` = a chamada falhou. Ausência de dado nunca é ausência de entrega. */
-  conjuntos: {
-    por_status: Histograma;
-    total: number;
-    /** Maior `end_time` entre os conjuntos, ISO. */
-    ultimo_fim: string | null;
-    /** Algum conjunto sem data de término — ou seja, sem prazo para acabar. */
-    algum_sem_fim: boolean;
-  } | null;
-  anuncios: { por_status: Histograma; total: number } | null;
-  /** Alguma das listas veio truncada ou incompleta. */
-  parcial: boolean;
+  /**
+   * Existe ao menos um anúncio NO AR nesta campanha?
+   *
+   * `null` = não consegui conferir. Ausência de dado nunca é ausência de
+   * entrega — é a regra que impede o conserto de criar uma mentira nova.
+   */
+  tem_anuncio_ativo: boolean | null;
+  /** Idem, um nível acima. Distingue "conjuntos pausados" de "anúncios pausados". */
+  tem_conjunto_ativo: boolean | null;
+  /**
+   * Anúncios em estados que EXIGEM AÇÃO — reprovado, em revisão, pagamento.
+   * Sem isto, "não aprovada" viraria só "sem veiculação", e ninguém saberia
+   * que precisa mexer.
+   */
+  anuncios_com_problema: Histograma | null;
+  /** Maior `end_time` entre os conjuntos ativos, ISO. */
+  ultimo_fim: string | null;
+  /** Algum conjunto ativo sem data de término — ou seja, sem prazo para acabar. */
+  algum_sem_fim: boolean;
+  /** Alguma das listas veio cortada. */
+  truncado?: boolean;
 }
 
 export interface CampanhaBruta {
@@ -232,47 +241,51 @@ export function derivarStatusCampanha(c: CampanhaBruta, agora = new Date()): Sta
   if (jaPassou(c.stop_time, agora)) {
     return montar('fora_do_periodo', bruto, `o período de veiculação terminou em ${comoData(c.stop_time)}`);
   }
-  const conj = c.veiculacao?.conjuntos ?? null;
-  if (conj && conj.total > 0 && !conj.algum_sem_fim && jaPassou(conj.ultimo_fim, agora)) {
+  const conj = c.veiculacao ?? null;
+  if (conj && conj.tem_conjunto_ativo === true && !conj.algum_sem_fim && jaPassou(conj.ultimo_fim, agora)) {
     return montar('fora_do_periodo', bruto, `o período dos conjuntos terminou em ${comoData(conj.ultimo_fim)}`);
   }
 
-  // 7. Sem filhos observáveis: não afirmo nada.
-  const anun = c.veiculacao?.anuncios ?? null;
-  if (!anun && !conj) {
+  const v = c.veiculacao ?? null;
+
+  // 7. Sem nada observável: não afirmo nada.
+  if (!v || (v.tem_anuncio_ativo === null && v.tem_conjunto_ativo === null)) {
     return montar('nao_confirmada', bruto, 'não consegui conferir os anúncios desta campanha');
   }
 
-  // 8. Lista parcial e nenhum filho visto: é ausência de DADO, não de anúncio.
-  const nenhumFilhoVisto = (anun?.total ?? 0) === 0 && (conj?.total ?? 0) === 0;
-  if (c.veiculacao?.parcial && nenhumFilhoVisto) {
+  // 8. Tem anúncio no ar. É a resposta direta da pergunta.
+  if (v.tem_anuncio_ativo === true) return montar('veiculando', bruto);
+
+  /*
+   * 9. Não tem anúncio ativo — mas a lista veio cortada.
+   *
+   * O bug desta rodada morava aqui: a versão anterior exigia que AS DUAS
+   * listas estivessem vazias para admitir incerteza. Uma campanha vista na
+   * lista de conjuntos mas cujos anúncios ficaram fora do corte caía no ramo
+   * seguinte e era declarada "não tem anúncios" — falso, e criado pelo
+   * próprio conserto.
+   */
+  // (o ramo acima já garantiu que não há anúncio ativo observado)
+  if (v.truncado) {
     return montar('nao_confirmada', bruto, 'a lista de anúncios veio incompleta');
   }
 
-  // 9. Os anúncios — a fonte boa.
-  if (anun) {
-    const a = anun.por_status;
-    if ((a.ACTIVE ?? 0) > 0) return montar('veiculando', bruto);
-    if ((a.PENDING_REVIEW ?? 0) > 0 || (a.PREAPPROVED ?? 0) > 0) {
-      return montar('em_analise', bruto, 'a Meta ainda está revisando os anúncios');
-    }
-    if ((a.DISAPPROVED ?? 0) > 0) return montar('nao_aprovada', bruto, 'os anúncios foram reprovados na revisão');
-    if ((a.PENDING_BILLING_INFO ?? 0) > 0) return montar('com_problemas', bruto, 'aguardando dados de pagamento');
-    // Um status que este código não conhece pode ser uma entrega. Concluir
-    // "sem veiculação" aqui seria inventar uma resposta.
-    if (temDesconhecido(a)) return montar('nao_confirmada', bruto, 'há anúncios num estado que não reconheço');
-    if ((a.ADSET_PAUSED ?? 0) > 0) return montar('sem_veiculacao', bruto, 'a campanha está ligada, mas os conjuntos estão pausados');
-    if ((a.PAUSED ?? 0) > 0) return montar('sem_veiculacao', bruto, 'a campanha está ligada, mas os anúncios estão pausados');
-    if ((a.CAMPAIGN_PAUSED ?? 0) > 0) return montar('nao_confirmada', bruto, 'a Meta ainda está propagando uma mudança nesta campanha');
-    if (anun.total === 0) return montar('sem_veiculacao', bruto, 'esta campanha não tem anúncios');
+  // 10. Os motivos que exigem ação vêm antes da pausa comum: alguém precisa
+  // mexer, e chamar isso de "pausada" esconderia isso.
+  const problemas = v.anuncios_com_problema ?? {};
+  if ((problemas.PENDING_REVIEW ?? 0) > 0 || (problemas.PREAPPROVED ?? 0) > 0) {
+    return montar('em_analise', bruto, 'a Meta ainda está revisando os anúncios');
   }
+  if ((problemas.DISAPPROVED ?? 0) > 0) return montar('nao_aprovada', bruto, 'os anúncios foram reprovados na revisão');
+  if ((problemas.PENDING_BILLING_INFO ?? 0) > 0) return montar('com_problemas', bruto, 'aguardando dados de pagamento');
+  if ((problemas.WITH_ISSUES ?? 0) > 0) return montar('com_problemas', bruto, 'a Meta sinalizou um problema nos anúncios');
 
-  // 10. Só os conjuntos responderam.
-  if (conj) {
-    if ((conj.por_status.ACTIVE ?? 0) === 0) {
-      return montar('sem_veiculacao', bruto, 'nenhum conjunto desta campanha está ativo');
-    }
-    return montar('nao_confirmada', bruto, 'os conjuntos estão ativos, mas não consegui conferir os anúncios');
+  // 11. Nada no ar e nada em revisão: é pausa, e dá para dizer de onde vem.
+  if (v.tem_conjunto_ativo === true) {
+    return montar('sem_veiculacao', bruto, 'a campanha está ligada, mas os anúncios estão pausados');
+  }
+  if (v.tem_conjunto_ativo === false) {
+    return montar('sem_veiculacao', bruto, 'a campanha está ligada, mas os conjuntos estão pausados');
   }
 
   return montar('nao_confirmada', bruto, null);
