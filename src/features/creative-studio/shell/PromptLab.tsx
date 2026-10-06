@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { buildGenerationRequest } from '../generation/generationRequests';
+import { CONTAINERS, containerPorId } from '@/lib/creativeGenome/catalog';
+import { containerComoTemplate } from '@/lib/creativeGenome/layout';
 import type { CreativeAspectRatio } from '../types/creative';
 
 /**
@@ -59,6 +61,9 @@ export function PromptLab() {
   const [brief, setBrief] = useState('');
   const [copy, setCopy] = useState(COPY_DO_CASO);
   const [ratio, setRatio] = useState<CreativeAspectRatio>('9:16');
+  const [containerId, setContainerId] = useState('');
+
+  const container = containerId ? containerPorId(containerId) : null;
 
   const prompt = useMemo(() => buildGenerationRequest({
     brief,
@@ -74,6 +79,7 @@ export function PromptLab() {
     // A referência não tem canal de imagem: o que ela vira é o
     // `designSystemDoc` abaixo, e esta bandeira é o que diz ao prompt que
     // aquele documento foi lido de arte de terceiros.
+    template: container ? containerComoTemplate(container) : null,
     designSystemIsThirdParty: camadas.sistema,
     artDirection: camadas.direcao ? DIRECAO_DO_CASO : null,
     copyBlocks: camadas.papeis ? PAPEIS_DO_CASO : null,
@@ -82,7 +88,7 @@ export function PromptLab() {
     mood: camadas.sistema
       ? { adjetivos: ['sofisticado', 'acolhedor'], referencias: ['Kinfolk'], evita: ['clipart'] }
       : null,
-  }).prompt, [brief, copy, ratio, camadas]);
+  }).prompt, [brief, copy, ratio, camadas, container]);
 
   const alternar = (chave: keyof Camadas) =>
     setCamadas((atual) => ({ ...atual, [chave]: !atual[chave] }));
@@ -96,7 +102,22 @@ export function PromptLab() {
             Cada camada com um interruptor, o prompt final inteiro — sem gastar geração
           </p>
         </div>
-        <p className="text-[11px] text-white/40">{prompt.length.toLocaleString('pt-BR')} caracteres</p>
+        <div className="flex items-center gap-3">
+          {/* O container é o que mais pesa no prompt: aqui dá para ver o
+              custo real de cada um antes de pagar por uma geração. */}
+          <select
+            value={containerId}
+            onChange={(e) => setContainerId(e.target.value)}
+            aria-label="Container"
+            className="rounded-[var(--wavy-radius-control)] border border-white/10 bg-white/[0.04] px-2 py-1 text-[12px] text-white/80"
+          >
+            <option value="">(sem container)</option>
+            {CONTAINERS.map((c) => (
+              <option key={c.id} value={c.id}>{c.nome_pt} · {c.proporcao}</option>
+            ))}
+          </select>
+          <p className="text-[11px] text-white/40">{prompt.length.toLocaleString('pt-BR')} caracteres</p>
+        </div>
       </header>
 
       <div className="flex flex-wrap items-center gap-1.5">
