@@ -17,6 +17,16 @@ export interface AssetFilters {
   aspectRatio?: string | null;
   /** Busca livre por prompt, nome de arquivo ou formato. */
   query?: string;
+  /**
+   * Só as artes que a marca aprovou.
+   *
+   * Não é um `type` — é uma marca que atravessa os tipos: uma geração, uma
+   * edição ou um resize podem todos ser inteligência do cliente. Por isso
+   * precisa de campo próprio, e por isso a biblioteca "Inteligência" não
+   * conseguia filtrar: ela só sabia escolher por tipo e caía no default,
+   * mostrando o acervo inteiro.
+   */
+  clientIntelligence?: boolean;
 }
 
 function matchesQuery(asset: CreativeAsset, query: string): boolean {
@@ -32,6 +42,7 @@ function matchesFilters(a: CreativeAsset, filtros: AssetFilters): boolean {
   if (filtros.statuses?.length && !filtros.statuses.includes(a.status)) return false;
   if (filtros.aspectRatio && a.aspectRatio !== filtros.aspectRatio) return false;
   if (filtros.query && !matchesQuery(a, filtros.query)) return false;
+  if (filtros.clientIntelligence && !a.isClientIntelligence) return false;
   return true;
 }
 

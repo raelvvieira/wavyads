@@ -50,6 +50,7 @@ export interface CreativeStudioShellProps {
   resolution: CreativeResolution;
   modelId: string;
   quantity?: number;
+  focusToken?: number;
   attachments: DockAttachment[];
   onRemoveAttachment: (id: string) => void;
   onAttach: (attachment: DockAttachment) => void;
@@ -224,6 +225,7 @@ export function CreativeStudioShell(props: CreativeStudioShellProps) {
             allAssets={props.allAssets}
             onDeleteAsset={props.onDeleteAsset}
             onNewLibraryUpload={props.onNewLibraryUpload}
+            focusToken={props.focusToken}
             onOpenCopilot={() => setSidePanel('copilot')}
           />
         </div>
