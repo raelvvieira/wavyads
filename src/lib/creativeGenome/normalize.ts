@@ -1,32 +1,30 @@
-import {
-  TETO_RESUMO,
-  type CreativeGenome,
-  type GenomeMood,
-  type GenomeVisualAnalysis,
+import type {
+  Confianca,
+  CreativeContainer,
+  Densidade,
+  Funil,
+  NivelRisco,
+  PresencaCta,
 } from './types';
 
 /**
- * Transformar o que vier num genoma — ou admitir que não dá.
+ * Transformar o que vier do `containers.json` num container — ou admitir
+ * que não dá.
  *
- * O conteúdo de um genoma nasce fora do código: markdown escrito à mão,
- * uma linha de `creative_templates`, um JSON exportado de outra ferramenta.
- * Nenhuma dessas fontes vai respeitar o tipo de primeira, e um genoma mal
- * convertido é PIOR que genoma nenhum — ele vai ser escolhido
- * automaticamente e estragar artes em silêncio.
+ * O arquivo é escrito à mão, fora deste código, e evolui: dos 53 containers
+ * de hoje, 32 campos aparecem em todos e 8 só em alguns — `regra_de_copy` e
+ * `angulos_vedados` existem em exatamente um. Um parser que exigisse o
+ * conjunto cheio rejeitaria 52.
  *
- * Por isso duas regras:
+ * Duas regras, pelas mesmas razões de sempre:
  *
- * Esta função NUNCA lança. Quem chama está carregando um catálogo inteiro;
- * um arquivo malformado não pode derrubar a biblioteca toda.
+ * Esta função NUNCA lança. Quem chama carrega o catálogo inteiro; uma
+ * entrada malformada não pode derrubar a biblioteca toda.
  *
- * Sem LAYOUT ela devolve `null`, e não um genoma vazio. O layout é o
- * núcleo: é ele que diz onde a mensagem mora. Um genoma sem layout não tem
- * o que injetar no prompt — aceitá-lo encheria o catálogo de entradas que o
- * seletor pode escolher e que não fazem nada.
- *
- * Note que a exigência NÃO é `designSystemDoc`. Um "cartaz" é uma regra de
- * composição que serve a qualquer paleta, e não opina sobre cor — exigir
- * paleta rejeitaria metade dos containers reais.
+ * Sem `id` ou sem `descricao_layout` ela devolve `null`. O layout é o que
+ * define a peça — sem ele não há o que injetar no prompt, e um container
+ * vazio no catálogo é pior que um container a menos: ele pode ser escolhido
+ * automaticamente e não faz nada.
  */
 
 function texto(v: unknown): string {
@@ -35,165 +33,158 @@ function texto(v: unknown): string {
 
 function lista(v: unknown): string[] {
   if (Array.isArray(v)) return v.map(texto).filter(Boolean);
-  // Aceita a forma que o seeder usa: um texto com uma regra por linha,
-  // cada uma começando com "- ". É assim que `negative_prompt` chega.
+  // Uma lista escrita como texto, uma por linha. O arquivo às vezes faz
+  // isso, e quebrar aqui é mais barato que pedir que alguém reescreva.
   if (typeof v === 'string') {
-    return v.split('\n').map((l) => l.replace(/^[-*]+\s*/, '').trim()).filter(Boolean);
+    return v.split('\n').map((l) => l.replace(/^[-*•]+\s*/, '').trim()).filter(Boolean);
   }
   return [];
 }
 
-/** Slug a partir do nome, para quando o `id` não vem. */
-export function slugDe(nome: string): string {
-  return nome
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+function booleano(v: unknown): boolean {
+  if (typeof v === 'boolean') return v;
+  if (typeof v === 'string') return ['true', 'sim', 'yes', '1'].includes(v.trim().toLowerCase());
+  return false;
 }
 
-/**
- * As duas primeiras frases, cortadas no teto.
- *
- * Existe porque o resumo é obrigatório para a escolha automática, mas
- * quem escreve um genoma pensa no documento técnico e esquece dele. Melhor
- * um resumo derivado — ainda que tosco — do que um genoma invisível ao
- * seletor.
- */
-export function resumirEm(fonte: string, teto = TETO_RESUMO): string {
-  const limpo = fonte.replace(/\s+/g, ' ').trim();
-  if (!limpo) return '';
-  const frases = limpo.split(/(?<=[.!?])\s+/).slice(0, 2).join(' ');
-  const base = frases || limpo;
-  return base.length <= teto ? base : `${base.slice(0, teto - 1).trimEnd()}…`;
+function umDe<T extends string>(v: unknown, aceitos: readonly T[], padrao: T): T {
+  const s = texto(v).toLowerCase();
+  return (aceitos as readonly string[]).includes(s) ? (s as T) : padrao;
 }
 
-/**
- * O layout, de onde quer que ele venha.
- *
- * O `containers.json` de onde esse conteúdo nasce não conhece o nosso tipo:
- * a mesma ideia pode chegar como `layout`, `estrutura`, `composicao` ou
- * `rules`, e como string, lista ou objeto aninhado. Aceitar as três formas
- * aqui é mais barato que pedir que alguém reescreva o arquivo.
- */
-function containerDe(r: Record<string, unknown>): CreativeGenome['container'] | null {
-  const bruto = r.container ?? r.layout ?? r.estrutura ?? r.structure
-    ?? r.composicao ?? r.composition ?? r.regras_layout;
+const FUNIS = ['topo', 'meio', 'fundo'] as const;
+const DENSIDADES = ['baixa', 'media', 'alta'] as const;
+const CTAS = ['obrigatorio', 'opcional', 'proibido'] as const;
+const RISCOS = ['baixo', 'medio', 'alto'] as const;
+const CONFIANCAS = ['alta', 'media', 'baixa'] as const;
 
-  let descricao = '';
-  let regioes: { papel: any; onde: string }[] | undefined;
-
-  if (typeof bruto === 'string') {
-    descricao = bruto.trim();
-  } else if (Array.isArray(bruto)) {
-    descricao = lista(bruto).join('\n');
-  } else if (bruto && typeof bruto === 'object') {
-    const b = bruto as Record<string, unknown>;
-    descricao = texto(b.descricao) || texto(b.description) || texto(b.estrutura);
-    if (Array.isArray(b.regioes)) {
-      regioes = (b.regioes as any[])
-        .filter((x) => x && texto(x.papel) && texto(x.onde))
-        .map((x) => ({ papel: texto(x.papel), onde: texto(x.onde) }));
-    }
-    // Objeto aninhado sem `descricao`: achata em linhas `chave: valor`. É
-    // como `{"topo": "...", "centro": "..."}` sobrevive.
-    if (!descricao && !regioes?.length) {
-      descricao = Object.entries(b)
-        .filter(([, v]) => typeof v === 'string' && v.trim())
-        .map(([k, v]) => `${k}: ${String(v).trim()}`)
-        .join('\n');
-    }
-  }
-
-  if (!descricao && !regioes?.length) return null;
-  return {
-    descricao,
-    ...(regioes?.length ? { regioes } : {}),
-    ...(texto(r.formatoNativo) ? { formatoNativo: texto(r.formatoNativo) as any } : {}),
-  };
-}
-
-function moodDe(v: unknown): GenomeMood | null {
-  if (!v || typeof v !== 'object') return null;
-  const m = v as Record<string, unknown>;
-  const mood: GenomeMood = {
-    adjetivos: lista(m.adjetivos),
-    referencias: lista(m.referencias),
-    evita: lista(m.evita),
-  };
-  // Um mood sem nenhuma das três listas não é um mood — é ruído que faria
-  // o bloco [MOOD] sair com cabeçalho e nada embaixo.
-  const vazio = !mood.adjetivos.length && !mood.referencias.length && !mood.evita.length;
-  return vazio ? null : mood;
-}
-
-function analiseDe(v: unknown): GenomeVisualAnalysis | null {
-  if (!v || typeof v !== 'object') return null;
-  const a = v as Record<string, unknown>;
-  const saida: GenomeVisualAnalysis = {};
-  for (const chave of ['composicao', 'fotografia', 'paleta', 'tipografia'] as const) {
-    if (a[chave] && typeof a[chave] === 'object') saida[chave] = a[chave] as any;
-  }
-  const camadas = lista(a.camadas);
-  if (camadas.length) saida.camadas = camadas;
-  if (texto(a.hierarquiaVisual)) saida.hierarquiaVisual = texto(a.hierarquiaVisual);
-  if (texto(a.espaco)) saida.espaco = texto(a.espaco);
-  const mood = moodDe(a.mood);
-  if (mood) saida.mood = mood;
-  return Object.keys(saida).length ? saida : null;
-}
-
-export function normalizeGenome(
+export function normalizeContainer(
   raw: unknown,
-  origem: CreativeGenome['origem'],
-): CreativeGenome | null {
+  origem: CreativeContainer['origem'] = 'arquivo',
+): CreativeContainer | null {
   if (!raw || typeof raw !== 'object') return null;
   const r = raw as Record<string, unknown>;
 
-  const designSystemDoc = texto(r.designSystemDoc) || texto(r.design_system_doc);
-  const container = containerDe(r);
-  // A única exigência real: onde a mensagem mora.
-  if (!container) return null;
+  const id = texto(r.id);
+  const descricao_layout = texto(r.descricao_layout);
+  // As duas únicas exigências: saber quem é, e saber o que desenhar.
+  if (!id || !descricao_layout) return null;
 
-  const nome = texto(r.nome) || texto(r.name) || 'Genoma sem nome';
-  const id = texto(r.id) || slugDe(nome);
-
-  const antiPadroes = lista(r.antiPadroes).length
-    ? lista(r.antiPadroes)
-    : lista(r.negativePrompt ?? r.negative_prompt);
-
-  const regrasBrutas = (r.regras ?? {}) as Record<string, unknown>;
-  const intendedFor = lista(regrasBrutas.intendedFor ?? r.intendedFor ?? r.niche ?? r.nicho);
+  const funil = lista(r.funil).filter((f): f is Funil =>
+    (FUNIS as readonly string[]).includes(f));
 
   return {
     id,
-    nome,
-    resumo: resumirEm(
-      texto(r.resumo) || texto(r.description) || texto(r.descricao)
-      || container.descricao || designSystemDoc,
-    ),
-    container,
-    designSystemDoc: designSystemDoc || undefined,
-    antiPadroes,
-    regras: {
-      intendedFor,
-      avoidWhen: lista(regrasBrutas.avoidWhen ?? r.avoidWhen),
-      palavrasChave: lista(regrasBrutas.palavrasChave ?? r.tags),
-      nichos: lista(regrasBrutas.nichos ?? r.niche ?? r.nicho),
-      formatos: lista(regrasBrutas.formatos) as any,
-    },
-    mood: moodDe(r.mood ?? (r.styleMetadata as any)?.mood ?? (r.style_metadata as any)?.mood),
-    visualAnalysis: analiseDe(
-      r.visualAnalysis
-        ?? (r.layoutStructure as any)?.visualAnalysis
-        ?? (r.layout_structure as any)?.visualAnalysis,
-    ),
-    tags: lista(r.tags),
-    previewUrl: texto(r.previewUrl) || texto(r.preview_url) || null,
-    prioridade: typeof r.prioridade === 'number' ? r.prioridade : 0,
-    // Default `true`: ver o comentário de `terceiros` em types.ts. Só um
-    // `false` explícito desliga a cláusula que protege a marca de origem.
-    terceiros: r.terceiros === false ? false : true,
+    nome_pt: texto(r.nome_pt) || texto(r.nome) || id,
+    nome_original: texto(r.nome_original) || undefined,
+    mimica_de: texto(r.mimica_de) || undefined,
+
+    descricao_layout,
+    blocos: lista(r.blocos),
+    topologia: texto(r.topologia) || undefined,
+
+    fixo: lista(r.fixo),
+    trocavel: lista(r.trocavel),
+    numero_de_slots_variaveis: typeof r.numero_de_slots_variaveis === 'number'
+      ? r.numero_de_slots_variaveis : undefined,
+
+    exige: lista(r.exige),
+    origem_do_ativo: texto(r.origem_do_ativo) || undefined,
+    spec_de_producao: r.spec_de_producao ?? undefined,
+
+    proporcao: texto(r.proporcao) || '4:5',
+    midia: texto(r.midia) || undefined,
+    // Sem funil declarado, a peça concorre em qualquer etapa — é mais
+    // honesto que inventar uma.
+    funil: funil.length ? funil : [...FUNIS],
+    densidade_texto: umDe<Densidade>(r.densidade_texto, DENSIDADES, 'media'),
+    presenca_de_cta: umDe<PresencaCta>(r.presenca_de_cta, CTAS, 'opcional'),
+    tem_rosto: booleano(r.tem_rosto),
+    tem_produto: booleano(r.tem_produto),
+    prova_embutida: texto(r.prova_embutida) || undefined,
+
+    regra_de_copy: lista(r.regra_de_copy),
+    limite_de_texto_por_bloco: texto(r.limite_de_texto_por_bloco) || undefined,
+    voz: texto(r.voz) || undefined,
+    angulos_vedados: lista(r.angulos_vedados),
+
+    risco_de_reprovacao: texto(r.risco_de_reprovacao)
+      ? umDe<NivelRisco>(r.risco_de_reprovacao, RISCOS, 'medio')
+      : undefined,
+    risco_motivo: texto(r.risco_motivo) || undefined,
+
+    camada: texto(r.camada) || undefined,
+    confianca: texto(r.confianca)
+      ? umDe<Confianca>(r.confianca, CONFIANCAS, 'media')
+      : undefined,
+    exemplo_nicho: texto(r.exemplo_nicho) || undefined,
+    exemplo_copy: texto(r.exemplo_copy) || undefined,
+    exemplo_paleta: texto(r.exemplo_paleta) || undefined,
+    evidencia: texto(r.evidencia) || undefined,
+    frames: lista(r.frames),
+    aliases: lista(r.aliases),
+    correcoes_auditoria: Array.isArray(r.correcoes_auditoria)
+      ? (r.correcoes_auditoria as any[])
+          .filter((c) => c && texto(c.campo) && texto(c.motivo))
+          .map((c) => ({ campo: texto(c.campo), motivo: texto(c.motivo) }))
+      : [],
+    mercado: texto(r.mercado) || undefined,
+    fonte: texto(r.fonte) || undefined,
+    pendencias: r.pendencias ?? undefined,
+
     origem,
   };
+}
+
+export interface RelatorioDeCarga {
+  ok: CreativeContainer[];
+  /** O que não deu para converter, e por quê. Não é erro — é relatório. */
+  falhas: { indice: number; id: string; motivo: string }[];
+}
+
+/**
+ * Carrega o arquivo inteiro, separando o que entrou do que ficou de fora.
+ *
+ * Devolver as falhas em vez de engoli-las é o que permite ao
+ * `containers:check` dizer qual entrada precisa de conserto. Um catálogo que
+ * perde entradas em silêncio é um catálogo que encolhe sem ninguém notar.
+ */
+export function normalizeContainersFile(
+  raw: unknown,
+  origem: CreativeContainer['origem'] = 'arquivo',
+): RelatorioDeCarga {
+  // O arquivo é uma lista na raiz, mas um `{ containers: [...] }` é a outra
+  // forma provável, e aceitar as duas custa uma linha.
+  const itens: unknown[] = Array.isArray(raw)
+    ? raw
+    : Array.isArray((raw as any)?.containers)
+      ? (raw as any).containers
+      : [];
+
+  const ok: CreativeContainer[] = [];
+  const falhas: RelatorioDeCarga['falhas'] = [];
+  const vistos = new Set<string>();
+
+  itens.forEach((item, indice) => {
+    const c = normalizeContainer(item, origem);
+    const idBruto = texto((item as any)?.id) || `(sem id, posição ${indice})`;
+
+    if (!c) {
+      const motivo = !texto((item as any)?.id)
+        ? 'sem id'
+        : 'sem descricao_layout — não há o que desenhar';
+      falhas.push({ indice, id: idBruto, motivo });
+      return;
+    }
+    // Id repetido é pior que entrada faltando: o seletor escolheria um e a
+    // tela mostraria outro, sem nada indicar a troca.
+    if (vistos.has(c.id)) {
+      falhas.push({ indice, id: c.id, motivo: 'id repetido — a primeira ocorrência venceu' });
+      return;
+    }
+    vistos.add(c.id);
+    ok.push(c);
+  });
+
+  return { ok, falhas };
 }

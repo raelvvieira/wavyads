@@ -1,0 +1,3380 @@
+[
+  {
+    "id": "adesivos_de_story_sobre_foto_de_evento",
+    "nome_pt": "Adesivos de story sobre foto de evento (caixa branca centralizada + pilula preta a esquerda)",
+    "nome_original": "nenhum (peca colhida de print enviado pelo usuario, sem rotulo de origem)",
+    "camada": "container",
+    "mimica_de": "adesivo de texto do editor de Stories do Instagram, so o preenchimento solido atras da letra, sem nenhum elemento de interface do app, aplicado sobre foto de cobertura de evento feita por terceiro",
+    "descricao_layout": "Card vertical 4:5 preenchido inteiro por uma fotografia de cobertura de evento que sangra nas quatro bordas, sem moldura, sem card e sem barra de cor. A protagonista aparece em plano medio-inteiro, flagrada em meio-passo caminhando na direcao da camera, com uma das maos em meio-gesto na altura do peito e o olhar fora da lente; ao fundo, mesas compridas com toalha, tres ou mais pessoas sentadas de costas ou de perfil, material padronizado sobre as mesas e uma peca de infraestrutura de evento (caixa de som em coluna, tripe, projetor), tudo legivel porque o fundo NAO esta desfocado. Sobre a foto flutuam exatamente dois adesivos de texto de preenchimento solido, empilhados no miolo vertical e propositalmente fora de esquadro entre si: (1) caixa retangular branca de cantos levemente arredondados entre 45% e 68% da altura, ocupando cerca de 85% da largura, centralizada com margem lateral visivel dos dois lados, com o texto em quatro linhas curtas centralizadas, serifada, corpo unico, cor escura puxada de um objeto ja presente na foto; (2) logo abaixo, apos um respiro de foto crua, pilula arredondada preta entre 72% e 79% da altura, encostada a ESQUERDA, ocupando cerca de metade da largura, com texto branco de ate 4 palavras em uma unica linha, fechado por emoji direcional. O topo do quadro e os 30% inferiores (pernas e chao) ficam limpos, so foto. Nenhum logo, marca dagua, arroba, preco, selo, depoimento, produto ou chrome de app.",
+    "blocos": [
+      "fotografia de cobertura de evento sangrando nas quatro bordas (protagonista em movimento + coletivo ao fundo)",
+      "adesivo 1: caixa branca solida centralizada no terco central, texto escuro serifado em 4 linhas",
+      "respiro de foto crua entre os dois adesivos",
+      "adesivo 2: pilula preta alinhada a esquerda com texto branco em uma linha",
+      "emoji direcional fechando a pilula",
+      "faixa inferior de foto limpa (30% da altura)"
+    ],
+    "densidade_texto": "baixa",
+    "funil": [
+      "topo",
+      "meio"
+    ],
+    "exige": [
+      "foto real de cobertura, feita por terceiro durante um encontro presencial que de fato aconteceu (dependencia de agenda, nao de design)",
+      "coletivo plural legivel ao fundo: minimo 3 pessoas sentadas, de costas ou de perfil, nunca de frente para a camera",
+      "mobiliario e material de sala montada (mesas com toalha, cadernos, pastas, kits) mais uma peca de infraestrutura que diga evento e nao escritorio",
+      "profundidade de campo fechada o bastante para o fundo continuar legivel, porque a prova mora no fundo",
+      "protagonista flagrada em meio-passo e meio-gesto, com o torso livre entre 40% e 70% da altura para servir de plato de texto",
+      "figurino de cor chapada e saturada, sem estampa, sem listra e sem logo",
+      "autorizacao de uso de imagem das pessoas visiveis ao fundo"
+    ],
+    "prova_embutida": "autoridade",
+    "exemplo_nicho": "mentoria de conteudo para Instagram (biblioteca de formatos de Reels), colhida de um print de anuncio de infoproduto",
+    "exemplo_copy": "\"Copie a minha biblioteca com 31 formatos de Reels de Atracao que viralizam e atraem seguidores qualificados todos os dias\" + pilula \"Pegue seu acesso 👇\"",
+    "exemplo_paleta": "foto com toda a cor (conjunto terracota, toalhas azul-marinho, pastas laranja, paredes brancas, caixa de som preta) e sobreposicoes acromaticas: caixa branca com texto azul quase preto puxado das toalhas, pilula preta com texto branco",
+    "trocavel": [
+      "a foto inteira: protagonista, nicho, ambiente, roupa e tipo de encontro, desde que continue sendo cobertura flagrada por terceiro com coletivo visivel",
+      "o cenario de autoridade: sala de mentoria vira turma presencial, clinica com equipe e sala de espera cheia, bastidor de gravacao, estande de feira, cozinha em servico",
+      "a paleta da roupa e do ambiente, e qual cor saturada e usada no eco cromatico entre figurino e material impresso",
+      "o texto da caixa branca, dentro do teto de 4 linhas e 25 palavras",
+      "o texto da pilula, ate 4 palavras em uma linha",
+      "o emoji direcional do fecho (mao apontando para baixo, seta, dedo indicador)",
+      "o par exato de tons dos dois adesivos, desde que continuem de alto contraste, sem cor de marca, e com a cor escura vinda de um objeto ja presente na cena",
+      "as alturas exatas dos dois blocos, dentro da faixa util declarada",
+      "a largura da pilula, entre 40% e 55% do quadro",
+      "o grau de arredondamento de cada adesivo, que NAO precisa ser igual entre os dois: na peca de origem a caixa de conteudo e levemente arredondada e a pilula de acao e totalmente arredondada",
+      "a proporcao (4:5 ou 9:16), desde que a pilha suba conforme a regra fixa de zona segura"
+    ],
+    "fixo": [
+      "fotografia real ocupando 100% do quadro e sangrando nas quatro bordas, sem moldura, sem card, sem barra de cor e sem margem branca",
+      "sujeito flagrado em movimento (meio-passo, meio-gesto), sem pose e sem olhar para a lente; retrato posado ou de estudio mata o formato",
+      "o fundo carrega a prova sozinho: coletivo trabalhando ou assistindo, legivel e nao desfocado; fundo neutro, vazio ou desmanchado derruba o container inteiro",
+      "exatamente dois adesivos, um de conteudo e um de acao; um so vira legenda, tres viram diagramacao",
+      "preenchimento solido atras da letra nos dois blocos; texto solto sobre a foto joga a peca em outro container",
+      "desalinhamento obrigatorio entre os dois adesivos, mas ele NAO esta na margem esquerda: os dois blocos partem da MESMA borda esquerda (cerca de 18% da largura). A caixa de conteudo e centralizada no quadro e ocupa cerca de 64% da largura, com o texto centralizado dentro dela; a pilula de acao ocupa cerca de 43% e o texto dentro dela e alinhado a esquerda. A assimetria aparece na BORDA DIREITA e no alinhamento interno do texto, nao no inicio dos blocos. Centralizar a pilula, estica-la ate a largura da caixa, ou centralizar o texto dentro dela mata o formato. CORRECAO DA AUDITORIA: a primeira gravacao dizia 'pilula encostada a esquerda com cerca de metade da largura', o que levaria quem remonta a empurrar a pilula para a margem do quadro e perder o alinhamento de borda esquerda com a caixa.",
+      "uma familia tipografica, um peso e um corpo dentro da caixa branca: a hierarquia vem de massa de texto e de contraste de fundo, nunca de recurso tipografico. Proibido negrito, grifo, italico, sublinhado e cor de destaque em qualquer palavra. CAIXA ALTA e exclamacao sao PERMITIDAS como enfase falada, desde que no mesmo corpo e no mesmo peso do resto do bloco. CORRECAO DA AUDITORIA: a primeira gravacao proibia caixa alta em qualquer palavra, o que invalidava 20 das 24 copies e contrariava a regra 2 de copy do cliente. Copy do cliente vence regra de formato.",
+      "sobreposicoes de alto contraste sem nenhuma cor de marca aplicada sobre a foto: fundo dos adesivos em branco ou preto solido, e a cor escura do texto tem de existir em algum objeto ja presente na cena. CORRECAO DA AUDITORIA: a primeira gravacao exigia sobreposicoes acromaticas, regra que a propria peca de origem viola (o texto e azul-escuro puxado das toalhas das mesas). O que e proibido e cor de marca, gradiente e transparencia, nao cromia.",
+      "topo limpo e os 30% inferiores limpos: nenhum elemento fora da faixa util; em 4:5 a pilha ocupa 45% a 68% (caixa) e 72% a 79% (pilula), e em 9:16 a pilha inteira sobe para 38% a 56% e 58% a 63% para caber fora da reserva de 35% da base",
+      "a pilula nunca pode ganhar aparencia de botao: sem sombra, sem borda, sem contorno, sem gradiente, sem icone de link ou de seta desenhada e sem estado ativo; e adesivo de texto, nao interface",
+      "zero chrome de app (sem barra de progresso, cabecalho de perfil, campo de resposta, contador de visualizacoes), zero logo, zero marca dagua, zero arroba, zero preco, zero selo de urgencia, zero depoimento e zero produto visivel",
+      "nenhuma tela legivel na foto: celular, notebook, monitor ou projecao com conteudo identificavel jogam a peca para a topologia print_de_tela e matam a leitura de cobertura. Aparelho desligado, de costas ou fora de foco e permitido. CORRECAO DA AUDITORIA: regra ausente na primeira gravacao, que 8 das 24 direcoes de foto inventaram sozinhas.",
+      "a autoridade vem exclusivamente do que a foto mostra; a peca nao pode conter nenhum elemento grafico que afirme credencial (selo, numero de alunos, titulo)",
+      "a caixa branca cai no centro geometrico, entao a foto precisa ter gordura ali (parede, chao, torso); rosto ou informacao critica entre 45% e 68% da altura quebra a peca",
+      "origem_do_ativo foto_real sem degradacao: render, ilustracao e imagem generativa proibidos, inclusive nas pessoas de fundo",
+      "REGRA QUE O SEPARA DOS VIZINHOS: contra story_organico_de_recomendacao (mesma topologia e mesma mimica de story), la sao duas caixas brancas em monoespacada, tudo em caixa baixa, com produto fisico aberto em cena, sem rosto e com CTA proibido, em 9:16 e prova social; aqui e caixa branca serifada com capitalizacao normal mais pilula preta de CTA, com rosto, sem produto nenhum, em 4:5, e a prova e autoridade de evento. Contra depoimento_de_amigo_cetico (mesma topologia e mesma foto vertical), la o texto e branco SOLTO sobre a foto, com produto na mao e disclaimer no rodape; aqui todo texto vive dentro de adesivo de fundo solido e nao ha produto nem letra miuda. Contra story_nativo e print_de_tela, aqui nao existe nenhum elemento de interface reproduzido: a peca imita o ESTILO do adesivo, nao a TELA do app."
+    ],
+    "regra_de_copy": [
+      "teto absoluto de 25 palavras na caixa branca, em 4 linhas; passar disso faz a caixa crescer para baixo, encostar na pilula e destruir o desalinhamento que e a assinatura do formato",
+      "nenhuma linha de texto pode afirmar autoridade (nada de sou referencia, ja formei X alunas, anos de mercado); se a copy disser quem a pessoa e, a foto vira redundante e a peca passa a se defender em vez de provar",
+      "proibido declarar preco, prazo, contagem de vagas ou nome de produto dentro dos adesivos",
+      "o texto da pilula vive em UMA linha, ate 4 palavras mais um emoji direcional",
+      "sem travessao (regra do cliente); ponto final, caixa alta e exclamacao sao permitidos e ate desejaveis como enfase falada",
+      "proibida a construcao nao e X, e Y e todas as suas variantes (regra do cliente)",
+      "CORRECAO DA AUDITORIA: seis regras que estavam aqui na primeira gravacao (verbo imperativo de permissao na abertura, primeira pessoa possessiva, contagem exata nao redonda, mecanismo batizado em maiusculas, duas promessas encadeadas, declaracao de frequencia) foram movidas para o angulo copie_a_minha_biblioteca. Elas descreviam o que a peca de origem estava VENDENDO, nao o formato: 23 das 24 copies geradas as violam e continuam reconheciveis como este container, que e o teste operacional do banco"
+    ],
+    "frames": [],
+    "confianca": "alta",
+    "topologia": "foto_integral_com_texto",
+    "tem_rosto": true,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "origem_do_ativo": "foto_real",
+    "risco_de_reprovacao": "medio",
+    "risco_motivo": "O layout nao reproduz nenhum elemento de interface de plataforma: copia a tipografia do adesivo (preenchimento solido atras da letra), nao o widget nem a tela, o que o separa de story_nativo (risco alto, reproduz a caixinha de perguntas) e de sticker_pergunta_instagram (risco medio). Nao ha par antes e depois, pele, preco, contagem regressiva nem selo de alerta oficial. O risco real migra inteiro para a copy: promessa de resultado recorrente em vertical de oportunidade de negocio, que a Meta le como resultado garantido. Ponto de atencao secundario: se a pilula endurecer em botao (borda, sombra, icone de link), passa a simular funcionalidade de plataforma e o risco sobe.",
+    "presenca_de_cta": "obrigatorio",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "caixa branca: 4 linhas centralizadas, teto ABSOLUTO de 25 palavras (o ponto doce e 18 a 22). Em 1080x1350 a caixa ocupa cerca de 310px de altura, quatro caixas de linha de 78px, tipo em torno de 52px; passar de 25 palavras faz a caixa crescer para baixo, encostar na pilula e destruir o desalinhamento. Pilula preta: 2 a 4 palavras mais um emoji direcional, em UMA linha, ocupando de 40% a 55% da largura. Total da peca em torno de 25 palavras em 5 linhas. A letra comeca depois de 9,3% e termina antes de 90,7% da largura, mesmo que a caixa cruze a reserva lateral.",
+    "evidencia": "Print enviado pelo usuario, decodificado a partir de transcricao visual detalhada por quatro lentes independentes (casca visual, mimetica, estrategia e producao) mais oito testes de duplicata contra os vizinhos do banco. NAO ha pasta de frames nem arquivo de evidencia versionado: por isso frames=[]. Marcadores confirmados na transcricao: foto de mulher de conjunto terracota flagrada em meio-passo em sala de evento com duas mesas de toalha azul-marinho, tres ou quatro mulheres sentadas, pastas laranja e caixa de som preta; caixa branca serifada entre 45% e 68% da altura com a copy \"Copie a minha biblioteca com 31 formatos de Reels de Atracao que viralizam e atraem seguidores qualificados todos os dias\"; pilula preta \"Pegue seu acesso\" com emoji de mao apontando para baixo entre 72% e 79%, alinhada a esquerda. Testes de duplicata: distinto contra corte_de_podcast_com_faixa (4 tracos), cena_em_massinha (4), depoimento_de_amigo_cetico (2), manchete_de_estatistica (2), story_nativo (1), manchete_editorial (3) e ser_direto_com_icp (2); primo_mesclar apontado contra a familia story_organico_de_recomendacao (3 tracos), registrado em aliases e resolvido pela REGRA QUE O SEPARA DOS VIZINHOS no campo fixo.",
+    "aliases": [],
+    "correcoes_auditoria": [
+      {
+        "campo": "regra_de_copy",
+        "motivo": "Metade das regras descrevia o angulo da peca de origem, nao o container. Movidas para o novo angulo copie_a_minha_biblioteca."
+      },
+      {
+        "campo": "fixo (tipografia)",
+        "motivo": "Proibia caixa alta em qualquer palavra, contra a regra 2 de copy do cliente e invalidando 20 das 24 copies geradas."
+      },
+      {
+        "campo": "fixo (cor)",
+        "motivo": "Exigia sobreposicoes acromaticas, regra desmentida pela propria peca de origem, cujo texto e azul-escuro."
+      },
+      {
+        "campo": "fixo (tela)",
+        "motivo": "Faltava a regra que separa este container de print_de_tela: nenhuma tela legivel dentro da foto."
+      },
+      {
+        "campo": "trocavel (arredondamento)",
+        "motivo": "Exigia mesmo raio nos dois adesivos; a peca de origem tem retangulo levemente arredondado mais pilula totalmente arredondada."
+      },
+      {
+        "campo": "limite_de_texto_por_bloco",
+        "motivo": "Declarava tres tetos diferentes na mesma frase (20, 18 a 22, 25). Fixado em 25."
+      },
+      {
+        "campo": "risco_de_reprovacao",
+        "motivo": "Gravado como baixo enquanto o proprio risco_motivo descreve promessa de resultado recorrente em vertical de oportunidade de negocio."
+      },
+      {
+        "campo": "aliases",
+        "motivo": "Trazia story_organico_de_recomendacao, mas 7 dos 8 testes deram distinto e o verbete gasta um paragrafo separando os dois. Dissidencia registrada em dissidencia_de_dedup."
+      },
+      {
+        "campo": "fixo (desalinhamento) + spec_de_producao",
+        "motivo": "O verbete declarava o desalinhamento obrigatorio sem nenhuma medida, e descrevia a pilula como 'encostada a esquerda', o que sugere margem do quadro. Na peca de origem os dois blocos partem da mesma borda esquerda e a assimetria aparece na borda direita. Fechadas tambem as 15 lacunas de producao apontadas pelo critico (tipografia, padding, raio, gap, opacidade, quinta linha, pilula sobre fundo escuro, tratamento fotografico, emoji, autorizacao de imagem, colocacao, legenda, voz, angulos vedados)."
+      }
+    ],
+    "dissidencia_de_dedup": "1 dos 8 advogados de duplicata votou primo_mesclar contra story_organico_de_recomendacao, alegando mesma mimica semantica (adesivo de texto de story sobre foto crua) e que os dois unicos tracos divergentes sao os dois mais fracos do banco. Rejeitado pelo teste operacional, com o argumento do proprio dissidente: a entrada existente grava presenca_de_cta proibido porque a mecanica dela e uma consumidora recomendando o que comprou, e um CTA quebraria a ilusao de par falando com par. Aqui o CTA e estrutural e a voz e da autora vendendo o proprio ativo. Entregar a ficha existente a um designer nunca produziria esta peca. Sao primos de FAMILIA (adesivo de story sobre foto), separados por quem fala e pela existencia do CTA. Ressalva metodologica do dissidente que vale registrar: se mimica_de virar enum fechado como o config recomenda, os dois passam a colidir tambem no traco mais informativo e essa decisao deve ser reaberta.",
+    "spec_de_producao": {
+      "_nota": "Medidas em canvas 1080x1350 (4:5). Para 9:16 (1080x1920) valem os mesmos valores absolutos de tipo e padding; o que muda sao as faixas de altura, ja declaradas em fixo.",
+      "tipografia": "serifada de transicao, altura-x alta, contraste de traco baixo a medio (classe de Tiempos, Freight Text, PT Serif, Lora). Um peso so (regular ou medium), um corpo so, tracking 0, entrelinha 1.5. Texto centralizado na caixa branca, alinhado a esquerda na pilula. Ultima linha centralizada como as outras, sem viuva de uma palavra: se sobrar palavra sozinha, reescreve a copy, nao muda o corpo.",
+      "corpo_e_linha": "tipo ~52px, caixa de linha ~78px na caixa branca; pilula ~40px em uma linha de ~60px",
+      "padding_interno": "caixa branca 48px em cima e embaixo, 40px nas laterais; pilula 24px em cima e embaixo, 36px nas laterais",
+      "raio_de_canto": "caixa branca 16px (levemente arredondada); pilula = metade da altura (totalmente arredondada). Os dois NAO usam o mesmo raio.",
+      "larguras": "caixa branca ~64% da largura do quadro, centralizada (borda esquerda em ~18%); pilula ~43% da largura, partindo da MESMA borda esquerda de 18%",
+      "gap_entre_os_adesivos": "54px em 1080x1350 (4% da altura). Nunca menos de 3% da altura: abaixo disso os dois blocos leem como um bloco so.",
+      "opacidade_e_sombra": "os dois adesivos sao 100% opacos, sem sombra, sem contorno, sem transparencia. O adesivo do editor de Stories e opaco; qualquer transparencia denuncia diagramacao.",
+      "quinta_linha": "25 palavras nao cabem em 4 linhas de 5. Se a copy pedir 5 linhas, a caixa cresce PARA CIMA e a pilha inteira sobe a altura de uma linha, mantendo a base da pilula na mesma porcentagem. Nunca deixar a caixa crescer para baixo.",
+      "pilula_sobre_area_escura": "se a faixa da pilula cair sobre roupa preta, sombra, chao escuro ou toalha escura, a pilula INVERTE para fundo branco com texto escuro, seguindo a mesma regra de cor da caixa. Jamais resolver com borda, contorno, sombra ou brilho: qualquer um deles transforma o adesivo em botao e quebra a mimica.",
+      "tratamento_fotografico": "balanco de branco natural, sem vinheta, sem grao adicionado, sem contraste alto, sem look de Lightroom e sem filtro de cor. A peca depende de parecer registro feito por terceiro no dia; foto de cobertura tratada como campanha mata a mimica.",
+      "emoji": "exatamente um, sempre no FIM da pilula, sempre direcional (mao apontando para baixo, seta, dedo indicador). Nunca antes do texto, nunca dois, nunca emoji nao direcional.",
+      "autorizacao_de_imagem": "com autorizacao das pessoas de fundo, plateia pode aparecer de perfil. Sem autorizacao, a alternativa e plateia inteira de COSTAS (que inclusive le melhor, porque o olho conta a escala sem parar em nenhum rosto), ou corte de enquadramento acima da linha das cabecas. Desfoque NAO e alternativa valida: o fixo exige fundo legivel, e desfocar derruba a prova.",
+      "colocacao": "roda em feed e em stories. Com o selo Patrocinado e o cabecalho do anunciante logo acima, o desalinhamento continua lendo como adesivo e nao como erro de diagramacao, porque os dois blocos partem da mesma borda esquerda. Se algum dia so a pilula for deslocada, isso deixa de ser verdade.",
+      "legenda_do_anuncio": "a legenda (primary text) NUNCA repete o texto do adesivo: repetir denuncia que a imagem foi diagramada. Ela continua a frase, em 1 ou 2 linhas, na mesma voz da caixa branca. Legenda longa e legenda vendedora derrubam a leitura de story printado."
+    },
+    "voz": "a caixa branca fala na voz da DONA do ativo (primeira pessoa possessiva) ou em segunda pessoa neutra dirigida a leitora. Voz de aluna ou de cliente NAO e slot deste container: a foto mostra a dona conduzindo, entao depoimento de terceiro na caixa cria um narrador que a imagem desmente. Depoimento pertence a outro container.",
+    "angulos_vedados": [
+      "qualquer angulo que exija DEMONSTRACAO de tela (o fixo proibe tela legivel na foto)",
+      "qualquer angulo que exija par ANTES e DEPOIS (a peca tem um quadro so e uma foto so)",
+      "qualquer angulo que exija DEPOIMENTO com rosto ou nome de cliente (a foto ja carrega o rosto da dona; dois narradores se anulam)",
+      "qualquer angulo ancorado em PRECO, PRAZO, VAGAS ou ESCASSEZ declarada (a regra de copy proibe esses elementos dentro dos adesivos)",
+      "qualquer angulo que precise mostrar o PRODUTO em quadro (tem_produto e false por construcao; a prova mora no fundo da foto)"
+    ],
+    "pendencias": [
+      "EVIDENCIA NAO VERSIONADA: frames=[] e o print de origem nao esta em evidencia/ nem em transcricoes/. A decodificacao nao pode ser conferida por outra pessoa. Salvar o print enviado em 2026-09-07 como evidencia/prints/adesivos_de_story_sobre_foto_de_evento.png e preencher frames[].",
+      "MEDIDAS APROXIMADAS: as larguras (64% da caixa, 43% da pilula, borda esquerda em 18%) foram lidas a olho de um print de baixa resolucao. Conferir contra o arquivo original quando ele for versionado."
+    ]
+  },
+  {
+    "id": "antes_depois",
+    "nome_pt": "Antes e depois",
+    "nome_original": "Before/after",
+    "camada": "container",
+    "mimica_de": "nenhum — foto documental de resultado",
+    "descricao_layout": "Card 100% ocupado por duas fotos reais coladas lado a lado em split vertical 50/50 sem moldura nem espacamento. Mesmo sujeito, mesmo enquadramento e angulo, mudando so o estado. No canto inferior de cada metade, etiqueta retangular branca com uma palavra em caixa alta: 'BEFORE' em vermelho e 'AFTER' em verde. Nenhuma copy, logo, preco ou CTA.",
+    "blocos": [
+      "foto real do estado 'antes'",
+      "foto real do estado 'depois'",
+      "etiqueta BEFORE em vermelho",
+      "etiqueta AFTER em verde"
+    ],
+    "densidade_texto": "baixa",
+    "funil": [
+      "topo",
+      "meio"
+    ],
+    "exige": [
+      "duas fotos reais do mesmo sujeito no mesmo angulo e enquadramento",
+      "resultado visivel sem precisar de legenda",
+      "autorizacao de uso do caso real"
+    ],
+    "prova_embutida": "demonstracao",
+    "exemplo_nicho": "pet care / dermatologia animal",
+    "exemplo_copy": "BEFORE | AFTER",
+    "exemplo_paleta": "cores naturais das duas fotos, etiquetas brancas com texto vermelho e verde",
+    "trocavel": [
+      "as duas fotos",
+      "o sujeito e o nicho",
+      "a condicao/problema mostrado"
+    ],
+    "fixo": [
+      "split vertical 50/50 encostado, sem borda entre as fotos",
+      "mesmo enquadramento, angulo e distancia nas duas fotos",
+      "BEFORE em vermelho e AFTER em verde, em etiqueta branca na base de cada metade",
+      "ausencia total de copy explicativa, logo e CTA",
+      "CORRECAO DA AUDITORIA: mesmo sujeito e mesma condicao visivel nas duas fotos; enquadramento aproximado, nem sempre identico (remover 'mesmo angulo e distancia')"
+    ],
+    "frames": [
+      "admanage/c035.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "duas_colunas_espelhadas",
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "1:1",
+    "midia": "estatico",
+    "origem_do_ativo": "foto_real",
+    "risco_de_reprovacao": "medio",
+    "risco_motivo": "Par antes/depois de condicao dermatologica, categoria que as plataformas restringem mesmo sem claim escrito na peca.",
+    "presenca_de_cta": "proibido",
+    "numero_de_slots_variaveis": 3,
+    "limite_de_texto_por_bloco": "zero copy explicativa; apenas uma palavra por etiqueta branca (BEFORE em vermelho / AFTER em verde)",
+    "evidencia": "Mesmo split antes/depois da pele do animal, sem moldura nem espacamento entre as metades.",
+    "aliases": [],
+    "correcoes_auditoria": [
+      {
+        "campo": "fixo",
+        "motivo": "A ficha afirma tres vezes que enquadramento, angulo e distancia sao identicos. O criativo de referencia (admanage f034/f035, crop c034) mostra o contrario: o BEFORE e close frontal na barriga do cachorro e o AFTER e plano mais aberto, de outro angulo e com o animal em outra posicao. So o sujeito se repete."
+      }
+    ]
+  },
+  {
+    "id": "artigo_cientifico",
+    "nome_pt": "Artigo de ciencia / materia editorial",
+    "nome_original": "Science article",
+    "camada": "container",
+    "mimica_de": "pagina de artigo de portal de ciencia (manchete + metadados + imagem)",
+    "descricao_layout": "Card branco sem moldura de anuncio. Manchete preta em negrito em 3 linhas alinhada a esquerda, com o termo-conceito entre aspas. Abaixo, linha de metadados em cinza minusculo separada por bullets (data, comentarios, views, tempo de leitura) com um filete fino. Os dois tercos inferiores sao uma unica imagem editorial cientifica com margem branca ao redor. Zero logo, CTA ou preco.",
+    "blocos": [
+      "manchete editorial em negrito (3 linhas)",
+      "linha de metadados: data / comentarios / views / tempo de leitura",
+      "filete divisor fino",
+      "imagem editorial cientifica na metade inferior"
+    ],
+    "densidade_texto": "media",
+    "funil": [
+      "topo",
+      "meio"
+    ],
+    "exige": [
+      "manchete que derruba uma pratica popular e nomeia um mecanismo alternativo entre aspas",
+      "imagem editorial/cientifica limpa",
+      "metadados plausiveis de artigo"
+    ],
+    "prova_embutida": "autoridade",
+    "exemplo_nicho": "saude mental / reducao de estresse",
+    "exemplo_copy": "Forget Meditation – Neuroscientists Say This 'Stress Reset' Is Faster | July 15 • 6 comments • 203504 Views • Reading time: 5 min",
+    "exemplo_paleta": "fundo branco, tipografia preta, metadados cinza, imagem azul-royal com mapa de calor amarelo/laranja",
+    "trocavel": [
+      "assunto da manchete e a pratica popular negada",
+      "o termo-conceito entre aspas",
+      "a autoridade citada e a imagem",
+      "os numeros dos metadados"
+    ],
+    "fixo": [
+      "fundo branco liso de pagina de artigo",
+      "manchete preta em negrito no topo alinhada a esquerda em multiplas linhas",
+      "linha de metadados em cinza minusculo com bullets + filete divisor",
+      "uma unica imagem grande abaixo do texto, com margem branca",
+      "ausencia total de sinais de anuncio: sem logo, CTA, botao ou preco"
+    ],
+    "frames": [
+      "admanage/c053.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "documento",
+    "tem_rosto": true,
+    "tem_produto": false,
+    "proporcao": "1:1",
+    "midia": "estatico",
+    "origem_do_ativo": "ilustracao",
+    "risco_de_reprovacao": "medio",
+    "risco_motivo": "Mimetiza pagina de portal jornalistico/cientifico com metadados fabricados (data, 6 comentarios, 203504 views, tempo de leitura) e atribuicao vaga a 'neuroscientists', sem fonte nem lastro.",
+    "presenca_de_cta": "proibido",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "Manchete: 3 linhas de 3-5 palavras, ~11 palavras no total, alinhada a esquerda, com o termo-conceito entre aspas simples. Linha de metadados: 1 unica linha em cinza minusculo com 4 itens separados por bullet. Nenhum corpo de texto, legenda ou credito na imagem.",
+    "evidencia": "Card branco de materia editorial: manchete 'Forget Meditation – Neuroscientists Say This Stress Reset Is Faster', linha de metadados (data, comentarios, views, tempo de leitura) e foto do cerebro; frame indica 33. Science article.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "aviso_importante",
+    "nome_pt": "Aviso urgente / atualizacao importante",
+    "nome_original": "Warning",
+    "camada": "container",
+    "mimica_de": "aviso de sistema / comunicado oficial aplicado a um anuncio de oferta",
+    "descricao_layout": "Card preto absoluto, tudo centralizado com muito respiro. Triangulo de alerta vermelho no topo, 'IMPORTANT UPDATE' em caixa alta vermelha com tracking largo, bloco de 3 linhas brancas com a linha do meio (a oferta) em vermelho, espaco vazio, uma linha unica sublinhada com sortimento + preco de entrada e, no rodape, o logo da marca em serif discreto.",
+    "blocos": [
+      "icone de alerta vermelho",
+      "titulo de aviso em caixa alta vermelha",
+      "corpo de 3 linhas com a oferta destacada em vermelho",
+      "linha sublinhada de sortimento + preco",
+      "logo da marca no rodape"
+    ],
+    "densidade_texto": "media",
+    "funil": [
+      "fundo"
+    ],
+    "exige": [
+      "motivo plausivel para o 'aviso' (demanda, prorrogacao, ultimo dia)",
+      "uma oferta numerica clara",
+      "preco de entrada e escala de sortimento",
+      "logo discreto"
+    ],
+    "prova_embutida": "nenhuma",
+    "exemplo_nicho": "perfumaria / fragrancias inspiradas (The Essence Vault)",
+    "exemplo_copy": "⚠ IMPORTANT UPDATE / Due to popular demand, we're extending our biggest offer ever. Take 30% OFF everything. No exceptions. / 200+ designer-inspired scents. From £3.49. / THE ESSENCE VAULT",
+    "exemplo_paleta": "preto absoluto, vermelho de alerta so no icone/titulo/oferta, resto em branco",
+    "trocavel": [
+      "motivo do aviso",
+      "percentual/valor da oferta",
+      "linha de sortimento e preco",
+      "marca e nicho"
+    ],
+    "fixo": [
+      "fundo preto total, sem foto de produto e sem pessoa",
+      "icone de alerta vermelho + titulo em caixa alta vermelha centralizados",
+      "tudo centralizado em corpo pequeno com muito espaco negativo",
+      "vermelho com parcimonia: so icone, titulo e linha da oferta",
+      "linha de reforco sublinhada isolada acima do logo",
+      "logo pequeno e discreto no rodape",
+      "REGRA QUE O SEPARA DOS VIZINHOS: carta_de_despedida_fundador e epistolar: wordmark da marca ABRINDO o card no topo, corpo em paragrafos corridos em coluna estreita com os termos da oferta em negrito dentro do texto, e assinatura do fundador no rodape a direita — sem icone de alerta e sem cor de sinalizacao. aviso_importante e comunicado de sistema: icone de alerta vermelho + titulo em caixa alta vermelha abrindo o card, corpo em no maximo 3 linhas soltas centralizadas (nunca paragrafos), vermelho restrito a icone/titulo/linha da oferta, e logo pequeno FECHANDO o rodape, sem assinatura pessoal."
+    ],
+    "frames": [
+      "admanage/c065.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "tipografico_puro",
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "1:1",
+    "midia": "estatico",
+    "origem_do_ativo": "ilustracao",
+    "risco_de_reprovacao": "alto",
+    "risco_motivo": "triangulo de alerta vermelho + 'IMPORTANT UPDATE' fazem a peca ler como aviso de sistema/comunicado oficial, nao como anuncio",
+    "presenca_de_cta": "obrigatorio",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "titulo de 2 palavras em caixa alta vermelha; corpo em 3 linhas de 5-7 palavras (a do meio, a oferta, em vermelho); linha sublinhada unica de sortimento + preco com ate 7 palavras; logo no rodape sem linha de apoio",
+    "evidencia": "Card preto absoluto com triangulo de alerta vermelho, 'IMPORTANT UPDATE' em vermelho, tres linhas brancas com a extensao da oferta e assinatura The Essence Vault; frame fecha em 40. Warning.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "bilhete_manuscrito",
+    "nome_pt": "Bilhete manuscrito",
+    "nome_original": "Written note",
+    "camada": "container",
+    "mimica_de": "folha de bloco pautado escrita a mao e fotografada",
+    "descricao_layout": "FOTO de uma folha de bloco pautado com a borda do bloco visivel e imperfeicoes de captura. Texto manuscrito em tinta escura alinhado a esquerda, ocupando ~70% da altura, em 5 blocos curtos separados por linha vazia, com uma unica expressao sublinhada a mao na abertura. Linhas em branco sobrando no rodape. Nenhum logo, produto, preco ou grafismo digital.",
+    "blocos": [
+      "foto do bloco pautado com borda visivel",
+      "abertura endereçando o publico + comando sublinhado",
+      "paragrafo de credencial de sofrimento",
+      "paragrafo de virada",
+      "linha de arrependimento por ter demorado",
+      "convite final para ler a historia"
+    ],
+    "densidade_texto": "alta",
+    "funil": [
+      "meio",
+      "fundo"
+    ],
+    "exige": [
+      "bloco de papel pautado real e caneta",
+      "alguem com letra manuscrita legivel",
+      "uma historia real em primeira pessoa",
+      "fotografar a folha de verdade, nunca simular com fonte manuscrita"
+    ],
+    "prova_embutida": "social",
+    "exemplo_nicho": "aparelhos auditivos D2C, publico do Reino Unido",
+    "exemplo_copy": "For anyone struggling with their hearing – READ THIS. / I wore NHS hearing aids for 6 years. Hated every second. / Then someone showed me something that changed everything. / Read my story – hope it helps you too.",
+    "exemplo_paleta": "papel branco pautado, borda de papelao bege/oliva texturizada, tinta preta",
+    "trocavel": [
+      "o publico endereçado",
+      "a dor e o tempo de convivencia",
+      "o que 'mudou tudo'",
+      "a frase final de convite",
+      "o tipo de bloco/papel"
+    ],
+    "fixo": [
+      "papel pautado REAL fotografado, com borda e textura aparecendo",
+      "letra manuscrita — nunca fonte digital imitando manuscrito",
+      "sublinhado a mao em UMA unica expressao de comando",
+      "4-5 paragrafos curtos separados por linha em branco",
+      "zero logo, produto, preco ou CTA comercial",
+      "primeira pessoa, tom de desabafo entre pares",
+      "linhas em branco sobrando no rodape",
+      "CORRECAO DA AUDITORIA: aparencia de manuscrito real sobre FOTO de bloco pautado (fonte manuscrita digital bem aplicada e aceitavel, desde que papel e borda sejam foto real); rebaixar confianca de 'alta' para 'media'"
+    ],
+    "frames": [
+      "admanage/c022.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "documento",
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "origem_do_ativo": "foto_real",
+    "risco_de_reprovacao": "baixo",
+    "risco_motivo": "nenhum",
+    "presenca_de_cta": "proibido",
+    "numero_de_slots_variaveis": 5,
+    "limite_de_texto_por_bloco": "5 blocos manuscritos de 1-2 linhas (ate ~10 palavras cada) separados por linha em branco; uma unica expressao sublinhada a mao na abertura; linhas pautadas sobrando no rodape",
+    "evidencia": "Mesmo bilhete manuscrito sobre bloco pautado, com os 5 blocos de texto legiveis ate 'Read my story – hope it helps you too'.",
+    "aliases": [],
+    "correcoes_auditoria": [
+      {
+        "campo": "exemplo_paleta",
+        "motivo": "A ficha declara 'pautas azul claro, borda cinza, tinta azul-escura'. No frame admanage f021 / crop c021 ampliado a tinta e preta/cinza-escura e a borda do bloco e papelao bege-esverdeado granulado. So o papel branco pautado confere."
+      },
+      {
+        "campo": "fixo",
+        "motivo": "O fixo proibe 'fonte digital imitando manuscrito', mas o proprio criativo de referencia tem glifos repetidos identicos, peso de traco uniforme, linha de base regular e o sublinhado de 'READ THIS' perfeitamente reto — provavelmente ele mesmo viola a regra declarada como fixa."
+      }
+    ]
+  },
+  {
+    "id": "carrinho_checkout",
+    "nome_pt": "Carrinho de checkout",
+    "nome_original": "Checkout basket",
+    "camada": "container",
+    "mimica_de": "print do carrinho aberto no navegador do celular com notificacao push por cima",
+    "descricao_layout": "Screenshot vertical: status bar real no topo, banner de notificacao push sobreposto com avatar, remetente e a oferta com cupom, barra de progresso de frete gratis, dois cards de produto (foto, nome em caixa alta, preco, seletor '- 1 +'), botao preto largo de checkout com preco cheio riscado ao lado do final e, na base, a barra do navegador com o dominio da marca.",
+    "blocos": [
+      "status bar do celular",
+      "notificacao push com oferta + cupom",
+      "barra de progresso de frete gratis",
+      "cards de produto",
+      "botao de checkout com preco riscado x preco final",
+      "barra do navegador com o dominio"
+    ],
+    "densidade_texto": "media",
+    "funil": [
+      "fundo"
+    ],
+    "exige": [
+      "print real ou mockup fiel da pagina de carrinho",
+      "fotos dos produtos recortadas em fundo claro",
+      "codigo de cupom, preco cheio e preco com desconto",
+      "dominio da marca visivel no rodape"
+    ],
+    "prova_embutida": "nenhuma",
+    "exemplo_nicho": "bebida energetica / suplemento em po (sneakenergy.com)",
+    "exemplo_copy": "Joe / That tasty energy drink you liked is now 50% off with code NEW50 / You've earned FREE delivery / CHECKOUT £51.95 £25 / sneakenergy.com",
+    "exemplo_paleta": "branco de UI, rosa da barra de progresso, botao preto, fotos de produto em fundo cinza claro",
+    "trocavel": [
+      "produtos, fotos e nomes",
+      "precos e valor do desconto",
+      "codigo do cupom e texto da notificacao",
+      "dominio da marca"
+    ],
+    "fixo": [
+      "arte como print de UI nativa de carrinho, nao peca desenhada",
+      "notificacao push sobreposta no topo carregando a oferta (o gancho mora ali)",
+      "barra de progresso de frete gratis logo abaixo",
+      "botao de checkout preto largo com preco cheio riscado ao lado do final",
+      "barra do navegador com o dominio fechando a base"
+    ],
+    "frames": [
+      "admanage/c031.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "print_de_tela",
+    "tem_rosto": false,
+    "tem_produto": true,
+    "proporcao": "9:16",
+    "midia": "estatico",
+    "origem_do_ativo": "print_real",
+    "risco_de_reprovacao": "alto",
+    "risco_motivo": "banner de notificacao push falsa em estilo iOS nativo, com remetente de nome pessoal ('Joe') e mensagem em tom de conversa, sobreposto a uma status bar real de celular",
+    "presenca_de_cta": "obrigatorio",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "notificacao: remetente 1 palavra + corpo em 2 linhas de ate 9 palavras carregando o cupom; barra de frete 1 linha de 4 palavras ('You've earned FREE delivery'); card de produto = nome em caixa alta de 1-2 palavras + preco + seletor '- 1 +'; botao de checkout = 1 palavra + preco riscado + preco final; rodape apenas o dominio",
+    "evidencia": "Screenshot de carrinho com push do 'Joe' oferecendo 50% com codigo NEW50, barra de frete gratis, dois produtos e botao CHECKOUT; frame acrescenta item 19 'Checkout basket'.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "carta_de_despedida_fundador",
+    "nome_pt": "Carta de despedida do fundador",
+    "nome_original": "Founder goodbye letter",
+    "camada": "container",
+    "mimica_de": "e-mail/carta do fundador para a base, em fundo preto, sem imagem de produto",
+    "descricao_layout": "Card totalmente preto sem foto. Logo em serifada branca pequena no topo, um emoji sozinho, headline de despedida em caixa alta branca centralizada, tres paragrafos em coluna estreita cinza-clara com os termos da oferta e o cupom em negrito no meio do texto, uma linha isolada de escassez e assinatura do fundador alinhada a direita no rodape.",
+    "blocos": [
+      "fundo preto liso sem imagem",
+      "logo da marca no topo",
+      "emoji/icone unico",
+      "headline de despedida em caixa alta",
+      "tres paragrafos centralizados em coluna estreita",
+      "oferta e cupom em negrito dentro do paragrafo",
+      "linha final de escassez",
+      "assinatura do fundador a direita",
+      "CORRECAO DA AUDITORIA: dois paragrafos em coluna estreita + uma linha final de escassez (tres blocos de texto no total, nao quatro)"
+    ],
+    "densidade_texto": "alta",
+    "funil": [
+      "fundo"
+    ],
+    "exige": [
+      "uma ocasiao real de encerramento (fim de promocao, de estoque, ultima chamada)",
+      "cupom com codigo e termos concretos",
+      "voz do fundador assinando no rodape"
+    ],
+    "prova_embutida": "autoridade",
+    "exemplo_nicho": "anel/wearable para sintomas de menopausa",
+    "exemplo_copy": "Calmi / WE'RE SAYING GOODBYE / ...this is your last chance to get BUY 1 GET 1 FREE +30% OFF with code CYBER30 / Hurry! once sold out, the deal is gone. / — Calmi Founder",
+    "exemplo_paleta": "fundo preto, tipografia branca e cinza-claro, um unico emoji colorido",
+    "trocavel": [
+      "marca, produto e lista de beneficios",
+      "codigo e termos do cupom",
+      "a ocasiao citada",
+      "o emoji do topo"
+    ],
+    "fixo": [
+      "fundo preto liso, sem foto de produto e sem pessoa",
+      "headline de encerramento em caixa alta, sozinha",
+      "texto centralizado em coluna estreita com formatacao de e-mail",
+      "termos da oferta em negrito dentro do corpo, nunca em botao ou selo",
+      "linha de escassez isolada antes da assinatura",
+      "assinatura do fundador no rodape a direita",
+      "REGRA QUE O SEPARA DOS VIZINHOS: carta_de_despedida_fundador e epistolar: wordmark da marca ABRINDO o card no topo, corpo em paragrafos corridos em coluna estreita com os termos da oferta em negrito dentro do texto, e assinatura do fundador no rodape a direita — sem icone de alerta e sem cor de sinalizacao. aviso_importante e comunicado de sistema: icone de alerta vermelho + titulo em caixa alta vermelha abrindo o card, corpo em no maximo 3 linhas soltas centralizadas (nunca paragrafos), vermelho restrito a icone/titulo/linha da oferta, e logo pequeno FECHANDO o rodape, sem assinatura pessoal."
+    ],
+    "frames": [
+      "admanage/c007.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "documento",
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "1:1",
+    "midia": "estatico",
+    "origem_do_ativo": "ilustracao",
+    "risco_de_reprovacao": "baixo",
+    "risco_motivo": "nenhum",
+    "presenca_de_cta": "obrigatorio",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "logo 1 palavra; headline em 1 linha de 3-4 palavras em caixa alta; 3 paragrafos de 2 a 4 linhas (~25-30 palavras cada) em coluna estreita; linha de escassez isolada de ate 8 palavras; assinatura de 2-3 palavras",
+    "evidencia": "Card preto com logo 'Calmi', emoji de presente, headline 'WE'RE SAYING GOODBYE' e assinatura '— Calmi Founder'; frame marca item 5 'Goodbye'.",
+    "aliases": [],
+    "correcoes_auditoria": [
+      {
+        "campo": "prova_embutida",
+        "motivo": "Marcada como 'social' mas a peca nao tem nenhum elemento estrutural de prova social: fundo preto, sem foto, sem depoimento, sem numero de clientes, sem voz de terceiro. O que existe e voz do fundador assinando + escassez + cupom. O rotulo errado contamina qualquer filtro por tipo de prova."
+      },
+      {
+        "campo": "blocos",
+        "motivo": "A ficha descreve 'tres paragrafos' MAIS 'uma linha isolada de escassez'. No crop admanage c007 (Calmi) ha tres blocos no total: oferta com CYBER30, beneficios do anel, e 'Hurry! once sold out, the deal is gone.' — a linha de escassez E o terceiro paragrafo, nao um quarto elemento."
+      }
+    ]
+  },
+  {
+    "id": "cartaz_diagnostico_com_quiz",
+    "nome_pt": "Cartaz de diagnostico com quiz",
+    "nome_original": "Diagnosis poster",
+    "camada": "container",
+    "mimica_de": "cartaz/panfleto impresso serifado com ilustracao retro",
+    "descricao_layout": "Card em papel off-white. No topo, headline entre aspas em serifada negrito em duas linhas alinhada a esquerda — a pergunta que o publico faz a si mesmo. Abaixo, quatro paragrafos curtos serifados com espacamento generoso: sintomas, renomeacao com nome tecnico, apresentacao do app + credencial, e o CTA do quiz. Na metade inferior esquerda, ilustracao cartoon retro e florzinhas ao longo da base.",
+    "blocos": [
+      "headline-pergunta entre aspas",
+      "paragrafo de sintomas",
+      "paragrafo de renomeacao com termo tecnico",
+      "paragrafo de apresentacao + autoridade",
+      "CTA do quiz de 1 minuto",
+      "ilustracao retro cartoon na base"
+    ],
+    "densidade_texto": "alta",
+    "funil": [
+      "meio",
+      "fundo"
+    ],
+    "exige": [
+      "um quiz real de 1 minuto como destino",
+      "headline que seja literalmente a pergunta interna do publico",
+      "um termo tecnico que renomeie o problema",
+      "credencial de autoridade verificavel",
+      "ilustracao cartoon retro que suavize o tema"
+    ],
+    "prova_embutida": "autoridade",
+    "exemplo_nicho": "saude mental / apego e relacionamentos",
+    "exemplo_copy": "\"Why am I obsessed with this person?\" / You're not obsessed with them. This is called preoccupied attachment... / this app was created by scientists trained at Oxford and Harvard / Just take this 1 min quiz.",
+    "exemplo_paleta": "papel off-white, tipografia serifada preta, ilustracao cartoon retro colorida",
+    "trocavel": [
+      "a pergunta da headline e os sintomas",
+      "o termo tecnico usado",
+      "a credencial de autoridade",
+      "o tema da ilustracao e o nicho"
+    ],
+    "fixo": [
+      "headline como PERGUNTA entre aspas na voz do publico, nunca afirmacao da marca",
+      "sequencia obrigatoria sintoma -> renomeacao tecnica -> autoridade -> quiz",
+      "CTA fechando com quiz curto e cronometrado",
+      "papel off-white + tipografia serifada, cara de impresso",
+      "ilustracao cartoon retro na base contrastando com a densidade do texto",
+      "alinhamento a esquerda em bloco unico, sem caixas nem botoes"
+    ],
+    "frames": [
+      "admanage/c049.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "documento",
+    "tem_rosto": true,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "origem_do_ativo": "ilustracao",
+    "risco_de_reprovacao": "medio",
+    "risco_motivo": "A headline atribui ao espectador uma condicao de saude mental em primeira pessoa e o texto invoca credencial Oxford/Harvard sem lastro visivel na peca.",
+    "presenca_de_cta": "obrigatorio",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "headline-pergunta entre aspas em 2 linhas (ate 6 palavras); 4 paragrafos serifados de 2-4 linhas em corpo pequeno; CTA do quiz fechando em 2 linhas",
+    "evidencia": "Papel off-white com headline entre aspas '\"Why am I obsessed with this person?\"', paragrafos curtos, ilustracao de coracao e chamada para o quiz de 1 min; frame confirma 30. Quiz.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "cartela_de_brinquedo",
+    "nome_pt": "Cartela de brinquedo colecionavel",
+    "nome_original": "Collectible toy",
+    "camada": "container",
+    "mimica_de": "embalagem blister de boneco colecionavel / action figure",
+    "descricao_layout": "Card imitando cartela de brinquedo: moldura dourada com borda vermelha e alcinha de pendurar recortada no topo, faixa de titulo com o nome do 'boneco' em caixa alta serifada, figura da personagem em pose rigida de boneca dentro da janela e, na coluna direita, compartimentos com os acessorios do kit. No canto inferior esquerdo, inset circular com a foto real da pessoa e seta amarela apontando para a versao brinquedo; no direito, etiqueta branca com copy em fonte de maquina de escrever.",
+    "blocos": [
+      "moldura de cartela com alcinha de pendurar",
+      "faixa de titulo com o nome do kit",
+      "figura central em pose de boneca",
+      "coluna de acessorios em compartimentos",
+      "inset circular com a foto real + seta",
+      "etiqueta de copy/CTA no rodape"
+    ],
+    "densidade_texto": "baixa",
+    "funil": [
+      "topo"
+    ],
+    "exige": [
+      "foto real da pessoa/cliente para servir de 'antes'",
+      "geracao de imagem no estilo boneco colecionavel",
+      "conjunto de acessorios que representem o nicho",
+      "mock de cartela blister"
+    ],
+    "prova_embutida": "demonstracao",
+    "exemplo_nicho": "beleza / ferramenta de IA de transformacao de imagem",
+    "exemplo_copy": "GLAM QUEEN / See how you'd look as a collectible toy with our AI widget?",
+    "exemplo_paleta": "vermelho escuro e dourado da cartela, figura em casaco de oncinha, etiqueta branca",
+    "trocavel": [
+      "o nome do kit na faixa",
+      "a persona e a foto real do inset",
+      "os acessorios (devem ser os objetos do nicho)",
+      "a copy da etiqueta e a paleta"
+    ],
+    "fixo": [
+      "estrutura de cartela blister: moldura, alcinha de pendurar, janela recortada",
+      "nome do kit em caixa alta dentro de faixa no topo",
+      "acessorios em compartimentos separados ao lado da figura",
+      "par antes/depois dentro da propria cartela (inset circular + seta)",
+      "figura central em pose rigida de boneca",
+      "etiqueta pequena de copy no rodape, nunca copy grande sobre a arte"
+    ],
+    "frames": [
+      "admanage/c051.jpg"
+    ],
+    "confianca": "media",
+    "topologia": "embalagem_mimetizada",
+    "tem_rosto": true,
+    "tem_produto": false,
+    "proporcao": "9:16",
+    "midia": "estatico",
+    "origem_do_ativo": "misto",
+    "risco_de_reprovacao": "baixo",
+    "risco_motivo": "nenhum",
+    "presenca_de_cta": "obrigatorio",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "faixa de titulo 2 palavras em caixa alta serifada, 1 linha ('GLAM QUEEN'); etiqueta branca de rodape em 3 linhas de ~4 palavras (ate 12 palavras) em fonte de maquina de escrever; nenhum outro texto sobre a arte: sem headline, sem preco, sem bullets",
+    "evidencia": "Mesma cartela 'GLAM QUEEN' com inset circular da foto real e legenda sobre o widget de IA, card inteiro visivel e estavel.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "celular_antigo",
+    "nome_pt": "Celular antigo (SMS em LCD verde)",
+    "nome_original": "Old phone",
+    "camada": "container",
+    "mimica_de": "tela de SMS de celular tijolo antigo (LCD monocromatico verde)",
+    "descricao_layout": "Card ocupado inteiramente pela foto de um celular antigo cortado nas bordas: furinhos do alto-falante no topo, tela LCD verde-oliva no centro, botoes fisicos na base. Dentro da tela, um unico bloco de texto preto em fonte de sistema condensada alinhado a esquerda, preenchendo quase todo o display. Nenhum outro elemento.",
+    "blocos": [
+      "moldura fotografica do celular antigo",
+      "tela LCD verde ocupando o centro",
+      "bloco unico de texto escrito como mensagem pessoal",
+      "botoes fisicos decorativos"
+    ],
+    "densidade_texto": "alta",
+    "funil": [
+      "meio",
+      "fundo"
+    ],
+    "exige": [
+      "mockup ou foto de celular antigo com tela LCD verde",
+      "fonte de sistema/monoespacada em preto",
+      "copy que caiba em ~40 palavras",
+      "copy em primeira pessoa, tom de recado"
+    ],
+    "prova_embutida": "nenhuma",
+    "exemplo_nicho": "app de saude emocional / apego ansioso",
+    "exemplo_copy": "Gentle reminder that if you're waiting for their texts, delaying your response, over analyzing a non-existent future, we made this app to rewire toxic attachments.",
+    "exemplo_paleta": "aparelho bege/creme, tela LCD verde-oliva, texto preto",
+    "trocavel": [
+      "texto da mensagem",
+      "comportamentos/dores listados",
+      "produto e o que ele promete no fecho"
+    ],
+    "fixo": [
+      "moldura do celular antigo visivel e cortada pelas bordas do card",
+      "tela LCD verde-oliva com texto preto",
+      "texto alinhado a esquerda preenchendo o display inteiro",
+      "um unico bloco de texto — sem titulo, bullet ou CTA grafico",
+      "copy redigida como mensagem recebida, nao como anuncio"
+    ],
+    "frames": [
+      "admanage/c030.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "print_de_tela",
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "origem_do_ativo": "mockup_permitido",
+    "risco_de_reprovacao": "medio",
+    "risco_motivo": "Simula uma tela de SMS recebida; a copy se identifica como da marca ('we made this app'), o que atenua, mas o chrome de mensagem pessoal permanece.",
+    "presenca_de_cta": "proibido",
+    "numero_de_slots_variaveis": 3,
+    "limite_de_texto_por_bloco": "um unico bloco de ~40 palavras em 9-10 linhas curtas preenchendo o display inteiro; sem titulo, bullet, assinatura ou botao",
+    "evidencia": "Mesmo aparelho com furinhos do alto-falante, tela LCD verde e botoes fisicos na base, texto integral legivel.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "censurado",
+    "nome_pt": "Censurado (conteudo sensivel)",
+    "nome_original": "Censored",
+    "camada": "container",
+    "mimica_de": "aviso de conteudo sensivel do Instagram/Facebook (foto borrada com olho cortado)",
+    "descricao_layout": "Foto real do problema ocupando todo o card, coberta por blur pesado e escurecida, ainda parcialmente reconhecivel. No centro, icone circular translucido de olho cortado; logo abaixo, headline branca curta em negrito e tres linhas de corpo menor, tudo centralizado. No rodape, linha minuscula de assinatura/convite. Sem botao, preco, produto ou UI de rede social explicita.",
+    "blocos": [
+      "foto real do problema, borrada e escurecida",
+      "icone de olho cortado centralizado",
+      "headline branca curta",
+      "tres linhas de corpo centralizado",
+      "linha de assinatura/movimento no rodape"
+    ],
+    "densidade_texto": "baixa",
+    "funil": [
+      "topo",
+      "meio"
+    ],
+    "exige": [
+      "foto real de um problema visualmente forte o bastante para justificar o blur",
+      "blur pesado cobrindo a imagem inteira",
+      "icone de olho cortado",
+      "headline de 2-3 palavras + 3 linhas de corpo"
+    ],
+    "prova_embutida": "nenhuma",
+    "exemplo_nicho": "skincare natural / eczema - alternativa ao corticoide",
+    "exemplo_copy": "Get Better Skin / Ditch the steroids and use what works. / Natural, vegan + cruelty free / We can help you get your confidence back. / Join the natural skincare revolution",
+    "exemplo_paleta": "foto escura e desaturada sob blur, texto e icone brancos",
+    "trocavel": [
+      "a foto borrada e o problema mostrado",
+      "headline e as tres linhas de corpo",
+      "o inimigo citado",
+      "a linha de assinatura no rodape"
+    ],
+    "fixo": [
+      "blur pesado cobrindo a imagem inteira — a curiosidade vem de nao deixar ver",
+      "icone de olho cortado centralizado logo acima da headline",
+      "texto todo branco, centralizado, direto sobre a foto, sem caixa",
+      "a foto original precisa continuar parcialmente reconhecivel sob o blur",
+      "ausencia de botao, preco, logo e de UI de rede social explicita"
+    ],
+    "frames": [
+      "admanage/c040.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "foto_integral_com_texto",
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "1:1",
+    "midia": "estatico",
+    "origem_do_ativo": "foto_real",
+    "risco_de_reprovacao": "alto",
+    "risco_motivo": "Reproduz o aviso de conteudo sensivel do Instagram/Facebook (imagem inteira sob blur pesado + icone circular translucido de olho cortado), imitando um elemento nativo da plataforma.",
+    "presenca_de_cta": "proibido",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "Headline: 3 palavras em negrito branco ('Get Better Skin'). Corpo: exatamente 3 linhas de 5-8 palavras, centralizadas, sem caixa de fundo. Rodape: 1 linha microscopica de ~6 palavras. Nenhum outro texto sobre a foto borrada.",
+    "evidencia": "Mesmo card censurado com as tres linhas de subheadline legiveis; frame confirma item 25 'Censored'.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "cinco_razoes_tabela_manuscrita",
+    "nome_pt": "5 razoes por que (tabela manuscrita)",
+    "nome_original": "5 reasons why",
+    "camada": "container",
+    "mimica_de": "anotacao/tabela feita a mao em folha branca fotografada sobre ambiente real",
+    "descricao_layout": "Foto de fundo desfocada escura com um retangulo branco central estilo folha ocupando ~60% da altura. Dentro, tudo manuscrito: '5 REASONS WHY' no topo, linha 'Marca > Categoria concorrente' com o nome da marca em verde, divisoria e tabela de cinco linhas com criterio a esquerda e duas colunas de resultado (check verde para a marca, X vermelho para o concorrente). No rodape, fora da folha, bloco denso de disclaimer em letra miuda.",
+    "blocos": [
+      "foto de fundo desfocada",
+      "cartao branco central estilo folha",
+      "titulo '5 REASONS WHY' manuscrito",
+      "linha 'Marca > Categoria concorrente'",
+      "tabela de 5 criterios x 2 colunas com check e X",
+      "bloco de disclaimer no rodape"
+    ],
+    "densidade_texto": "alta",
+    "funil": [
+      "fundo"
+    ],
+    "exige": [
+      "exatamente cinco criterios em que a marca vence em todos",
+      "um criterio de preco com numeros nos dois lados",
+      "uma categoria concorrente generica",
+      "tipografia manuscrita"
+    ],
+    "prova_embutida": "estatistica",
+    "exemplo_nicho": "telemedicina / programa GLP-1 por assinatura",
+    "exemplo_copy": "5 REASONS WHY / FRIDAYS > Other GLP-1 Providers / Membership Fee — $0 — $149/mo / Insurance Management ✓ ✗ / 1-on-1 dietitian visits ✓ ✗",
+    "exemplo_paleta": "folha branca sobre foto escura desfocada, manuscrito preto, marca em verde, checks verdes e X vermelhos",
+    "trocavel": [
+      "o nicho e o nome da marca",
+      "os cinco criterios comparados",
+      "os valores de preco dos dois lados",
+      "a foto de fundo e o disclaimer"
+    ],
+    "fixo": [
+      "a contagem '5' no titulo",
+      "o sinal de maior (>) entre marca e categoria concorrente",
+      "coluna da marca a esquerda com check verde; concorrente a direita com X vermelho",
+      "cinco linhas, todas favoraveis a marca",
+      "tipografia manuscrita dentro do cartao branco",
+      "cartao branco flutuando sobre foto desfocada",
+      "bloco de letra miuda no rodape",
+      "REGRA QUE O SEPARA DOS VIZINHOS: O suporte fisico do comparativo e exclusivo e nao se mistura: us_vs_them = duas metades de COR CHAPADA contrastante sangrando ate a borda, com badge VS no eixo e faixa do numero-chave sob cada foto circular; novo_vs_velho = dois CARDS BRANCOS arredondados identicos flutuando sobre fundo de cor solida, com headline propria acima e nenhum badge VS; cinco_razoes = comparativo inteiramente MANUSCRITO dentro de uma folha branca flutuando sobre foto desfocada escura, em tabela criterio x duas colunas de check/X com bloco de letra miuda fora da folha; meme_comparativo = par de IMAGENS MEME do mesmo personagem com expressao oposta sobre fundo branco, separadas por linha tracejada e faixas pretas antes/depois. Nenhuma peca pode usar o suporte de outra.",
+      "CORRECAO DA AUDITORIA: remover 'coluna da marca a esquerda'; manter 'coluna da marca com check verde e concorrente com X vermelho, em qualquer lado, cinco linhas todas favoraveis a marca'"
+    ],
+    "frames": [
+      "admanage/c005.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "grade",
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "1:1",
+    "midia": "estatico",
+    "origem_do_ativo": "misto",
+    "risco_de_reprovacao": "baixo",
+    "risco_motivo": "nenhum",
+    "presenca_de_cta": "opcional",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "titulo '5 REASONS WHY' 3 palavras em 1 linha; linha de comparacao = marca em 1 palavra + '>' + categoria concorrente em ate 4 palavras (quebra em 2 linhas); rotulo de criterio ate 3 palavras em 2 linhas; celula de resultado 1 token (valor tipo '$0' / '$149/mo' ou icone check/X); disclaimer de rodape em ~8 linhas de corpo miudo proposital, ilegivel a olho nu",
+    "evidencia": "Folha branca manuscrita '5 REASONS WHY / FRIDAYS > Other GLP-1 Providers' com tabela de checks verdes e X vermelhos; frame marca item 4 '5 reasons why'.",
+    "aliases": [],
+    "correcoes_auditoria": [
+      {
+        "campo": "fixo",
+        "motivo": "Mesma contradicao do cluster. O ponto de fixacao real e a folha manuscrita flutuando sobre foto desfocada e a tabela check/X, nao a posicao das colunas."
+      }
+    ]
+  },
+  {
+    "id": "depoimento_com_selo_de_desconto",
+    "nome_pt": "Depoimento primeiro (selo de desconto colado no produto)",
+    "nome_original": "Offer first",
+    "camada": "container",
+    "mimica_de": "adesivo/selo de vitrine de loja fisica colado sobre a embalagem",
+    "descricao_layout": "Card retrato com fundo de cor chapada escura. Linha fina de claim no topo, depoimento entre aspas em serifada grande branca em 3 linhas, assinatura minuscula do cliente, produto centralizado no terco inferior com folhagem entrando pela borda, selo circular de '25% OFF' sobreposto ao produto no canto inferior esquerdo e, no rodape, faixa com 5 estrelas e o numero de clientes.",
+    "blocos": [
+      "linha de claim no topo",
+      "depoimento entre aspas em serifada grande",
+      "assinatura do depoimento em corpo minusculo",
+      "produto centralizado com ingrediente ao fundo",
+      "selo circular de desconto sobreposto ao produto",
+      "barra de prova social no rodape"
+    ],
+    "densidade_texto": "media",
+    "funil": [
+      "meio",
+      "fundo"
+    ],
+    "exige": [
+      "foto do produto em cena controlada",
+      "um depoimento real de cliente",
+      "uma oferta ou desconto ativo",
+      "numero de clientes ou volume de avaliacoes"
+    ],
+    "prova_embutida": "social",
+    "exemplo_nicho": "suplemento de omega 3 vegetal / saude articular",
+    "exemplo_copy": "A Cleaner, Plant-Based Source of Omega 3 / \"I can really tell when I forget to take it as my joints feel sore.\" / 25% OFF / ★★★★★ 100,000+ Happy Customers",
+    "exemplo_paleta": "verde escuro de fundo, tipografia creme, selo rosa claro, capsulas douradas",
+    "trocavel": [
+      "texto do depoimento",
+      "percentual e codigo do desconto",
+      "o produto e a categoria",
+      "o numero de clientes do rodape",
+      "a paleta e a folhagem do fundo",
+      "CORRECAO DA AUDITORIA: percentual do desconto (sem codigo de cupom — o selo so traz o percentual)"
+    ],
+    "fixo": [
+      "selo circular de %OFF sobreposto ao produto (a oferta como adesivo, nunca como headline)",
+      "depoimento entre aspas em serifada grande no terco superior",
+      "barra de prova social no rodape com estrelas + numero de clientes",
+      "fundo de cor chapada escura que faz o produto recortar",
+      "hierarquia: claim pequeno > aspas grande > produto > prova social"
+    ],
+    "frames": [
+      "admanage/c014.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "cartaz_centralizado",
+    "tem_rosto": false,
+    "tem_produto": true,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "origem_do_ativo": "foto_real",
+    "risco_de_reprovacao": "baixo",
+    "risco_motivo": "nenhum",
+    "presenca_de_cta": "obrigatorio",
+    "numero_de_slots_variaveis": 5,
+    "limite_de_texto_por_bloco": "Claim de topo: 1 linha de ate 8 palavras em corpo pequeno. Depoimento entre aspas: 3 linhas de 4-6 palavras (~14 palavras no total) em serifada grande. Assinatura: 1 linha minuscula. Selo circular: 2 blocos curtos ('25%' + 'OFF') mais uma linha ilegivel de letra miuda. Rodape: 1 linha unica (5 estrelas + '100,000+ Happy Customers').",
+    "evidencia": "Fundo verde escuro chapado, claim 'A Cleaner, Plant-Based Source of Omega 3', depoimento em serifada e selo circular rosa '25% OFF' sobre o pote; frame marca item 9 'Offer first'.",
+    "aliases": [],
+    "correcoes_auditoria": [
+      {
+        "campo": "nome_pt",
+        "motivo": "O rotulo 'Oferta primeiro' contradiz a propria ficha e a imagem. O fixo determina que a oferta entra como selo circular sobre o produto 'nunca como headline', e a hierarquia declarada e 'claim pequeno > aspas grande > produto > prova social' — a oferta e o penultimo elemento na leitura. No crop c014 quem lidera e o depoimento entre aspas em serifada grande."
+      },
+      {
+        "campo": "id",
+        "motivo": "O id repete o rotulo errado e vai contaminar qualquer busca por 'oferta primeiro', que e um angulo diferente (oferta no topo da hierarquia) e nao existe nesta peca."
+      },
+      {
+        "campo": "trocavel",
+        "motivo": "Alucinacao: trocavel lista 'percentual e codigo do desconto', mas nao existe cupom em lugar nenhum — blocos so tem 'selo circular de desconto', a descricao_layout so descreve '25% OFF' e o crop c014 confirma apenas o percentual dentro do selo."
+      }
+    ]
+  },
+  {
+    "id": "diagrama_venn",
+    "nome_pt": "Diagrama de Venn",
+    "nome_original": "Venn diagram",
+    "camada": "container",
+    "mimica_de": "diagrama de Venn rabiscado a mao em papel de caderno",
+    "descricao_layout": "Card retrato em papel branco com traco azul manuscrito e textura de scan. Dois circulos do mesmo tamanho empilhados verticalmente e sobrepostos: o de cima cinza claro com uma frase manuscrita de duas linhas, o de baixo azul claro com outra frase. A interseccao, preenchida em azul mais saturado, contem SOMENTE o logo da marca. Nenhum texto fora dos circulos.",
+    "blocos": [
+      "circulo superior: verdade/obrigacao do mercado",
+      "area de interseccao: logo da marca",
+      "circulo inferior: objecao/realidade do publico"
+    ],
+    "densidade_texto": "baixa",
+    "funil": [
+      "topo",
+      "meio"
+    ],
+    "exige": [
+      "logo da marca em versao pequena e legivel",
+      "duas verdades/tensoes do mercado que so a marca reconcilia",
+      "template de dois circulos sobrepostos"
+    ],
+    "prova_embutida": "nenhuma",
+    "exemplo_nicho": "SaaS de video com IA para treinamento corporativo (Synthesia)",
+    "exemplo_copy": "The process is mandatory / synthesia / Nobody reads 20-page PDFs",
+    "exemplo_paleta": "papel branco, traco azul manuscrito, circulo superior cinza claro, inferior e interseccao em azul",
+    "trocavel": [
+      "as duas frases dentro dos circulos",
+      "o logo na interseccao",
+      "as cores de preenchimento",
+      "orientacao vertical ou horizontal"
+    ],
+    "fixo": [
+      "exatamente dois circulos sobrepostos com a MARCA sozinha na interseccao",
+      "uma frase curta manuscrita por circulo, no maximo duas linhas",
+      "interseccao preenchida em cor de destaque",
+      "estetica de rabisco/scan em papel branco",
+      "ausencia total de headline, CTA, produto ou preco",
+      "as duas frases precisam ser tensoes opostas que so convivem via marca"
+    ],
+    "frames": [
+      "admanage/c016.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "diagrama_esquematico",
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "origem_do_ativo": "ilustracao",
+    "risco_de_reprovacao": "baixo",
+    "risco_motivo": "nenhum",
+    "presenca_de_cta": "proibido",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "uma frase manuscrita por circulo, maximo 2 linhas de 2-4 palavras; a interseccao aceita somente o logo, sem texto",
+    "evidencia": "Mesmo diagrama de Venn manuscrito com a marca synthesia na sobreposicao, card inteiro visivel e sem obstrucao.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "estatico_de_texto_pesado",
+    "nome_pt": "Estatico de texto pesado",
+    "nome_original": "Text heavy static",
+    "camada": "container",
+    "mimica_de": "nenhum",
+    "descricao_layout": "Fundo claro quase creme. O card inteiro e um bloco de texto corrido em fonte arredondada/manuscrita digital alinhado a esquerda, margens estreitas, sem imagem, produto, logo ou botao. Corpo e peso uniformes; a hierarquia vem so da variacao de cor palavra a palavra, com as palavras de oferta em cor vibrante. Quatro blocos: situacao do publico, produto por analogia, mecanismo e quebra de objecao de preco.",
+    "blocos": [
+      "bloco 1: condicao do publico + promessa",
+      "bloco 2: produto via analogia",
+      "bloco 3: mecanismo",
+      "bloco 4: quebra de objecao de preco em cor de destaque"
+    ],
+    "densidade_texto": "alta",
+    "funil": [
+      "meio",
+      "fundo"
+    ],
+    "exige": [
+      "copy longa ja escrita e editada",
+      "fonte arredondada/manuscrita digital legivel em corpo pequeno",
+      "nenhum ativo visual"
+    ],
+    "prova_embutida": "nenhuma",
+    "exemplo_nicho": "app de saude mental com pet virtual (Finch)",
+    "exemplo_copy": "If you're depressed and your house is always a mess, the support you need should be FREE. That's why we created Finch, a self-care Tamagotchi... You can use it without paying.",
+    "exemplo_paleta": "fundo verde-sage claro, tipografia em gradiente verde escuro/oliva, palavras-chave em amarelo-esverdeado",
+    "trocavel": [
+      "a condicao do publico na abertura",
+      "o nome do produto e a analogia",
+      "o mecanismo e a quebra de objecao",
+      "a paleta do gradiente e quais palavras recebem destaque"
+    ],
+    "fixo": [
+      "card 100% texto: sem foto, produto, logo, botao ou selo",
+      "texto ocupando quase todo o card — a densidade E o formato",
+      "hierarquia SO por variacao de cor palavra a palavra, nunca por negrito",
+      "palavras de oferta/preco em cor vibrante",
+      "abertura no molde 'If you're [situacao concreta]'",
+      "fonte arredondada de recado pessoal",
+      "4 blocos na ordem: situacao > analogia > mecanismo > objecao"
+    ],
+    "frames": [
+      "admanage/c026.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "tipografico_puro",
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "origem_do_ativo": "ilustracao",
+    "risco_de_reprovacao": "baixo",
+    "risco_motivo": "nenhum",
+    "presenca_de_cta": "proibido",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "4 blocos de 2 a 4 linhas cada, ~6 palavras por linha, totalizando ~60-70 palavras que preenchem quase todo o card; nenhum outro elemento (sem logo, botao, preco ou selo)",
+    "evidencia": "Mesmo bloco de texto Finch sem imagem, produto ou botao; frame confirma item 16 'Text heavy static'.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "grafico_dia_1_dia_30",
+    "nome_pt": "Grafico Dia 1 ate Dia 30",
+    "nome_original": "Day 1 vs Day 30 chart",
+    "camada": "container",
+    "mimica_de": "infografico/anotacao manuscrita de progresso em 30 dias",
+    "descricao_layout": "Card em papel creme. Titulo manuscrito grosso em duas linhas no topo. Area de grafico com fundo dividido em faixa verde clara em cima e rosa/vermelha embaixo: uma linha verde sobe em ondas ate um circulo rotulado 'CEO level' e uma linha vermelha desce do mesmo ponto de partida ate 'Employee level', com rotulos 'Day 1 / Talking More' e 'Day 30 / Talking Smarter' e seta manuscrita. Na metade inferior, dois paragrafos densos de depoimento em primeira pessoa fechando com a recomendacao da marca.",
+    "blocos": [
+      "titulo manuscrito em 2 linhas",
+      "grafico de 2 linhas divergentes com fundo bicolor",
+      "rotulos de Dia 1 e Dia 30 e patamares nas pontas",
+      "paragrafo 1 de depoimento (dor + descoberta)",
+      "paragrafo 2 (resultado + recomendacao da marca)"
+    ],
+    "densidade_texto": "alta",
+    "funil": [
+      "meio",
+      "fundo"
+    ],
+    "exige": [
+      "grafico desenhado a mao com duas linhas em rota oposta",
+      "recorte temporal explicito (Dia 1 -> Dia 30)",
+      "rotulos de patamar baixo e alto que facam sentido no nicho",
+      "depoimento em primeira pessoa de 2 paragrafos"
+    ],
+    "prova_embutida": "social",
+    "exemplo_nicho": "app de microlearning / desenvolvimento pessoal (Headway)",
+    "exemplo_copy": "How to Become a Well-Spoken Person / Day 1 - Talking More / Day 30 - Talking Smarter / I used to feel like the dullest person in the room... I recommend that everyone try microlearning with Headway.",
+    "exemplo_paleta": "papel creme/amarelo claro, linha verde e linha vermelha, faixas de fundo verde e rosa",
+    "trocavel": [
+      "o titulo (a transformacao prometida)",
+      "os rotulos de patamar",
+      "o texto do depoimento e a marca no fecho",
+      "o intervalo de dias"
+    ],
+    "fixo": [
+      "DUAS linhas em direcoes opostas partindo do mesmo ponto — e o coracao do formato",
+      "marcacao explicita de Dia 1 a esquerda e Dia 30 a direita",
+      "fundo dividido em duas faixas de cor coerentes com as linhas",
+      "estetica 100% manuscrita/doodle em papel de cor quente",
+      "bloco de depoimento embaixo do grafico, nunca acima",
+      "seta manuscrita apontando pro ponto final",
+      "CORRECAO DA AUDITORIA: dois marcos temporais explicitos nas pontas, o da esquerda sendo o Dia 1 e o da direita um marco redondo de horizonte (30/60/90) — e renomear o formato para 'Grafico de duas linhas divergentes Dia 1 -> Dia N'"
+    ],
+    "frames": [
+      "admanage/c044.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "grafico_de_evolucao",
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "origem_do_ativo": "ilustracao",
+    "risco_de_reprovacao": "baixo",
+    "risco_motivo": "nenhum",
+    "presenca_de_cta": "opcional",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "titulo manuscrito em 2 linhas de 3-4 palavras (ate 7 palavras); rotulo de eixo em 2 linhas de 1-2 palavras ('Day 1' / 'Talking More'); rotulo de patamar nas pontas ate 2 palavras ('CEO level'); depoimento em 2 paragrafos, o primeiro com ~6 linhas (ate 50 palavras) e o segundo com ~3 linhas (ate 25 palavras) fechando com o nome da marca",
+    "evidencia": "Mesmo card do grafico, totalmente desobstruido; frame confirma item 27 'Day 1-30'.",
+    "aliases": [],
+    "correcoes_auditoria": [
+      {
+        "campo": "fixo",
+        "motivo": "trocavel libera 'o intervalo de dias' enquanto fixo exige 'Dia 1 a esquerda e Dia 30 a direita' e o nome crava 30. Aplicado a um nicho com marco de 60 ou 90 dias, o resultado viola o fixo e deixa de bater com o nome."
+      }
+    ]
+  },
+  {
+    "id": "linha_do_tempo_resultados",
+    "nome_pt": "Linha do tempo de resultados",
+    "nome_original": "Timeline",
+    "camada": "container",
+    "mimica_de": "infografico de linha do tempo / grafico de progresso",
+    "descricao_layout": "Fundo claro muito limpo. No meio vertical, uma linha horizontal fina atravessa o card com 3 marcadores igualmente espacados. Acima de cada marcador o produto aparece em quantidade crescente (1, 2, 3-4 unidades); abaixo, um rotulo temporal em negrito e um paragrafo curto de beneficio sensorial centralizado. Sem headline, sem logo, sem CTA.",
+    "blocos": [
+      "fundo claro sem headline",
+      "linha horizontal com 3 marcadores igualmente espacados",
+      "produto acima de cada marcador em quantidade crescente",
+      "rotulo temporal em negrito sob cada marcador",
+      "paragrafo curto de beneficio sob cada rotulo"
+    ],
+    "densidade_texto": "alta",
+    "funil": [
+      "meio",
+      "fundo"
+    ],
+    "exige": [
+      "packshot recortavel para repetir em progressao",
+      "marcos temporais realistas de resultado",
+      "microcopy de beneficio sensorial concreto por marco"
+    ],
+    "prova_embutida": "demonstracao",
+    "exemplo_nicho": "suplemento em gomas para sintomas de menopausa",
+    "exemplo_copy": "After 7 days — You stop unbuttoning your jeans after lunch. / After 14 days — You stop lying awake at 2am. / After 30 days — Your brain fog lifts. You feel like yourself again.",
+    "exemplo_paleta": "fundo branco/rosa muito claro, linha e marcadores vinho escuro, rotulos quase-pretos",
+    "trocavel": [
+      "os intervalos de tempo",
+      "os beneficios de cada marco",
+      "o produto retratado",
+      "a cor da linha e o numero de marcos"
+    ],
+    "fixo": [
+      "linha horizontal unica com marcadores igualmente espacados",
+      "progressao temporal crescente da esquerda para a direita",
+      "quantidade do produto CRESCE visualmente marco a marco",
+      "cada marco = rotulo temporal em negrito + microcopy abaixo",
+      "beneficios como cenas cotidianas observaveis, nao claims tecnicos",
+      "fundo claro e vazio, sem headline nem logo"
+    ],
+    "frames": [
+      "admanage/c020.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "grafico_de_evolucao",
+    "tem_rosto": false,
+    "tem_produto": true,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "origem_do_ativo": "foto_real",
+    "risco_de_reprovacao": "baixo",
+    "risco_motivo": "nenhum",
+    "presenca_de_cta": "proibido",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "Sem headline e sem rodape. Por marco: rotulo temporal em negrito de exatamente 3 palavras ('After 7 days') + microcopy de 3 a 5 linhas curtas, ate ~15 palavras, quebrada em 2-3 frases curtas. Os tres blocos tem o mesmo teto de texto para manter o alinhamento.",
+    "evidencia": "Fundo claro com linha horizontal de 3 marcadores e quantidade crescente de gomas sobre 'After 7 days / After 14 days / After 30 days'; frame marca item 13 'Timeline'. Texto de apoio pequeno e levemente suave.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "manchete_editorial",
+    "nome_pt": "Manchete editorial (faixa preta + grifo)",
+    "nome_original": "Headline / Noticia",
+    "camada": "container",
+    "mimica_de": "manchete de materia jornalistica / capa de portal de noticia",
+    "descricao_layout": "Dois andares: foto ocupando os dois tercos superiores (par antes/depois com divisor vertical, ou foto documental dessaturada do problema com inset circular do produto certo + selo de check) e, na base, faixa preta solida com a headline em caixa alta branca centralizada em 3-4 linhas curtas, com 1-4 palavras-chave grifadas em amarelo/dourado. Filete branco fino ou assinatura da marca separando foto e faixa; variante com botao-pilula de CTA com seta no rodape da faixa.",
+    "blocos": [
+      "foto no topo (antes/depois com divisor central OU foto documental dessaturada)",
+      "inset circular da versao correta com selo de check (variante)",
+      "filete/assinatura da marca separando foto e faixa",
+      "faixa preta solida na base",
+      "headline em caixa alta branca centralizada",
+      "palavras-chave grifadas em amarelo dentro da headline",
+      "botao-pilula de CTA com seta (variante)"
+    ],
+    "densidade_texto": "media",
+    "funil": [
+      "topo",
+      "meio",
+      "fundo"
+    ],
+    "exige": [
+      "foto com cara de reportagem/documental (dessaturada) ou par antes/depois na mesma pose e luz",
+      "headline curta declarativa, lida como noticia e nao como oferta",
+      "1 a 4 palavras-chave para grifar",
+      "assinatura ou logo da marca"
+    ],
+    "prova_embutida": "demonstracao",
+    "exemplo_nicho": "skincare antienvelhecimento 60+ (referencia canonica) — a variante PRIMALS/cueca de la merino deve virar entrada ou variante propria, com frames proprios",
+    "exemplo_copy": "THE ONLY 5 SERUMS THAT ACTUALLY WORK ON WRINKLES, SAGGING & SPOTS AFTER 60 | YOUR \"MERINO\" BOXERS WENT THROUGH A CHEMICAL BATH BEFORE THEY TOUCHED YOUR SKIN. — Switch to PRIMALS today",
+    "exemplo_paleta": "foto em tons naturais ou cinza dessaturado + faixa preta, tipografia branca, grifo amarelo/dourado, acento verde-limao na variante",
+    "trocavel": [
+      "a foto do topo e o nicho",
+      "o texto da headline",
+      "quais palavras recebem o grifo",
+      "a assinatura/logo e a cor de acento",
+      "o recorte de publico",
+      "CORRECAO DA AUDITORIA: a assinatura/logo e a cor de acento dos elementos secundarios — NUNCA a cor do grifo, que e fixa"
+    ],
+    "fixo": [
+      "divisao rigida em dois andares: imagem em cima, bloco de texto solido embaixo",
+      "faixa preta solida ocupando cerca de um terco da altura",
+      "headline 100% caixa alta, branca, centralizada, quebrada em 3-4 linhas curtas",
+      "grifo amarelo em poucas palavras (o grifo unico e o ponto de fixacao)",
+      "copy escrita como afirmacao/noticia, nunca como oferta",
+      "CORRECAO DA AUDITORIA: headline 100% caixa alta, branca, centralizada, quebrada em 3 a 5 linhas curtas; faixa preta ocupando de um terco a 40% da altura"
+    ],
+    "frames": [
+      "admanage/c001.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "faixa_mais_foto",
+    "tem_rosto": true,
+    "tem_produto": false,
+    "proporcao": "1:1",
+    "midia": "estatico",
+    "origem_do_ativo": "foto_real",
+    "risco_de_reprovacao": "medio",
+    "risco_motivo": "Adota voz e diagramacao de manchete jornalistica sem veiculo real, sobre par antes/depois de rosto com claim de eficacia ('THE ONLY 5 SERUMS THAT ACTUALLY WORK').",
+    "presenca_de_cta": "opcional",
+    "numero_de_slots_variaveis": 5,
+    "limite_de_texto_por_bloco": "headline em caixa alta, 3-4 linhas de 2-5 palavras cada (~14 palavras no total); 1-4 palavras recebem o grifo amarelo; nenhum texto fora da faixa preta",
+    "evidencia": "Card com par antes/depois e faixa preta com o titulo 'THE ONLY 5 SERUMS THAT ACTUALLY WORK ON WRINKLES, SAGGING & SPOTS AFTER 60', copy identica a entrada; frame marca item 1 'News headline'.",
+    "aliases": [],
+    "correcoes_auditoria": [
+      {
+        "campo": "trocavel",
+        "motivo": "Contradicao interna: trocavel libera 'a cor de acento' enquanto fixo declara 'grifo amarelo em poucas palavras (o grifo unico e o ponto de fixacao)'. Quem remontar seguindo trocavel mata justamente o elemento declarado como ponto de fixacao do formato."
+      },
+      {
+        "campo": "fixo",
+        "motivo": "A regra atual ('3-4 linhas', 'cerca de um terco') e desmentida pelo proprio exemplo citado: o criativo PRIMERALS (josias f004/c004) tem 5 linhas e faixa perto de 40%. O outro exemplo (serums, c001) tem 4. Regra declarada como fixa que a referencia viola."
+      },
+      {
+        "campo": "exemplo_nicho",
+        "motivo": "exemplo_nicho e exemplo_copy empilham duas campanhas sem relacao no mesmo campo, o que impede saber qual referencia sustenta cada regra e explica a lista inflada de 8 frames vinda de dois videos diferentes."
+      }
+    ]
+  },
+  {
+    "id": "meme_comparativo",
+    "nome_pt": "Meme comparativo (concorrente x marca)",
+    "nome_original": "Memes",
+    "camada": "container",
+    "mimica_de": "meme de comparacao de duas imagens com emocao oposta",
+    "descricao_layout": "Card branco dividido ao meio por linha tracejada vertical. No topo, rotulo do concorrente generico a esquerda e avatar + nome da marca a direita. No meio, duas imagens meme do mesmo personagem com expressao oposta (triste a esquerda, rindo a direita). Abaixo, duas faixas pretas 'Antes de usar X:' / 'Depois de usar X:' e, na base, tres bullets por coluna alinhados linha a linha com X vermelho a esquerda e check verde a direita; o primeiro bullet da direita em corpo bem maior e colorido.",
+    "blocos": [
+      "rotulos das duas colunas",
+      "par de imagens meme com emocao oposta",
+      "faixas pretas antes/depois",
+      "tres bullets por coluna com X vs check",
+      "destaque tipografico ampliado no beneficio principal"
+    ],
+    "densidade_texto": "media",
+    "funil": [
+      "meio"
+    ],
+    "exige": [
+      "par de imagens meme do mesmo personagem com expressao oposta",
+      "tres dores do concorrente e tres ganhos da marca, pareados",
+      "icones X e check",
+      "um beneficio principal que aguente virar destaque grande"
+    ],
+    "prova_embutida": "nenhuma",
+    "exemplo_nicho": "app de IA / assistente de IA (Dola)",
+    "exemplo_copy": "Other AI | Dola / Before I used Dola: | After I used Dola: / Paid | 100% Free / Slow response | Convenient / Subscription unlock | Unlimited usage",
+    "exemplo_paleta": "fundo branco, faixas pretas, X vermelho, check verde, destaque azul",
+    "trocavel": [
+      "as imagens meme",
+      "nome do concorrente e da marca",
+      "os tres pares de bullets",
+      "qual beneficio recebe o destaque ampliado"
+    ],
+    "fixo": [
+      "divisao vertical em duas colunas separadas por linha tracejada",
+      "meme negativo sempre a esquerda, positivo sempre a direita",
+      "faixas pretas antes/depois na mesma altura nas duas colunas",
+      "X vermelho e check verde pareados na mesma linha",
+      "o primeiro item da coluna direita em corpo maior e cor de destaque",
+      "fundo branco limpo, sem foto de produto",
+      "REGRA QUE O SEPARA DOS VIZINHOS: O suporte fisico do comparativo e exclusivo e nao se mistura: us_vs_them = duas metades de COR CHAPADA contrastante sangrando ate a borda, com badge VS no eixo e faixa do numero-chave sob cada foto circular; novo_vs_velho = dois CARDS BRANCOS arredondados identicos flutuando sobre fundo de cor solida, com headline propria acima e nenhum badge VS; cinco_razoes = comparativo inteiramente MANUSCRITO dentro de uma folha branca flutuando sobre foto desfocada escura, em tabela criterio x duas colunas de check/X com bloco de letra miuda fora da folha; meme_comparativo = par de IMAGENS MEME do mesmo personagem com expressao oposta sobre fundo branco, separadas por linha tracejada e faixas pretas antes/depois. Nenhuma peca pode usar o suporte de outra."
+    ],
+    "frames": [
+      "admanage/c033.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "duas_colunas_espelhadas",
+    "tem_rosto": true,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "origem_do_ativo": "misto",
+    "risco_de_reprovacao": "baixo",
+    "risco_motivo": "nenhum",
+    "presenca_de_cta": "opcional",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "Rotulo de coluna: 1-2 palavras ('Other AI' / 'Dola'). Faixa preta antes/depois: 1 linha de 4 palavras. Cada bullet: 1-3 palavras, teto de ~20 caracteres para caber na meia largura ('Subscription unlock' e o mais longo). Bullet destacado da direita: 2 palavras em corpo ~2x maior e colorido ('100% Free').",
+    "evidencia": "Card branco dividido por linha tracejada: 'Other AI' vs avatar 'Dola', memes de robo antes/depois e listas com X vermelho vs check verde ('Paid', 'Slow response' vs '100% Free'); frame lista item 21 'Memes'.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "mito_vs_fato",
+    "nome_pt": "Mito vs fato (dois baloes empilhados)",
+    "nome_original": "Fact vs myth",
+    "camada": "container",
+    "mimica_de": "card educativo de rede social / balao de mensagem",
+    "descricao_layout": "Foto de contexto dessaturada como fundo. Sobre ela, dois retangulos muito arredondados empilhados: o de cima em uma cor, com coluna estreita a esquerda contendo icone vermelho e rotulo 'MYTH' e o texto do mito em 3 linhas monoespacadas; o de baixo em outra cor, mesma estrutura, com check verde, rotulo 'FACT' e texto mais longo (4 linhas) explicando o mecanismo. No rodape, CTA branco centralizado em 2 linhas.",
+    "blocos": [
+      "foto de contexto full-bleed",
+      "balao 'MYTH' com icone de erro + texto curto",
+      "balao 'FACT' com check + texto mais longo e explicativo",
+      "CTA de 2 linhas no rodape"
+    ],
+    "densidade_texto": "media",
+    "funil": [
+      "meio"
+    ],
+    "exige": [
+      "uma crenca popular errada do nicho",
+      "uma correcao que introduza o mecanismo sem citar o produto ainda",
+      "foto de contexto ligada ao momento de uso"
+    ],
+    "prova_embutida": "nenhuma",
+    "exemplo_nicho": "sono / meditacao (Headspace)",
+    "exemplo_copy": "MYTH — If you can't fall asleep, lie there with your eyes closed and keep trying. / ✅ FACT — Lying in bed can make your mind more alert and frustrated. A gentle reset can help you unwind naturally. / Try Headspace for free to ease into sleep.",
+    "exemplo_paleta": "foto de lencol cinza-esverdeada, balao roxo (mito), balao azul-eletrico (fato), icone vermelho vs check verde",
+    "trocavel": [
+      "o mito e o fato",
+      "a foto de contexto",
+      "as duas cores dos baloes",
+      "marca e CTA"
+    ],
+    "fixo": [
+      "dois baloes arredondados empilhados em cores diferentes e contrastantes",
+      "coluna estreita a esquerda de cada balao com icone de erro e de acerto",
+      "rotulos MYTH e FACT em caixa alta",
+      "texto do FACT sempre mais longo que o do MYTH",
+      "foto de contexto real ao fundo, nunca fundo chapado",
+      "CTA de 2 linhas centralizado no rodape"
+    ],
+    "frames": [
+      "admanage/c064.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "comparativo_empilhado",
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "1:1",
+    "midia": "estatico",
+    "origem_do_ativo": "foto_real",
+    "risco_de_reprovacao": "baixo",
+    "risco_motivo": "nenhum",
+    "presenca_de_cta": "obrigatorio",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "rotulo de cada balao 1 palavra em caixa alta (MYTH / FACT); texto do mito em 3 linhas monoespacadas de ~4 palavras (ate 14 palavras); texto do fato em 4 linhas (ate 22 palavras) e sempre mais longo que o do mito; CTA de rodape em 2 linhas centralizadas de ate 5 palavras (ate 10 palavras)",
+    "evidencia": "Mesmos baloes MYTH/FACT da Headspace sobre sono, card inteiro enquadrado e legivel.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "nota_do_iphone",
+    "nome_pt": "Nota do iPhone",
+    "nome_original": "iPhone note",
+    "camada": "container",
+    "mimica_de": "screenshot do app Notas do iPhone sobreposto a uma foto de contexto",
+    "descricao_layout": "Foto real de contexto levemente desfocada ao fundo. Por cima, centralizada, uma folha branca arredondada imitando o app Notas: barra superior com chevron de voltar e icones de desfazer, compartilhar e tres pontos; dentro, titulo em negrito de 2 linhas, uma linha de emojis, quatro bullets com travessao em corpo pequeno (o ultimo ja citando o produto) e, no rodape da nota, uma linha unica com marca-texto colorido cobrindo o preco.",
+    "blocos": [
+      "foto de contexto ao fundo",
+      "barra de icones do app Notas",
+      "titulo em negrito 2 linhas",
+      "linha de emojis",
+      "4 bullets com travessao, o ultimo apresentando o produto",
+      "linha final com marca-texto no preco/oferta"
+    ],
+    "densidade_texto": "alta",
+    "funil": [
+      "meio",
+      "fundo"
+    ],
+    "exige": [
+      "mock fiel do app Notas",
+      "foto de contexto para ficar atras da nota",
+      "3 a 4 bullets curtos de mecanismo/objecao",
+      "preco ou oferta para receber o marca-texto"
+    ],
+    "prova_embutida": "autoridade",
+    "exemplo_nicho": "emagrecimento / tratamento medico de perda de peso (Voy)",
+    "exemplo_copy": "Modern food is designed to be hard to stop eating / - Processed foods stimulate the reward system in your brain but don't make you feel full / - Voy's 360 treatment plan is a tool to help manage those food cravings / Plans start from £69pm",
+    "exemplo_paleta": "folha branca do app, texto cinza-escuro, marca-texto verde neon, foto de supermercado ao fundo",
+    "trocavel": [
+      "o titulo (a tese/dor)",
+      "os bullets de mecanismo",
+      "a foto de contexto",
+      "o preco destacado e a marca citada"
+    ],
+    "fixo": [
+      "barra de icones do app Notas no topo da folha — e o que faz parecer captura de tela",
+      "folha branca arredondada sobreposta a uma foto, nunca em fundo chapado",
+      "bullets com travessao simples e tipografia de sistema",
+      "ultima linha com marca-texto fazendo o papel de CTA/preco",
+      "o produto aparece so no ultimo bullet, depois do bloco educativo",
+      "emoji logo abaixo do titulo"
+    ],
+    "frames": [
+      "admanage/c047.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "print_de_tela",
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "1:1",
+    "midia": "estatico",
+    "origem_do_ativo": "misto",
+    "risco_de_reprovacao": "alto",
+    "risco_motivo": "A folha reproduz o chrome nativo do app Notas do iOS (chevron de voltar, desfazer, compartilhar, tres pontos) para se passar por captura de tela do proprio aparelho.",
+    "presenca_de_cta": "obrigatorio",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "Titulo em negrito: 2 linhas, ~10 palavras. Linha de emoji: 1 a 2 emojis. Quatro bullets com travessao: 2 linhas cada, ~12 palavras por bullet (o quarto e o unico que cita a marca). Linha final com marca-texto: ate 5 palavras contendo preco ('Plans start from GBP69pm').",
+    "evidencia": "Folha branca arredondada imitando o app Notas (chevron de voltar, desfazer, compartilhar, tres pontos) com 'Modern food is designed to be hard to stop eating' sobre foto desfocada; frame mostra 29. iPhone note.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "novo_vs_velho_comparativo",
+    "nome_pt": "Novo vs velho",
+    "nome_original": "New vs old",
+    "camada": "container",
+    "mimica_de": "tabela comparativa de prateleira / lado-a-lado de embalagem",
+    "descricao_layout": "Fundo de cor solida da marca. Headline centralizada branca em duas linhas no topo e, abaixo, dois cards brancos arredondados de mesmo tamanho lado a lado: a esquerda o produto generico sem marca, a direita o produto real. Sob cada imagem, o nome em 3 linhas (generico em cinza neutro, marca em negrito colorido), uma regua fina e uma lista de 3 atributos por lado — negativos a esquerda, positivos a direita. Selos da marca no rodape direito.",
+    "blocos": [
+      "headline em duas linhas no topo",
+      "card esquerdo com o produto generico + 3 atributos negativos",
+      "card direito com o produto da marca + 3 atributos positivos",
+      "icones/selos no rodape"
+    ],
+    "densidade_texto": "media",
+    "funil": [
+      "meio",
+      "fundo"
+    ],
+    "exige": [
+      "foto do produto da marca com rotulo legivel",
+      "representacao generica do concorrente sem marca identificavel",
+      "3 atributos comparaveis e simetricos de cada lado"
+    ],
+    "prova_embutida": "demonstracao",
+    "exemplo_nicho": "produtos de limpeza sustentaveis / pastilhas para vaso sanitario (Blueland)",
+    "exemplo_copy": "Same Job. Very Different Ingredients. / Traditional Toilet Bowl Cleaner — Chlorine Bleach / Single-Use Plastic / Chemical Smell || Blueland Toilet Bowl Tablets — Clean Ingredients / Plastic-Free Tablets / Fresh Scents",
+    "exemplo_paleta": "azul royal chapado, cards brancos, texto azul escuro",
+    "trocavel": [
+      "a headline e a categoria de produto",
+      "os 3 atributos de cada lado",
+      "a cor de fundo e as imagens dos produtos",
+      "os selos do rodape"
+    ],
+    "fixo": [
+      "duas colunas simetricas: generico SEMPRE a esquerda, marca SEMPRE a direita",
+      "headline que reconhece a equivalencia e nomeia a diferenca",
+      "mesmo numero de bullets nos dois lados",
+      "marca em negrito colorido, generico em cinza neutro e sem marca",
+      "dois cards brancos identicos sobre fundo de cor solida",
+      "concorrente nunca nomeado — sempre a categoria generica",
+      "REGRA QUE O SEPARA DOS VIZINHOS: O suporte fisico do comparativo e exclusivo e nao se mistura: us_vs_them = duas metades de COR CHAPADA contrastante sangrando ate a borda, com badge VS no eixo e faixa do numero-chave sob cada foto circular; novo_vs_velho = dois CARDS BRANCOS arredondados identicos flutuando sobre fundo de cor solida, com headline propria acima e nenhum badge VS; cinco_razoes = comparativo inteiramente MANUSCRITO dentro de uma folha branca flutuando sobre foto desfocada escura, em tabela criterio x duas colunas de check/X com bloco de letra miuda fora da folha; meme_comparativo = par de IMAGENS MEME do mesmo personagem com expressao oposta sobre fundo branco, separadas por linha tracejada e faixas pretas antes/depois. Nenhuma peca pode usar o suporte de outra.",
+      "CORRECAO DA AUDITORIA: remover 'generico SEMPRE a esquerda, marca SEMPRE a direita'; manter 'marca em negrito colorido, generico em cinza neutro e nunca nomeado', com o lado em trocavel"
+    ],
+    "frames": [
+      "admanage/c019.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "duas_colunas_espelhadas",
+    "tem_rosto": false,
+    "tem_produto": true,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "origem_do_ativo": "misto",
+    "risco_de_reprovacao": "baixo",
+    "risco_motivo": "nenhum",
+    "presenca_de_cta": "opcional",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "headline em 2 linhas de 2-4 palavras; nome de cada produto em ate 3 linhas de 2-3 palavras; exatamente 3 atributos por coluna com 2-3 palavras cada; rodape so com icones/selos",
+    "evidencia": "Mesmo comparativo Blueland com as listas Chlorine Bleach / Single-Use Plastic vs Clean Ingredients / Plastic-Free Tablets; segundo take do item 12.",
+    "aliases": [],
+    "correcoes_auditoria": [
+      {
+        "campo": "fixo",
+        "motivo": "Mesma contradicao do cluster comparativo — o lado varia entre as quatro referencias e nao sustenta status de regra fixa. O que separa de fato e o suporte (cards brancos sobre cor solida), ja registrado na regra de separacao."
+      }
+    ]
+  },
+  {
+    "id": "oferta_em_notificacao",
+    "nome_pt": "Oferta em pop-up de permissao",
+    "nome_original": "Notification offer",
+    "camada": "container",
+    "mimica_de": "pop-up de permissao do iOS ('Don't Allow' / 'Allow')",
+    "descricao_layout": "Foto do produto em tela cheia como fundo. Centralizado, um card branco arredondado no estilo alerta nativo: headline em caixa alta bold, subheadline em duas linhas com termo em negrito, duas colunas de preco (cheio riscado em preto a esquerda, promocional em vermelho a direita, cada um com rotulo de unidade em cinza), divisoria fina e dois botoes azuis lado a lado separados por divisoria vertical. Na base, sobre a foto, linha minuscula com asterisco.",
+    "blocos": [
+      "foto do produto como fundo",
+      "card de alerta de sistema arredondado",
+      "headline em caixa alta com a dor",
+      "subheadline de beneficio",
+      "duas colunas de preco (riscado x promocional)",
+      "botoes 'Don't Allow' | 'Allow'",
+      "letra miuda com asterisco"
+    ],
+    "densidade_texto": "media",
+    "funil": [
+      "fundo"
+    ],
+    "exige": [
+      "foto do produto real",
+      "preco cheio e preco com desconto",
+      "mockup fiel do alerta do sistema",
+      "condicao da oferta em letra miuda"
+    ],
+    "prova_embutida": "nenhuma",
+    "exemplo_nicho": "suplemento de colageno / pele, cabelo e unha",
+    "exemplo_copy": "GET RID OF SAGGING SKIN / Improves skin, hair and nail health / £25 Per bag | £16.66 Per bag / Don't Allow | Allow / *Offer applied for a month subscription",
+    "exemplo_paleta": "foto do produto ao fundo, card branco, botoes azuis de sistema, preco promocional em vermelho",
+    "trocavel": [
+      "foto do produto ao fundo",
+      "headline (a dor) e subheadline (o beneficio)",
+      "os dois precos e a unidade",
+      "o texto da condicao"
+    ],
+    "fixo": [
+      "o card central tem que ler como alerta de sistema real: cantos arredondados, divisorias e dois botoes azuis",
+      "labels dos botoes sao os do sistema ('Don't Allow' / 'Allow'), nao CTA de marca — e isso que gera o clique reflexo",
+      "dois precos em colunas paralelas com rotulo de unidade embaixo",
+      "foto do produto por tras do alerta, sem tratamento grafico pesado",
+      "letra miuda com asterisco na base"
+    ],
+    "frames": [
+      "admanage/c038.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "widget_falso",
+    "tem_rosto": false,
+    "tem_produto": true,
+    "proporcao": "9:16",
+    "midia": "estatico",
+    "origem_do_ativo": "misto",
+    "risco_de_reprovacao": "alto",
+    "risco_motivo": "reproduz o pop-up de permissao nativo do iOS, incluindo os botoes 'Don't Allow' / 'Allow', para provocar clique reflexo",
+    "presenca_de_cta": "obrigatorio",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "headline em caixa alta de 1 linha com 4-5 palavras; subheadline em 2 linhas (~12 palavras); duas colunas de preco com rotulo de unidade de 2-3 palavras; labels dos botoes fixos do sistema; letra miuda em 1 linha de ate 8 palavras",
+    "evidencia": "Foto do produto ao fundo com card branco estilo alerta nativo: 'GET RID OF SAGGING SKIN', preco riscado 25 libras vs 16,66 e botoes 'Don't Allow' / 'Allow'; frame marca item 24 'Notification offer'.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "pergunta_do_icp_calculadora",
+    "nome_pt": "Pergunta do ICP (com calculadora)",
+    "nome_original": "ICP question",
+    "camada": "container",
+    "mimica_de": "widget de calculadora/quiz interativo dentro de app",
+    "descricao_layout": "Fundo de cor chapada. No topo, pergunta longa em primeira pessoa em serifada preta negrito alinhada a esquerda em 4 linhas, empilhando persona + objecao + nome do produto. Abaixo, regua horizontal com um retangulo branco 'CALCULATE' simulando botao, a instrucao 'Tap your goal weight:' e uma roda circular branca em 6 segmentos pastel com as opcoes. Logo pequeno no canto inferior direito e disclaimer legal minusculo no rodape.",
+    "blocos": [
+      "pergunta longa em primeira pessoa no topo",
+      "regua divisoria com botao 'CALCULATE'",
+      "instrucao imperativa de toque",
+      "roda circular segmentada com as opcoes",
+      "logo da marca no canto inferior",
+      "disclaimer legal no rodape"
+    ],
+    "densidade_texto": "alta",
+    "funil": [
+      "meio",
+      "fundo"
+    ],
+    "exige": [
+      "ICP claro (persona + dor especifica + objecao)",
+      "nome do produto curto o bastante para caber na pergunta",
+      "lista de opcoes plausiveis para o seletor",
+      "disclaimer legal quando houver promessa de resultado"
+    ],
+    "prova_embutida": "nenhuma",
+    "exemplo_nicho": "app de emagrecimento para mulheres na menopausa (Noom)",
+    "exemplo_copy": "How long will it take me to lose my menopausal weight gain without crazy workouts if I use Noom's Aging and Metabolism course pack? / CALCULATE / Tap your goal weight: 80 kg / 55 kg / 60 kg",
+    "exemplo_paleta": "turquesa chapado, tipografia preta, roda branca com segmentos pastel",
+    "trocavel": [
+      "a pergunta inteira (persona, dor, objecao, produto)",
+      "as opcoes do seletor e o rotulo do botao",
+      "a cor de fundo e o disclaimer"
+    ],
+    "fixo": [
+      "pergunta em PRIMEIRA PESSOA empilhando ICP + objecao + produto numa unica frase longa",
+      "elemento de interacao falsa (botao + roda) prometendo resultado personalizado",
+      "instrucao imperativa de toque acima do seletor",
+      "fundo de cor chapada unica, sem foto e sem produto",
+      "logo pequeno so no rodape — a marca nunca abre o card"
+    ],
+    "frames": [
+      "admanage/c024.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "widget_falso",
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "9:16",
+    "midia": "estatico",
+    "origem_do_ativo": "ilustracao",
+    "risco_de_reprovacao": "medio",
+    "risco_motivo": "botao 'CALCULATE' e roda de selecao nao funcionais simulam interatividade dentro do anuncio, somados a promessa de perda de peso; vetor conhecido de reprovacao, ainda que nao imite interface nativa de sistema",
+    "presenca_de_cta": "obrigatorio",
+    "numero_de_slots_variaveis": 3,
+    "limite_de_texto_por_bloco": "pergunta em 4 linhas de 6-7 palavras (25-30 palavras numa frase unica, em primeira pessoa); botao 1 palavra em caixa alta ('CALCULATE'); instrucao imperativa ate 4 palavras terminando em dois-pontos; cada segmento da roda 2 tokens ('80 kg'); logo 1 palavra no canto; disclaimer em 3-4 linhas de corpo minusculo no rodape",
+    "evidencia": "Mesmo card Noom com pergunta em serifada, botao CALCULATE e 'Tap your goal weight' em roda colorida, logo NOOM no rodape.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "player_de_musica",
+    "nome_pt": "Player de musica / faixa tocando",
+    "nome_original": "Song playlist",
+    "camada": "container",
+    "mimica_de": "widget nativo de player de audio (tela de bloqueio iOS / Spotify now playing)",
+    "descricao_layout": "Foto lifestyle dessaturada full-bleed. Headline branca centralizada em 2 linhas no terco superior. No centro, widget de player arredondado branco/translucido: capa de album quadrada a esquerda, titulo da faixa em negrito e artista em cinza, barra de progresso com tempos nas duas pontas e trio de controles (voltar 10s, pause, avancar 10s). No rodape, assinatura 'with [marca]'.",
+    "blocos": [
+      "foto lifestyle full-bleed",
+      "headline branca centralizada no topo",
+      "widget de player de audio no centro",
+      "assinatura de marca no rodape"
+    ],
+    "densidade_texto": "baixa",
+    "funil": [
+      "topo"
+    ],
+    "exige": [
+      "foto lifestyle real e dessaturada",
+      "capa de faixa quadrada colorida",
+      "nome de faixa inventado que descreva o beneficio",
+      "nome da marca ocupando o campo do artista"
+    ],
+    "prova_embutida": "nenhuma",
+    "exemplo_nicho": "meditacao / bem-estar mental (Headspace)",
+    "exemplo_copy": "Ease your mind anytime, anywhere / Walk by the Riverside / Headspace / with Headspace",
+    "exemplo_paleta": "foto urbana cinza-esverdeada, texto branco, widget branco translucido, capa ilustrada azul/amarelo",
+    "trocavel": [
+      "foto de fundo e headline de beneficio",
+      "nome da faixa e arte da capa",
+      "marca no lugar do artista"
+    ],
+    "fixo": [
+      "chrome nativo do player: capa quadrada a esquerda, titulo + artista empilhados, barra de progresso com tempos e trio de controles",
+      "marca ocupando o campo do artista, nao um logo solto",
+      "foto ocupando 100% do card sem moldura",
+      "carga de texto minima: headline curta + assinatura"
+    ],
+    "frames": [
+      "admanage/c055.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "widget_falso",
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "1:1",
+    "midia": "estatico",
+    "origem_do_ativo": "misto",
+    "risco_de_reprovacao": "alto",
+    "risco_motivo": "Reproduz o widget de player nativo do iOS com barra de progresso e trio de controles de transporte, interface de sistema com botoes falsos dentro do criativo.",
+    "presenca_de_cta": "opcional",
+    "numero_de_slots_variaveis": 3,
+    "limite_de_texto_por_bloco": "headline de ate 6 palavras em 2 linhas; nome da faixa em 1 linha de 3-5 palavras; campo do artista com somente o nome da marca; assinatura de rodape de 2 palavras",
+    "evidencia": "Foto lifestyle dessaturada com headline 'Ease your mind anytime, anywhere' e widget de player translucido 'Walk by the Riverside / Headspace' com capa e controles; frame mostra 34. Song playlist.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "post_it_na_foto",
+    "nome_pt": "Post-it (recado manuscrito na cena)",
+    "nome_original": "Sticky note",
+    "camada": "container",
+    "mimica_de": "post-it manuscrito colado dentro da caixa do produto",
+    "descricao_layout": "Foto real vertical de unboxing em tela cheia com post-its amarelos manuscritos colados fisicamente na cena. Sobre o terco superior, headline em duas linhas com fundo de marca-texto amarelo irregular acompanhando o comprimento de cada linha, texto preto bold. Sem logo sobreposto, sem preco, sem botao.",
+    "blocos": [
+      "foto real de unboxing em tela cheia",
+      "faixa de headline em marca-texto amarelo",
+      "post-its amarelos manuscritos na cena fisica",
+      "marca visivel na propria embalagem"
+    ],
+    "densidade_texto": "baixa",
+    "funil": [
+      "topo",
+      "meio"
+    ],
+    "exige": [
+      "foto real de produto ou unboxing (nao render 3D)",
+      "post-its amarelos escritos a mao presentes na cena",
+      "recurso de highlight amarelo atras do texto",
+      "headline de uma frase com numero ou beneficio concreto"
+    ],
+    "prova_embutida": "demonstracao",
+    "exemplo_nicho": "nutricao / refeicao em po (Huel)",
+    "exemplo_copy": "Want 40g of protein before 9am? This is for you.",
+    "exemplo_paleta": "foto natural sobre grama, caixa preta da marca, post-its e highlight amarelos",
+    "trocavel": [
+      "foto do produto/unboxing",
+      "headline e o numero citado",
+      "texto escrito nos post-its",
+      "marca impressa na embalagem"
+    ],
+    "fixo": [
+      "post-it amarelo manuscrito colado na cena fisica — se virar sticker digital limpo, o formato morre",
+      "highlight amarelo com texto preto acompanhando o comprimento das linhas",
+      "foto real como fundo de tela cheia, produto ja aberto/em uso",
+      "headline curta em pergunta seguida da frase de qualificacao",
+      "ausencia de preco, botao e logo sobreposto"
+    ],
+    "frames": [
+      "admanage/c032.jpg"
+    ],
+    "confianca": "media",
+    "topologia": "faixa_mais_foto",
+    "tem_rosto": false,
+    "tem_produto": true,
+    "proporcao": "9:16",
+    "midia": "estatico",
+    "origem_do_ativo": "foto_real",
+    "risco_de_reprovacao": "baixo",
+    "risco_motivo": "nenhum",
+    "presenca_de_cta": "proibido",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "headline em 2 linhas de ate 6 palavras dentro do highlight amarelo (~11 palavras no total); cada post-it manuscrito com 2 a 4 palavras em 3 linhas curtas; nenhum texto sobreposto alem disso",
+    "evidencia": "Foto de unboxing Huel com post-its amarelos manuscritos na caixa e headline em marca-texto 'Want 40g of protein before 9am? This is for you.'; frame marca item 20 'Sticky note'.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "post_reddit",
+    "nome_pt": "Post do Reddit (pergunta + comentario longo)",
+    "nome_original": "Reddit post",
+    "camada": "container",
+    "mimica_de": "thread do Reddit em modo escuro",
+    "descricao_layout": "Card em fundo preto reproduzindo a UI do Reddit: icone laranja, usuario e '6 hr ago', linha do subreddit, pergunta em branco negrito em 2 linhas terminando com emoji, barra de acoes com upvotes e comentarios, divisor 'Sort by: Best' e, na metade inferior, um unico comentario longo em cinza claro com avatar, dividido em 4-5 paragrafos curtos, com o nome do produto como link azul sublinhado no meio do texto.",
+    "blocos": [
+      "cabecalho de post (icone, usuario, tempo, subreddit)",
+      "pergunta em negrito com emoji",
+      "barra de acoes (upvotes / comentarios / salvar / compartilhar)",
+      "divisor 'Sort by: Best'",
+      "comentario longo com link ancorado no nome do produto"
+    ],
+    "densidade_texto": "alta",
+    "funil": [
+      "meio",
+      "fundo"
+    ],
+    "exige": [
+      "pergunta com duvida real do publico em primeira pessoa",
+      "comentario longo que responde como usuario experiente, nao como marca",
+      "link sublinhado com o nome do produto no meio do texto",
+      "numeros de upvote e comentario plausiveis"
+    ],
+    "prova_embutida": "social",
+    "exemplo_nicho": "suplementacao / fitness (creatina)",
+    "exemplo_copy": "Anyone else scared of the things they've seen about creatine? Can someone just tell me the truth? 😅 | 2.3k · 47 | Sort by: Best | Creatine is the most researched supplement on the planet... 5 grams a day, don't overthink the timing.",
+    "exemplo_paleta": "fundo preto/grafite do dark mode, texto branco e cinza claro, icone laranja, link azul",
+    "trocavel": [
+      "assunto da duvida e o nicho",
+      "nome do produto no link",
+      "numeros de upvote/comentarios",
+      "avatares e nomes de usuario"
+    ],
+    "fixo": [
+      "dark mode com cabecalho de post do Reddit completo",
+      "pergunta ingenua em negrito, primeira pessoa, com emoji no fim",
+      "barra de acoes com contagens",
+      "linha 'Sort by: Best' separando post e comentario",
+      "comentario em paragrafos curtos, tom de par, produto so no meio como link sublinhado",
+      "nenhum elemento grafico de anuncio",
+      "REGRA QUE O SEPARA DOS VIZINHOS: post_reddit exige DUAS vozes no mesmo card: pergunta ingenua em primeira pessoa no post + comentario separado de outro usuario que responde, com o divisor 'Sort by: Best' entre eles e o produto aparecendo so na fala do respondente, como link sublinhado no meio do texto. post_x_twitter exige VOZ UNICA: um so cabecalho de perfil com selo verificado, corpo em empilhamento de linhas curtas isoladas (uma dor por linha), produto entrando em uma unica linha depois do empilhamento, e nenhuma barra de engajamento nem segundo interlocutor."
+    ],
+    "frames": [
+      "admanage/c057.jpg"
+    ],
+    "confianca": "media",
+    "topologia": "print_de_tela",
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "origem_do_ativo": "mockup_permitido",
+    "risco_de_reprovacao": "medio",
+    "risco_motivo": "recria a interface e a marca do Reddit e fabrica um depoimento de usuario apresentado como prova social organica",
+    "presenca_de_cta": "proibido",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "cabecalho = nome de usuario + '6 hr ago' + linha do subreddit; pergunta em negrito em 2-3 linhas de ate 8 palavras (16-20 palavras) terminando em emoji; barra de acoes so com numeros ('2.3k', '47'); comentario unico em 4-5 paragrafos de 2-3 linhas cada, 100-130 palavras no total, com o nome do produto como link sublinhado no meio do texto",
+    "evidencia": "UI do Reddit em fundo preto: icone laranja, usuario e '6 hr ago', pergunta 'Anyone else scared of the things they've seen about creatine?' com emoji, barra de acoes e comentario longo; frame mostra 35. Reddit post.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "post_x_twitter",
+    "nome_pt": "Post do X (empilhamento de sintomas)",
+    "nome_original": "X post",
+    "camada": "container",
+    "mimica_de": "post do X/Twitter em modo escuro",
+    "descricao_layout": "Card preto puro. Cabecalho com avatar circular de foto real, nome em branco negrito, selo azul de verificado e @handle em cinza. Corpo em texto puro alinhado a esquerda, sem imagem: linha que derruba uma crenca, bloco de linhas curtas com um sintoma por linha terminando num numero de risco, espaco, linha unica com o produto e o prazo de resultado, linha de atributos + preco, e fecho pessoal de uma linha. Sem barra de engajamento e sem CTA grafico.",
+    "blocos": [
+      "cabecalho do X (avatar, nome, selo, @handle)",
+      "linha de quebra de crenca",
+      "lista vertical de sintomas, um por linha",
+      "linha do produto + resultado com prazo",
+      "linha de atributos e preco",
+      "fecho pessoal em primeira pessoa"
+    ],
+    "densidade_texto": "alta",
+    "funil": [
+      "meio",
+      "fundo"
+    ],
+    "exige": [
+      "persona com avatar de pessoa real e handle plausivel",
+      "empilhamento de 3-4 dores em linhas separadas",
+      "um numero de risco ou estatistica no fim do empilhamento",
+      "preco explicito e prazo de resultado"
+    ],
+    "prova_embutida": "social",
+    "exemplo_nicho": "apneia do sono / suporte cervical (VitaVix Neck Support)",
+    "exemplo_copy": "Sleep apnea isn't just snoring. / It's waking up tired. / Heart palpitations. / And a 400% higher risk of stroke. / VitaVix Neck Support fixed all of that, from night 1. / Soft. Silent and less than 40$...",
+    "exemplo_paleta": "fundo preto do X, texto branco/cinza claro, selo azul",
+    "trocavel": [
+      "nome, avatar e handle da persona",
+      "os sintomas empilhados e o nicho",
+      "nome do produto, numero de risco e preco"
+    ],
+    "fixo": [
+      "fundo preto com avatar + nome + selo verificado + @handle no topo",
+      "corpo em texto puro, sem imagem e sem elemento de anuncio",
+      "blocos separados por linha em branco comecando por uma quebra de crenca",
+      "sintomas em linhas curtas isoladas (uma dor por linha)",
+      "produto entrando so depois do empilhamento, em uma unica linha, com prazo",
+      "fecho em primeira pessoa como depoimento espontaneo",
+      "REGRA QUE O SEPARA DOS VIZINHOS: post_reddit exige DUAS vozes no mesmo card: pergunta ingenua em primeira pessoa no post + comentario separado de outro usuario que responde, com o divisor 'Sort by: Best' entre eles e o produto aparecendo so na fala do respondente, como link sublinhado no meio do texto. post_x_twitter exige VOZ UNICA: um so cabecalho de perfil com selo verificado, corpo em empilhamento de linhas curtas isoladas (uma dor por linha), produto entrando em uma unica linha depois do empilhamento, e nenhuma barra de engajamento nem segundo interlocutor."
+    ],
+    "frames": [
+      "admanage/c058.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "print_de_tela",
+    "tem_rosto": true,
+    "tem_produto": false,
+    "proporcao": "1:1",
+    "midia": "estatico",
+    "origem_do_ativo": "misto",
+    "risco_de_reprovacao": "medio",
+    "risco_motivo": "fabrica uma conta verificada de pessoa real dando depoimento e ancora a copy numa estatistica de risco ('400% higher risk of stroke') sem fonte",
+    "presenca_de_cta": "proibido",
+    "numero_de_slots_variaveis": 3,
+    "limite_de_texto_por_bloco": "nome 1 palavra + @handle; corpo em linhas curtas de 4 a 8 palavras, uma dor por linha, 3-4 linhas no empilhamento; linha do produto e linha de preco com ate 10 palavras; fecho de 1 linha; ~55 palavras no post inteiro, sem barra de engajamento",
+    "evidencia": "Card preto com avatar, 'Tom', selo azul e @tom167, texto puro empilhando sintomas de apneia do sono ate a oferta VitaVix; frame confirma 36. X post.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "print_conversa_mensageiro",
+    "nome_pt": "Print de conversa de mensageiro",
+    "nome_original": "Text message / Print de conversa",
+    "camada": "container",
+    "mimica_de": "screenshot real de conversa de WhatsApp/iMessage",
+    "descricao_layout": "Card vertical que imita print de tela de celular: status bar e cabecalho nativo com avatar e apelido do contato, baloes alternados (recebido cinza a esquerda com a dor em primeira pessoa, enviado azul/verde a direita com a recomendacao e a oferta), foto do produto entregue dentro do fluxo do chat (dentro do balao ou como anexo com emoji de reacao) e, na base, teclado QWERTY completo ou home indicator do iPhone. Nenhum elemento de anuncio.",
+    "blocos": [
+      "status bar e cabecalho do chat com avatar e apelido",
+      "balao recebido com a dor em primeira pessoa",
+      "balao enviado com a recomendacao e a oferta",
+      "foto do produto dentro do fluxo do chat",
+      "timestamps minusculos / emoji de reacao",
+      "teclado ou home indicator ancorando a base"
+    ],
+    "densidade_texto": "media",
+    "funil": [
+      "topo",
+      "meio",
+      "fundo"
+    ],
+    "exige": [
+      "mock fiel de conversa nativa (status bar, cabecalho, baloes, teclado/home indicator)",
+      "apelido e avatar criveis de amigo proximo",
+      "foto do produto com cara de foto mandada no chat",
+      "oferta concreta com numero (percentual, brinde, prazo)"
+    ],
+    "prova_embutida": "social",
+    "exemplo_nicho": "kit de refeicoes por assinatura (HelloFresh) / gummies de beleza (Lemme)",
+    "exemplo_copy": "I'm struggling with family dinners... / Just try HelloFresh. You get 50% off your first box + free treats for 3 months. || bestie 🦋 THIS IS NOT A DRILL 🚨 LEMME IS HAVING A HUGE SALE / wait, what??!! / YES! You get 20% OFF sitewide*",
+    "exemplo_paleta": "branco/cinza claro do app, balao recebido cinza, balao enviado azul iMessage ou verde WhatsApp, teclado cinza-azulado",
+    "trocavel": [
+      "a dor escrita no balao recebido",
+      "o produto, a oferta e a foto anexada",
+      "apelido e avatar do contato",
+      "o idioma e as girias"
+    ],
+    "fixo": [
+      "enquadramento de print de tela cheia com chrome nativo visivel",
+      "alternancia de baloes: recebido a esquerda, enviado a direita",
+      "a foto do produto entra DENTRO do fluxo do chat, nunca solta no card",
+      "a oferta sai da boca da amiga, nunca da marca",
+      "linguagem de conversa real (caixa alta espontanea, pontuacao exagerada, emoji)",
+      "zero logo, zero headline, zero botao de CTA"
+    ],
+    "frames": [
+      "admanage/c004.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "print_de_tela",
+    "tem_rosto": false,
+    "tem_produto": true,
+    "proporcao": "9:16",
+    "midia": "estatico",
+    "origem_do_ativo": "misto",
+    "risco_de_reprovacao": "alto",
+    "risco_motivo": "Simula uma conversa pessoal real em mensageiro nativo (balao cinza recebido, balao verde enviado, timestamps e teclado QWERTY do iOS ocupando o terco inferior).",
+    "presenca_de_cta": "proibido",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "Balao recebido: 1 frase de ate 6 palavras ('I'm struggling with family dinners...'). Balao enviado: 4 linhas curtas, ~30 palavras no total, com a oferta numerica no meio. Zero texto fora dos baloes: sem headline, sem logo, sem botao.",
+    "evidencia": "Print de conversa com balao cinza 'I'm struggling with family dinners...' e resposta verde do HelloFresh com teclado nativo; frame marca item 3 'WhatsApp text'.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "procura_se",
+    "nome_pt": "Procura-se (cartaz wanted)",
+    "nome_original": "Procura-se",
+    "camada": "container",
+    "mimica_de": "cartaz de 'procura-se' do velho oeste pregado em mural de madeira",
+    "descricao_layout": "Fundo de tabuas de madeira rustica. Sobre ele, folha sepia envelhecida de bordas rasgadas presa por dois pregos, com moldura retangular de linha fina delimitando o conteudo: titulo 'PROCURA-SE' em tipografia condensada tipo western no topo, silhueta anonima com ponto de interrogacao no lugar do rosto ao centro, linha de qualificacao em caixa alta em duas linhas e assinatura da marca no rodape. Tudo monocromatico com textura de impressao gasta.",
+    "blocos": [
+      "fundo de tabuas de madeira",
+      "papel envelhecido rasgado pregado nas pontas",
+      "moldura retangular de linha fina",
+      "titulo PROCURA-SE",
+      "silhueta anonima com ? no lugar do rosto",
+      "linha de qualificacao/dor em caixa alta",
+      "assinatura da marca no rodape"
+    ],
+    "densidade_texto": "baixa",
+    "funil": [
+      "topo"
+    ],
+    "exige": [
+      "definicao literal do ICP em uma ou duas palavras",
+      "uma unica frase de qualificacao que carregue a dor ou o criterio",
+      "asset de cartaz envelhecido + fundo de madeira",
+      "logo da marca em versao pequena monocromatica"
+    ],
+    "prova_embutida": "nenhuma",
+    "exemplo_nicho": "agencia de publicidade / contratacao de redator (Realize Propaganda)",
+    "exemplo_copy": "PROCURA-SE | REDATOR QUE NAO ASSASSINE A LINGUA PORTUGUESA. | REALIZE PROPAGANDA",
+    "exemplo_paleta": "sepia monocromatico: papel bege, tinta marrom escura, madeira cinza-amarronzada, unico ponto de cor no icone do logo",
+    "trocavel": [
+      "quem e procurado (o ICP nomeado)",
+      "a linha de qualificacao/dor",
+      "o logo assinando no rodape",
+      "a silhueta, se o publico tiver contorno reconhecivel"
+    ],
+    "fixo": [
+      "'PROCURA-SE' em caixa alta no topo em tipografia condensada de cartaz antigo",
+      "suporte de cartaz: papel envelhecido rasgado, pregado, sobre madeira",
+      "moldura de linha fina em volta de todo o conteudo",
+      "silhueta anonima com ponto de interrogacao ocupando o centro",
+      "paleta monocromatica sepia com textura desgastada",
+      "hierarquia de tres blocos: quem se procura > qualificacao > assinatura",
+      "copy curtissima: uma unica frase, sem argumentacao"
+    ],
+    "frames": [
+      "josias/c009.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "superficie_escrita_fotografada",
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "1:1",
+    "midia": "estatico",
+    "origem_do_ativo": "misto",
+    "risco_de_reprovacao": "baixo",
+    "risco_motivo": "nenhum",
+    "presenca_de_cta": "obrigatorio",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "titulo de 1 palavra ('PROCURA-SE'); linha de qualificacao em 2 linhas de ate 5 palavras (~10 palavras no total); rodape so com o logo, sem linha de apoio",
+    "evidencia": "Cartaz PROCURA-SE em folha envelhecida sobre madeira, o mais aberto e nitido do trio, com todas as linhas legiveis.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "procuramos_pessoas",
+    "nome_pt": "Procuramos pessoas (chamada de recrutamento)",
+    "nome_original": "We're looking for people",
+    "camada": "container",
+    "mimica_de": "anuncio de recrutamento / casting call impresso",
+    "descricao_layout": "Estatico 9:16 100% tipografico sobre gradiente creme->rosa->laranja. Headline manuscrita grande e inclinada com a dor em uma palavra, subheadline manuscrita em arco negando a crenca comum, linha unica em caixa alta bold no centro geometrico ('WE'RE LOOKING FOR PEOPLE 26-65'), paragrafo curto de promessa, tres micro-blocos com rotulo temporal em negrito e o resultado daquele momento, e CTA em caixa alta em duas linhas. Tudo centralizado, sem logo.",
+    "blocos": [
+      "headline manuscrita com a dor renomeada",
+      "subheadline que corrige a crenca comum",
+      "linha de qualificacao em caixa alta com faixa etaria",
+      "paragrafo curto de promessa",
+      "tres micro-blocos de progressao temporal",
+      "CTA em caixa alta em duas linhas"
+    ],
+    "densidade_texto": "alta",
+    "funil": [
+      "meio",
+      "fundo"
+    ],
+    "exige": [
+      "fundo em gradiente de duas ou tres cores",
+      "fonte manuscrita para headline e subheadline",
+      "faixa etaria / ICP definido explicitamente",
+      "tres marcos temporais de resultado",
+      "CTA de clique na tela"
+    ],
+    "prova_embutida": "nenhuma",
+    "exemplo_nicho": "saude mental / burnout - app de audio para regulacao do sistema nervoso",
+    "exemplo_copy": "BURNOUT ISN'T ABOUT WORKING TOO HARD -- it's about a nervous system that forgot how to rest / WE'RE LOOKING FOR PEOPLE 26-65 / Early on: Rest stops feeling like torture. / TAP THE SCREEN TO GET STARTED!",
+    "exemplo_paleta": "gradiente creme -> rosa -> laranja, tipografia manuscrita e caixa alta escura",
+    "trocavel": [
+      "nome da dor na headline",
+      "a crenca comum negada",
+      "faixa etaria e recorte de publico",
+      "conteudo dos tres marcos e texto do CTA",
+      "paleta do gradiente"
+    ],
+    "fixo": [
+      "arte 100% tipografica sobre gradiente, sem foto e sem produto",
+      "headline manuscrita no topo com uma unica palavra-dor",
+      "linha 'PROCURAMOS PESSOAS <faixa etaria>' em caixa alta bold no centro geometrico",
+      "tres marcos na ordem cedo -> algumas semanas -> longo prazo",
+      "CTA em caixa alta em duas linhas fechando a arte",
+      "centralizacao de todo o texto",
+      "REGRA QUE O SEPARA DOS VIZINHOS: story_gradiente_convocacao = texto BRANCO em fonte unica do editor de stories (um so peso, um so estilo) sobre gradiente diagonal saturado padrao do Instagram, convocacao com numero exato de vagas e preco do teste, fechando em CTA de story com seta pra baixo — nenhuma fonte manuscrita e nenhuma faixa etaria. procuramos_pessoas = texto ESCURO sobre gradiente claro creme/rosa, com no minimo tres estilos tipograficos no mesmo card sendo a headline manuscrita, convocacao por faixa etaria no centro geometrico e tres marcos temporais de resultado — nunca contagem de vagas nem preco de teste."
+    ],
+    "frames": [
+      "admanage/c028.jpg"
+    ],
+    "confianca": "media",
+    "topologia": "tipografico_puro",
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "9:16",
+    "midia": "estatico",
+    "origem_do_ativo": "ilustracao",
+    "risco_de_reprovacao": "baixo",
+    "risco_motivo": "nenhum",
+    "presenca_de_cta": "obrigatorio",
+    "numero_de_slots_variaveis": 5,
+    "limite_de_texto_por_bloco": "Headline manuscrita: 1 palavra ('BURNOUT'). Subheadline manuscrita em arco: 3 linhas de ~6 palavras. Linha de qualificacao: 1 linha caixa alta bold de 5 palavras + faixa etaria. Paragrafo de promessa: 3 linhas, ~25 palavras. Cada micro-bloco: rotulo em negrito ('Early on:') + 1-2 linhas, ~12 palavras. CTA: 2 linhas de 3 palavras em caixa alta.",
+    "evidencia": "Mesmo cartaz tipografico de recrutamento em gradiente; frame confirma item 17 'We're looking for people'.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "quadro_branco",
+    "nome_pt": "Quadro branco escrito a mao",
+    "nome_original": "Whiteboard",
+    "camada": "container",
+    "mimica_de": "foto real de um quadro branco de parede escrito com marcadores coloridos",
+    "descricao_layout": "Foto de um quadro branco com moldura metalica em parede de tijolinho (a parede aparece nas bordas). Escrita a mao com marcadores de cores diferentes em hierarquia: titulo em azul, subtitulo entre parenteses em preto, nome do produto em rosa caixa alta e duas linhas de beneficios alternando cores. Na parte de baixo, dois depoimentos entre aspas com assinatura nos cantos e, ao centro-baixo, o produto fisico segurado por uma mao na frente do quadro.",
+    "blocos": [
+      "quadro branco fotografado na parede",
+      "titulo manuscrito em cor forte",
+      "subtitulo entre parenteses (quebra de objecao)",
+      "nome do produto em caixa alta colorida",
+      "linhas de beneficios multicoloridas",
+      "dois depoimentos entre aspas com assinatura",
+      "produto fisico segurado na frente do quadro"
+    ],
+    "densidade_texto": "alta",
+    "funil": [
+      "meio",
+      "fundo"
+    ],
+    "exige": [
+      "quadro branco fisico fotografado com ambiente ao redor",
+      "marcadores de pelo menos 4 cores",
+      "produto fisico para segurar na frente",
+      "dois depoimentos curtos, um de fonte externa"
+    ],
+    "prova_embutida": "social",
+    "exemplo_nicho": "suplemento de colageno / anti-idade (Nutrition Geeks)",
+    "exemplo_copy": "My 2026 anti-ageing plan / (No injections required) / COLLAGEN GLOW UP + BIOTIN / FIRMS SKIN, REDUCES WRINKLES / \"Way better than the £60 powders.\" - Rachel / \"I finally found one that actually works.\" - Trustpilot review",
+    "exemplo_paleta": "quadro branco, marcadores azul, preto, rosa, verde, laranja e roxo, parede de tijolinho",
+    "trocavel": [
+      "o titulo do 'plano' e o ano",
+      "o subtitulo entre parenteses",
+      "a lista de beneficios e os dois depoimentos",
+      "o produto segurado e o nicho"
+    ],
+    "fixo": [
+      "ser FOTO de um quadro branco real, com moldura e ambiente aparecendo",
+      "escrita 100% a mao com marcadores de cores diferentes, cada bloco numa cor",
+      "hierarquia: titulo -> parenteses -> produto em caixa alta -> beneficios",
+      "dois depoimentos entre aspas nos cantos inferiores, um de cliente e um de plataforma de review",
+      "produto fisico real segurado por uma mao na frente do quadro",
+      "densidade alta: o quadro precisa parecer cheio"
+    ],
+    "frames": [
+      "admanage/c052.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "superficie_escrita_fotografada",
+    "tem_rosto": false,
+    "tem_produto": true,
+    "proporcao": "1:1",
+    "midia": "estatico",
+    "origem_do_ativo": "foto_real",
+    "risco_de_reprovacao": "baixo",
+    "risco_motivo": "nenhum",
+    "presenca_de_cta": "proibido",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "titulo manuscrito em 1 linha de ~5 palavras; subtitulo entre parenteses de ate 4 palavras; nome do produto em 1 linha caixa alta de ate 5 palavras; 2 linhas de beneficios de ate 6 palavras cada; 2 depoimentos de ate 3 linhas (~8 palavras) com assinatura de 1-2 palavras",
+    "evidencia": "Quadro branco de moldura metalica em parede de tijolinho, escrito a mao em varias cores: 'My 2026 anti-ageing plan (No injections required) / COLLAGEN GLOW UP + BIOTIN'; frame mostra 32. Whiteboard.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "recibo",
+    "nome_pt": "Recibo / cupom da compra",
+    "nome_original": "Receipt",
+    "camada": "container",
+    "mimica_de": "recibo impresso / cupom fiscal de papel",
+    "descricao_layout": "Fundo branco com um recibo de papel centralizado: wordmark da marca em caixa alta com letter-spacing largo, nome da oferta, linhas de item em tres colunas (descricao a esquerda, foto recortada do componente no meio, valor a direita) com os agregados marcados 'FREE', divisoria e bloco de totais (Subtotal / Shipping / Total) e codigo de barras na base. Tipografia pequena e muito espaco em branco.",
+    "blocos": [
+      "wordmark da marca em caixa alta espacada",
+      "nome da oferta/kit",
+      "linhas de item: descricao + foto + valor",
+      "itens agregados marcados FREE",
+      "divisoria + bloco de totais",
+      "codigo de barras"
+    ],
+    "densidade_texto": "media",
+    "funil": [
+      "fundo"
+    ],
+    "exige": [
+      "fotos recortadas de cada componente da oferta",
+      "preco do item principal e valor total",
+      "pelo menos um item agregado marcado como FREE",
+      "codigo de barras e fonte pequena neutra"
+    ],
+    "prova_embutida": "nenhuma",
+    "exemplo_nicho": "barbeador / cuidados pessoais (Estrid)",
+    "exemplo_copy": "ESTRID / The bestselling Estrid Kit / Stainless steel handle with lifetime guarantee — £7.25 / Magnetic holder — FREE / Razor head — FREE / Shipping FREE",
+    "exemplo_paleta": "branco de papel, tipografia cinza-escura, sem cor de marca gritante",
+    "trocavel": [
+      "marca no wordmark",
+      "nome do kit/oferta",
+      "itens, fotos dos componentes e valores",
+      "subtotal, frete e total"
+    ],
+    "fixo": [
+      "recibo de papel branco centralizado sobre fundo claro",
+      "wordmark em caixa alta com letter-spacing largo no topo",
+      "itens com valor alinhado a direita e foto do componente na coluna do meio",
+      "'FREE' repetido nos agregados (e o argumento do formato)",
+      "divisoria seguida de Subtotal / Shipping / Total",
+      "codigo de barras fechando a base"
+    ],
+    "frames": [
+      "admanage/c037.jpg"
+    ],
+    "confianca": "media",
+    "topologia": "documento",
+    "tem_rosto": false,
+    "tem_produto": true,
+    "proporcao": "9:16",
+    "midia": "estatico",
+    "origem_do_ativo": "misto",
+    "risco_de_reprovacao": "baixo",
+    "risco_motivo": "nenhum",
+    "presenca_de_cta": "opcional",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "wordmark 1 palavra em caixa alta com letter-spacing largo; nome da oferta 1 linha de ate 5 palavras; descricao de item ate 8 palavras em 2 linhas; coluna de valor 1 token (preco ou 'FREE'); bloco de totais em 3 linhas de 1 palavra + valor (Subtotal / Shipping / Total); tudo em corpo pequeno, sem headline",
+    "evidencia": "Mesmo cupom Estrid com subtotal/shipping/total e codigo de barras; frame confirma item 23 'Receipt'.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "secao_de_comentarios",
+    "nome_pt": "Secao de comentarios (print do Instagram)",
+    "nome_original": "Comment section",
+    "camada": "container",
+    "mimica_de": "captura da secao de comentarios do Instagram com respostas marcadas 'Author'",
+    "descricao_layout": "Card vertical branco totalmente ocupado por um print de comentarios: sequencia alternada de comentario de seguidor (avatar, @ desfocado, tempo, coracao 'by author') e resposta indentada do proprio perfil marcada 'Author', cada linha com 'Reply' embaixo e coracao com contagem a direita. No rodape, a barra de emojis rapidos e o campo 'What do you think of this?'. Nenhuma copy de anuncio sobreposta.",
+    "blocos": [
+      "comentario de seguidor com avatar + @ borrado + tempo",
+      "resposta indentada do perfil marcada 'Author'",
+      "'Reply' e contagem de curtidas por linha",
+      "barra de emojis rapidos no rodape",
+      "campo de digitar comentario"
+    ],
+    "densidade_texto": "alta",
+    "funil": [
+      "meio",
+      "fundo"
+    ],
+    "exige": [
+      "print real (ou reproducao fiel) de comentarios com @ desfocados",
+      "pelo menos 2 pares pergunta-seguidor / resposta-do-autor",
+      "um comentario de desejo explicito"
+    ],
+    "prova_embutida": "social",
+    "exemplo_nicho": "filtro de agua / casa (agua dura)",
+    "exemplo_copy": "That's a great gift as it's so much needed!! We all need water filter! / OMGG I need one of these! My hard water is CRAZY in my area! / What do you think of this?",
+    "exemplo_paleta": "branco do Instagram, texto cinza-escuro, coracoes vermelhos, emojis coloridos",
+    "trocavel": [
+      "os comentarios e o nicho",
+      "avatares e @ borrados",
+      "contagens de curtida"
+    ],
+    "fixo": [
+      "print integral da UI de comentarios, sem nada sobreposto",
+      "@ dos usuarios desfocados/ilegiveis",
+      "alternancia comentario de seguidor / resposta indentada com selo 'Author'",
+      "'Reply' sob cada comentario e coracao com contagem a direita",
+      "barra de emojis rapidos + campo de digitar ancorando o rodape",
+      "zero headline, zero logo, zero CTA"
+    ],
+    "frames": [
+      "admanage/c061.jpg"
+    ],
+    "confianca": "media",
+    "topologia": "print_de_tela",
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "origem_do_ativo": "print_real",
+    "risco_de_reprovacao": "medio",
+    "risco_motivo": "Replica a UI de comentarios do Instagram inteira, incluindo barra de emojis e campo de digitar, e depende de os comentarios serem reais para nao virar prova social fabricada.",
+    "presenca_de_cta": "proibido",
+    "numero_de_slots_variaveis": 3,
+    "limite_de_texto_por_bloco": "cada comentario de seguidor em 1-3 linhas (ate ~20 palavras); resposta indentada do autor em 1 linha curta; zero texto sobreposto a UI",
+    "evidencia": "Print branco de comentarios do Instagram com @ desfocados, coracoes 'by author', respostas da marca e barra de emojis na base; rotulo 38. Comment section aparece no frame cheio.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "ser_direto_com_icp",
+    "nome_pt": "Ser direto com o ICP (escala + pergunta)",
+    "nome_original": "Ser direto com ICP",
+    "camada": "container",
+    "mimica_de": "nenhum — a peca se assume como anuncio de marca (print ad)",
+    "descricao_layout": "Peca vertical em fundo de cor chapada/texturizada da marca, sem cena fotografica. No terco superior, medidor semicircular com degrade claro->vermelho e quatro recortes em ordem crescente de intensidade, com ponteiro apontando para a zona vermelha. Abaixo, headline em condensada bold caixa alta colorida em 3 linhas, formulada como pergunta direta em 2a pessoa; ao centro o produto recortado isolado; abaixo a tagline em 2a pessoa em 3 linhas brancas; na base o logotipo e o descritor de uma palavra.",
+    "blocos": [
+      "medidor semicircular com 4 marcadores em intensidade crescente",
+      "ponteiro apontando para o extremo vermelho",
+      "headline: pergunta direta em 2a pessoa",
+      "produto recortado isolado ao centro",
+      "tagline de posicionamento em 2a pessoa",
+      "logotipo + descritor de uma palavra",
+      "linha minuscula de rodape (URL/legal)"
+    ],
+    "densidade_texto": "baixa",
+    "funil": [
+      "meio"
+    ],
+    "exige": [
+      "ICP nomeavel e uma dor que ele reconheca em si na hora",
+      "foto do produto recortada em fundo transparente",
+      "3 a 4 imagens recortadas representando graus crescentes do mesmo estado",
+      "fonte condensada bold em caixa alta e cor de fundo solida da marca"
+    ],
+    "prova_embutida": "nenhuma",
+    "exemplo_nicho": "chocolate / snack de consumo (Snickers)",
+    "exemplo_copy": "HOW ANGRY DOES HUNGER MAKE YOU? / YOU'RE NOT YOU WHEN YOU'RE HUNGRY. / SNICKERS SATISFIES",
+    "exemplo_paleta": "fundo marrom chocolate texturizado, headline amarelo/dourado, tagline branca, escala em degrade branco->amarelo->vermelho",
+    "trocavel": [
+      "o assunto da escala (a dor do ICP do nicho)",
+      "os 4 recortes que marcam os graus",
+      "a foto do produto recortado",
+      "o texto da headline e da tagline",
+      "o logotipo e a paleta"
+    ],
+    "fixo": [
+      "headline obrigatoriamente em 2a pessoa, como pergunta direta ao leitor",
+      "escala/medidor com marcadores em intensidade crescente",
+      "ponteiro apontando para o extremo mais intenso",
+      "ordem da pilha: escala > pergunta > produto recortado > tagline > logo",
+      "tipografia condensada bold caixa alta centralizada em 3 linhas",
+      "fundo de cor chapada unica, sem foto de ambiente",
+      "densidade baixa: so pergunta + tagline + assinatura"
+    ],
+    "frames": [
+      "josias/c020.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "cartaz_centralizado",
+    "tem_rosto": true,
+    "tem_produto": true,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "origem_do_ativo": "misto",
+    "risco_de_reprovacao": "baixo",
+    "risco_motivo": "nenhum",
+    "presenca_de_cta": "opcional",
+    "numero_de_slots_variaveis": 5,
+    "limite_de_texto_por_bloco": "Headline em 3 linhas de 2-3 palavras em condensada bold caixa alta ('HOW ANGRY / DOES HUNGER / MAKE YOU?'). Tagline em 3 linhas de 2-3 palavras. Descritor de 1 palavra sob o logo ('SATISFIES'). Rodape em corpo microscopico de ate 4 palavras (URL/legal). Os 4 recortes da escala nao levam rotulo de texto.",
+    "evidencia": "Card Snickers reto e sem oclusao, com o medidor, os quatro rostos, a pergunta e o logo todos legiveis.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "sticker_pergunta_instagram",
+    "nome_pt": "Sticker de pergunta do Instagram",
+    "nome_original": "Question sticker",
+    "camada": "container",
+    "mimica_de": "sticker de pergunta (question box) de story do Instagram",
+    "descricao_layout": "Card vertical em cor chapada. No topo, circulo branco com ponto de interrogacao e, abaixo, caixa arredondada com a pergunta em primeira pessoa em duas linhas. Logo abaixo, barra arredondada mais estreita com icone de check e um rotulo de diagnostico curto. No terco inferior, foto do produto em uso e a embalagem cortada pela borda do card.",
+    "blocos": [
+      "circulo com ponto de interrogacao no topo",
+      "caixa arredondada com a pergunta em primeira pessoa",
+      "barra de resposta/diagnostico com icone de check",
+      "foto do produto em uso",
+      "embalagem cortada na borda inferior"
+    ],
+    "densidade_texto": "baixa",
+    "funil": [
+      "topo",
+      "meio"
+    ],
+    "exige": [
+      "uma pergunta/dor curta em primeira pessoa",
+      "um rotulo de diagnostico de 3-5 palavras nomeando a causa",
+      "foto do produto em uso e da embalagem"
+    ],
+    "prova_embutida": "nenhuma",
+    "exemplo_nicho": "suplemento de colageno em po para pele",
+    "exemplo_copy": "I'm seeing fine lines after 30? / Collagen Levels Red Flag / nutrition geeks",
+    "exemplo_paleta": "rosa-forte chapado com caixas em rosa-claro e rosa-medio, tipografia branca e cinza-escuro",
+    "trocavel": [
+      "a pergunta/dor do nicho",
+      "o rotulo de diagnostico",
+      "a foto do produto e a embalagem",
+      "a cor chapada dominante"
+    ],
+    "fixo": [
+      "mimica do sticker: circulo com '?' acima de uma caixa arredondada",
+      "pergunta em PRIMEIRA PESSOA terminando em '?'",
+      "barra de resposta com icone de check logo abaixo, nomeando a causa",
+      "fundo de cor chapada unica, sem gradiente e sem cenario",
+      "produto no terco inferior com a embalagem cortada pela borda",
+      "texto minimo: so pergunta + diagnostico",
+      "REGRA QUE O SEPARA DOS VIZINHOS: story_nativo e captura de story ORGANICO: sticker nativo real da caixinha com pergunta de um seguidor, foto amadora de celular como fundo, texto na fonte padrao do editor, e ausencia total de marca, produto e cor de marca. sticker_pergunta_instagram e anuncio desenhado que apenas MIMETIZA o sticker: fundo de cor chapada unica, pergunta em primeira pessoa do proprio leitor dentro de caixa estilizada, barra de diagnostico com check logo abaixo e produto obrigatorio no terco inferior com a embalagem cortada pela borda. Produto visivel proibe story_nativo; foto de fundo e ausencia de produto proibem sticker_pergunta."
+    ],
+    "frames": [
+      "admanage/c008.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "widget_falso",
+    "tem_rosto": false,
+    "tem_produto": true,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "origem_do_ativo": "misto",
+    "risco_de_reprovacao": "medio",
+    "risco_motivo": "Alude ao sticker de pergunta nativo do Instagram, ainda que estilizado na cor da marca e com pilula de resposta que nao existe na UI real.",
+    "presenca_de_cta": "opcional",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "pergunta em 2 linhas de ate 4 palavras; rotulo de diagnostico em 1 linha de 3-5 palavras; nenhum texto alem desses dois blocos",
+    "evidencia": "Card rosa com circulo de interrogacao, caixa 'I'm seeing fine lines after 30?' e pilula 'Collagen Levels Red Flag' sobre o pote nutrition geeks; frame marca item 6 'IG question'.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "story_gradiente_convocacao",
+    "nome_pt": "Story de gradiente com convocacao",
+    "nome_original": "Gradient story",
+    "camada": "container",
+    "mimica_de": "story do Instagram feito no proprio app, com gradiente padrao e texto digitado",
+    "descricao_layout": "Card preenchido por gradiente diagonal estilo Instagram, sem imagem, logo ou moldura. Todo o conteudo e texto branco centralizado: headline curta em caixa alta terminando em dois-pontos ('WANTED:'), paragrafo de recrutamento com numero exato de vagas e preco do teste, espaco em branco, segundo paragrafo com o argumento de produto e uma linha final menor de CTA com emoji de seta para baixo.",
+    "blocos": [
+      "fundo em gradiente diagonal estilo Instagram",
+      "headline de convocacao em caixa alta terminada em dois-pontos",
+      "paragrafo de recrutamento com numero de vagas e preco",
+      "paragrafo de argumento do produto",
+      "linha final de CTA com seta para baixo"
+    ],
+    "densidade_texto": "media",
+    "funil": [
+      "topo",
+      "meio"
+    ],
+    "exige": [
+      "numero exato de vagas ou unidades disponiveis",
+      "oferta de teste com preco baixo e concreto",
+      "nenhuma imagem: so texto sobre gradiente"
+    ],
+    "prova_embutida": "nenhuma",
+    "exemplo_nicho": "comida umida para gatos por assinatura (UK)",
+    "exemplo_copy": "WANTED: / We are looking for 300 cat parents who want to trial 12 tins of Untamed for just £7. / Tap below to get yours ⬇",
+    "exemplo_paleta": "gradiente roxo -> magenta -> laranja (paleta Instagram), tipografia branca",
+    "trocavel": [
+      "o publico convocado",
+      "o numero de vagas e o preco do teste",
+      "o argumento de produto",
+      "as cores do gradiente"
+    ],
+    "fixo": [
+      "zero imagem: gradiente chapado no card inteiro",
+      "todo o texto branco, centralizado, sem caixa, moldura ou logo",
+      "abertura com palavra de convocacao em caixa alta seguida de dois-pontos",
+      "quantidade limitada em numero exato, nunca 'vagas limitadas'",
+      "CTA final em linguagem de story com seta para baixo, em corpo menor",
+      "REGRA QUE O SEPARA DOS VIZINHOS: story_gradiente_convocacao = texto BRANCO em fonte unica do editor de stories (um so peso, um so estilo) sobre gradiente diagonal saturado padrao do Instagram, convocacao com numero exato de vagas e preco do teste, fechando em CTA de story com seta pra baixo — nenhuma fonte manuscrita e nenhuma faixa etaria. procuramos_pessoas = texto ESCURO sobre gradiente claro creme/rosa, com no minimo tres estilos tipograficos no mesmo card sendo a headline manuscrita, convocacao por faixa etaria no centro geometrico e tres marcos temporais de resultado — nunca contagem de vagas nem preco de teste."
+    ],
+    "frames": [
+      "admanage/c010.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "tipografico_puro",
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "1:1",
+    "midia": "estatico",
+    "origem_do_ativo": "ilustracao",
+    "risco_de_reprovacao": "baixo",
+    "risco_motivo": "nenhum",
+    "presenca_de_cta": "obrigatorio",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "headline 1 palavra em caixa alta terminada em dois-pontos ('WANTED:'); paragrafo de recrutamento em 3 linhas de ~6 palavras (ate 20 palavras) contendo numero de vagas e preco; paragrafo de argumento em 4 linhas (ate 22 palavras); CTA final em 1 linha de ate 6 palavras + emoji de seta, em corpo menor",
+    "evidencia": "Card sem imagem, so gradiente diagonal roxo-laranja, com 'WANTED:' e 'We are looking for 300 cat parents... Untamed for just £7' e 'Tap below to get yours'; frame marca item 7 'IG story'.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "story_nativo",
+    "nome_pt": "Story nativo (resposta de caixinha)",
+    "nome_original": "Story Nativo",
+    "camada": "container",
+    "mimica_de": "story organico do Instagram respondendo uma caixinha de perguntas",
+    "descricao_layout": "Estatico 9:16. Fundo e foto amadora de celular com veu acinzentado por cima. No topo, o widget nativo da caixinha de perguntas com o prompt do criador e o balao branco com a pergunta do seguidor. No corpo, texto digitado na fonte padrao do editor de stories, branco, alinhado a esquerda, em lista numerada com quebras irregulares; um paragrafo com o realce de fundo branco do editor e uma linha final solta com uma palavra em caixa alta. Zero logo, zero botao.",
+    "blocos": [
+      "foto de fundo casual de celular com overlay acinzentado",
+      "sticker nativo de caixinha de perguntas com a pergunta do seguidor",
+      "lista numerada de passos em texto branco solto",
+      "paragrafo com realce de fundo branco",
+      "linha de fecho com uma palavra em caixa alta"
+    ],
+    "densidade_texto": "alta",
+    "funil": [
+      "topo"
+    ],
+    "exige": [
+      "sticker de caixinha de perguntas com uma pergunta real de seguidor",
+      "foto de fundo tirada de celular, cotidiana",
+      "texto na fonte nativa do editor, informal, com abreviacoes e minusculas",
+      "ausencia total de identidade visual da marca"
+    ],
+    "prova_embutida": "social",
+    "exemplo_nicho": "desenvolvimento pessoal / motivacao e produtividade",
+    "exemplo_copy": "Como dar o primeiro passo, ou dicas que podem ajudar na motivacao pfvr 🤗 / 1. comeca escrevendo quais sao suas metas / 2. pq voce quer atingir essas metas? / tente PRIORIZAR o mais importante",
+    "exemplo_paleta": "cinza esverdeado do overlay sobre foto de cafe, texto branco, um bloco de realce branco com texto escuro",
+    "trocavel": [
+      "a pergunta que aparece na caixinha",
+      "o conteudo dos passos numerados",
+      "a foto de fundo (mantendo o carater amador)",
+      "a palavra em caixa alta do fecho"
+    ],
+    "fixo": [
+      "proporcao 9:16 de story",
+      "sticker nativo da caixinha no topo, com a pergunta vindo de um seguidor",
+      "fonte padrao do editor de stories, branca, alinhada a esquerda, sem diagramacao",
+      "informalidade preservada: minusculas, abreviacoes, emoji, quebras irregulares",
+      "um trecho usando o realce de fundo do editor",
+      "ausencia de logo, headline, botao e qualquer moldura de anuncio",
+      "REGRA QUE O SEPARA DOS VIZINHOS: story_nativo e captura de story ORGANICO: sticker nativo real da caixinha com pergunta de um seguidor, foto amadora de celular como fundo, texto na fonte padrao do editor, e ausencia total de marca, produto e cor de marca. sticker_pergunta_instagram e anuncio desenhado que apenas MIMETIZA o sticker: fundo de cor chapada unica, pergunta em primeira pessoa do proprio leitor dentro de caixa estilizada, barra de diagnostico com check logo abaixo e produto obrigatorio no terco inferior com a embalagem cortada pela borda. Produto visivel proibe story_nativo; foto de fundo e ausencia de produto proibem sticker_pergunta."
+    ],
+    "frames": [
+      "josias/c013.jpg"
+    ],
+    "confianca": "media",
+    "topologia": "print_de_tela",
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "9:16",
+    "midia": "estatico",
+    "origem_do_ativo": "print_real",
+    "risco_de_reprovacao": "alto",
+    "risco_motivo": "Reproduz o widget nativo da caixinha de perguntas do Instagram e o texto do editor de stories sem nenhuma marcacao de marca, passando por conteudo organico da propria plataforma.",
+    "presenca_de_cta": "proibido",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "pergunta do sticker em ate 3 linhas curtas; 3 itens numerados de 1-3 linhas cada; bloco com realce branco em ate 4 linhas; fecho de 1 linha com uma palavra em caixa alta",
+    "evidencia": "Story nativo completo em quadro: widget de caixinha, lista de 3 respostas, bloco branco final e a linha 'tente PRIORIZAR o mais importante'.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "tela_de_chamada",
+    "nome_pt": "Tela de chamada recebida",
+    "nome_original": "Incoming call",
+    "camada": "container",
+    "mimica_de": "tela de ligacao recebida do iPhone",
+    "descricao_layout": "Card 9:16 com fundo preto total. No topo, o 'nome do chamador' em caixa alta branca terminando em reticencias e, abaixo, duas linhas de subheadline com a oferta. No meio, foto quadrada do produto. Na base, a fileira cinza de acoes secundarias (Remind Me / Message) e os dois botoes circulares grandes: vermelho de recusar a esquerda e verde de atender a direita, com labels minusculos.",
+    "blocos": [
+      "nome do chamador em caixa alta ('X IS CALLING...')",
+      "subheadline com a oferta em 2 linhas",
+      "foto do produto ao centro",
+      "linha de acoes secundarias",
+      "botoes circulares recusar/atender"
+    ],
+    "densidade_texto": "baixa",
+    "funil": [
+      "meio",
+      "fundo"
+    ],
+    "exige": [
+      "mock fiel da tela de chamada do iOS",
+      "uma oferta nomeavel como 'chamador'",
+      "foto limpa do produto",
+      "nome da oferta curto o bastante para uma linha"
+    ],
+    "prova_embutida": "nenhuma",
+    "exemplo_nicho": "marmitas fitness / emagrecimento e ganho de massa",
+    "exemplo_copy": "PAYDAY OFFER IS CALLING... / Lose Weight & Build Muscle With Our 50% Off Payday Discount / Remind Me / Message / Decline / Accept",
+    "exemplo_paleta": "preto de fundo, texto branco e cinza, botao vermelho e botao verde",
+    "trocavel": [
+      "quem e o 'chamador' (a oferta que liga)",
+      "a subheadline com beneficio e desconto",
+      "a foto do produto",
+      "o nicho e a marca"
+    ],
+    "fixo": [
+      "fundo preto da tela de chamada",
+      "nome do chamador em caixa alta com reticencias, no lugar exato do contato no iOS",
+      "dois botoes circulares na base: vermelho a esquerda, verde a direita, com labels minusculos",
+      "fileira cinza Remind Me / Message acima dos botoes",
+      "proporcao 9:16",
+      "texto minimo — o formato morre se virar bloco de copy"
+    ],
+    "frames": [
+      "admanage/c046.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "print_de_tela",
+    "tem_rosto": false,
+    "tem_produto": true,
+    "proporcao": "9:16",
+    "midia": "estatico",
+    "origem_do_ativo": "misto",
+    "risco_de_reprovacao": "alto",
+    "risco_motivo": "imita a tela de chamada recebida do iPhone, com fileira Remind Me/Message e os botoes circulares vermelho de recusar e verde de atender",
+    "presenca_de_cta": "obrigatorio",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "nome do chamador em 1 linha caixa alta de ate 4 palavras terminando em reticencias; subheadline em 2 linhas (~12 palavras); labels de sistema fixos e minusculos (Remind Me / Message / Decline / Accept); nenhum bloco de copy adicional",
+    "evidencia": "Card 9:16 preto com 'PAYDAY OFFER IS CALLING...', foto do prato no centro e os botoes redondos vermelho (Decline) e verde (Accept); frame cheio acrescenta o item 28. Phone call.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "texto_escrito_na_neve",
+    "nome_pt": "Texto escrito na neve",
+    "nome_original": "Snow writing",
+    "camada": "container",
+    "mimica_de": "nenhum artefato digital — imita o gesto real de escrever com o dedo na neve",
+    "descricao_layout": "Card 9:16 com foto de neve limpa e intocada ocupando 100% do quadro, luz azulada suave. No terco superior/central, tres palavras escritas em cursiva larga dentro da propria neve, com relevo e sombra reais. Logo abaixo, o logo da marca pequeno, tambem parecendo tracado na neve. Nada mais.",
+    "blocos": [
+      "fundo de neve ocupando o quadro inteiro",
+      "frase curta sulcada na neve",
+      "logo pequeno da marca abaixo da frase"
+    ],
+    "densidade_texto": "baixa",
+    "funil": [
+      "topo"
+    ],
+    "exige": [
+      "foto (ou render) de neve limpa com textura visivel",
+      "frase de no maximo 4 palavras",
+      "logo legivel em tamanho pequeno",
+      "sazonalidade de inverno que justifique a peca"
+    ],
+    "prova_embutida": "nenhuma",
+    "exemplo_nicho": "otica / exame de vista (Boots Opticians)",
+    "exemplo_copy": "Book an eye test / Boots Opticians",
+    "exemplo_paleta": "branco e azul frio da neve, texto em sombra propria",
+    "trocavel": [
+      "a frase escrita na neve",
+      "o logo da marca",
+      "o nicho e a acao pedida"
+    ],
+    "fixo": [
+      "superficie de neve real ocupando todo o quadro",
+      "o texto fisicamente escrito NA neve (relevo/sulco com sombra), nunca fonte colada por cima",
+      "brevidade extrema: 3-4 palavras no maximo",
+      "logo pequeno e discreto imediatamente abaixo do texto",
+      "zero molduras, botoes ou selos de oferta"
+    ],
+    "frames": [
+      "admanage/c041.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "foto_integral_com_texto",
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "9:16",
+    "midia": "estatico",
+    "origem_do_ativo": "foto_real",
+    "risco_de_reprovacao": "baixo",
+    "risco_motivo": "nenhum",
+    "presenca_de_cta": "obrigatorio",
+    "numero_de_slots_variaveis": 3,
+    "limite_de_texto_por_bloco": "frase unica de 3-4 palavras sulcada na neve, quebrada em 3 linhas; logo da marca em 1-2 palavras logo abaixo; nada mais no quadro",
+    "evidencia": "Foto de neve intocada com 'Book an eye test' escrito em cursiva na propria neve e logo 'Boots Opticians' abaixo; frame confirma item 26 'Snow text'.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "toque_no_seu_objetivo",
+    "nome_pt": "Toque no seu objetivo (grade de escolha)",
+    "nome_original": "Tap your goal",
+    "camada": "container",
+    "mimica_de": "tela de onboarding/quiz de app com botoes de escolha",
+    "descricao_layout": "Card com gradiente de cor unica (mais escuro no topo). Headline branca em serif centralizada no topo mandando tocar. No centro, grade 3x3 de circulos brancos brilhantes com aparencia de botao fisico, cada um com um valor curto em azul-escuro (o ultimo aberto com '+'). No rodape, CTA em 2 linhas explicando o que acontece ao tocar, disclaimer microscopico e dois logos nos cantos.",
+    "blocos": [
+      "headline imperativa no topo ('Tap your ___')",
+      "grade 3x3 de botoes circulares com valores curtos",
+      "CTA de 2 linhas explicando o resultado do toque",
+      "disclaimer microscopico + logos nos cantos"
+    ],
+    "densidade_texto": "media",
+    "funil": [
+      "topo",
+      "meio"
+    ],
+    "exige": [
+      "uma variavel do publico fatiavel em 9 opcoes curtas",
+      "gradiente ou cor solida de fundo (nao usa foto)",
+      "promessa de calculo ou diagnostico ao tocar"
+    ],
+    "prova_embutida": "nenhuma",
+    "exemplo_nicho": "emagrecimento / app de saude (Noom)",
+    "exemplo_copy": "Tap your goal weight | 50 kg · 55 kg · 60 kg · 65 kg · 70 kg · 75 kg · 80 kg · 85 kg · 90+ kg | Calculate how long it will take to reach your goal weight",
+    "exemplo_paleta": "gradiente verde-petroleo para verde-agua, botoes brancos perolados, numeros azul-marinho",
+    "trocavel": [
+      "a variavel da grade (peso, idade, faturamento, area de tratamento)",
+      "as 9 opcoes e a cor do gradiente",
+      "marca, CTA e disclaimer"
+    ],
+    "fixo": [
+      "headline imperativa no topo mandando tocar",
+      "grade 3x3 de botoes circulares com aparencia clicavel e valores de 1-2 palavras",
+      "ultima opcao aberta com '+' para nao excluir ninguem",
+      "linha de CTA logo abaixo da grade dizendo o que o toque entrega",
+      "fundo em cor/gradiente chapado, sem foto e sem produto"
+    ],
+    "frames": [
+      "admanage/c059.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "grade",
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "1:1",
+    "midia": "estatico",
+    "origem_do_ativo": "ilustracao",
+    "risco_de_reprovacao": "medio",
+    "risco_motivo": "Os nove circulos com aparencia de botao fisico e a ordem 'Tap your goal weight' simulam uma funcionalidade interativa que o criativo nao tem, e a grade segmenta por atributo pessoal (peso).",
+    "presenca_de_cta": "obrigatorio",
+    "numero_de_slots_variaveis": 3,
+    "limite_de_texto_por_bloco": "Headline: 1 linha de 4 palavras em serif branca. Cada botao da grade 3x3: 1-2 palavras, teto de ~6 caracteres ('50 kg' ... '90+ kg'), a nona sempre aberta com '+'. CTA: 2 linhas, ~15 palavras. Disclaimer: 2-3 linhas em corpo microscopico, ilegivel por desenho, entre os dois logos dos cantos.",
+    "evidencia": "Gradiente verde-escuro com 'Tap your goal weight' e grade 3x3 de circulos brilhantes (50 kg a 90+ kg) e rodape da Noom; frame mostra 37. Tap your goal.",
+    "aliases": [],
+    "correcoes_auditoria": []
+  },
+  {
+    "id": "us_vs_them_duas_colunas",
+    "nome_pt": "Nos contra eles (comparativo em duas colunas)",
+    "nome_original": "Us vs them",
+    "camada": "container",
+    "mimica_de": "infografico comparativo / quadro de comparacao de produtos",
+    "descricao_layout": "Card dividido ao meio por corte vertical em duas colunas de cores contrastantes (marca a esquerda, categoria concorrente a direita). Etiqueta com o nome no topo de cada coluna, foto circular do produto no mesmo angulo dos dois lados, badge circular 'VS' no eixo central, faixa escura com o beneficio numerico sob cada foto e, na base, duas listas espelhadas de quatro bullets alinhadas linha a linha.",
+    "blocos": [
+      "duas colunas verticais de cores contrastantes",
+      "etiqueta com o nome de cada lado no topo",
+      "foto circular do produto em cada coluna",
+      "badge VS no eixo central",
+      "faixa com o numero-chave sob cada foto",
+      "duas listas espelhadas de 4 bullets na base"
+    ],
+    "densidade_texto": "alta",
+    "funil": [
+      "meio",
+      "fundo"
+    ],
+    "exige": [
+      "foto do produto e do substituto no mesmo angulo e recorte",
+      "quatro atributos comparaveis em que a marca vence em todos",
+      "um numero de vantagem contrastante para os dois lados"
+    ],
+    "prova_embutida": "estatistica",
+    "exemplo_nicho": "suplemento de matcha em po comparado com cafe",
+    "exemplo_copy": "Matcha Fuel | Coffee | VS | 6 HOURS OF ENERGY | 1.5 HOURS OF ENERGY | Very high in antioxidants & amino acids | Low in antioxidants & amino acids",
+    "exemplo_paleta": "verde-oliva (marca) contra bege-acinzentado (concorrente), tipografia branca, badge VS branco",
+    "trocavel": [
+      "nome do produto e do lado concorrente",
+      "as duas fotos de produto",
+      "os quatro atributos comparados",
+      "o numero da vantagem principal",
+      "as duas cores das colunas"
+    ],
+    "fixo": [
+      "duas metades verticais exatamente espelhadas com badge VS no eixo",
+      "mesmo tipo de foto nos dois lados: mesmo angulo, recorte e tamanho",
+      "mesma quantidade de bullets dos dois lados, alinhados linha a linha",
+      "lado da marca sempre com o numero maior e bullets positivos",
+      "comparar com a CATEGORIA/habito substituto, nunca com marca nominal",
+      "REGRA QUE O SEPARA DOS VIZINHOS: O suporte fisico do comparativo e exclusivo e nao se mistura: us_vs_them = duas metades de COR CHAPADA contrastante sangrando ate a borda, com badge VS no eixo e faixa do numero-chave sob cada foto circular; novo_vs_velho = dois CARDS BRANCOS arredondados identicos flutuando sobre fundo de cor solida, com headline propria acima e nenhum badge VS; cinco_razoes = comparativo inteiramente MANUSCRITO dentro de uma folha branca flutuando sobre foto desfocada escura, em tabela criterio x duas colunas de check/X com bloco de letra miuda fora da folha; meme_comparativo = par de IMAGENS MEME do mesmo personagem com expressao oposta sobre fundo branco, separadas por linha tracejada e faixas pretas antes/depois. Nenhuma peca pode usar o suporte de outra.",
+      "CORRECAO DA AUDITORIA: remover 'lado da marca sempre a esquerda' do fixo e mover 'de que lado fica a marca' para trocavel; manter fixo apenas 'a marca sempre com o numero maior e os bullets positivos'"
+    ],
+    "frames": [
+      "admanage/c003.jpg"
+    ],
+    "confianca": "alta",
+    "topologia": "duas_colunas_espelhadas",
+    "tem_rosto": false,
+    "tem_produto": true,
+    "proporcao": "1:1",
+    "midia": "estatico",
+    "origem_do_ativo": "foto_real",
+    "risco_de_reprovacao": "baixo",
+    "risco_motivo": "nenhum",
+    "presenca_de_cta": "opcional",
+    "numero_de_slots_variaveis": 5,
+    "limite_de_texto_por_bloco": "etiqueta de topo de cada coluna 1-2 palavras ('Matcha Fuel' / 'Coffee'); faixa escura sob a foto 3-4 palavras em 2 linhas ('6 HOURS OF ENERGY'); exatamente 4 bullets por lado, cada um ate 6-7 palavras em no maximo 2 linhas; sem headline, sem CTA, sem logo",
+    "evidencia": "Card dividido em duas colunas 'Matcha Fuel' vs 'Coffee' com selo VS e '6 HOURS OF ENERGY' / '1.5 HOURS OF ENERGY'; frame acrescenta item 2 'Us vs them'.",
+    "aliases": [],
+    "correcoes_auditoria": [
+      {
+        "campo": "fixo",
+        "motivo": "As quatro entradas do cluster comparativo se contradizem: us_vs_them e cinco_razoes fixam a marca a esquerda, novo_vs_velho e meme_comparativo fixam a direita. As referencias confirmam os dois lados (Matcha a esquerda, Blueland a direita). O lado e arbitrario e nao pode ser ponto de fixacao."
+      }
+    ]
+  },
+  {
+    "id": "mapa_anotado_sobre_pele",
+    "nome_pt": "Mapa anotado sobre a pele",
+    "nome_original": "Mapa anotado sobre a pele",
+    "camada": "container",
+    "mimica_de": "anotacao a mao sobre foto, estilo revista de beleza",
+    "descricao_layout": "Close de rosto ou de area do corpo ocupando o quadro inteiro. Rotulos curtos brancos flutuam ao redor da area tratada, cada um apontado por seta desenhada a mao (ou posicionado sobre o local, sem seta). Nome do procedimento ou titulo grande em serif no rodape ou no topo.",
+    "blocos": [
+      "foto close da area tratada sangrando",
+      "4 a 6 rotulos curtos de beneficio ou sinal",
+      "setas manuscritas brancas",
+      "nome do procedimento grande"
+    ],
+    "densidade_texto": "baixa",
+    "funil": [
+      "topo",
+      "meio"
+    ],
+    "exige": [],
+    "prova_embutida": "visual",
+    "exemplo_nicho": "estetica / harmonizacao facial",
+    "exemplo_copy": "Ultraformer: levanta o olhar / efeito lifting / reduz a papada",
+    "exemplo_paleta": "",
+    "trocavel": [
+      "procedimento",
+      "area do corpo",
+      "rotulos"
+    ],
+    "fixo": [
+      "cada rotulo aponta para o local exato na pele",
+      "setas desenhadas a mao, nunca icone",
+      "texto branco direto sobre a foto, sem caixa",
+      "pele real com textura, sem retoque pesado"
+    ],
+    "regra_de_copy": "",
+    "frames": [
+      "estetica_2026-10-06/ref_9.jpg",
+      "estetica_2026-10-06/ref_10.jpg"
+    ],
+    "confianca": "media",
+    "topologia": "foto_integral_com_texto",
+    "tem_rosto": true,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "origem_do_ativo": "foto_real",
+    "risco_de_reprovacao": "medio",
+    "risco_motivo": "Rotulos de resultado (reduz a papada, efeito lifting) podem ser lidos como promessa de resultado.",
+    "presenca_de_cta": "opcional",
+    "numero_de_slots_variaveis": 3,
+    "limite_de_texto_por_bloco": "rotulos de 2 a 5 palavras; titulo de 1 a 4 palavras",
+    "evidencia": "Referencias do mercado de estetica enviadas pelo usuario em 2026-10-06.",
+    "aliases": [],
+    "correcoes_auditoria": [],
+    "mercado": "estetica",
+    "fonte": "usuario 2026-10-06"
+  },
+  {
+    "id": "pergunta_editorial_serifada",
+    "nome_pt": "Pergunta editorial serifada",
+    "nome_original": "Pergunta editorial serifada",
+    "camada": "container",
+    "mimica_de": "capa de revista de moda",
+    "descricao_layout": "Foto lifestyle desfocada de pessoa se olhando no espelho de mao. Headline grande em serif fina com uma palavra em italico, em forma de pergunta da dor. Abaixo, uma palavra em script rosa (talvez...) e uma frase curta em sans com trechos em negrito-italico dando a resposta. Moldura fina de canto em linha branca. Assinatura do profissional em caixa alta espacada no topo.",
+    "blocos": [
+      "foto espelho/autoexame",
+      "pergunta da dor em serif",
+      "palavra script de transicao",
+      "resposta curta com destaque",
+      "assinatura no topo"
+    ],
+    "densidade_texto": "baixa",
+    "funil": [
+      "topo"
+    ],
+    "exige": [],
+    "prova_embutida": "visual",
+    "exemplo_nicho": "estetica / harmonizacao facial",
+    "exemplo_copy": "Flacidez no rosto? talvez... seja a hora de estimular o colageno",
+    "exemplo_paleta": "",
+    "trocavel": [
+      "dor",
+      "resposta",
+      "profissional"
+    ],
+    "fixo": [
+      "pergunta da dor como headline",
+      "mistura serif romano + italico + script",
+      "resposta em 1 frase",
+      "assinatura discreta do profissional"
+    ],
+    "regra_de_copy": "",
+    "frames": [
+      "estetica_2026-10-06/ref_11.jpg"
+    ],
+    "confianca": "media",
+    "topologia": "foto_integral_com_texto",
+    "tem_rosto": true,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "origem_do_ativo": "foto_real",
+    "risco_de_reprovacao": "baixo",
+    "risco_motivo": "Pergunta sobre a propria aparencia, sem promessa direta.",
+    "presenca_de_cta": "opcional",
+    "numero_de_slots_variaveis": 3,
+    "limite_de_texto_por_bloco": "pergunta ate 4 palavras; resposta ate 15 palavras",
+    "evidencia": "Referencias do mercado de estetica enviadas pelo usuario em 2026-10-06.",
+    "aliases": [],
+    "correcoes_auditoria": [],
+    "mercado": "estetica",
+    "fonte": "usuario 2026-10-06"
+  },
+  {
+    "id": "capa_educativa_macro",
+    "nome_pt": "Capa educativa em macro de pele",
+    "nome_original": "Capa educativa em macro de pele",
+    "camada": "container",
+    "mimica_de": "capa de carrossel educativo",
+    "descricao_layout": "Macro extremo de pele com o procedimento acontecendo (seringa, aparelho) entrando pela borda. Linha pequena 'O que voce precisa entender sobre o' com uma palavra em italico negrito, e o nome do procedimento gigante em sans pesado, quebrado em duas linhas se preciso. Seta fina horizontal abaixo indicando arrastar. Selo circular da marca no topo.",
+    "blocos": [
+      "macro de pele com ferramenta",
+      "linha introdutoria pequena",
+      "nome do procedimento gigante",
+      "seta de arrastar",
+      "selo circular da marca"
+    ],
+    "densidade_texto": "baixa",
+    "funil": [
+      "topo",
+      "meio"
+    ],
+    "exige": [],
+    "prova_embutida": "visual",
+    "exemplo_nicho": "estetica / harmonizacao facial",
+    "exemplo_copy": "O que voce precisa entender sobre o Bioestimulador",
+    "exemplo_paleta": "",
+    "trocavel": [
+      "procedimento",
+      "ferramenta"
+    ],
+    "fixo": [
+      "nome do procedimento e o maior elemento",
+      "seta de swipe = capa de carrossel",
+      "macro com poros visiveis"
+    ],
+    "regra_de_copy": "",
+    "frames": [
+      "estetica_2026-10-06/ref_12.jpg"
+    ],
+    "confianca": "media",
+    "topologia": "foto_integral_com_texto",
+    "tem_rosto": true,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "origem_do_ativo": "foto_real",
+    "risco_de_reprovacao": "baixo",
+    "risco_motivo": "Educativo, sem promessa.",
+    "presenca_de_cta": "opcional",
+    "numero_de_slots_variaveis": 2,
+    "limite_de_texto_por_bloco": "intro ate 8 palavras; termo 1 a 2 palavras",
+    "evidencia": "Referencias do mercado de estetica enviadas pelo usuario em 2026-10-06.",
+    "aliases": [],
+    "correcoes_auditoria": [],
+    "mercado": "estetica",
+    "fonte": "usuario 2026-10-06"
+  },
+  {
+    "id": "perfis_sobrepostos_geracoes",
+    "nome_pt": "Perfis sobrepostos de geracoes",
+    "nome_original": "Perfis sobrepostos de geracoes",
+    "camada": "container",
+    "mimica_de": "editorial de beleza inclusiva",
+    "descricao_layout": "Dois rostos de perfil, um encostado atras do outro, olhando para a mesma direcao, fundo neutro de estudio. Contrasta idades (pele madura x jovem) ou mostra duas peles maduras. Quando ha texto: titulo curto em caixa alta sans e 2 linhas de manifesto centralizados.",
+    "blocos": [
+      "dois perfis sobrepostos",
+      "fundo neutro",
+      "titulo curto opcional",
+      "manifesto em 2 linhas"
+    ],
+    "densidade_texto": "baixa",
+    "funil": [
+      "topo"
+    ],
+    "exige": [],
+    "prova_embutida": "visual",
+    "exemplo_nicho": "estetica / harmonizacao facial",
+    "exemplo_copy": "FOR EVERY FACE",
+    "exemplo_paleta": "",
+    "trocavel": [
+      "pessoas",
+      "manifesto"
+    ],
+    "fixo": [
+      "mesmo angulo de perfil nos dois rostos",
+      "pele real com rugas e sardas visiveis",
+      "texto minimo"
+    ],
+    "regra_de_copy": "",
+    "frames": [
+      "estetica_2026-10-06/ref_13.jpg",
+      "estetica_2026-10-06/ref_15.jpg"
+    ],
+    "confianca": "media",
+    "topologia": "foto_integral_com_texto",
+    "tem_rosto": true,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "origem_do_ativo": "foto_real",
+    "risco_de_reprovacao": "medio",
+    "risco_motivo": "Contraste madura x jovem pode ser lido como antes/depois implicito.",
+    "presenca_de_cta": "opcional",
+    "numero_de_slots_variaveis": 2,
+    "limite_de_texto_por_bloco": "titulo ate 4 palavras; manifesto ate 25 palavras",
+    "evidencia": "Referencias do mercado de estetica enviadas pelo usuario em 2026-10-06.",
+    "aliases": [],
+    "correcoes_auditoria": [],
+    "mercado": "estetica",
+    "fonte": "usuario 2026-10-06"
+  },
+  {
+    "id": "palavra_riscada_split",
+    "nome_pt": "Palavra riscada em split",
+    "nome_original": "Palavra riscada em split",
+    "camada": "container",
+    "mimica_de": "reposicionamento de conceito",
+    "descricao_layout": "Quadro dividido verticalmente: metade com objeto-metafora (petalas secas) e metade com macro de rosto real. No centro, cruzando a divisao, duas linhas em caixa alta espacada: o termo antigo riscado e, abaixo, o termo novo.",
+    "blocos": [
+      "metade metafora",
+      "metade rosto macro",
+      "termo antigo riscado",
+      "termo novo"
+    ],
+    "densidade_texto": "baixa",
+    "funil": [
+      "topo"
+    ],
+    "exige": [],
+    "prova_embutida": "visual",
+    "exemplo_nicho": "estetica / harmonizacao facial",
+    "exemplo_copy": "ANTI-AGING (riscado) / AGE REPAIR",
+    "exemplo_paleta": "",
+    "trocavel": [
+      "termo antigo",
+      "termo novo",
+      "metafora"
+    ],
+    "fixo": [
+      "um termo riscado, outro no lugar",
+      "split vertical 50/50",
+      "tipografia espacada fina"
+    ],
+    "regra_de_copy": "",
+    "frames": [
+      "estetica_2026-10-06/ref_14.jpg"
+    ],
+    "confianca": "media",
+    "topologia": "foto_integral_com_texto",
+    "tem_rosto": true,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "origem_do_ativo": "foto_real",
+    "risco_de_reprovacao": "baixo",
+    "risco_motivo": "Sem promessa; troca de conceito.",
+    "presenca_de_cta": "opcional",
+    "numero_de_slots_variaveis": 3,
+    "limite_de_texto_por_bloco": "cada termo 1 a 3 palavras",
+    "evidencia": "Referencias do mercado de estetica enviadas pelo usuario em 2026-10-06.",
+    "aliases": [],
+    "correcoes_auditoria": [],
+    "mercado": "estetica",
+    "fonte": "usuario 2026-10-06"
+  },
+  {
+    "id": "antes_depois_pagina_virando",
+    "nome_pt": "Antes e depois com pagina virando",
+    "nome_original": "Antes e depois com pagina virando",
+    "camada": "container",
+    "mimica_de": "pagina de papel sendo descascada",
+    "descricao_layout": "Rosto em close; uma folha de papel curvada descasca revelando a metade antes em preto e branco com pele pior e a metade depois colorida e lisa. Rotulos Before/After em serif grande com subtitulo e setas tracejadas. Na base, pilulas brancas arredondadas com beneficios. Logo no canto.",
+    "blocos": [
+      "rosto close",
+      "folha virando",
+      "rotulos antes/depois com setas tracejadas",
+      "pilulas de beneficios",
+      "logo no canto"
+    ],
+    "densidade_texto": "baixa",
+    "funil": [
+      "meio",
+      "fundo"
+    ],
+    "exige": [],
+    "prova_embutida": "visual",
+    "exemplo_nicho": "estetica / harmonizacao facial",
+    "exemplo_copy": "Before: skin may look dull / After: Hydrafacial",
+    "exemplo_paleta": "",
+    "trocavel": [
+      "procedimento",
+      "beneficios"
+    ],
+    "fixo": [
+      "efeito de pagina descascando separa os estados",
+      "antes em P&B, depois colorido",
+      "beneficios em pilulas"
+    ],
+    "regra_de_copy": "",
+    "frames": [
+      "estetica_2026-10-06/ref_16.jpg"
+    ],
+    "confianca": "media",
+    "topologia": "foto_integral_com_texto",
+    "tem_rosto": true,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "origem_do_ativo": "foto_real",
+    "risco_de_reprovacao": "alto",
+    "risco_motivo": "Antes e depois de pele e restrito pela Meta em estetica. Vizinho de antes_depois: aqui e um rosto so, com a folha como divisor.",
+    "presenca_de_cta": "opcional",
+    "numero_de_slots_variaveis": 2,
+    "limite_de_texto_por_bloco": "rotulos 1 palavra + subtitulo de 4; pilulas ate 5 palavras",
+    "evidencia": "Referencias do mercado de estetica enviadas pelo usuario em 2026-10-06.",
+    "aliases": [],
+    "correcoes_auditoria": [],
+    "mercado": "estetica",
+    "fonte": "usuario 2026-10-06"
+  },
+  {
+    "id": "toque_vidro_fosco",
+    "nome_pt": "Toque atras de vidro fosco",
+    "nome_original": "Toque atras de vidro fosco",
+    "camada": "container",
+    "mimica_de": "interface tatil minimalista",
+    "descricao_layout": "Dedo pressionando um vidro fosco, desfocado, fundo em gradiente azul-cinza. Sobre a ponta do dedo, botao circular branco com halo; linha fina vertical desce ate o titulo em sans fino no terco inferior, com uma linha de apoio menor.",
+    "blocos": [
+      "dedo atras de vidro fosco",
+      "botao circular com halo",
+      "linha guia",
+      "titulo + apoio"
+    ],
+    "densidade_texto": "baixa",
+    "funil": [
+      "topo"
+    ],
+    "exige": [],
+    "prova_embutida": "visual",
+    "exemplo_nicho": "estetica / harmonizacao facial",
+    "exemplo_copy": "Activate Your Potential",
+    "exemplo_paleta": "",
+    "trocavel": [
+      "titulo",
+      "cor do gradiente"
+    ],
+    "fixo": [
+      "fundo quase monocromatico desfocado",
+      "um unico ponto de foco",
+      "tipografia fina"
+    ],
+    "regra_de_copy": "",
+    "frames": [
+      "estetica_2026-10-06/ref_17.jpg"
+    ],
+    "confianca": "media",
+    "topologia": "foto_integral_com_texto",
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "origem_do_ativo": "foto_real",
+    "risco_de_reprovacao": "baixo",
+    "risco_motivo": "Abstrato, sem promessa.",
+    "presenca_de_cta": "opcional",
+    "numero_de_slots_variaveis": 2,
+    "limite_de_texto_por_bloco": "titulo ate 4 palavras; apoio ate 8",
+    "evidencia": "Referencias do mercado de estetica enviadas pelo usuario em 2026-10-06.",
+    "aliases": [],
+    "correcoes_auditoria": [],
+    "mercado": "estetica",
+    "fonte": "usuario 2026-10-06"
+  },
+  {
+    "id": "editorial_premium_com_pilula_cta",
+    "nome_pt": "Editorial premium com pilula de CTA",
+    "nome_original": "Editorial premium com pilula de CTA",
+    "camada": "container",
+    "mimica_de": "campanha de clinica premium",
+    "descricao_layout": "Retrato editorial de estudio em fundo grafite, luz recortada. Linha grafica cinza em rabisco atravessando o quadro. Headline em sans fino de duas cores (branco + cinza) no terco inferior, apoio em 1-2 linhas pequenas e pilula escura translucida com icone de seta e CTA. URL da clinica no canto. Variante com painel preto lateral de texto e foto na outra metade.",
+    "blocos": [
+      "retrato editorial",
+      "rabisco cinza",
+      "headline bicolor",
+      "apoio curto",
+      "pilula com seta",
+      "url"
+    ],
+    "densidade_texto": "baixa",
+    "funil": [
+      "meio",
+      "fundo"
+    ],
+    "exige": [],
+    "prova_embutida": "visual",
+    "exemplo_nicho": "estetica / harmonizacao facial",
+    "exemplo_copy": "Redefina sua beleza sem cortes / Agende sua avaliacao",
+    "exemplo_paleta": "",
+    "trocavel": [
+      "headline",
+      "apoio",
+      "cta",
+      "pessoa"
+    ],
+    "fixo": [
+      "paleta grafite monocromatica",
+      "rabisco como assinatura grafica",
+      "CTA dentro de pilula com seta"
+    ],
+    "regra_de_copy": "",
+    "frames": [
+      "estetica_2026-10-06/ref_18.jpg",
+      "estetica_2026-10-06/ref_19.jpg",
+      "estetica_2026-10-06/ref_20.jpg"
+    ],
+    "confianca": "media",
+    "topologia": "foto_integral_com_texto",
+    "tem_rosto": true,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "origem_do_ativo": "foto_real",
+    "risco_de_reprovacao": "medio",
+    "risco_motivo": "Promessas de rejuvenescimento no apoio podem ser lidas como claim.",
+    "presenca_de_cta": "opcional",
+    "numero_de_slots_variaveis": 4,
+    "limite_de_texto_por_bloco": "headline ate 8 palavras; apoio ate 20; cta ate 6",
+    "evidencia": "Referencias do mercado de estetica enviadas pelo usuario em 2026-10-06.",
+    "aliases": [],
+    "correcoes_auditoria": [],
+    "mercado": "estetica",
+    "fonte": "usuario 2026-10-06"
+  },
+  {
+    "camada": "container",
+    "densidade_texto": "baixa",
+    "exige": [],
+    "exemplo_nicho": "estetica / harmonizacao facial",
+    "exemplo_paleta": "",
+    "regra_de_copy": "",
+    "confianca": "media",
+    "topologia": "foto_integral_com_texto",
+    "tem_rosto": true,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "origem_do_ativo": "foto_real",
+    "presenca_de_cta": "opcional",
+    "aliases": [],
+    "correcoes_auditoria": [],
+    "mercado": "estetica",
+    "fonte": "usuario 2026-10-06",
+    "evidencia": "Referencias do mercado de estetica enviadas pelo usuario em 2026-10-06.",
+    "id": "antes_depois_perfil_com_manchete",
+    "nome_pt": "Antes e depois de perfil com manchete",
+    "nome_original": "Antes e depois de perfil com manchete",
+    "mimica_de": "registro clinico de paciente",
+    "descricao_layout": "Duas fotos reais da mesma paciente de perfil, lado a lado em split vertical, mesmo angulo e luz. Olhos pixelados para anonimizar. Setas finas desenhadas a mao apontando a area tratada em cada metade. Manchete centralizada no topo em tres andares: linha leve, promessa gigante em serif condensado com exclamacao, e linha que nomeia o procedimento em negrito. Nome e registro profissional (CRO/CRM) em caixa alta espacada no topo; logo da clinica no rodape.",
+    "blocos": [
+      "duas fotos de perfil split vertical",
+      "olhos pixelados",
+      "setas finas na area tratada",
+      "manchete em 3 andares",
+      "nome e registro profissional",
+      "logo no rodape"
+    ],
+    "fixo": [
+      "mesmo angulo e luz nas duas metades",
+      "olhos censurados",
+      "registro profissional visivel",
+      "procedimento nomeado na manchete"
+    ],
+    "trocavel": [
+      "procedimento",
+      "promessa",
+      "profissional"
+    ],
+    "numero_de_slots_variaveis": 3,
+    "limite_de_texto_por_bloco": "linha leve ate 5 palavras; promessa ate 3 palavras; linha do procedimento ate 5",
+    "funil": [
+      "meio",
+      "fundo"
+    ],
+    "prova_embutida": "visual",
+    "exemplo_copy": "O nariz dos sonhos SEM CIRURGIA! Isso e a Rinomodelacao.",
+    "risco_de_reprovacao": "alto",
+    "risco_motivo": "Antes e depois de procedimento estetico e restrito pela Meta e regulado por conselhos profissionais (CFO/CFM proibem ou limitam a divulgacao). Promessa 'nariz dos sonhos' reforca o risco.",
+    "frames": [
+      "estetica_2026-10-06/ref_21.jpg"
+    ]
+  },
+  {
+    "camada": "container",
+    "densidade_texto": "baixa",
+    "exige": [],
+    "exemplo_nicho": "estetica / harmonizacao facial",
+    "exemplo_paleta": "",
+    "regra_de_copy": "",
+    "confianca": "media",
+    "topologia": "foto_integral_com_texto",
+    "tem_rosto": true,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "origem_do_ativo": "foto_real",
+    "presenca_de_cta": "opcional",
+    "aliases": [],
+    "correcoes_auditoria": [],
+    "mercado": "estetica",
+    "fonte": "usuario 2026-10-06",
+    "evidencia": "Referencias do mercado de estetica enviadas pelo usuario em 2026-10-06.",
+    "id": "antes_depois_horizontal_educativo",
+    "nome_pt": "Antes e depois horizontal com capa educativa",
+    "nome_original": "Antes e depois horizontal com capa educativa",
+    "mimica_de": "capa de carrossel educativo",
+    "descricao_layout": "Duas fotos reais da mesma paciente empilhadas em split horizontal (antes em cima com marcacao de caneta na pele, depois embaixo), mesmo enquadramento de tres quartos. Sobre a linha de divisao, a esquerda: linha pequena 'Tudo o que voce precisa saber sobre' com uma palavra sublinhada, e o nome do procedimento gigante em sans fino caixa alta em duas linhas. Assinatura da clinica em caixa alta espacada logo abaixo.",
+    "blocos": [
+      "foto antes com marcacao de caneta",
+      "foto depois",
+      "intro educativa",
+      "nome do procedimento gigante",
+      "assinatura da clinica"
+    ],
+    "fixo": [
+      "split horizontal com o texto encavalado na divisao",
+      "marcacao da caneta na foto de antes",
+      "formato de capa educativa, nao de promessa"
+    ],
+    "trocavel": [
+      "procedimento",
+      "clinica"
+    ],
+    "numero_de_slots_variaveis": 2,
+    "limite_de_texto_por_bloco": "intro ate 7 palavras; procedimento ate 3 palavras",
+    "funil": [
+      "topo",
+      "meio"
+    ],
+    "prova_embutida": "visual",
+    "exemplo_copy": "Tudo o que voce precisa saber sobre ULTRASSOM MICROFOCADO",
+    "risco_de_reprovacao": "alto",
+    "risco_motivo": "Antes e depois de pele, restrito pela Meta em estetica, mesmo com enquadramento educativo.",
+    "frames": [
+      "estetica_2026-10-06/ref_23.jpg"
+    ]
+  },
+  {
+    "camada": "container",
+    "densidade_texto": "baixa",
+    "exige": [],
+    "exemplo_nicho": "estetica / harmonizacao facial",
+    "exemplo_paleta": "",
+    "regra_de_copy": "",
+    "confianca": "media",
+    "topologia": "foto_integral_com_texto",
+    "tem_rosto": true,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "origem_do_ativo": "foto_real",
+    "presenca_de_cta": "opcional",
+    "aliases": [],
+    "correcoes_auditoria": [],
+    "mercado": "estetica",
+    "fonte": "usuario 2026-10-06",
+    "evidencia": "Referencias do mercado de estetica enviadas pelo usuario em 2026-10-06.",
+    "id": "mapa_de_dosagem_com_pergunta",
+    "nome_pt": "Mapa de dosagem com pergunta polemica",
+    "nome_original": "Mapa de dosagem com pergunta polemica",
+    "mimica_de": "planejamento tecnico desenhado sobre o rosto",
+    "descricao_layout": "Retrato sorridente da profissional ou paciente, com linhas pontilhadas brancas desenhadas sobre o rosto nas areas tratadas, cada uma com um marcador '+' e a quantidade (2 ml, 3 ml, 8 ml). Pilulas pequenas flutuando na lateral. No terco inferior, numero total gigante + termo em sans fino, uma caixa branca com a pergunta polemica em negrito ('voce acha que e muito ou pouco?') e uma linha de provocacao que manda ler ate o final.",
+    "blocos": [
+      "retrato",
+      "linhas pontilhadas com quantidades",
+      "total gigante",
+      "caixa com pergunta polemica",
+      "linha de provocacao"
+    ],
+    "fixo": [
+      "quantidades desenhadas na area exata",
+      "pergunta que convida a julgar",
+      "convite a ler ate o final"
+    ],
+    "trocavel": [
+      "procedimento",
+      "quantidades",
+      "pergunta"
+    ],
+    "numero_de_slots_variaveis": 3,
+    "limite_de_texto_por_bloco": "total ate 4 palavras; pergunta ate 8; provocacao ate 15",
+    "funil": [
+      "topo"
+    ],
+    "prova_embutida": "nenhuma",
+    "exemplo_copy": "20 ml de preenchimento na face, voce acha que e muito ou pouco? Seja honesta: voce leu 20 ml e ja julgou.",
+    "risco_de_reprovacao": "medio",
+    "risco_motivo": "Nao mostra resultado, mas fala de dose de procedimento injetavel. Vizinho de mapa_anotado_sobre_pele: aqui o gancho e a polemica do numero, nao o beneficio.",
+    "frames": [
+      "estetica_2026-10-06/ref_22.jpg"
+    ]
+  }
+]

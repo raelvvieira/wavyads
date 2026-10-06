@@ -1,192 +1,165 @@
 import type { CreativeAspectRatio } from '@/features/creative-studio/types/creative';
 
 /**
- * Um genoma de criativo: o sistema visual que uma peça veste.
+ * Um CONTAINER: a especificação de uma peça.
  *
- * A qualidade de um criativo não vem do briefing — vem de um sistema de
- * design decidido por alguém que sabe o que está fazendo, e escrito com
- * precisão suficiente para um modelo de imagem executar. "Elegante" não é
- * executável; "ivory #F5F1EA, serifada de alto contraste em peso Light,
- * mínimo 35% de espaço negativo" é.
+ * "Antes e depois", "nota do iPhone", "manchete editorial", "cartela de
+ * brinquedo" — cada um é um formato de anúncio com regras próprias de
+ * composição, de copy e de produção. Não é paleta: um "antes e depois" é um
+ * antes e depois para a clínica e para o pet shop. O que muda entre as duas
+ * é a foto e a cor, e isso vem da marca — não daqui. É por ser agnóstico de
+ * marca que o container ADAPTA.
  *
- * O vocabulário aqui é DELIBERADAMENTE o mesmo de `criativo-analyze-refs`
- * (as 8 dimensões) e o mesmo que `buildGenerationRequest` já aceita. Um
- * genoma não precisa de tradutor para chegar ao prompt: ele já fala a
- * língua que o prompt lê.
+ * O formato espelha o `containers.json` de origem campo a campo. Traduzir
+ * nomes seria criar um dialeto: quando o arquivo evoluir, a atualização
+ * seria uma rodada de renomeação em vez de uma troca de arquivo.
  *
- * Dois eixos que não se confundem, e é o erro mais fácil de cometer aqui:
+ * Dois campos carregam o coração da coisa:
  *
- * - O SISTEMA VISUAL (`designSystemDoc`, `antiPadroes`, `mood`) diz como a
- *   peça é tratada — paleta, tipografia, camadas, luz.
- * - O CONTAINER (`container`) diz onde cada coisa mora no quadro.
+ * `fixo` é o que NÃO pode mudar — mudar mata o formato. Vai para o prompt
+ * como regra dura.
  *
- * Eles são ortogonais: uma referência anexada pelo usuário pode substituir
- * o primeiro e ainda assim conviver com o segundo.
+ * `trocavel` é o que a marca e o briefing preenchem. É literalmente a lista
+ * do que adaptar, escrita por quem desenhou a peça.
  */
 
-/** Idêntico ao `mood` do analyze-refs e ao do `ReferenceAnalysis`. */
-export interface GenomeMood {
-  adjetivos: string[];
-  referencias: string[];
-  evita: string[];
+export type Funil = 'topo' | 'meio' | 'fundo';
+export type Densidade = 'baixa' | 'media' | 'alta';
+export type PresencaCta = 'obrigatorio' | 'opcional' | 'proibido';
+export type NivelRisco = 'baixo' | 'medio' | 'alto';
+export type Confianca = 'alta' | 'media' | 'baixa';
+
+export interface CorrecaoAuditoria {
+  campo: string;
+  motivo: string;
 }
 
-/**
- * As 8 dimensões, como o `criativo-analyze-refs` as extrai.
- *
- * Tudo opcional: é ornamento útil para a interface e para quem edita, não
- * o que vai ao prompt. Quem vai ao prompt é o `designSystemDoc`.
- */
-export interface GenomeVisualAnalysis {
-  composicao?: { formato?: string; estrutura?: string; hierarquia?: string; silencio?: string };
-  fotografia?: { tipo?: string; luz?: string; tratamento?: string; integracao?: string };
-  paleta?: { dominante?: string; secundaria?: string; acento?: string; saturacao?: string; hexes?: string[] };
-  tipografia?: { familiaA?: string; familiaB?: string; contraste?: string; alinhamento?: string };
-  camadas?: string[];
-  hierarquiaVisual?: string;
-  espaco?: string;
-  mood?: GenomeMood;
-}
-
-/** Os papéis que um container sabe posicionar. */
-export type PapelDeRegiao =
-  | 'headline' | 'subhead' | 'dados' | 'cta' | 'logo' | 'imagem' | 'silencio';
-
-/**
- * O container: onde cada coisa mora no quadro.
- *
- * `descricao` é PROSA, não JSON. O modelo de imagem lê prosa; JSON cru
- * gasta atenção decodificando chaves e aspas — e este modelo renderiza
- * texto solto que encontra no prompt, o que faz de um `{"grid":"12col"}`
- * candidato a aparecer desenhado na arte.
- *
- * REGRA DURA: as posições se medem contra a CAIXA SEGURA, nunca contra o
- * frame inteiro. Um container que diga "texto nos 30% inferiores" entra em
- * contradição direta com o bloco [SAFE ZONE], que declara aquela faixa como
- * fundo vazio. Duas instruções brigando no mesmo prompt produzem arte
- * tímida — o modelo obedece as duas pela metade.
- */
-export interface GenomeContainer {
-  descricao: string;
-  regioes?: { papel: PapelDeRegiao; onde: string }[];
-  /** O formato em que esta peça nasceu. Default e sinal para o pré-filtro. */
-  formatoNativo?: CreativeAspectRatio;
-  /** Onde ela ainda funciona. Vazio = qualquer um. */
-  formatosOk?: CreativeAspectRatio[];
-}
-
-export interface GenomeCopyRules {
-  maxPalavrasTitulo?: number;
-  maxLinhas?: number;
-  exigeCta?: boolean;
-  proibeCta?: boolean;
-  /** Ex.: "imperativo curto", "uma frase só, sem ponto final". */
-  tom?: string[];
-}
-
-export interface GenomeRegras {
-  /** Para que serve. Entra no prompt do seletor. */
-  intendedFor: string[];
-  /**
-   * Quando NÃO usar. É VETO, não desempate — um genoma cujo "evitar quando"
-   * descreve o briefing sai da lista, por melhor que o resumo soe.
-   */
-  avoidWhen: string[];
-  /** Aceleram o pré-filtro determinístico, sem IA. */
-  palavrasChave?: string[];
-  nichos?: string[];
-  formatos?: CreativeAspectRatio[];
-}
-
-export interface CreativeGenome {
-  // ---------------- obrigatório ----------------
-  /** Slug estável. É este valor que a IA devolve ao escolher. */
+export interface CreativeContainer {
+  // ---------- identidade ----------
   id: string;
-  nome: string;
-  /**
-   * Uma a duas frases. É SÓ ISTO que viaja no prompt do seletor — todos os
-   * resumos da shortlist entram numa mensagem só, então o teto é duro.
-   */
-  resumo: string;
-  /**
-   * O CONTAINER — e é ele o núcleo, não a paleta.
-   *
-   * "Cartaz", "story", "post-it" são tipos de PEÇA. Um cartaz é um cartaz
-   * para a clínica e para a oficina mecânica; o que muda entre as duas é a
-   * cor, e a cor vem da marca ou da referência anexada — não daqui. É
-   * justamente por ser agnóstico de marca que o container ADAPTA.
-   */
-  container: GenomeContainer;
-  regras: GenomeRegras;
+  nome_pt: string;
+  nome_original?: string;
+  /** O que a peça IMITA (adesivo de story, nota do iPhone, artigo científico). */
+  mimica_de?: string;
 
-  // ---------------- opcional ----------------
+  // ---------- o layout ----------
+  /** Prosa minuciosa: o que está no quadro e onde. Vai ao [TEMPLATE STRUCTURE]. */
+  descricao_layout: string;
+  /** Os elementos, na ordem em que compõem a peça. */
+  blocos: string[];
+  topologia?: string;
+
+  // ---------- o que adapta e o que não ----------
+  /** Muda isto e deixa de ser este formato. Regra dura no prompt. */
+  fixo: string[];
+  /** O que a marca e o briefing preenchem. A lista do que adaptar. */
+  trocavel: string[];
+  /** Quantos pontos de variação a peça tem. */
+  numero_de_slots_variaveis?: number;
+
+  // ---------- pré-requisitos de produção ----------
   /**
-   * Linguagem visual, quando este genoma TIVER uma.
+   * O que a peça EXIGE para existir — duas fotos reais do mesmo sujeito,
+   * autorização de uso de imagem, um coletivo legível ao fundo.
    *
-   * Opcional de propósito, e o caso comum é ausente. Um post-it tem papel
-   * amarelo e sombra projetada — isso é sistema visual e mora aqui. Um
-   * "cartaz" é uma regra de composição que serve a qualquer paleta, e não
-   * deve opinar sobre cor. Exigir este campo rejeitaria metade dos
-   * containers reais.
+   * É o sinal mais forte do pré-filtro: um container que exige foto de
+   * cobertura não serve a quem não tem foto nenhuma anexada.
    */
-  designSystemDoc?: string;
-  /** "NEVER X — because Y". Vão para o [DO NOT INCLUDE]. */
-  antiPadroes?: string[];
-  mood?: GenomeMood | null;
+  exige?: string[];
+  origem_do_ativo?: string;
+  spec_de_producao?: unknown;
+
+  // ---------- sinais estruturados (o pré-filtro vive deles) ----------
+  proporcao: string;
+  midia?: string;
+  funil: Funil[];
+  densidade_texto: Densidade;
+  presenca_de_cta: PresencaCta;
+  tem_rosto: boolean;
+  tem_produto: boolean;
+  /** Que tipo de prova a peça carrega: social, autoridade, demonstração… */
+  prova_embutida?: string;
+
+  // ---------- copy ----------
+  /** Tetos e proibições de texto. Vai ao passo que reparte a copy. */
+  regra_de_copy?: string[];
+  limite_de_texto_por_bloco?: string;
+  /** Quem fala na peça. Depoimento de terceiro não cabe em toda peça. */
+  voz?: string;
   /**
-   * O que o container exige da COPY.
+   * Ângulos estratégicos que este container NÃO comporta.
    *
-   * Alimenta o passo que reparte a copy em papéis, NÃO o prompt de imagem —
-   * um teto de palavras seria instrução sobre um texto que o modelo de
-   * imagem não escreve. Um post-it com headline de 40 palavras não é um
-   * post-it.
+   * Conversa direto com os 12 ângulos do Fator Criativo: um formato de um
+   * quadro só não comporta "antes e depois"; um que proíbe preço na arte não
+   * comporta ângulo ancorado em escassez.
    */
-  copyRules?: GenomeCopyRules | null;
-  visualAnalysis?: GenomeVisualAnalysis | null;
-  tags?: string[];
-  previewUrl?: string | null;
-  /** Desempate determinístico no pré-filtro. Maior ganha. */
-  prioridade?: number;
-  /**
-   * O documento foi escrito lendo arte de TERCEIROS?
-   *
-   * Default `true`, e não é zelo excessivo: `mood.referencias` dos estilos
-   * que já existem contém "Kinfolk, The Row, Aesop, Monocle", e o bloco
-   * [MOOD] emite isso como `Feels like: …`. A cláusula que proíbe
-   * reproduzir a marca de origem só liga com esta bandeira — um genoma
-   * escolhido automaticamente, sem referência anexada, mandaria esses nomes
-   * ao gerador com a guarda desligada. É o mesmo buraco que já fez uma arte
-   * sair com a logo de um terceiro.
-   */
-  terceiros?: boolean;
-  origem: 'builtin' | 'banco' | 'importado';
+  angulos_vedados?: string[];
+
+  // ---------- compliance ----------
+  /** Risco de a Meta reprovar a peça. */
+  risco_de_reprovacao?: NivelRisco;
+  risco_motivo?: string;
+
+  // ---------- procedência ----------
+  camada?: string;
+  confianca?: Confianca;
+  exemplo_nicho?: string;
+  exemplo_copy?: string;
+  exemplo_paleta?: string;
+  evidencia?: string;
+  frames?: string[];
+  aliases?: string[];
+  correcoes_auditoria?: CorrecaoAuditoria[];
+  mercado?: string;
+  fonte?: string;
+  pendencias?: unknown;
+
+  /** De onde esta entrada veio. Não vem do arquivo. */
+  origem: 'arquivo' | 'banco' | 'importado';
 }
 
-/** O que viaja no prompt do seletor. Nada além disto. */
-export interface GenomeDigest {
+/** O que viaja no prompt do seletor. Nada além disto — o resto é peso. */
+export interface ContainerDigest {
   id: string;
   nome: string;
   resumo: string;
-  intendedFor: string[];
-  avoidWhen: string[];
+  proporcao: string;
+  funil: Funil[];
+  exige: string[];
+  temRosto: boolean;
+  temProduto: boolean;
+  cta: PresencaCta;
 }
 
-export function digestOf(g: CreativeGenome): GenomeDigest {
+export function digestOf(c: CreativeContainer, tetoResumo = TETO_RESUMO): ContainerDigest {
+  const resumo = c.descricao_layout.length <= tetoResumo
+    ? c.descricao_layout
+    : `${c.descricao_layout.slice(0, tetoResumo - 1).trimEnd()}…`;
   return {
-    id: g.id,
-    nome: g.nome,
-    resumo: g.resumo,
-    intendedFor: g.regras.intendedFor,
-    avoidWhen: g.regras.avoidWhen,
+    id: c.id,
+    nome: c.nome_pt,
+    resumo,
+    proporcao: c.proporcao,
+    funil: c.funil,
+    exige: c.exige ?? [],
+    temRosto: c.tem_rosto,
+    temProduto: c.tem_produto,
+    cta: c.presenca_de_cta,
   };
 }
 
-/** Preserva o tipo literal, como `defineTemplate` já faz no módulo social. */
-export function defineGenome<const T extends CreativeGenome>(g: T): T {
-  return g;
-}
-
-/** Teto do resumo: todos os da shortlist entram num prompt só. */
+/**
+ * Teto do resumo no prompt do seletor.
+ *
+ * Todos os resumos da shortlist entram numa mensagem só. Com 5 containers a
+ * 320 chars são 1,6k — cabe. Sem teto, um `descricao_layout` de 1448 chars
+ * (o maior do catálogo) sozinho já estouraria o orçamento.
+ */
 export const TETO_RESUMO = 320;
-/** Teto de anti-padrões: o [DO NOT INCLUDE] já concatena quatro fontes. */
-export const TETO_ANTI_PADROES = 9;
+
+/** Converte a `proporcao` do arquivo para o tipo que o Studio usa. */
+export function comoAspectRatio(p: string | null | undefined): CreativeAspectRatio | null {
+  const limpo = (p ?? '').trim();
+  const conhecidos = ['1:1', '4:5', '9:16', '16:9'];
+  return conhecidos.includes(limpo) ? (limpo as CreativeAspectRatio) : null;
+}
