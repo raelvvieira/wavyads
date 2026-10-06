@@ -207,11 +207,18 @@ describe('CreativeStudioShell', () => {
 });
 
 describe('o painel da proposta', () => {
-  const PROPOSTA = {
+  const PECA = {
     formato: { nome: 'Antes e depois', proporcao: '1:1' },
     cena: 'Dois registros do mesmo sorriso.',
     copy: [{ papel: 'Título', texto: 'Dá pra resolver.' }],
     angulo: { nome: 'demonstração', inedito: true },
+    leu: [],
+    vazia: false,
+  };
+  const PROPOSTA = {
+    pecas: [PECA],
+    cliente: null,
+    quantidade: { n: 1, pedido: 1 },
     leu: ['2 referências anexadas'],
     vazia: false,
   };
@@ -272,5 +279,34 @@ describe('o painel da proposta', () => {
     const painel = screen.getByLabelText('Proposta de arte');
     const sim = [...painel.querySelectorAll('button')].find((b) => /Gerando/.test(b.textContent ?? ''))!;
     expect(sim.disabled).toBe(true);
+  });
+
+  it('um lote diz quantas peças, e o botão promete as duas', () => {
+    // O número é informação sobre o GASTO: duas peças são duas gerações.
+    montar({ proposal: {
+      ...PROPOSTA,
+      pecas: [PECA, { ...PECA, cena: 'A vitrine inteira de longe.' }],
+      quantidade: { n: 2, pedido: 2 },
+    } as any });
+    expect(screen.getByText('2 peças')).toBeTruthy();
+    expect(screen.getByText('Peça 1 de 2')).toBeTruthy();
+    expect(screen.getByText('A vitrine inteira de longe.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Gerar as 2/ })).toBeTruthy();
+  });
+
+  it('o teto cortado aparece na tela, em vez de entregar menos calado', () => {
+    montar({ proposal: {
+      ...PROPOSTA, pecas: [PECA, PECA, PECA, PECA], quantidade: { n: 4, pedido: 10 },
+    } as any });
+    expect(screen.getByText(/Você pediu 10/)).toBeTruthy();
+  });
+
+  it('o cliente reconhecido no texto aparece antes de gerar', () => {
+    // O sistema mexeu numa escolha que o usuário não fez à mão.
+    montar({ proposal: {
+      ...PROPOSTA, cliente: { nome: 'Dra Mariane', doTexto: true },
+    } as any });
+    expect(screen.getByText('Dra Mariane')).toBeTruthy();
+    expect(screen.getByText(/reconheci no seu pedido/)).toBeTruthy();
   });
 });

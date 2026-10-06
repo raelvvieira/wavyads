@@ -466,6 +466,170 @@ describe('CriativoStudioV2Page', () => {
     expect(invoke.mock.calls.some((c: any[]) => c[0] === 'criativo-generate')).toBe(true);
   });
 
+  it('pedir 2 criativos gera 2 artes — o relato que abriu esta rodada', async () => {
+    // "quero 2 criativos de clareamento pra dra mariane" saía com uma arte
+    // só: o "2" era texto solto dentro do brief, e nada no sistema lia
+    // quantidade.
+    invoke.mockImplementation(invokeComLeitura(() =>
+      Promise.resolve({ data: { imageUrl: 'https://x/n.png' }, error: null })));
+    createCreativeAsset.mockImplementation(async (input: any) => ({
+      ...ASSETS_DO_PROJETO[0], id: `nv-${Math.random()}`, ...input,
+    }));
+    updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({
+      ...ASSETS_DO_PROJETO[0], id, ...patch,
+    }));
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+    createCreativeAsset.mockClear();
+
+    fireEvent.change(screen.getByPlaceholderText('O que você quer criar?'), {
+      target: { value: 'quero 2 criativos de clareamento' },
+    });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Gerar' })); });
+
+    // A proposta anuncia o lote ANTES de gastar: duas peças são duas gerações.
+    expect(screen.getByText('2 peças')).toBeTruthy();
+    expect(createCreativeAsset).not.toHaveBeenCalled();
+
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Gerar as 2/ })); });
+
+    expect(createCreativeAsset).toHaveBeenCalledTimes(2);
+    expect(invoke.mock.calls.filter((c: any[]) => c[0] === 'criativo-generate')).toHaveLength(2);
+  });
+
+  it('a segunda ideia sabe da primeira, e o brief da GERAÇÃO continua o original', async () => {
+    // Pedir duas e receber duas tentativas da mesma ideia é escolher entre
+    // dois acabamentos. E enfiar "peça 2 de 2" no brief da geração poria
+    // texto solto dentro do prompt da imagem — candidato a ser desenhado.
+    const leituras = ['Dois registros do mesmo sorriso.', 'A recepção da clínica ao entardecer.'];
+    let lida = 0;
+    const briefsDaLeitura: string[] = [];
+    invoke.mockImplementation((nome: string, opcoes: any) => {
+      if (nome === 'criativo-art-direction') {
+        briefsDaLeitura.push(opcoes.body.brief);
+        const subject = leituras[lida++] ?? leituras[0];
+        return Promise.resolve({
+          data: {
+            engineVersion: 'art-direction-v1',
+            visualDirection: { mainSubject: subject, composition: 'Plano fechado.', mood: 'claro' },
+          },
+          error: null,
+        });
+      }
+      return Promise.resolve({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    });
+    createCreativeAsset.mockImplementation(async (input: any) => ({
+      ...ASSETS_DO_PROJETO[0], id: `nv-${Math.random()}`, ...input,
+    }));
+    updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({
+      ...ASSETS_DO_PROJETO[0], id, ...patch,
+    }));
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+
+    fireEvent.change(screen.getByPlaceholderText('O que você quer criar?'), {
+      target: { value: 'duas artes de clareamento' },
+    });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Gerar' })); });
+
+    expect(briefsDaLeitura).toHaveLength(2);
+    expect(briefsDaLeitura[0]).toContain('peça 1 de 2');
+    // A segunda recebe o que a primeira propôs, e a ordem de não repetir.
+    expect(briefsDaLeitura[1]).toContain('Dois registros do mesmo sorriso.');
+    expect(briefsDaLeitura[1]).toContain('DIFERENTE');
+    // E as duas cenas chegam à tela, uma por peça.
+    expect(screen.getByText(/A recepção da clínica ao entardecer/)).toBeTruthy();
+
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Gerar as 2/ })); });
+
+    // O brief da GERAÇÃO é o do usuário, sem nenhuma instrução de lote.
+    for (const c of invoke.mock.calls.filter((c: any[]) => c[0] === 'criativo-generate')) {
+      expect(c[1].body.prompt).not.toContain('peça 1 de 2');
+      expect(c[1].body.prompt).not.toContain('peça 2 de 2');
+    }
+  });
+
+  it('num lote, as referências são decodificadas uma vez só', async () => {
+    // Duas peças com as mesmas referências não podem custar duas chamadas
+    // de visão para chegar ao mesmo documento de estilo.
+    uploadDataUrlToCreativeStorage.mockResolvedValue('https://x/ref.png');
+    createCreativeAsset.mockResolvedValue({ ...ASSETS_DO_PROJETO[0], id: 'ref-nova', type: 'reference' });
+    invoke.mockImplementation(invokeComLeitura((nome: string) => nome === 'criativo-analyze-refs'
+      ? Promise.resolve({ data: { designSystemDoc: '## Paleta', antiPadroes: [], mood: null }, error: null })
+      : Promise.resolve({ data: { imageUrl: 'https://x/n.png' }, error: null })));
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência, logo, copy, produto ou avatar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência' }));
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [new File(['x'], 'ref.png', { type: 'image/png' })] } });
+    });
+    await waitFor(() => expect(screen.getByText('Referência')).toBeTruthy());
+
+    fireEvent.change(screen.getByPlaceholderText('O que você quer criar?'), {
+      target: { value: 'quero 3 criativos disso' },
+    });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Gerar' })); });
+
+    expect(invoke.mock.calls.filter((c: any[]) => c[0] === 'criativo-art-direction')).toHaveLength(3);
+    expect(invoke.mock.calls.filter((c: any[]) => c[0] === 'criativo-analyze-refs')).toHaveLength(1);
+  });
+
+  it('uma peça que falha não derruba a irmã, e o campo não é limpo', async () => {
+    // Num lote em que uma falhou, o brief é exatamente o que o usuário vai
+    // querer para tentar a que faltou.
+    let geracoes = 0;
+    invoke.mockImplementation(invokeComLeitura((nome: string) => {
+      if (nome !== 'criativo-generate') return Promise.resolve({ data: {}, error: null });
+      geracoes++;
+      return geracoes === 1
+        ? Promise.resolve({ data: { error: 'provedor recusou' }, error: null })
+        : Promise.resolve({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    }));
+    createCreativeAsset.mockImplementation(async (input: any) => ({
+      ...ASSETS_DO_PROJETO[0], id: `nv-${geracoes}-${Math.random()}`, ...input,
+    }));
+    updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({
+      ...ASSETS_DO_PROJETO[0], id, ...patch,
+    }));
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+
+    const campo = screen.getByPlaceholderText('O que você quer criar?') as HTMLTextAreaElement;
+    fireEvent.change(campo, { target: { value: 'duas opções de anúncio' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Gerar' })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Gerar as 2/ })); });
+
+    // As duas foram tentadas: a falha de uma não abortou a espera da outra.
+    expect(invoke.mock.calls.filter((c: any[]) => c[0] === 'criativo-generate')).toHaveLength(2);
+    expect(campo.value).toBe('duas opções de anúncio');
+  });
+
+  it('pedido de uma peça só continua gerando direto, sem lote', async () => {
+    // A garantia de que o caminho de sempre não mudou por causa de um
+    // recurso que não foi usado.
+    const briefs: string[] = [];
+    invoke.mockImplementation((nome: string, opcoes: any) => {
+      if (nome === 'criativo-art-direction') {
+        briefs.push(opcoes.body.brief);
+        return Promise.resolve(DIRECAO_LIDA);
+      }
+      return Promise.resolve({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    });
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+
+    fireEvent.change(screen.getByPlaceholderText('O que você quer criar?'), {
+      target: { value: 'anúncio de clareamento dental' },
+    });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Gerar' })); });
+
+    expect(briefs).toEqual(['anúncio de clareamento dental']);
+    expect(screen.queryByText(/peças/)).toBeNull();
+  });
+
   it('o Fator põe as cinco cinzas na tela antes de qualquer imagem', async () => {
     prepararFator();
     let liberar!: (v: any) => void;

@@ -862,3 +862,44 @@ describe('interpret — a leitura separada da geração', () => {
     expect((deps.invoke as any).mock.calls[0][1].prompt).toContain('Lido na hora');
   });
 });
+
+describe('a leitura de referências reaproveitada entre peças', () => {
+  it('com a leitura em mãos, as referências não são decodificadas de novo', () => {
+    // Num pedido de duas peças, `interpret` roda duas vezes. Sem reaproveitar,
+    // as MESMAS referências custariam duas chamadas de visão para chegar ao
+    // mesmo documento de estilo.
+    const deps = fakeDeps();
+    deps.analyzeReferences = vi.fn(async () => ({ designSystemDoc: 'x', antiPadroes: [], mood: null }) as any);
+    deps.directArt = vi.fn(async () => ({ artDirection: null, copyBlocks: null }));
+
+    return createStudioAssetActions(deps).interpret('peça 2', '1:1', {
+      referenceImageUrls: ['https://x/r.png'],
+      referenceReading: {
+        designSystemDoc: '## Paleta\nAzul petróleo',
+        antiPadroes: ['nada de arco-íris'],
+        mood: null,
+        designSystemFromReference: true,
+      },
+    }).then((leitura) => {
+      expect(deps.analyzeReferences).not.toHaveBeenCalled();
+      expect(leitura.designSystemDoc).toContain('Azul petróleo');
+      expect(leitura.designSystemFromReference).toBe(true);
+      // E o estilo reaproveitado chega à direção de arte da segunda peça.
+      expect((deps.directArt as any).mock.calls[0][0].designSystemDoc).toContain('Azul petróleo');
+    });
+  });
+
+  it('sem leitura em mãos, continua lendo as referências como antes', async () => {
+    const deps = fakeDeps();
+    deps.analyzeReferences = vi.fn(async () => ({
+      designSystemDoc: 'lido na hora', antiPadroes: null, mood: null,
+    }) as any);
+
+    const leitura = await createStudioAssetActions(deps).interpret('peça 1', '1:1', {
+      referenceImageUrls: ['https://x/r.png'],
+    });
+
+    expect(deps.analyzeReferences).toHaveBeenCalledTimes(1);
+    expect(leitura.designSystemDoc).toBe('lido na hora');
+  });
+})

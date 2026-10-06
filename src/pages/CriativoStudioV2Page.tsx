@@ -62,7 +62,9 @@ import {
   type StudioAssetActionsDeps,
   type StudioInterpretation,
 } from '@/features/creative-studio/generation/studioAssetActions';
-import { montarProposta, type PropostaDeArte } from '@/lib/creativeStudio/proposal';
+import { montarPropostaDoPedido, type PropostaDoPedido } from '@/lib/creativeStudio/proposal';
+import { lerQuantidade } from '@/lib/creativeStudio/quantidade';
+import { briefDaVariacao, resumoDaPeca } from '@/lib/creativeStudio/variacoes';
 import { IMAGE_GENERATION_MODEL } from '@/features/creative-studio/generation/capabilities';
 import { SOURCE_ASSET_TYPES } from '@/features/creative-studio/types/creative';
 import type { CreativeAsset, CreativeAspectRatio, CreativeResolution } from '@/features/creative-studio/types/creative';
@@ -614,10 +616,13 @@ export default function CriativoStudioV2Page() {
      *  quando o sim chegar. Trocar o formato depois de aprovar geraria uma
      *  peça que a proposta não descreve. */
     formato: CreativeAspectRatio;
-    opcoes: GenerationOptions;
+    /** Uma entrada por peça, cada uma com a leitura que o usuário aprovou. */
+    pecas: GenerationOptions[];
     copyAnexada: string | null;
   } | null>(null);
-  const [proposta, setProposta] = useState<PropostaDeArte | null>(null);
+  const [proposta, setProposta] = useState<PropostaDoPedido | null>(null);
+  /** "ideia 2 de 2" — o que distingue "está demorando" de "está travado". */
+  const [detalheDoEstagio, setDetalheDoEstagio] = useState<string | null>(null);
 
   /** Os anexos do dock, separados pelo papel que cada um cumpre no prompt. */
   const anexosPorPapel = useCallback(() => {
@@ -652,10 +657,10 @@ export default function CriativoStudioV2Page() {
    * Separado do Enter de propósito: o Enter lê e propõe, isto gasta. São os
    * dois lados do ponto de parada.
    */
-  const gerarArte = useCallback(async (
+  const gerarPecas = useCallback(async (
     texto: string,
     formato: CreativeAspectRatio,
-    opcoes: GenerationOptions,
+    pecas: GenerationOptions[],
     copyAnexada: string | null,
   ) => {
     setBusy(true);
@@ -673,20 +678,56 @@ export default function CriativoStudioV2Page() {
      */
     let deuCerto = false;
     try {
-      const resultado = await actions.generate(texto, formato, {
-        ...opcoes,
-        onStage: setEstagio,
+      /*
+       * As peças saem em paralelo, e uma falha não derruba as irmãs.
+       *
+       * `allSettled`, e não `all`: com `all`, a primeira peça que lançasse
+       * abortaria a espera pelas outras — que continuariam gerando no
+       * servidor, sem ninguém para receber o resultado nem atualizar o card.
+       *
+       * Paralelo é seguro aqui porque a parte sequencial já aconteceu: as
+       * leituras foram feitas uma depois da outra justamente para serem
+       * diferentes, e cada peça chega com a sua pronta.
+       */
+      const saidas = await Promise.allSettled(pecas.map((peca, i) => actions.generate(texto, formato, {
+        ...peca,
+        batch: pecas.length > 1 ? { indice: i + 1, total: pecas.length } : null,
+        // Só a primeira anuncia a etapa: N peças gritando o estágio ao mesmo
+        // tempo fariam o rótulo piscar sem dizer nada.
+        onStage: i === 0 ? setEstagio : undefined,
         // O card de carregando ocupa o lugar da arte no instante do pedido,
         // e não depois dos segundos que ler referência e dirigir a arte
         // consomem.
         onAssetCreated: upsertAsset,
-      });
-      upsertAsset(resultado);
-      if (resultado.status === 'failed') {
-        toast({ title: 'Erro ao gerar', description: resultado.errorMessage ?? undefined, variant: 'destructive' });
+      })));
+
+      const prontas = saidas.filter(
+        (r): r is PromiseFulfilledResult<CreativeAsset> => r.status === 'fulfilled',
+      ).map((r) => r.value);
+      for (const arte of prontas) upsertAsset(arte);
+
+      const boas = prontas.filter((a) => a.status !== 'failed');
+      const falhou = pecas.length - boas.length;
+
+      if (boas.length === 0) {
+        const motivo = prontas.find((a) => a.errorMessage)?.errorMessage;
+        toast({ title: 'Erro ao gerar', description: motivo ?? undefined, variant: 'destructive' });
       } else {
-        toast({ title: 'Arte gerada' });
-        deuCerto = true;
+        /*
+         * Só limpa quando TUDO deu certo.
+         *
+         * Num lote de duas em que uma falhou, o brief e os anexos são
+         * exatamente o que o usuário vai querer para tentar a que faltou.
+         */
+        if (falhou > 0) {
+          toast({
+            title: `${boas.length} de ${pecas.length} geradas`,
+            description: 'As que falharam têm o botão de tentar novamente no card.',
+          });
+        } else {
+          toast({ title: boas.length > 1 ? `${boas.length} artes geradas` : 'Arte gerada' });
+          deuCerto = true;
+        }
         // Fecha o loop de "copies já usadas": sem isto, o histórico do
         // painel de anexos só cresceria com um salvamento manual que o V2
         // nunca ofereceu.
@@ -707,6 +748,7 @@ export default function CriativoStudioV2Page() {
     } finally {
       setBusy(false);
       setEstagio(null);
+      setDetalheDoEstagio(null);
       if (deuCerto) {
         setCommand('');
         setProposta(null);
@@ -740,41 +782,94 @@ export default function CriativoStudioV2Page() {
         clientName,
       };
 
+      /*
+       * Quantas peças o pedido está pedindo.
+       *
+       * "quero 2 criativos" saía com uma arte só: o "2" era texto solto
+       * dentro do brief. A leitura é um módulo puro — ler um número não
+       * precisa de IA, e o que não precisa de IA não deveria depender de um
+       * deploy de edge function.
+       */
+      const { n, pedido } = lerQuantidade(texto);
+
       setBusy(true);
-      let leitura: StudioInterpretation | null = null;
+      const leituras: StudioInterpretation[] = [];
+      /*
+       * As leituras acontecem EM SEQUÊNCIA, e não em paralelo.
+       *
+       * É a única forma de a segunda ideia saber o que a primeira propôs —
+       * e "duas peças" só vale a pena quando são dois caminhos, não duas
+       * tentativas do mesmo. Duas chamadas paralelas devolveriam duas
+       * leituras parecidas.
+       *
+       * O custo é a espera dobrar antes da proposta. Daí o dock passar a
+       * dizer em que ideia está.
+       */
+      const jaPropostas: string[] = [];
+      /*
+       * As referências são decodificadas UMA vez.
+       *
+       * Sem isto, um pedido de duas peças com três referências anexadas
+       * custaria duas chamadas de visão para chegar ao mesmo documento de
+       * estilo.
+       */
+      let estilo: GenerationOptions['referenceReading'] = null;
+
       try {
-        leitura = await actions.interpret(texto, ratio, { ...opcoes, onStage: setEstagio });
-      } catch (e: any) {
+        for (let i = 1; i <= n; i++) {
+          setDetalheDoEstagio(n > 1 ? `ideia ${i} de ${n}` : null);
+          const leitura = await actions.interpret(
+            briefDaVariacao(texto, i, n, jaPropostas),
+            ratio,
+            { ...opcoes, onStage: setEstagio, referenceReading: estilo },
+          );
+          leituras.push(leitura);
+          estilo = estilo ?? {
+            designSystemDoc: leitura.designSystemDoc,
+            antiPadroes: leitura.antiPadroes,
+            mood: leitura.mood,
+            designSystemFromReference: leitura.designSystemFromReference,
+          };
+          const resumo = resumoDaPeca(leitura.artDirection);
+          if (resumo) jaPropostas.push(resumo);
+        }
+      } catch {
         // A leitura não pode impedir a arte. Um erro aqui segue para a
         // geração sem a camada extra, que é exatamente o que acontecia
         // antes de o passo existir.
-        leitura = null;
       } finally {
         setBusy(false);
         setEstagio(null);
+        setDetalheDoEstagio(null);
       }
 
-      const comLeitura: GenerationOptions = { ...opcoes, interpretation: leitura };
-      const sugestao = montarProposta({
-        artDirection: leitura?.artDirection ?? null,
-        copyBlocks: leitura?.copyBlocks ?? null,
+      // Uma peça por leitura; se a leitura morreu no meio, as peças que
+      // faltam saem pelo caminho literal em vez de sumirem do pedido.
+      const pecas: GenerationOptions[] = Array.from({ length: n }, (_, i) => ({
+        ...opcoes,
+        interpretation: leituras[i] ?? null,
+      }));
+
+      const sugestao = montarPropostaDoPedido({
+        pecas: leituras.map((l) => ({ artDirection: l.artDirection, copyBlocks: l.copyBlocks })),
         aspectRatio: ratio,
         referencias: referencias.length,
+        quantidade: { n, pedido },
       });
 
       /*
        * Proposta vazia não cobra aprovação.
        *
-       * Sem cena, sem copy repartida e sem formato escolhido, o painel
-       * repetiria o pedido de volta e pediria um sim por nada. Nesse caso o
-       * Enter faz o que sempre fez: gera.
+       * Sem cena, sem copy repartida, sem formato e com uma peça só, o
+       * painel repetiria o pedido de volta e pediria um sim por nada. Nesse
+       * caso o Enter faz o que sempre fez: gera.
        */
       if (sugestao.vazia) {
-        await gerarArte(texto, ratio, comLeitura, copyAnexada);
+        await gerarPecas(texto, ratio, pecas, copyAnexada);
         return;
       }
 
-      setPedidoPendente({ texto, formato: ratio, opcoes: comLeitura, copyAnexada });
+      setPedidoPendente({ texto, formato: ratio, pecas, copyAnexada });
       setProposta(sugestao);
       return;
     }
@@ -817,16 +912,16 @@ export default function CriativoStudioV2Page() {
     avisarIndisponivel('Ações em lote ainda não estão disponíveis — selecione uma arte por vez.');
   }, [
     command, hasCopy, busy, anexosPorPapel, ratio, resolution, modelId, actions, assets,
-    upsertAsset, avisarIndisponivel, clientName, gerarArte,
+    upsertAsset, avisarIndisponivel, clientName, gerarPecas,
   ]);
 
   /** O sim: gera com a leitura que está na tela, sem reler nada. */
   const aprovarProposta = useCallback(() => {
     if (!pedidoPendente || busy) return;
-    void gerarArte(
-      pedidoPendente.texto, pedidoPendente.formato, pedidoPendente.opcoes, pedidoPendente.copyAnexada,
+    void gerarPecas(
+      pedidoPendente.texto, pedidoPendente.formato, pedidoPendente.pecas, pedidoPendente.copyAnexada,
     );
-  }, [pedidoPendente, busy, gerarArte]);
+  }, [pedidoPendente, busy, gerarPecas]);
 
   /**
    * "Ajustar" devolve o pedido ao campo, com os anexos intactos.
@@ -1120,6 +1215,7 @@ export default function CriativoStudioV2Page() {
       focusToken={focusToken}
         onCommandChange={setCommand}
         onSubmitCommand={handleSubmitCommand}
+        stageDetail={detalheDoEstagio}
         proposal={proposta}
         onApproveProposal={aprovarProposta}
         onAdjustProposal={ajustarProposta}

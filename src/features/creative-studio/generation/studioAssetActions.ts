@@ -113,6 +113,27 @@ export interface GenerationOptions {
    */
   interpretation?: StudioInterpretation | null;
   /**
+   * O lugar desta peça num pedido de várias.
+   *
+   * Fica no metadata, e não num `asset_group`: `asset_groups.type` tem CHECK
+   * no banco, e inventar um tipo novo é exatamente o que derrubou o insert
+   * inteiro do Fator (23514, em `factor_axis`). O agrupamento visual pode
+   * vir depois, com a migração dele; a procedência não precisa esperar.
+   */
+  batch?: { indice: number; total: number } | null;
+  /**
+   * A leitura das REFERÊNCIAS já feita.
+   *
+   * Num pedido de duas peças, `interpret` roda duas vezes — e sem isto as
+   * mesmas referências seriam decodificadas duas vezes, por duas chamadas
+   * de visão, para chegar ao mesmo documento de estilo. É o mesmo custo que
+   * `interpretation` evita na geração, um degrau acima.
+   */
+  referenceReading?: Pick<
+    StudioInterpretation,
+    'designSystemDoc' | 'antiPadroes' | 'mood' | 'designSystemFromReference'
+  > | null;
+  /**
    * Avisa em que etapa a geração está.
    *
    * Sem isso, ler referência e dirigir a arte somam segundos em que a tela
@@ -229,8 +250,9 @@ async function lerOPedido(
   // relatado, e igualmente errado: a foto da embalagem do cliente era
   // decodificada como se fosse a linguagem visual a imitar, e ainda custava
   // uma chamada de visão em toda geração com produto.
+  const jaLido = options.referenceReading ?? null;
   let analise: ReferenceAnalysis | null = null;
-  if (referencias.length > 0 && deps.analyzeReferences) {
+  if (!jaLido && referencias.length > 0 && deps.analyzeReferences) {
     options.onStage?.('reading-references');
     try {
       analise = await deps.analyzeReferences(referencias);
@@ -238,6 +260,14 @@ async function lerOPedido(
       analise = null;
     }
   }
+  const estilo = jaLido ?? {
+    designSystemDoc: analise?.designSystemDoc ?? null,
+    antiPadroes: analise?.antiPadroes ?? null,
+    mood: analise?.mood ?? null,
+    // O documento saiu de arte de terceiros: a cláusula que proíbe
+    // reproduzir a marca de origem só existe quando houve referência.
+    designSystemFromReference: referencias.length > 0,
+  };
 
   let direcao: ArtDirectionResult = { artDirection: null, copyBlocks: null };
   if (deps.directArt) {
@@ -249,7 +279,7 @@ async function lerOPedido(
         clientName: options.clientName ?? null,
         language: options.language,
         aspectRatio,
-        designSystemDoc: analise?.designSystemDoc ?? null,
+        designSystemDoc: estilo.designSystemDoc,
         hasReferences: referencias.length > 0,
         hasProduct: produtos.length > 0,
         // Pessoa e avatar são a MESMA pergunta para a direção de arte:
@@ -266,12 +296,7 @@ async function lerOPedido(
   return {
     artDirection: direcao.artDirection,
     copyBlocks: direcao.copyBlocks,
-    designSystemDoc: analise?.designSystemDoc ?? null,
-    antiPadroes: analise?.antiPadroes ?? null,
-    mood: analise?.mood ?? null,
-    // O documento saiu de arte de terceiros: a cláusula que proíbe
-    // reproduzir a marca de origem só existe quando houve referência.
-    designSystemFromReference: referencias.length > 0,
+    ...estilo,
   };
 }
 
@@ -287,6 +312,7 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
       const pessoas = options.personImageUrls ?? [];
       const avatares = options.avatarImageUrls ?? [];
       const anexos = {
+        lote: options.batch ?? null,
         logoImage: options.logoImageUrl ?? null,
         productImages: produtos,
         personImages: pessoas,

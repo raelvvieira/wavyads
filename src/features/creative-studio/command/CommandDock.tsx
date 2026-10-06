@@ -32,6 +32,14 @@ interface CommandDockProps {
   busy: boolean;
   /** Em que etapa a geração está — ver `GenerationStage`. */
   stage?: GenerationStage | null;
+  /**
+   * O detalhe da etapa — "ideia 2 de 2".
+   *
+   * Num pedido de várias peças, as leituras acontecem em sequência, e um
+   * spinner idêntico por vários segundos parece uma tela travada. O detalhe
+   * é o que distingue "está demorando" de "está trabalhando".
+   */
+  stageDetail?: string | null;
   hasCopy: boolean;
   ratio: CreativeAspectRatio;
   resolution: CreativeResolution;
@@ -99,6 +107,7 @@ export function CommandDock({
   onSubmit,
   busy,
   stage = null,
+  stageDetail = null,
   hasCopy,
   ratio,
   resolution,
@@ -245,7 +254,17 @@ export function CommandDock({
           </button>
         </GenerationSettingsPopover>
 
-        {selection.total > 0 && (
+        {/* A etapa, por escrito. Ela já existia em três nomes e vivia só no
+            `aria-label` — ou seja, só quem usava leitor de tela sabia que o
+            sistema estava lendo referência em vez de estar travado. */}
+        {busy && (
+          <span className="text-[11px] text-white/55" role="status">
+            {ROTULO_DO_ESTAGIO[stage ?? 'generating']}
+            {stageDetail ? ` ${stageDetail}` : ''}
+          </span>
+        )}
+
+        {!busy && selection.total > 0 && (
           <span className="text-[11px] text-white/50">
             {resumoDaSelecao(selection)}
           </span>

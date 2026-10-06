@@ -17,7 +17,7 @@ import { AvatarStudio } from '../avatar/AvatarStudio';
 import { CommandDock } from '../command/CommandDock';
 import { AssetInspector } from '../inspector/AssetInspector';
 import { ProposalPanel } from '../command/ProposalPanel';
-import type { PropostaDeArte } from '@/lib/creativeStudio/proposal';
+import type { PropostaDoPedido } from '@/lib/creativeStudio/proposal';
 
 export interface CreativeStudioShellProps {
   clientName: string | null;
@@ -47,6 +47,8 @@ export interface CreativeStudioShellProps {
   onSubmitCommand: (selectedIds: string[]) => void;
   busy: boolean;
   stage?: GenerationStage | null;
+  /** O detalhe da etapa — "ideia 2 de 2" num pedido de várias peças. */
+  stageDetail?: string | null;
   hasCopy: boolean;
   ratio: CreativeAspectRatio;
   resolution: CreativeResolution;
@@ -86,7 +88,7 @@ export interface CreativeStudioShellProps {
    * Chega não-nula e o painel abre sozinho — ela é a resposta ao Enter, não
    * um lugar que alguém vai pensar em procurar.
    */
-  proposal?: PropostaDeArte | null;
+  proposal?: PropostaDoPedido | null;
   /** O sim: gera com a leitura que está na tela, sem reler. */
   onApproveProposal?: () => void;
   /** Devolve o texto ao campo de comando, com os anexos intactos. */
@@ -239,6 +241,7 @@ export function CreativeStudioShell(props: CreativeStudioShellProps) {
             onSubmit={() => props.onSubmitCommand(selectedIds)}
             busy={props.busy}
             stage={props.stage}
+            stageDetail={props.stageDetail}
             hasCopy={props.hasCopy}
             ratio={props.ratio}
             resolution={props.resolution}

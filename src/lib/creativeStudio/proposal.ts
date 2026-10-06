@@ -69,6 +69,34 @@ function frase(v: string | null | undefined): string | null {
   return t.length ? t : null;
 }
 
+/**
+ * O que o sistema leu para chegar até aqui.
+ *
+ * Existe porque "o sistema leu tudo" é uma promessa que ninguém consegue
+ * verificar. Listar as fontes transforma isso em algo conferível — e quando
+ * a lista sai vazia, essa também é a resposta: o pedido foi mais pobre do
+ * que podia ser, e dá para voltar e anexar algo.
+ *
+ * Exportada porque as peças e o pedido inteiro leem das MESMAS fontes: num
+ * lote de duas, as referências foram lidas uma vez e valem para as duas.
+ * Duas cópias desta lista divergiriam no dia em que uma fonte nova
+ * aparecesse.
+ */
+export function listarFontes(e: EntradaDaProposta): string[] {
+  const leu: string[] = [];
+  if (e.referencias) {
+    leu.push(e.referencias === 1 ? '1 referência anexada' : `${e.referencias} referências anexadas`);
+  }
+  if (e.aprovadas) {
+    leu.push(e.aprovadas === 1
+      ? '1 arte aprovada deste cliente'
+      : `${e.aprovadas} artes aprovadas deste cliente`);
+  }
+  if (e.temDossie) leu.push('o dossiê da oferta');
+  if (e.container) leu.push(`${e.container.nome_pt}, do catálogo de formatos`);
+  return leu;
+}
+
 export function montarProposta(e: EntradaDaProposta): PropostaDeArte {
   const container = e.container ?? null;
 
@@ -90,25 +118,7 @@ export function montarProposta(e: EntradaDaProposta): PropostaDeArte {
         .filter((p): p is { papel: string; texto: string } => !!p.texto)
     : [];
 
-  /*
-   * O que o sistema leu.
-   *
-   * Existe porque "o sistema leu tudo" é uma promessa que ninguém consegue
-   * verificar. Listar as fontes transforma isso em algo conferível — e
-   * quando a lista sai vazia, essa também é a resposta: o pedido foi mais
-   * pobre do que podia ser, e dá para voltar e anexar algo.
-   */
-  const leu: string[] = [];
-  if (e.referencias) {
-    leu.push(e.referencias === 1 ? '1 referência anexada' : `${e.referencias} referências anexadas`);
-  }
-  if (e.aprovadas) {
-    leu.push(e.aprovadas === 1
-      ? '1 arte aprovada deste cliente'
-      : `${e.aprovadas} artes aprovadas deste cliente`);
-  }
-  if (e.temDossie) leu.push('o dossiê da oferta');
-  if (container) leu.push(`${container.nome_pt}, do catálogo de formatos`);
+  const leu = listarFontes(e);
 
   const formato = container
     ? { nome: container.nome_pt, proporcao: e.aspectRatio ?? container.proporcao }
@@ -121,5 +131,59 @@ export function montarProposta(e: EntradaDaProposta): PropostaDeArte {
     angulo: e.angulo ?? null,
     leu,
     vazia: !formato && !cena && copy.length === 0,
+  };
+}
+
+/**
+ * A proposta do PEDIDO inteiro — uma peça ou várias.
+ *
+ * A peça (`PropostaDeArte`) descreve uma arte; o pedido descreve o que vai
+ * acontecer quando o usuário disser sim. São coisas diferentes assim que a
+ * quantidade deixa de ser sempre 1: o cliente e as fontes lidas valem para
+ * o lote, e quantas peças saem é informação sobre o GASTO, não sobre
+ * nenhuma arte em particular.
+ */
+export interface PropostaDoPedido {
+  pecas: PropostaDeArte[];
+  /**
+   * O cliente desta arte, e se o sistema o reconheceu no texto do pedido.
+   *
+   * `doTexto: true` é o caso que precisa de confirmação: o sistema mudou
+   * uma escolha que o usuário não fez à mão, e errar o dono manda a arte
+   * para a biblioteca do cliente errado.
+   */
+  cliente: { nome: string; doTexto: boolean } | null;
+  /** Quantas peças saem, e quantas foram pedidas antes do teto. */
+  quantidade: { n: number; pedido: number };
+  /** As fontes lidas — do pedido, não de cada peça. */
+  leu: string[];
+  vazia: boolean;
+}
+
+export interface EntradaDoPedido extends Omit<EntradaDaProposta, 'artDirection' | 'copyBlocks'> {
+  pecas: EntradaDaProposta[];
+  cliente?: { nome: string; doTexto: boolean } | null;
+  quantidade?: { n: number; pedido: number };
+}
+
+export function montarPropostaDoPedido(e: EntradaDoPedido): PropostaDoPedido {
+  const pecas = e.pecas.map((p) => montarProposta({ ...p, aspectRatio: p.aspectRatio ?? e.aspectRatio }));
+  const quantidade = e.quantidade ?? { n: pecas.length || 1, pedido: pecas.length || 1 };
+  const cliente = e.cliente ?? null;
+
+  return {
+    pecas,
+    cliente,
+    quantidade,
+    leu: listarFontes(e),
+    /*
+     * Quando vale a pena parar e pedir um sim.
+     *
+     * Peças magras bastariam para não mostrar nada — mas duas coisas valem
+     * confirmação mesmo sem cena nem copy: um lote, porque está prestes a
+     * gastar mais de uma geração; e um cliente lido do texto, porque o
+     * sistema mexeu numa escolha que o usuário não fez.
+     */
+    vazia: pecas.every((p) => p.vazia) && quantidade.n <= 1 && !cliente?.doTexto,
   };
 }

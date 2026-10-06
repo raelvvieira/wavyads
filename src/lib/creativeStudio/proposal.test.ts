@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { montarProposta } from './proposal';
+import { montarProposta, montarPropostaDoPedido } from './proposal';
 import { containerPorId } from '@/lib/creativeGenome/catalog';
 
 const DIRECAO = {
@@ -98,5 +98,69 @@ describe('montarProposta', () => {
     expect(() => montarProposta({
       container: null, artDirection: null, copyBlocks: null, aspectRatio: null, angulo: null,
     })).not.toThrow();
+  });
+});
+
+describe('montarPropostaDoPedido', () => {
+  const PECA = { artDirection: DIRECAO };
+
+  it('duas peças viram duas propostas, e as fontes são do pedido', () => {
+    // As referências foram lidas UMA vez e valem para as duas. Repetir a
+    // lista por peça daria a impressão de duas leituras que não houve.
+    const p = montarPropostaDoPedido({
+      pecas: [PECA, { artDirection: { ...DIRECAO, mainSubject: 'Outra cena.' } }],
+      quantidade: { n: 2, pedido: 2 },
+      referencias: 2,
+    });
+    expect(p.pecas).toHaveLength(2);
+    expect(p.pecas[1].cena).toContain('Outra cena.');
+    expect(p.leu).toEqual(['2 referências anexadas']);
+  });
+
+  it('a proporção do pedido desce para a peça que não declarou a sua', () => {
+    const p = montarPropostaDoPedido({ pecas: [PECA], aspectRatio: '9:16', container: null });
+    expect(p.pecas[0].formato).toBeNull(); // sem container não há formato
+    const comContainer = montarPropostaDoPedido({
+      pecas: [{ ...PECA, container: containerPorId('antes_depois') }],
+      aspectRatio: '9:16',
+    });
+    expect(comContainer.pecas[0].formato?.proporcao).toBe('9:16');
+  });
+
+  it('um lote sempre pede confirmação, mesmo com peças magras', () => {
+    // Está prestes a gastar mais de uma geração. Isso basta para parar.
+    const p = montarPropostaDoPedido({ pecas: [{}, {}], quantidade: { n: 2, pedido: 2 } });
+    expect(p.pecas.every((x) => x.vazia)).toBe(true);
+    expect(p.vazia).toBe(false);
+  });
+
+  it('cliente lido do texto sempre pede confirmação', () => {
+    // O sistema mexeu numa escolha que o usuário não fez à mão, e errar o
+    // dono manda a arte para a biblioteca do cliente errado.
+    const p = montarPropostaDoPedido({
+      pecas: [{}],
+      cliente: { nome: 'Dra Mariane', doTexto: true },
+    });
+    expect(p.vazia).toBe(false);
+    expect(p.cliente).toEqual({ nome: 'Dra Mariane', doTexto: true });
+  });
+
+  it('cliente escolhido à mão não cobra confirmação sozinho', () => {
+    // Ele já estava na tela quando o usuário apertou Enter. Repetir isso de
+    // volta não é informação.
+    const p = montarPropostaDoPedido({
+      pecas: [{}],
+      cliente: { nome: 'Dra Mariane', doTexto: false },
+    });
+    expect(p.vazia).toBe(true);
+  });
+
+  it('uma peça magra e sem cliente continua não virando painel', () => {
+    expect(montarPropostaDoPedido({ pecas: [{}] }).vazia).toBe(true);
+  });
+
+  it('o teto cortado atravessa para a tela', () => {
+    const p = montarPropostaDoPedido({ pecas: [{}, {}, {}, {}], quantidade: { n: 4, pedido: 10 } });
+    expect(p.quantidade).toEqual({ n: 4, pedido: 10 });
   });
 });
