@@ -118,6 +118,15 @@ export function buildGenerationRequest(input: {
    * com label, hierarquia e botão em vez de linhas do mesmo tamanho.
    */
   copyBlocks?: PromptCopyBlocks | null;
+  /**
+   * O CONTAINER: que PEÇA esta arte é — layout, hierarquia, ritmo. Nunca copy.
+   *
+   * O bloco [TEMPLATE STRUCTURE] já existia no montador, com a cláusula que
+   * impede reusar a copy de um uso anterior. O que faltava era um canal para
+   * ele neste caminho: a V2 nunca passou o parâmetro, então o bloco era
+   * código morto para quem usa o Studio hoje.
+   */
+  template?: { name: string; category: string | null; layoutStructure: unknown } | null;
   designSystemDoc?: string | null;
   /**
    * O `designSystemDoc` foi lido de arte de TERCEIROS.
@@ -156,6 +165,7 @@ export function buildGenerationRequest(input: {
     productCount: produtos.length,
     hasLogo: !!input.logoImageUrl,
     artDirection: input.artDirection ?? null,
+    template: input.template ?? null,
     designSystemDoc: input.designSystemDoc ?? '',
     designSystemIsThirdParty: !!input.designSystemIsThirdParty,
     antiPadroes: input.antiPadroes ?? null,
@@ -439,6 +449,14 @@ export function buildFactorVariationRequest(input: {
    * o documento que a base teve faria o lote divergir do original
    * justamente no que ele deveria preservar.
    */
+  /**
+   * O container da peça-base.
+   *
+   * As cinco variações são da mesma campanha: perder o layout faria o lote
+   * divergir do original justamente no que ele deveria preservar. O que
+   * varia entre elas é a tese, não o formato da peça.
+   */
+  template?: { name: string; category: string | null; layoutStructure: unknown } | null;
   designSystemDoc?: string | null;
   /** O sistema visual da base veio de referência de terceiros — a cláusula
    *  que proíbe reproduzir a marca de origem precisa vir junto. */
@@ -479,6 +497,7 @@ export function buildFactorVariationRequest(input: {
     // uma para outra, o lote deixa de ser comparável.
     productCount: produtos.length,
     hasLogo: !!input.logoImageUrl,
+    template: input.template ?? null,
     designSystemDoc: input.designSystemDoc ?? '',
     designSystemIsThirdParty: !!input.designSystemIsThirdParty,
     antiPadroes: input.antiPadroes ?? null,

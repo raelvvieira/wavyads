@@ -1,5 +1,6 @@
 import { ASPECT_CONFIG, RESOLUTION_CONFIG } from '../constants/formats';
 import { safeAreaFor, safeRect, typeScaleFor, verticalLift, type SafeArea } from './safeArea';
+import { describeLayoutStructure } from '@/lib/creativeGenome/layout';
 import type { BackendAspect, CreativeAspectRatio, CreativeResolution } from '../types/creative';
 
 // Montagem do prompt final de geração. Estava dentro do CriativoStudioPage,
@@ -255,12 +256,24 @@ Quality target: ${resolutionConfig.promptQuality}.`;
   // podem conter texto literal (headline, CTA) do projeto em que o template foi
   // salvo, e o modelo de imagem renderiza esse texto antigo junto com a copy
   // atual. O template influencia apenas LAYOUT/ESTILO.
+  /*
+   * Uma linha fica onde está; várias ganham linha própria.
+   *
+   * Um container descrito em prosa tem parágrafos e listas — espremê-lo
+   * depois dos dois-pontos produz uma parede. Mas o caminho V1 passa
+   * `layout_structure` cru, que vira um JSON de uma linha, e o snapshot
+   * dele está travado: quebrar ali mudaria um prompt que já está em
+   * produção, sem ganho nenhum.
+   */
+  const estruturaNaLinha = (texto: string) =>
+    texto.includes('\n') ? `\n${texto}` : ` ${texto}`;
+
   const templateBlock = template
     ? `[TEMPLATE STRUCTURE]
 Use the following reusable template structure as the creative foundation — layout, visual hierarchy, typography rhythm, spacing and composition only.
 Template name: ${template.name}
 Template category: ${template.category || 'not specified'}
-Template visual structure: ${JSON.stringify(template.layoutStructure || {})}
+Template visual structure:${estruturaNaLinha(describeLayoutStructure(template.layoutStructure))}
 
 This structure defines LAYOUT AND STYLE ONLY. Do NOT reuse, reference or render any headline, label, subtitle, CTA or body copy from a previous use of this template. ALL text content for this artwork comes exclusively from the [TEXT BLOCKS] section below, verbatim — adapt only the text, product, references and business context from the current project.`
     : '';
