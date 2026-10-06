@@ -57,9 +57,12 @@ import { buildSafeZoneBlock } from '@/features/creative-studio/lib/promptBuilder
 import { baixarArquivo } from '@/features/creative-studio/lib/downloadFile';
 import {
   createStudioAssetActions,
+  type GenerationOptions,
   type GenerationStage,
   type StudioAssetActionsDeps,
+  type StudioInterpretation,
 } from '@/features/creative-studio/generation/studioAssetActions';
+import { montarProposta, type PropostaDeArte } from '@/lib/creativeStudio/proposal';
 import { IMAGE_GENERATION_MODEL } from '@/features/creative-studio/generation/capabilities';
 import { SOURCE_ASSET_TYPES } from '@/features/creative-studio/types/creative';
 import type { CreativeAsset, CreativeAspectRatio, CreativeResolution } from '@/features/creative-studio/types/creative';
@@ -597,9 +600,64 @@ export default function CriativoStudioV2Page() {
 
   const hasCopy = attachments.some((a) => a.kind === 'copy');
 
-  const handleSubmitCommand = useCallback(async (selectedIds: string[]) => {
-    const texto = command.trim();
-    if ((!texto && !hasCopy) || busy) return;
+  /**
+   * O pedido lido, esperando um sim.
+   *
+   * Guarda tudo que a geração vai precisar — o texto, os anexos já
+   * separados por papel e a leitura que o usuário aprovou. Sem isso, dizer
+   * sim relançaria a leitura e geraria a partir de uma interpretação que
+   * pode não ser a que estava na tela.
+   */
+  const [pedidoPendente, setPedidoPendente] = useState<{
+    texto: string;
+    /** O formato em que a proposta foi lida — e não o que estiver no popover
+     *  quando o sim chegar. Trocar o formato depois de aprovar geraria uma
+     *  peça que a proposta não descreve. */
+    formato: CreativeAspectRatio;
+    opcoes: GenerationOptions;
+    copyAnexada: string | null;
+  } | null>(null);
+  const [proposta, setProposta] = useState<PropostaDeArte | null>(null);
+
+  /** Os anexos do dock, separados pelo papel que cada um cumpre no prompt. */
+  const anexosPorPapel = useCallback(() => {
+    const logo = attachments.find((a) => a.kind === 'logo');
+    const copyAnexada = attachments.find((a) => a.kind === 'copy');
+    /**
+     * Cada papel no seu canal.
+     *
+     * Aqui havia uma linha só, juntando referência e produto no mesmo
+     * array. O `kind: 'reference'` morria nela e nunca mais existia: daí em
+     * diante tudo era `productImages`, o prompt declarava o conjunto como
+     * "the PRODUCT being advertised... preserve every label, logo and piece
+     * of text printed on it", e a arte saía com a pessoa e a logo da peça
+     * de referência no lugar das do cliente.
+     *
+     * A referência sai da pilha de imagens de vez. Ela é LIDA e vira texto —
+     * sistema visual, mood, anti-padrões. É a única garantia que não depende
+     * de o modelo obedecer: ele não vê o que não recebe.
+     */
+    const referencias = attachments.filter((a) => a.kind === 'reference').map((a) => a.value);
+    // `!== 'person'` e não `=== 'object'`: anexo sem a escolha é objeto, que
+    // é como tudo se comportava antes de a pergunta existir.
+    const pessoas = attachments.filter((a) => a.kind === 'product' && a.subject === 'person').map((a) => a.value);
+    const objetos = attachments.filter((a) => a.kind === 'product' && a.subject !== 'person').map((a) => a.value);
+    const avatares = attachments.filter((a) => a.kind === 'avatar').map((a) => a.value);
+    return { logo: logo?.value ?? null, copyAnexada: copyAnexada?.value ?? null, referencias, pessoas, objetos, avatares };
+  }, [attachments]);
+
+  /**
+   * Gera, com a leitura que já foi aprovada.
+   *
+   * Separado do Enter de propósito: o Enter lê e propõe, isto gasta. São os
+   * dois lados do ponto de parada.
+   */
+  const gerarArte = useCallback(async (
+    texto: string,
+    formato: CreativeAspectRatio,
+    opcoes: GenerationOptions,
+    copyAnexada: string | null,
+  ) => {
     setBusy(true);
     /**
      * O pedido deu certo?
@@ -615,82 +673,128 @@ export default function CriativoStudioV2Page() {
      */
     let deuCerto = false;
     try {
-      if (selectedIds.length === 0) {
-        // Sem seleção: gerar uma arte nova, no formato escolhido no popover.
-        const logo = attachments.find((a) => a.kind === 'logo');
-        const copyAnexada = attachments.find((a) => a.kind === 'copy');
-        /**
-         * Cada papel no seu canal.
-         *
-         * Aqui havia uma linha só, juntando referência e produto no mesmo
-         * array. O `kind: 'reference'` morria nela e nunca mais existia:
-         * daí em diante tudo era `productImages`, o prompt declarava o
-         * conjunto como "the PRODUCT being advertised... preserve every
-         * label, logo and piece of text printed on it", e a arte saía com a
-         * pessoa e a logo da peça de referência no lugar das do cliente.
-         *
-         * A referência sai da pilha de imagens de vez. Ela é LIDA e vira
-         * texto — sistema visual, mood, anti-padrões. É a única garantia
-         * que não depende de o modelo obedecer: ele não vê o que não
-         * recebe.
-         */
-        const referencias = attachments.filter((a) => a.kind === 'reference').map((a) => a.value);
-        // `!== 'person'` e não `=== 'object'`: anexo sem a escolha é objeto,
-        // que é como tudo se comportava antes de a pergunta existir.
-        const pessoas = attachments.filter((a) => a.kind === 'product' && a.subject === 'person').map((a) => a.value);
-        const objetos = attachments.filter((a) => a.kind === 'product' && a.subject !== 'person').map((a) => a.value);
-        const avatares = attachments.filter((a) => a.kind === 'avatar').map((a) => a.value);
+      const resultado = await actions.generate(texto, formato, {
+        ...opcoes,
+        onStage: setEstagio,
+        // O card de carregando ocupa o lugar da arte no instante do pedido,
+        // e não depois dos segundos que ler referência e dirigir a arte
+        // consomem.
+        onAssetCreated: upsertAsset,
+      });
+      upsertAsset(resultado);
+      if (resultado.status === 'failed') {
+        toast({ title: 'Erro ao gerar', description: resultado.errorMessage ?? undefined, variant: 'destructive' });
+      } else {
+        toast({ title: 'Arte gerada' });
+        deuCerto = true;
+        // Fecha o loop de "copies já usadas": sem isto, o histórico do
+        // painel de anexos só cresceria com um salvamento manual que o V2
+        // nunca ofereceu.
+        if (copyAnexada) {
+          void saveCopyToBank({
+            clientId: selectedClientId, projectId: projectIdRef.current, copyText: copyAnexada,
+          })
+            .then((entrada) => { if (entrada) setCopyBank((prev) => [entrada, ...prev]); })
+            .catch(() => {});
+        }
+      }
+      // Os anexos eram para ESTE pedido, não uma preferência permanente —
+      // consumidos, saem do dock. Mas só quando houve arte: numa falha eles
+      // são exatamente o que o usuário vai querer reaproveitar.
+      if (deuCerto) setAttachments([]);
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e?.message ?? 'Não foi possível concluir.', variant: 'destructive' });
+    } finally {
+      setBusy(false);
+      setEstagio(null);
+      if (deuCerto) {
+        setCommand('');
+        setProposta(null);
+        setPedidoPendente(null);
+      }
+    }
+  }, [actions, upsertAsset, selectedClientId]);
 
-        const resultado = await actions.generate(texto, ratio, {
-          resolution,
-          modelId,
-          copy: copyAnexada?.value ?? null,
-          logoImageUrl: logo?.value ?? null,
-          referenceImageUrls: referencias,
-          productImageUrls: objetos,
-          personImageUrls: pessoas,
-          avatarImageUrls: avatares,
-          clientName,
-          onStage: setEstagio,
-          // O card de carregando ocupa o lugar da arte no instante do
-          // pedido, e não depois dos segundos que ler referência e dirigir
-          // a arte consomem.
-          onAssetCreated: upsertAsset,
+  const handleSubmitCommand = useCallback(async (selectedIds: string[]) => {
+    const texto = command.trim();
+    if ((!texto && !hasCopy) || busy) return;
+
+    if (selectedIds.length === 0) {
+      /**
+       * Lê, e PROPÕE em vez de gerar.
+       *
+       * A leitura já existia e rodava aqui mesmo, entre o Enter e a imagem —
+       * só não era devolvida a ninguém. O ponto de parada não acrescenta
+       * espera: ele mostra a espera que já havia.
+       */
+      const { logo, copyAnexada, referencias, pessoas, objetos, avatares } = anexosPorPapel();
+      const opcoes: GenerationOptions = {
+        resolution,
+        modelId,
+        copy: copyAnexada,
+        logoImageUrl: logo,
+        referenceImageUrls: referencias,
+        productImageUrls: objetos,
+        personImageUrls: pessoas,
+        avatarImageUrls: avatares,
+        clientName,
+      };
+
+      setBusy(true);
+      let leitura: StudioInterpretation | null = null;
+      try {
+        leitura = await actions.interpret(texto, ratio, { ...opcoes, onStage: setEstagio });
+      } catch (e: any) {
+        // A leitura não pode impedir a arte. Um erro aqui segue para a
+        // geração sem a camada extra, que é exatamente o que acontecia
+        // antes de o passo existir.
+        leitura = null;
+      } finally {
+        setBusy(false);
+        setEstagio(null);
+      }
+
+      const comLeitura: GenerationOptions = { ...opcoes, interpretation: leitura };
+      const sugestao = montarProposta({
+        artDirection: leitura?.artDirection ?? null,
+        copyBlocks: leitura?.copyBlocks ?? null,
+        aspectRatio: ratio,
+        referencias: referencias.length,
+      });
+
+      /*
+       * Proposta vazia não cobra aprovação.
+       *
+       * Sem cena, sem copy repartida e sem formato escolhido, o painel
+       * repetiria o pedido de volta e pediria um sim por nada. Nesse caso o
+       * Enter faz o que sempre fez: gera.
+       */
+      if (sugestao.vazia) {
+        await gerarArte(texto, ratio, comLeitura, copyAnexada);
+        return;
+      }
+
+      setPedidoPendente({ texto, formato: ratio, opcoes: comLeitura, copyAnexada });
+      setProposta(sugestao);
+      return;
+    }
+
+    if (selectedIds.length === 1) {
+      const alvo = assets.find((a) => a.id === selectedIds[0]);
+      if (!alvo) return;
+      // Editar exige instrução em texto: uma copy anexada não descreve a
+      // alteração, e mandar feedback vazio faz a edge function recusar.
+      if (!texto) {
+        toast({
+          title: 'Descreva a edição',
+          description: 'Escreva o que você quer alterar nesta arte antes de gerar.',
+          variant: 'destructive',
         });
-        upsertAsset(resultado);
-        if (resultado.status === 'failed') {
-          toast({ title: 'Erro ao gerar', description: resultado.errorMessage ?? undefined, variant: 'destructive' });
-        } else {
-          toast({ title: 'Arte gerada' });
-          deuCerto = true;
-          // Fecha o loop de "copies já usadas": sem isto, o histórico do
-          // painel de anexos só cresceria com um salvamento manual que o V2
-          // nunca ofereceu.
-          if (copyAnexada?.value) {
-            void saveCopyToBank({
-              clientId: selectedClientId, projectId: projectIdRef.current, copyText: copyAnexada.value,
-            })
-              .then((entrada) => { if (entrada) setCopyBank((prev) => [entrada, ...prev]); })
-              .catch(() => {});
-          }
-        }
-        // Os anexos eram para ESTE pedido, não uma preferência permanente —
-        // consumidos, saem do dock. Mas só quando houve arte: numa falha
-        // eles são exatamente o que o usuário vai querer reaproveitar.
-        if (deuCerto) setAttachments([]);
-      } else if (selectedIds.length === 1) {
-        const alvo = assets.find((a) => a.id === selectedIds[0]);
-        if (!alvo) return;
-        // Editar exige instrução em texto: uma copy anexada não descreve a
-        // alteração, e mandar feedback vazio faz a edge function recusar.
-        if (!texto) {
-          toast({
-            title: 'Descreva a edição',
-            description: 'Escreva o que você quer alterar nesta arte antes de gerar.',
-            variant: 'destructive',
-          });
-          return;
-        }
+        return;
+      }
+      setBusy(true);
+      let deuCerto = false;
+      try {
         toast({ title: 'Editando arte…' });
         const resultado = await actions.edit(alvo, texto, upsertAsset);
         upsertAsset(resultado);
@@ -700,17 +804,48 @@ export default function CriativoStudioV2Page() {
           toast({ title: 'Edição aplicada' });
           deuCerto = true;
         }
-      } else {
-        avisarIndisponivel('Ações em lote ainda não estão disponíveis — selecione uma arte por vez.');
+      } catch (e: any) {
+        toast({ title: 'Erro', description: e?.message ?? 'Não foi possível concluir.', variant: 'destructive' });
+      } finally {
+        setBusy(false);
+        setEstagio(null);
+        if (deuCerto) setCommand('');
       }
-    } catch (e: any) {
-      toast({ title: 'Erro', description: e?.message ?? 'Não foi possível concluir.', variant: 'destructive' });
-    } finally {
-      setBusy(false);
-      setEstagio(null);
-      if (deuCerto) setCommand('');
+      return;
     }
-  }, [command, hasCopy, busy, attachments, ratio, resolution, modelId, actions, assets, upsertAsset, avisarIndisponivel, clientName, selectedClientId]);
+
+    avisarIndisponivel('Ações em lote ainda não estão disponíveis — selecione uma arte por vez.');
+  }, [
+    command, hasCopy, busy, anexosPorPapel, ratio, resolution, modelId, actions, assets,
+    upsertAsset, avisarIndisponivel, clientName, gerarArte,
+  ]);
+
+  /** O sim: gera com a leitura que está na tela, sem reler nada. */
+  const aprovarProposta = useCallback(() => {
+    if (!pedidoPendente || busy) return;
+    void gerarArte(
+      pedidoPendente.texto, pedidoPendente.formato, pedidoPendente.opcoes, pedidoPendente.copyAnexada,
+    );
+  }, [pedidoPendente, busy, gerarArte]);
+
+  /**
+   * "Ajustar" devolve o pedido ao campo, com os anexos intactos.
+   *
+   * O texto nunca saiu de lá — e é por isso que ajustar não precisa
+   * restaurar nada. O que ele faz é fechar a proposta e trazer o cursor de
+   * volta, porque o estado em que o usuário quer estar depois de discordar é
+   * digitando.
+   */
+  const ajustarProposta = useCallback(() => {
+    setProposta(null);
+    setPedidoPendente(null);
+    setFocusToken((n) => n + 1);
+  }, []);
+
+  const descartarProposta = useCallback(() => {
+    setProposta(null);
+    setPedidoPendente(null);
+  }, []);
 
   /**
    * Busca a linha inteira de UMA arte.
@@ -985,6 +1120,10 @@ export default function CriativoStudioV2Page() {
       focusToken={focusToken}
         onCommandChange={setCommand}
         onSubmitCommand={handleSubmitCommand}
+        proposal={proposta}
+        onApproveProposal={aprovarProposta}
+        onAdjustProposal={ajustarProposta}
+        onDiscardProposal={descartarProposta}
         busy={busy}
         stage={estagio}
         hasCopy={hasCopy}

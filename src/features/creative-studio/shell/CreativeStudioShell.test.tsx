@@ -205,3 +205,72 @@ describe('CreativeStudioShell', () => {
     expect(screen.getByRole('button', { name: 'Gerando…' })).toBeTruthy();
   });
 });
+
+describe('o painel da proposta', () => {
+  const PROPOSTA = {
+    formato: { nome: 'Antes e depois', proporcao: '1:1' },
+    cena: 'Dois registros do mesmo sorriso.',
+    copy: [{ papel: 'Título', texto: 'Dá pra resolver.' }],
+    angulo: { nome: 'demonstração', inedito: true },
+    leu: ['2 referências anexadas'],
+    vazia: false,
+  };
+
+  it('abre sozinho quando a proposta chega — ninguém vai procurá-la', () => {
+    // `sidePanel === 'copilot'` existia como tipo e como botão no dock, e
+    // não tinha ramo que o renderizasse: a condição do painel exigia
+    // seleção, e a proposta fala de uma arte que ainda NÃO existe.
+    montar({ proposal: PROPOSTA as any });
+    expect(screen.getByLabelText('Proposta de arte')).toBeTruthy();
+    expect(screen.getByText('Dois registros do mesmo sorriso.')).toBeTruthy();
+    // E sem nada selecionado, que era exatamente o que travava o ramo.
+    expect(document.querySelector('[aria-label="Inspetor da seleção"]')).toBeNull();
+  });
+
+  it('sem proposta, o painel não aparece nem com o botão do dock', () => {
+    montar();
+    fireEvent.click(screen.getByRole('button', { name: /proposta no painel lateral/ }));
+    expect(screen.queryByLabelText('Proposta de arte')).toBeNull();
+    // E o botão diz por que não faz nada, em vez de ignorar o clique calado.
+    expect(screen.getByRole('button', { name: /proposta no painel lateral/ }))
+      .toHaveProperty('disabled', true);
+  });
+
+  it('aprovar, ajustar e fechar chegam a quem decide', () => {
+    const onApproveProposal = vi.fn();
+    const onAdjustProposal = vi.fn();
+    const onDiscardProposal = vi.fn();
+    montar({ proposal: PROPOSTA as any, onApproveProposal, onAdjustProposal, onDiscardProposal });
+
+    fireEvent.click(screen.getByRole('button', { name: /Gerar assim/ }));
+    expect(onApproveProposal).toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /Ajustar o pedido/ }));
+    expect(onAdjustProposal).toHaveBeenCalled();
+    // Ajustar fecha o painel: o estado em que o usuário quer ficar depois de
+    // discordar é digitando, não olhando a discordância.
+    expect(screen.queryByLabelText('Proposta de arte')).toBeNull();
+  });
+
+  it('clicar numa arte abre o inspetor, e o dock traz a proposta de volta', () => {
+    // O painel direito é um só, e clicar numa arte é um pedido explícito
+    // para olhar aquela arte. A proposta não se perde: o botão do dock
+    // existe justamente para ela, e segue aceso enquanto ela não foi
+    // decidida.
+    montar({ proposal: PROPOSTA as any });
+    fireEvent.click(cards()[0]);
+    expect(screen.getByLabelText('Inspetor da seleção')).toBeTruthy();
+    expect(screen.queryByLabelText('Proposta de arte')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /proposta no painel lateral/ }));
+    expect(screen.getByLabelText('Proposta de arte')).toBeTruthy();
+    expect(screen.queryByLabelText('Inspetor da seleção')).toBeNull();
+  });
+
+  it('gerando, o sim não é aceito duas vezes', () => {
+    montar({ proposal: PROPOSTA as any, busy: true });
+    const painel = screen.getByLabelText('Proposta de arte');
+    const sim = [...painel.querySelectorAll('button')].find((b) => /Gerando/.test(b.textContent ?? ''))!;
+    expect(sim.disabled).toBe(true);
+  });
+});

@@ -50,6 +50,27 @@ export interface StudioAssetActionsDeps {
 /** Os estágios que o dock mostra enquanto a arte não existe. */
 export type GenerationStage = 'reading-references' | 'directing' | 'generating';
 
+/**
+ * O que o sistema entendeu do pedido, antes de qualquer imagem.
+ *
+ * Esta leitura SEMPRE existiu — ela rodava no meio do `generate`, entre a
+ * criação da linha e a chamada ao provedor, e ia direto para o prompt. O
+ * usuário via um spinner e uma arte pronta.
+ *
+ * Separá-la num passo próprio não acrescenta trabalho: é a mesma leitura,
+ * só que devolvida a quem pediu antes de ser gasta. É o que permite
+ * mostrá-la, corrigi-la com uma frase, e só então gerar.
+ */
+export interface StudioInterpretation {
+  artDirection: ArtDirectionResult['artDirection'];
+  copyBlocks: ArtDirectionResult['copyBlocks'];
+  designSystemDoc: string | null;
+  antiPadroes: string[] | null;
+  mood: ReferenceAnalysis['mood'] | null;
+  /** O documento de estilo saiu de arte de terceiros? */
+  designSystemFromReference: boolean;
+}
+
 export interface GenerationOptions {
   resolution?: CreativeResolution;
   /** Default `IMAGE_GENERATION_MODEL.id` — parametrizável para a Fase 7. */
@@ -82,6 +103,16 @@ export interface GenerationOptions {
   clientName?: string | null;
   language?: string;
   /**
+   * A leitura já feita.
+   *
+   * Quando vem preenchida, `generate` NÃO relê referências nem redirige a
+   * arte: ela já foi lida uma vez, mostrada ao usuário e aprovada por ele.
+   * Reler aqui custaria duas chamadas de IA para chegar a um resultado
+   * possivelmente diferente do que foi aprovado — ou seja, geraria uma arte
+   * que não é a que ele disse sim.
+   */
+  interpretation?: StudioInterpretation | null;
+  /**
    * Avisa em que etapa a geração está.
    *
    * Sem isso, ler referência e dirigir a arte somam segundos em que a tela
@@ -101,6 +132,14 @@ export interface GenerationOptions {
 }
 
 export interface StudioAssetActions {
+  /**
+   * Lê o pedido e os anexos, sem gerar nada e sem gravar linha.
+   *
+   * Nenhuma chamada ao provedor de imagem acontece aqui — e é essa a razão
+   * de existir: a leitura custa segundos e nada de dinheiro, a geração
+   * custa os dois. Parar entre as duas é o que torna possível corrigir.
+   */
+  interpret(brief: string, aspectRatio: CreativeAspectRatio, options?: GenerationOptions): Promise<StudioInterpretation>;
   generate(brief: string, aspectRatio: CreativeAspectRatio, options?: GenerationOptions): Promise<CreativeAsset>;
   /** Retrato de uma persona — vira asset `avatar`, reutilizável depois. */
   generateAvatar(
@@ -167,8 +206,81 @@ async function runGeneration(
   }
 }
 
+/**
+ * A leitura do pedido: as referências viram texto, e o pedido vira direção.
+ *
+ * As duas etapas MELHORAM a arte; nenhuma delas pode impedi-la. Uma IA fora
+ * do ar, um modelo descontinuado ou uma referência que o provedor não
+ * conseguiu ler viram uma geração mais simples, nunca uma geração a menos —
+ * o usuário pediu uma arte, não um relatório de indisponibilidade.
+ */
+async function lerOPedido(
+  deps: StudioAssetActionsDeps,
+  brief: string,
+  aspectRatio: CreativeAspectRatio,
+  options: GenerationOptions,
+): Promise<StudioInterpretation> {
+  const referencias = options.referenceImageUrls ?? [];
+  const produtos = options.productImageUrls ?? [];
+  const pessoas = options.personImageUrls ?? [];
+  const avatares = options.avatarImageUrls ?? [];
+
+  // Lê as REFERÊNCIAS, e só elas. Isto lia `produtos` — o erro inverso do
+  // relatado, e igualmente errado: a foto da embalagem do cliente era
+  // decodificada como se fosse a linguagem visual a imitar, e ainda custava
+  // uma chamada de visão em toda geração com produto.
+  let analise: ReferenceAnalysis | null = null;
+  if (referencias.length > 0 && deps.analyzeReferences) {
+    options.onStage?.('reading-references');
+    try {
+      analise = await deps.analyzeReferences(referencias);
+    } catch {
+      analise = null;
+    }
+  }
+
+  let direcao: ArtDirectionResult = { artDirection: null, copyBlocks: null };
+  if (deps.directArt) {
+    options.onStage?.('directing');
+    try {
+      direcao = await deps.directArt({
+        brief,
+        copy: options.copy ?? null,
+        clientName: options.clientName ?? null,
+        language: options.language,
+        aspectRatio,
+        designSystemDoc: analise?.designSystemDoc ?? null,
+        hasReferences: referencias.length > 0,
+        hasProduct: produtos.length > 0,
+        // Pessoa e avatar são a MESMA pergunta para a direção de arte:
+        // "há um humano real no quadro?". Mapear aqui é o que dispensa
+        // um campo novo — e, com ele, um deploy da edge function.
+        hasAvatar: avatares.length + pessoas.length > 0,
+        hasLogo: !!options.logoImageUrl,
+      });
+    } catch {
+      direcao = { artDirection: null, copyBlocks: null };
+    }
+  }
+
+  return {
+    artDirection: direcao.artDirection,
+    copyBlocks: direcao.copyBlocks,
+    designSystemDoc: analise?.designSystemDoc ?? null,
+    antiPadroes: analise?.antiPadroes ?? null,
+    mood: analise?.mood ?? null,
+    // O documento saiu de arte de terceiros: a cláusula que proíbe
+    // reproduzir a marca de origem só existe quando houve referência.
+    designSystemFromReference: referencias.length > 0,
+  };
+}
+
 export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAssetActions {
   return {
+    interpret(brief, aspectRatio, options = {}) {
+      return lerOPedido(deps, brief, aspectRatio, options);
+    },
+
     async generate(brief, aspectRatio, options = {}) {
       const referencias = options.referenceImageUrls ?? [];
       const produtos = options.productImageUrls ?? [];
@@ -219,48 +331,16 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
       });
       options.onAssetCreated?.(row);
 
-      // As duas etapas abaixo melhoram a arte; nenhuma delas pode impedi-la.
-      // Uma IA fora do ar, um modelo descontinuado ou uma referência que o
-      // provedor não conseguiu ler viram uma geração mais simples, nunca
-      // uma geração a menos — o usuário pediu uma arte, não um relatório de
-      // indisponibilidade.
-      // Lê as REFERÊNCIAS, e só elas. Isto lia `produtos` — o erro inverso
-      // do relatado, e igualmente errado: a foto da embalagem do cliente
-      // era decodificada como se fosse a linguagem visual a imitar, e ainda
-      // custava uma chamada de visão em toda geração com produto.
-      let analise: ReferenceAnalysis | null = null;
-      if (referencias.length > 0 && deps.analyzeReferences) {
-        options.onStage?.('reading-references');
-        try {
-          analise = await deps.analyzeReferences(referencias);
-        } catch {
-          analise = null;
-        }
-      }
-
-      let direcao: ArtDirectionResult = { artDirection: null, copyBlocks: null };
-      if (deps.directArt) {
-        options.onStage?.('directing');
-        try {
-          direcao = await deps.directArt({
-            brief,
-            copy: options.copy ?? null,
-            clientName: options.clientName ?? null,
-            language: options.language,
-            aspectRatio,
-            designSystemDoc: analise?.designSystemDoc ?? null,
-            hasReferences: referencias.length > 0,
-            hasProduct: produtos.length > 0,
-            // Pessoa e avatar são a MESMA pergunta para a direção de arte:
-            // "há um humano real no quadro?". Mapear aqui é o que dispensa
-            // um campo novo — e, com ele, um deploy da edge function.
-            hasAvatar: avatares.length + pessoas.length > 0,
-            hasLogo: !!options.logoImageUrl,
-          });
-        } catch {
-          direcao = { artDirection: null, copyBlocks: null };
-        }
-      }
+      /*
+       * A leitura, quando ela ainda não foi feita.
+       *
+       * Com a proposta ligada ela JÁ foi: o usuário leu o que o sistema
+       * entendeu e disse sim àquilo. Reler aqui chamaria duas IAs de novo
+       * para possivelmente chegar a outra interpretação — e gerar uma arte
+       * que não é a que ele aprovou.
+       */
+      const leitura = options.interpretation
+        ?? await lerOPedido(deps, brief, aspectRatio, options);
 
       options.onStage?.('generating');
       const { prompt, body } = buildGenerationRequest({
@@ -273,14 +353,12 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
         productImageUrls: produtos,
         personImageUrls: pessoas,
         avatarImageUrls: avatares,
-        artDirection: direcao.artDirection,
-        copyBlocks: direcao.copyBlocks,
-        designSystemDoc: analise?.designSystemDoc ?? null,
-        // O documento saiu de arte de terceiros: a cláusula que proíbe
-        // reproduzir a marca de origem só existe quando houve referência.
-        designSystemIsThirdParty: referencias.length > 0,
-        antiPadroes: analise?.antiPadroes ?? null,
-        mood: analise?.mood ?? null,
+        artDirection: leitura.artDirection,
+        copyBlocks: leitura.copyBlocks,
+        designSystemDoc: leitura.designSystemDoc,
+        designSystemIsThirdParty: leitura.designSystemFromReference,
+        antiPadroes: leitura.antiPadroes,
+        mood: leitura.mood,
       });
       // A linha já existe; o que muda agora é o prompt definitivo e o que a
       // arte recebeu de direção. As URLs dos anexos não sobrevivem no
@@ -295,14 +373,14 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
           // permite ao inspetor explicar por que a peça saiu como saiu — e
           // é sobre isso que o usuário vai querer iterar, não sobre o
           // prompt de 4 mil caracteres.
-          artDirection: direcao.artDirection,
-          copyBlocks: direcao.copyBlocks,
-          designSystemDoc: analise?.designSystemDoc ?? null,
-          antiPadroes: analise?.antiPadroes ?? null,
+          artDirection: leitura.artDirection,
+          copyBlocks: leitura.copyBlocks,
+          designSystemDoc: leitura.designSystemDoc,
+          antiPadroes: leitura.antiPadroes,
           // O Fator e o retry precisam saber que o sistema visual veio de
           // fora, para reemitir a proibição de reproduzir a marca de
           // origem. `undefined` marca linha gerada antes desta separação.
-          designSystemFromReference: referencias.length > 0,
+          designSystemFromReference: leitura.designSystemFromReference,
         },
       });
       return runGeneration(deps, comPrompt, body);

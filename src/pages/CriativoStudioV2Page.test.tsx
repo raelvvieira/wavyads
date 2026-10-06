@@ -72,6 +72,31 @@ vi.mock('@/features/creative-studio/api/copyBank', () => ({
 import { SOURCE_ASSET_TYPES } from '@/features/creative-studio/types/creative';
 import CriativoStudioV2Page from './CriativoStudioV2Page';
 
+/**
+ * O que a leitura do pedido devolve.
+ *
+ * `criativo-art-direction` é chamada no Enter, antes de qualquer imagem —
+ * é dela que sai a proposta. Sem responder aqui, a leitura falha e a
+ * proposta sai vazia, o que faz o Enter gerar direto.
+ */
+const DIRECAO_LIDA = {
+  data: {
+    engineVersion: 'art-direction-v1',
+    visualDirection: {
+      mainSubject: 'Vitrine com a coleção nova.',
+      composition: 'Plano frontal, luz dura.',
+      mood: 'solar',
+    },
+  },
+  error: null,
+};
+
+/** Responde a leitura na hora e deixa o provedor de imagem para o teste. */
+function invokeComLeitura(doProvedor: (nome: string) => any) {
+  return (nome: string, ...resto: any[]) =>
+    nome === 'criativo-art-direction' ? Promise.resolve(DIRECAO_LIDA) : doProvedor(nome);
+}
+
 const PROJETO = {
   id: 'proj-1', title: 'Campanha de Verão', status: 'active',
   selected_aspect_ratio: '4:5', selected_resolution: '2K',
@@ -310,9 +335,10 @@ describe('CriativoStudioV2Page', () => {
     createCreativeAsset.mockResolvedValue(novaLinha);
     updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({ ...novaLinha, id, ...patch }));
 
-    // O provedor fica preso: é o que permite olhar a tela no meio do caminho.
+    // O provedor de IMAGEM fica preso: é o que permite olhar a tela no meio
+    // do caminho. A leitura do pedido responde na hora.
     let liberar!: (v: any) => void;
-    invoke.mockReturnValue(new Promise((r) => { liberar = r; }));
+    invoke.mockImplementation(invokeComLeitura(() => new Promise((r) => { liberar = r; })));
 
     montar();
     await waitFor(() => expect(cards().length).toBeGreaterThan(0));
@@ -322,6 +348,12 @@ describe('CriativoStudioV2Page', () => {
       target: { value: 'lançamento de verão' },
     });
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Gerar' })); });
+
+    // O Enter LÊ e propõe. Nenhuma linha no banco ainda — e é de propósito:
+    // um pedido que o usuário vai reescrever não deixa arte órfã em
+    // `generating` atrás de si.
+    expect(createCreativeAsset).not.toHaveBeenCalled();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Gerar assim/ })); });
 
     const gerando = () =>
       [...document.querySelectorAll('figure')].filter((f) => f.getAttribute('data-status') === 'generating');
@@ -335,6 +367,103 @@ describe('CriativoStudioV2Page', () => {
     // A MESMA linha vira pronta — não um card a mais ao lado do cinza.
     await waitFor(() => expect(cards().length).toBe(antes + 1));
     expect(prontos().some((f) => f.querySelector('img')?.getAttribute('src') === 'https://x/nova.png')).toBe(true);
+  });
+
+  it('a proposta mostra o que o sistema entendeu, e o que ele leu para isso', async () => {
+    // A direção de arte sempre rodou aqui e sempre foi gravada no metadata,
+    // com um comentário no código dizendo que servia "para o inspetor
+    // explicar por que a peça saiu como saiu". O inspetor nunca leu. O
+    // usuário via um spinner mudo e uma imagem pronta.
+    invoke.mockImplementation(invokeComLeitura(() =>
+      Promise.resolve({ data: { imageUrl: 'https://x/n.png' }, error: null })));
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+
+    fireEvent.change(screen.getByPlaceholderText('O que você quer criar?'), {
+      target: { value: 'coleção de verão' },
+    });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Gerar' })); });
+
+    // A cena é UMA frase, não duas decisões independentes.
+    expect(screen.getByText('Vitrine com a coleção nova. Plano frontal, luz dura.')).toBeTruthy();
+    // E a lista do que foi lido, porque "o sistema leu tudo" é uma promessa
+    // que ninguém consegue verificar.
+    expect(screen.getByText('Li para isso')).toBeTruthy();
+  });
+
+  it('"Ajustar" devolve o pedido ao campo, com os anexos intactos', async () => {
+    // É o oposto do que o `finally` fazia: discordar da leitura não custa
+    // nem o texto nem os insumos.
+    uploadDataUrlToCreativeStorage.mockResolvedValue('https://x/logo.png');
+    createCreativeAsset.mockResolvedValue({ ...ASSETS_DO_PROJETO[0], id: 'logo-nova', type: 'logo' });
+    invoke.mockImplementation(invokeComLeitura(() =>
+      Promise.resolve({ data: { imageUrl: 'https://x/n.png' }, error: null })));
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência, logo, copy, produto ou avatar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar logo' }));
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [new File(['x'], 'logo.png', { type: 'image/png' })] } });
+    });
+    await waitFor(() => expect(screen.getByText('Logo')).toBeTruthy());
+
+    const campo = screen.getByPlaceholderText('O que você quer criar?') as HTMLTextAreaElement;
+    fireEvent.change(campo, { target: { value: 'arte da coleção' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Gerar' })); });
+    expect(screen.getByText('Li para isso')).toBeTruthy();
+
+    createCreativeAsset.mockClear();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Ajustar o pedido/ })); });
+
+    expect(campo.value).toBe('arte da coleção');
+    expect(screen.getByText('Logo')).toBeTruthy();
+    // Ajustar não gera: a proposta sai da tela e nada vai ao banco.
+    expect(screen.queryByText('Li para isso')).toBeNull();
+    expect(createCreativeAsset).not.toHaveBeenCalled();
+  });
+
+  it('aprovar gera a partir da leitura aprovada, sem reler o pedido', async () => {
+    // Reler chamaria a IA de novo e poderia chegar a outra interpretação —
+    // gerando uma arte que não é a que o usuário disse sim.
+    const chamadas: string[] = [];
+    invoke.mockImplementation((nome: string) => {
+      chamadas.push(nome);
+      if (nome === 'criativo-art-direction') return Promise.resolve(DIRECAO_LIDA);
+      return Promise.resolve({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    });
+    createCreativeAsset.mockImplementation(async (input: any) => ({ ...ASSETS_DO_PROJETO[0], id: 'nv', ...input }));
+    updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({ ...ASSETS_DO_PROJETO[0], id, ...patch }));
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+
+    fireEvent.change(screen.getByPlaceholderText('O que você quer criar?'), { target: { value: 'coleção' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Gerar' })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Gerar assim/ })); });
+
+    expect(chamadas.filter((c) => c === 'criativo-art-direction')).toHaveLength(1);
+    // E o que foi aprovado é o que viajou no prompt.
+    const pedido = invoke.mock.calls.find((c: any[]) => c[0] === 'criativo-generate')!;
+    expect(pedido[1].body.prompt).toContain('Vitrine com a coleção nova.');
+  });
+
+  it('leitura indisponível não cobra aprovação de nada — o Enter gera', async () => {
+    // Um painel que repete o pedido de volta pede um sim sem oferecer
+    // informação. Sem cena, sem copy e sem formato, não há o que aprovar.
+    invoke.mockImplementation((nome: string) => nome === 'criativo-art-direction'
+      ? Promise.resolve({ data: { error: 'modelo indisponível' }, error: null })
+      : Promise.resolve({ data: { imageUrl: 'https://x/n.png' }, error: null }));
+    createCreativeAsset.mockImplementation(async (input: any) => ({ ...ASSETS_DO_PROJETO[0], id: 'nv', ...input }));
+    updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({ ...ASSETS_DO_PROJETO[0], id, ...patch }));
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+
+    fireEvent.change(screen.getByPlaceholderText('O que você quer criar?'), { target: { value: 'arte simples' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Gerar' })); });
+
+    expect(screen.queryByText('Li para isso')).toBeNull();
+    expect(invoke.mock.calls.some((c: any[]) => c[0] === 'criativo-generate')).toBe(true);
   });
 
   it('o Fator põe as cinco cinzas na tela antes de qualquer imagem', async () => {
