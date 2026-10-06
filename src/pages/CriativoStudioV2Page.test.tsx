@@ -458,6 +458,47 @@ describe('CriativoStudioV2Page', () => {
     expect(screen.getByText('Referência')).toBeTruthy();
   });
 
+  it('erro na geração NÃO apaga o que o usuário escreveu', async () => {
+    // O `finally` limpava o campo sempre, inclusive quando o provedor
+    // recusou. Perder o trabalho do usuário por causa de uma falha que não
+    // é dele é o pior momento possível para limpar a tela.
+    createCreativeAsset.mockRejectedValue(new Error('provedor fora do ar'));
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+
+    const campo = screen.getByPlaceholderText('O que você quer criar?');
+    fireEvent.change(campo, { target: { value: 'anúncio de clareamento dental' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Gerar' }));
+    });
+
+    expect((campo as HTMLTextAreaElement).value).toBe('anúncio de clareamento dental');
+  });
+
+  it('erro na geração NÃO descarta os anexos', async () => {
+    // Quem anexou seis insumos e tomou um erro reanexava os seis.
+    uploadDataUrlToCreativeStorage.mockResolvedValue('https://x/logo.png');
+    createCreativeAsset.mockRejectedValue(new Error('provedor fora do ar'));
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência, logo, copy, produto ou avatar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar logo' }));
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [new File(['x'], 'logo.png', { type: 'image/png' })] } });
+    });
+    await waitFor(() => expect(screen.getByText('Logo')).toBeTruthy());
+
+    fireEvent.change(screen.getByPlaceholderText('O que você quer criar?'), { target: { value: 'arte nova' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Gerar' }));
+    });
+
+    // O chip continua no dock, pronto para a próxima tentativa.
+    expect(screen.getByText('Logo')).toBeTruthy();
+  });
+
   it('a referência de estilo não chega ao gerador — o relato do Heiner', async () => {
     // O relato, reconstruído: logo do cliente, uma arte de terceiros como
     // referência de estilo, e uma foto do próprio cliente como produto. A

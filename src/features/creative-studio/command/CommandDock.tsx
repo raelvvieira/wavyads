@@ -37,6 +37,14 @@ interface CommandDockProps {
   resolution: CreativeResolution;
   modelId: string;
   quantity?: number;
+  /**
+   * Sinal para trazer o cursor ao campo.
+   *
+   * É um contador, não um booleano: pedir foco duas vezes seguidas precisa
+   * funcionar as duas, e um booleano que já está `true` não dispara efeito
+   * nenhum na segunda.
+   */
+  focusToken?: number;
   selection: SelectionSummary;
   attachments: DockAttachment[];
   onRemoveAttachment: (id: string) => void;
@@ -103,6 +111,7 @@ export function CommandDock({
   onDeleteAsset,
   onNewLibraryUpload,
   onOpenCopilot,
+  focusToken,
 }: CommandDockProps) {
   const textarea = useRef<HTMLTextAreaElement>(null);
   const podeEnviar = canGenerate({ prompt: value, hasCopy, busy });
@@ -115,6 +124,10 @@ export function CommandDock({
     el.style.height = 'auto';
     el.style.height = `${Math.min(el.scrollHeight, 168)}px`;
   }, [value]);
+
+  useEffect(() => {
+    if (focusToken) textarea.current?.focus();
+  }, [focusToken]);
 
   return (
     <div className="studio-dock glass-island">

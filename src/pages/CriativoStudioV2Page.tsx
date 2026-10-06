@@ -93,6 +93,8 @@ export default function CriativoStudioV2Page() {
 
   const [query, setQuery] = useState('');
   const [command, setCommand] = useState('');
+  /** Cada incremento traz o cursor ao campo de comando. */
+  const [focusToken, setFocusToken] = useState(0);
   const [library, setLibrary] = useState<StudioLibraryId>('all');
 
   // 9:16 e 4K por padrão, a pedido: é o formato de story/reels, que é onde a
@@ -276,7 +278,9 @@ export default function CriativoStudioV2Page() {
   const visiveis = useMemo(() => {
     const filtro = filtroDaBiblioteca(library);
     const avancados = toAssetFilters(filtrosAvancados);
-    return filtro.types
+    // `libraryAssets` quando há um recorte declarado; `visibleCanvasAssets`
+    // (que esconde insumos) quando a biblioteca é "todas".
+    return filtro.types || filtro.clientIntelligence
       ? libraryAssets(doProjeto, { ...filtro, ...avancados, query })
       : visibleCanvasAssets(doProjeto, { ...avancados, query });
   }, [doProjeto, query, library, filtrosAvancados]);
@@ -597,6 +601,19 @@ export default function CriativoStudioV2Page() {
     const texto = command.trim();
     if ((!texto && !hasCopy) || busy) return;
     setBusy(true);
+    /**
+     * O pedido deu certo?
+     *
+     * O `finally` limpava o campo e os anexos SEMPRE — inclusive quando o
+     * provedor recusou. Quem anexou seis insumos, escreveu o brief e tomou
+     * um erro reanexava os seis e redigitava tudo. Perder o trabalho do
+     * usuário por causa de uma falha que não é dele é o pior momento
+     * possível para limpar a tela.
+     *
+     * Arte que volta `failed` também não limpa: é justamente quando se quer
+     * tentar de novo com uma variação do mesmo brief.
+     */
+    let deuCerto = false;
     try {
       if (selectedIds.length === 0) {
         // Sem seleção: gerar uma arte nova, no formato escolhido no popover.
@@ -645,6 +662,7 @@ export default function CriativoStudioV2Page() {
           toast({ title: 'Erro ao gerar', description: resultado.errorMessage ?? undefined, variant: 'destructive' });
         } else {
           toast({ title: 'Arte gerada' });
+          deuCerto = true;
           // Fecha o loop de "copies já usadas": sem isto, o histórico do
           // painel de anexos só cresceria com um salvamento manual que o V2
           // nunca ofereceu.
@@ -657,8 +675,9 @@ export default function CriativoStudioV2Page() {
           }
         }
         // Os anexos eram para ESTE pedido, não uma preferência permanente —
-        // consumidos, saem do dock.
-        setAttachments([]);
+        // consumidos, saem do dock. Mas só quando houve arte: numa falha
+        // eles são exatamente o que o usuário vai querer reaproveitar.
+        if (deuCerto) setAttachments([]);
       } else if (selectedIds.length === 1) {
         const alvo = assets.find((a) => a.id === selectedIds[0]);
         if (!alvo) return;
@@ -679,6 +698,7 @@ export default function CriativoStudioV2Page() {
           toast({ title: 'Erro ao editar', description: resultado.errorMessage ?? undefined, variant: 'destructive' });
         } else {
           toast({ title: 'Edição aplicada' });
+          deuCerto = true;
         }
       } else {
         avisarIndisponivel('Ações em lote ainda não estão disponíveis — selecione uma arte por vez.');
@@ -688,7 +708,7 @@ export default function CriativoStudioV2Page() {
     } finally {
       setBusy(false);
       setEstagio(null);
-      setCommand('');
+      if (deuCerto) setCommand('');
     }
   }, [command, hasCopy, busy, attachments, ratio, resolution, modelId, actions, assets, upsertAsset, avisarIndisponivel, clientName, selectedClientId]);
 
@@ -782,7 +802,15 @@ export default function CriativoStudioV2Page() {
     }
 
     if (acao === 'edit') {
-      toast({ title: 'Descreva a edição no campo de comando e selecione esta arte.' });
+      /*
+       * Fazer, não ensinar.
+       *
+       * Isto mostrava um toast pedindo que o usuário selecionasse a arte e
+       * digitasse no campo — sendo que a arte JÁ está selecionada (é o que
+       * abriu o inspetor). Uma instrução para fazer à mão o que acabou de
+       * ser pedido, cujo primeiro passo já estava cumprido.
+       */
+      setFocusToken((n) => n + 1);
       return;
     }
 
@@ -954,6 +982,7 @@ export default function CriativoStudioV2Page() {
         loading={loading}
         error={error}
         command={command}
+      focusToken={focusToken}
         onCommandChange={setCommand}
         onSubmitCommand={handleSubmitCommand}
         busy={busy}
@@ -1073,12 +1102,18 @@ function mesclarPorId(...listas: CreativeAsset[][]): CreativeAsset[] {
   return saida;
 }
 
-function filtroDaBiblioteca(id: StudioLibraryId): { types?: CreativeAsset['type'][] } {
+function filtroDaBiblioteca(
+  id: StudioLibraryId,
+): { types?: CreativeAsset['type'][]; clientIntelligence?: boolean } {
   switch (id) {
     case 'generations': return { types: ['original', 'factor', 'edited', 'resize', 'imported'] };
     case 'references': return { types: ['reference'] };
     case 'products': return { types: ['product'] };
     case 'templates': return { types: ['template'] };
+    // Inteligência não é um tipo: é uma marca que atravessa os tipos. Sem
+    // este caso ela caía no default e mostrava o acervo inteiro — a
+    // contagem dizia 17 e a tela abria com 325.
+    case 'approved': return { clientIntelligence: true };
     default: return {};
   }
 }

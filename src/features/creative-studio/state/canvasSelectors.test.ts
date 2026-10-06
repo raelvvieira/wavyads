@@ -199,3 +199,32 @@ describe('libraryAssets', () => {
     expect(libraryAssets(acervo)).toHaveLength(3);
   });
 });
+
+describe('a biblioteca "Inteligência"', () => {
+  // Inteligência não é um TIPO: é uma marca que atravessa os tipos. Uma
+  // geração, uma edição ou um resize podem todos ser inteligência do
+  // cliente. Era por isso que o filtro não funcionava — ele só sabia
+  // escolher por tipo, caía no default, e a tela abria com o acervo inteiro
+  // enquanto a contagem ao lado dizia 17.
+  const acervo = [
+    asset({ id: 'aprovada-1', isClientIntelligence: true }),
+    asset({ id: 'aprovada-2', type: 'edited', isClientIntelligence: true }),
+    asset({ id: 'comum', isClientIntelligence: false }),
+    asset({ id: 'comum-2', type: 'factor', isClientIntelligence: false }),
+  ];
+
+  it('devolve só o que a marca aprovou, de qualquer tipo', () => {
+    const r = libraryAssets(acervo, { clientIntelligence: true });
+    expect(r.map((a) => a.id)).toEqual(['aprovada-1', 'aprovada-2']);
+  });
+
+  it('sem o filtro, nada é escondido', () => {
+    expect(libraryAssets(acervo, {})).toHaveLength(4);
+  });
+
+  it('combina com os outros recortes em vez de competir com eles', () => {
+    // O filtro avançado de formato e a busca continuam valendo por cima.
+    const r = libraryAssets(acervo, { clientIntelligence: true, types: ['edited'] });
+    expect(r.map((a) => a.id)).toEqual(['aprovada-2']);
+  });
+});
