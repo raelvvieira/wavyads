@@ -26,3 +26,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Rascunho do CLI do Supabase — nasce de um `npx supabase ...` qualquer
+# (o `cli-latest` é só o cache da checagem de versão). Não é do projeto.
+supabase/.temp
