@@ -29,6 +29,7 @@ export interface ProposalPanelProps {
 export function ProposalPanel({ proposta, busy, onGerar, onAjustar, onClose }: ProposalPanelProps) {
   const { n, pedido } = proposta.quantidade;
   const lote = n > 1;
+  const edicao = proposta.edicao;
 
   return (
     <aside className="studio-side-panel" aria-label="Proposta de arte">
@@ -36,7 +37,7 @@ export function ProposalPanel({ proposta, busy, onGerar, onAjustar, onClose }: P
         <div className="min-w-0">
           <p className="wavy-caps text-[10px] font-semibold uppercase text-white/45">Antes de gerar</p>
           <p className="truncate text-sm font-semibold text-white/90">
-            {lote ? `${n} peças` : 'O que entendi do pedido'}
+            {edicao ? 'Alterar esta arte' : lote ? `${n} peças` : 'O que entendi do pedido'}
           </p>
         </div>
         <button
@@ -50,6 +51,28 @@ export function ProposalPanel({ proposta, busy, onGerar, onAjustar, onClose }: P
       </header>
 
       <div className="studio-side-panel-body">
+        {/* A alteração, dita antes de acontecer. Era este o ponto de parada
+            que faltava: a edição ia direto ao provedor, e um pedido de duas
+            artes novas virava uma edição sem ninguém poder intervir. */}
+        {edicao && (
+          <section className="space-y-1.5">
+            <p className="wavy-caps text-[10px] font-semibold uppercase text-white/40">Na arte</p>
+            <p className="text-[12.5px] leading-relaxed text-white/85">{edicao.arte}</p>
+            <p className="wavy-caps pt-1 text-[10px] font-semibold uppercase text-white/40">Você pediu</p>
+            <p className="text-[12.5px] leading-relaxed text-white/85">{edicao.pedido}</p>
+          </section>
+        )}
+
+        {/* A seleção que o texto atropelou. Pode ter sido a que você
+            esqueceu de soltar — e aí "Ajustar" custa um clique, em vez de
+            uma arte. */}
+        {proposta.ignorouSelecao && (
+          <p className="rounded-lg bg-white/[0.06] px-2.5 py-2 text-[11.5px] leading-relaxed text-white/70">
+            Você tem uma arte selecionada, mas pediu peça nova — então vou criar.
+            Se queria alterar aquela arte, clique em Ajustar.
+          </p>
+        )}
+
         {/* O teto, quando ele cortou. Entregar 4 calada depois de um pedido
             de 10 é mentir pelo resultado. */}
         {pedido > n && (
@@ -108,7 +131,7 @@ export function ProposalPanel({ proposta, busy, onGerar, onAjustar, onClose }: P
           className="btn-accent inline-flex h-9 items-center justify-center gap-1.5 rounded-full px-3 text-[12px] font-semibold disabled:opacity-60"
         >
           <Check className="h-3.5 w-3.5" />
-          {busy ? 'Gerando…' : lote ? `Gerar as ${n}` : 'Gerar assim'}
+          {busy ? 'Gerando…' : edicao ? 'Alterar' : lote ? `Gerar as ${n}` : 'Gerar assim'}
         </button>
         <button
           type="button"

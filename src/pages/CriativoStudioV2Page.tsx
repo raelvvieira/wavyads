@@ -64,9 +64,10 @@ import {
 } from '@/features/creative-studio/generation/studioAssetActions';
 import { montarPropostaDoPedido, type PropostaDoPedido } from '@/lib/creativeStudio/proposal';
 import { lerQuantidade } from '@/lib/creativeStudio/quantidade';
+import { rotearPedido } from '@/lib/creativeStudio/intencao';
 import { briefDaVariacao, resumoDaPeca } from '@/lib/creativeStudio/variacoes';
 import { IMAGE_GENERATION_MODEL } from '@/features/creative-studio/generation/capabilities';
-import { SOURCE_ASSET_TYPES } from '@/features/creative-studio/types/creative';
+import { ASSET_ORIGIN_LABELS, SOURCE_ASSET_TYPES } from '@/features/creative-studio/types/creative';
 import type { CreativeAsset, CreativeAspectRatio, CreativeResolution } from '@/features/creative-studio/types/creative';
 import type { DockAttachment, StudioLibraryEntry, StudioLibraryId } from '@/features/creative-studio/types/studioUi';
 import type { AvatarPersona } from '@/features/creative-studio/types/avatarPersona';
@@ -610,19 +611,39 @@ export default function CriativoStudioV2Page() {
    * sim relançaria a leitura e geraria a partir de uma interpretação que
    * pode não ser a que estava na tela.
    */
-  const [pedidoPendente, setPedidoPendente] = useState<{
-    texto: string;
-    /** O formato em que a proposta foi lida — e não o que estiver no popover
-     *  quando o sim chegar. Trocar o formato depois de aprovar geraria uma
-     *  peça que a proposta não descreve. */
-    formato: CreativeAspectRatio;
-    /** Uma entrada por peça, cada uma com a leitura que o usuário aprovou. */
-    pecas: GenerationOptions[];
-    copyAnexada: string | null;
-  } | null>(null);
+  const [pedidoPendente, setPedidoPendente] = useState<
+    | {
+        tipo: 'criar';
+        texto: string;
+        /** O formato em que a proposta foi lida — e não o que estiver no popover
+         *  quando o sim chegar. Trocar o formato depois de aprovar geraria uma
+         *  peça que a proposta não descreve. */
+        formato: CreativeAspectRatio;
+        /** Uma entrada por peça, cada uma com a leitura que o usuário aprovou. */
+        pecas: GenerationOptions[];
+        copyAnexada: string | null;
+      }
+    | { tipo: 'editar'; texto: string; alvo: CreativeAsset }
+    | null
+  >(null);
   const [proposta, setProposta] = useState<PropostaDoPedido | null>(null);
   /** "ideia 2 de 2" — o que distingue "está demorando" de "está travado". */
   const [detalheDoEstagio, setDetalheDoEstagio] = useState<string | null>(null);
+
+  /**
+   * O que a página pede à seleção do canvas.
+   *
+   * A seleção mora no shell — é ele que sabe o que está em vista. Mas quem
+   * sabe que uma geração terminou é a página. O token é o que faz o shell
+   * distinguir dois pedidos iguais seguidos (soltar, soltar) de um pedido
+   * só.
+   */
+  const [comandoDeSelecao, setComandoDeSelecao] = useState<{ token: number; assetId: string | null }>(
+    { token: 0, assetId: null },
+  );
+  const pedirSelecao = useCallback((assetId: string | null) => {
+    setComandoDeSelecao((c) => ({ token: c.token + 1, assetId }));
+  }, []);
 
   /** Os anexos do dock, separados pelo papel que cada um cumpre no prompt. */
   const anexosPorPapel = useCallback(() => {
@@ -727,6 +748,13 @@ export default function CriativoStudioV2Page() {
         } else {
           toast({ title: boas.length > 1 ? `${boas.length} artes geradas` : 'Arte gerada' });
           deuCerto = true;
+          /*
+           * Criou, solta a seleção.
+           *
+           * Herdar um modo que já se esqueceu que estava ligado é exatamente
+           * o que fez "quero mais 2 criativos" virar uma alteração.
+           */
+          pedirSelecao(null);
         }
         // Fecha o loop de "copies já usadas": sem isto, o histórico do
         // painel de anexos só cresceria com um salvamento manual que o V2
@@ -755,13 +783,52 @@ export default function CriativoStudioV2Page() {
         setPedidoPendente(null);
       }
     }
-  }, [actions, upsertAsset, selectedClientId]);
+  }, [actions, upsertAsset, selectedClientId, pedirSelecao]);
 
   const handleSubmitCommand = useCallback(async (selectedIds: string[]) => {
     const texto = command.trim();
     if ((!texto && !hasCopy) || busy) return;
 
-    if (selectedIds.length === 0) {
+    if (selectedIds.length > 1) {
+      avisarIndisponivel('Ações em lote ainda não estão disponíveis — selecione uma arte por vez.');
+      return;
+    }
+
+    /*
+     * O que o Enter faz sai do TEXTO, não de um clique.
+     *
+     * Era `selectedIds.length` que decidia: uma arte selecionada e o pedido
+     * virava edição dela, por mais que o texto dissesse "quero mais 2
+     * criativos". O caminho da edição não lê quantidade, não usa os anexos
+     * do dock e não mostrava proposta — então o pedido inteiro virava
+     * `metadata.feedback` de uma arte filha, e ninguém ficava sabendo até a
+     * imagem aparecer.
+     */
+    const { rota, ignorouSelecao } = rotearPedido(texto, selectedIds.length === 1);
+
+    if (rota === 'editar') {
+      const alvo = assets.find((a) => a.id === selectedIds[0]);
+      if (!alvo) return;
+      // Alterar exige instrução em texto: uma copy anexada não descreve a
+      // alteração, e mandar feedback vazio faz a edge function recusar.
+      if (!texto) {
+        toast({
+          title: 'Descreva a alteração',
+          description: 'Escreva o que você quer alterar nesta arte antes de gerar.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      setPedidoPendente({ tipo: 'editar', texto, alvo });
+      setProposta(montarPropostaDoPedido({
+        pecas: [],
+        quantidade: { n: 1, pedido: 1 },
+        edicao: { arte: nomeDaArte(alvo), pedido: texto },
+      }));
+      return;
+    }
+
+    {
       /**
        * Lê, e PROPÕE em vez de gerar.
        *
@@ -855,6 +922,7 @@ export default function CriativoStudioV2Page() {
         aspectRatio: ratio,
         referencias: referencias.length,
         quantidade: { n, pedido },
+        ignorouSelecao,
       });
 
       /*
@@ -869,59 +937,67 @@ export default function CriativoStudioV2Page() {
         return;
       }
 
-      setPedidoPendente({ texto, formato: ratio, pecas, copyAnexada });
+      setPedidoPendente({ tipo: 'criar', texto, formato: ratio, pecas, copyAnexada });
       setProposta(sugestao);
       return;
     }
-
-    if (selectedIds.length === 1) {
-      const alvo = assets.find((a) => a.id === selectedIds[0]);
-      if (!alvo) return;
-      // Editar exige instrução em texto: uma copy anexada não descreve a
-      // alteração, e mandar feedback vazio faz a edge function recusar.
-      if (!texto) {
-        toast({
-          title: 'Descreva a edição',
-          description: 'Escreva o que você quer alterar nesta arte antes de gerar.',
-          variant: 'destructive',
-        });
-        return;
-      }
-      setBusy(true);
-      let deuCerto = false;
-      try {
-        toast({ title: 'Editando arte…' });
-        const resultado = await actions.edit(alvo, texto, upsertAsset);
-        upsertAsset(resultado);
-        if (resultado.status === 'failed') {
-          toast({ title: 'Erro ao editar', description: resultado.errorMessage ?? undefined, variant: 'destructive' });
-        } else {
-          toast({ title: 'Edição aplicada' });
-          deuCerto = true;
-        }
-      } catch (e: any) {
-        toast({ title: 'Erro', description: e?.message ?? 'Não foi possível concluir.', variant: 'destructive' });
-      } finally {
-        setBusy(false);
-        setEstagio(null);
-        if (deuCerto) setCommand('');
-      }
-      return;
-    }
-
-    avisarIndisponivel('Ações em lote ainda não estão disponíveis — selecione uma arte por vez.');
   }, [
     command, hasCopy, busy, anexosPorPapel, ratio, resolution, modelId, actions, assets,
     upsertAsset, avisarIndisponivel, clientName, gerarPecas,
   ]);
 
+  /**
+   * Altera a arte aprovada na proposta.
+   *
+   * Separado do Enter pelo mesmo motivo que a criação: o Enter lê e propõe,
+   * isto gasta. A edição ia direto ao provedor — e foi essa ausência de
+   * ponto de parada que deixou um pedido de duas artes novas virar uma
+   * alteração sem ninguém poder intervir.
+   */
+  const alterarArte = useCallback(async (alvo: CreativeAsset, texto: string) => {
+    setBusy(true);
+    let deuCerto = false;
+    try {
+      const resultado = await actions.edit(alvo, texto, upsertAsset);
+      upsertAsset(resultado);
+      if (resultado.status === 'failed') {
+        toast({ title: 'Erro ao alterar', description: resultado.errorMessage ?? undefined, variant: 'destructive' });
+      } else {
+        toast({ title: 'Alteração aplicada' });
+        deuCerto = true;
+        /*
+         * A seleção passa para o RESULTADO.
+         *
+         * É o que todo editor de imagem faz, e evita o contrassenso de o
+         * segundo "muda o fundo" alterar de novo a arte original em vez da
+         * peça que acabou de sair.
+         */
+        pedirSelecao(resultado.id);
+      }
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e?.message ?? 'Não foi possível concluir.', variant: 'destructive' });
+    } finally {
+      setBusy(false);
+      setEstagio(null);
+      if (deuCerto) {
+        setCommand('');
+        setProposta(null);
+        setPedidoPendente(null);
+      }
+    }
+  }, [actions, upsertAsset, pedirSelecao]);
+
   /** O sim: gera com a leitura que está na tela, sem reler nada. */
   const aprovarProposta = useCallback(() => {
     if (!pedidoPendente || busy) return;
+    if (pedidoPendente.tipo === 'editar') {
+      void alterarArte(pedidoPendente.alvo, pedidoPendente.texto);
+      return;
+    }
     void gerarPecas(
       pedidoPendente.texto, pedidoPendente.formato, pedidoPendente.pecas, pedidoPendente.copyAnexada,
     );
-  }, [pedidoPendente, busy, gerarPecas]);
+  }, [pedidoPendente, busy, gerarPecas, alterarArte]);
 
   /**
    * "Ajustar" devolve o pedido ao campo, com os anexos intactos.
@@ -1216,6 +1292,7 @@ export default function CriativoStudioV2Page() {
         onCommandChange={setCommand}
         onSubmitCommand={handleSubmitCommand}
         stageDetail={detalheDoEstagio}
+        selectionCommand={comandoDeSelecao}
         proposal={proposta}
         onApproveProposal={aprovarProposta}
         onAdjustProposal={ajustarProposta}
@@ -1351,4 +1428,16 @@ function filtroDaBiblioteca(
     case 'approved': return { clientIntelligence: true };
     default: return {};
   }
+}
+
+/**
+ * Como a arte é chamada na proposta.
+ *
+ * `prompt` não serve: a consulta da grade o omite de propósito, então a
+ * maioria das artes chegaria aqui como "Arte" sem nenhuma distinção. Origem
+ * e formato a grade sempre traz, e juntos já dizem qual peça está na mesa.
+ */
+function nomeDaArte(asset: CreativeAsset): string {
+  const origem = ASSET_ORIGIN_LABELS[asset.type] ?? 'Arte';
+  return asset.filename ? `${asset.filename} · ${asset.aspectRatio}` : `${origem} · ${asset.aspectRatio}`;
 }

@@ -157,6 +157,22 @@ export interface PropostaDoPedido {
   quantidade: { n: number; pedido: number };
   /** As fontes lidas — do pedido, não de cada peça. */
   leu: string[];
+  /**
+   * Quando o pedido é de ALTERAÇÃO, e não de criação.
+   *
+   * A edição ia direto ao provedor, sem ponto de parada nenhum. Foi por
+   * isso que "quero mais 2 criativos" virou uma edição sem ninguém poder
+   * intervir: não havia onde o sistema dissesse o que tinha entendido.
+   */
+  edicao: { arte: string; pedido: string } | null;
+  /**
+   * O texto pediu coisa nova com uma arte selecionada.
+   *
+   * O sistema acabou de ignorar uma escolha feita com o mouse. Pode ter
+   * sido a seleção esquecida — e o usuário tem direito de saber antes de
+   * gastar.
+   */
+  ignorouSelecao: boolean;
   vazia: boolean;
 }
 
@@ -164,6 +180,8 @@ export interface EntradaDoPedido extends Omit<EntradaDaProposta, 'artDirection' 
   pecas: EntradaDaProposta[];
   cliente?: { nome: string; doTexto: boolean } | null;
   quantidade?: { n: number; pedido: number };
+  edicao?: { arte: string; pedido: string } | null;
+  ignorouSelecao?: boolean;
 }
 
 export function montarPropostaDoPedido(e: EntradaDoPedido): PropostaDoPedido {
@@ -171,11 +189,15 @@ export function montarPropostaDoPedido(e: EntradaDoPedido): PropostaDoPedido {
   const quantidade = e.quantidade ?? { n: pecas.length || 1, pedido: pecas.length || 1 };
   const cliente = e.cliente ?? null;
 
+  const edicao = e.edicao ?? null;
+
   return {
     pecas,
     cliente,
     quantidade,
     leu: listarFontes(e),
+    edicao,
+    ignorouSelecao: !!e.ignorouSelecao,
     /*
      * Quando vale a pena parar e pedir um sim.
      *
@@ -184,6 +206,17 @@ export function montarPropostaDoPedido(e: EntradaDoPedido): PropostaDoPedido {
      * gastar mais de uma geração; e um cliente lido do texto, porque o
      * sistema mexeu numa escolha que o usuário não fez.
      */
-    vazia: pecas.every((p) => p.vazia) && quantidade.n <= 1 && !cliente?.doTexto,
+    /*
+     * Uma alteração SEMPRE pede confirmação, por magra que seja.
+     *
+     * É o ponto de parada que faltava: sem ele, um pedido de duas artes
+     * novas vira uma edição da arte selecionada e ninguém fica sabendo até
+     * a imagem aparecer. O mesmo vale para a seleção ignorada.
+     */
+    vazia: !edicao
+      && !e.ignorouSelecao
+      && pecas.every((p) => p.vazia)
+      && quantidade.n <= 1
+      && !cliente?.doTexto,
   };
 }

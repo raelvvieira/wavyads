@@ -6,6 +6,7 @@ import type { CreativeAspectRatio, CreativeAsset, CreativeResolution } from '../
 import type { DockAttachment } from '../types/studioUi';
 import type { CopyBankEntry } from '../api/copyBank';
 import { describeGeneration } from '../generation/capabilities';
+import { descreverEnter, rotearPedido } from '@/lib/creativeStudio/intencao';
 import { canGenerate, type SelectionSummary } from '../state/canvasSelectors';
 import { AttachMenu } from './AttachMenu';
 import { GenerationSettingsPopover } from './GenerationSettingsPopover';
@@ -148,12 +149,34 @@ export function CommandDock({
     if (focusToken) textarea.current?.focus();
   }, [focusToken]);
 
+  /*
+   * A rota do Enter, do mesmo módulo puro que a página usa para decidir.
+   * Duas leituras do mesmo texto não podem divergir: o dock prometeria uma
+   * coisa e o Enter faria outra — que é exatamente o defeito que esta leva
+   * conserta.
+   */
+  const { rota } = rotearPedido(value, selection.total === 1);
+  const vaiEditar = rota === 'editar';
+
   return (
     <div className="studio-dock glass-island">
       {attachments.length > 0 && (
         <div className="studio-dock-attachments">
+          {/* A edição não usa anexo nenhum: ela manda a arte, o feedback e o
+              prompt original, e mais nada. Os chips ficavam acesos, não
+              eram usados e não eram limpos — as três coisas juntas, que é a
+              pior combinação: parece que foram. */}
+          {vaiEditar && (
+            <span className="text-[11px] text-white/45">
+              Os anexos não valem numa alteração — eles entram quando você cria uma arte.
+            </span>
+          )}
           {attachments.map((a) => (
-            <span key={a.id} className="studio-dock-chip">
+            <span
+              key={a.id}
+              className={cn('studio-dock-chip', vaiEditar && 'opacity-40')}
+              title={vaiEditar ? 'A alteração não usa este anexo' : undefined}
+            >
               {a.thumbnailUrl && (
                 <img src={a.thumbnailUrl} alt="" className="h-4 w-4 rounded object-cover" />
               )}
@@ -264,7 +287,16 @@ export function CommandDock({
           </span>
         )}
 
-        {!busy && selection.total > 0 && (
+        {/* O que o Enter vai fazer, por extenso, COM o campo cheio. O
+            `placeholder` dizia isso e sumia no primeiro caractere — bem na
+            hora em que a consequência passa a importar. */}
+        {!busy && value.trim().length > 0 && (
+          <span className={cn('text-[11px]', vaiEditar ? 'text-white/70' : 'text-white/50')}>
+            {descreverEnter(value, selection.total === 1)}
+          </span>
+        )}
+
+        {!busy && !value.trim() && selection.total > 0 && (
           <span className="text-[11px] text-white/50">
             {resumoDaSelecao(selection)}
           </span>
