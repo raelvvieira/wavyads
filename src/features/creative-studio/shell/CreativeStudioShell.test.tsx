@@ -7,10 +7,10 @@ import { SEM_FILTROS_AVANCADOS } from '../state/advancedFilters';
 
 const visiveis = visibleCanvasAssets(PREVIEW_ASSETS);
 
-function montar(patch: Partial<CreativeStudioShellProps> = {}) {
-  const onAssetAction = vi.fn();
-  const onSubmitCommand = vi.fn();
-  const props: CreativeStudioShellProps = {
+function propsBase(patch: Partial<CreativeStudioShellProps> = {}): CreativeStudioShellProps {
+  return {
+    onAssetAction: vi.fn(),
+    onSubmitCommand: vi.fn(),
     clientName: 'Boutique Aurora',
     clientId: 'c1',
     clients: [{ id: 'c1', name: 'Boutique Aurora' }],
@@ -30,7 +30,6 @@ function montar(patch: Partial<CreativeStudioShellProps> = {}) {
     availableRatios: ['9:16', '1:1'],
     command: '',
     onCommandChange: vi.fn(),
-    onSubmitCommand,
     busy: false,
     hasCopy: false,
     ratio: '4:5',
@@ -49,9 +48,14 @@ function montar(patch: Partial<CreativeStudioShellProps> = {}) {
     onNewLibraryUpload: vi.fn(),
     avatarLibrary: [],
     onGenerateAvatar: vi.fn(),
-    onAssetAction,
     ...patch,
   };
+}
+
+function montar(patch: Partial<CreativeStudioShellProps> = {}) {
+  const onAssetAction = vi.fn();
+  const onSubmitCommand = vi.fn();
+  const props = { ...propsBase(patch), onAssetAction, onSubmitCommand };
   return { ...render(<CreativeStudioShell {...props} />), onAssetAction, onSubmitCommand };
 }
 
@@ -308,5 +312,87 @@ describe('o painel da proposta', () => {
     } as any });
     expect(screen.getByText('Dra Mariane')).toBeTruthy();
     expect(screen.getByText(/reconheci no seu pedido/)).toBeTruthy();
+  });
+});
+
+describe('a seleção para de mentir', () => {
+  it('a arte selecionada que saiu de vista não comanda o Enter', () => {
+    // O estado pior de todos: o dock dizia "O que você quer criar?" e o
+    // Enter editava, porque o que viajava no submit era `selectedIds` cru,
+    // e não o que estava na tela.
+    // O dock só envia com texto no campo.
+    const { onSubmitCommand, rerender } = montar({ command: 'tira o fundo' });
+    fireEvent.click(cards()[0]);
+    expect(screen.getByPlaceholderText('O que você quer alterar nesta arte?')).toBeTruthy();
+
+    // A arte sai da vista (outro filtro, outra biblioteca, outro cliente).
+    rerender(<CreativeStudioShell
+      {...propsBase({ assets: [], command: 'tira o fundo' })}
+      onSubmitCommand={onSubmitCommand}
+    />);
+    fireEvent.click(screen.getByRole('button', { name: 'Gerar' }));
+    expect(onSubmitCommand).toHaveBeenCalledWith([]);
+  });
+
+  it('fechar o inspetor solta a arte', () => {
+    // O X é "terminei de olhar". Fechando só o painel, a seleção continuava
+    // viva e o dock seguia em modo alteração, invisível.
+    montar();
+    fireEvent.click(cards()[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'Fechar inspetor' }));
+    expect(screen.getByPlaceholderText('O que você quer criar?')).toBeTruthy();
+    expect(screen.queryByLabelText('Inspetor da seleção')).toBeNull();
+  });
+
+  it('Esc solta a arte', () => {
+    montar();
+    fireEvent.click(cards()[0]);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.getByPlaceholderText('O que você quer criar?')).toBeTruthy();
+  });
+
+  it('o clique no vazio do canvas solta — o vazio nunca teve handler', () => {
+    // O comentário de `toggleSelect` já supunha que isso funcionava.
+    montar();
+    fireEvent.click(cards()[0]);
+    fireEvent.click(document.querySelector('.studio-canvas-scroll')!);
+    expect(screen.getByPlaceholderText('O que você quer criar?')).toBeTruthy();
+  });
+
+  it('clicar numa arte NÃO solta a seleção pelo fundo', () => {
+    // Sem a checagem de alvo, o clique no card borbulharia até o fundo e
+    // desfaria a seleção que ele acabou de fazer.
+    montar();
+    fireEvent.click(cards()[0]);
+    expect(screen.getByPlaceholderText('O que você quer alterar nesta arte?')).toBeTruthy();
+  });
+
+  it('trocar de cliente solta a arte', () => {
+    const { rerender, onSubmitCommand } = montar();
+    fireEvent.click(cards()[0]);
+    rerender(<CreativeStudioShell {...propsBase({ clientId: 'c2' })} onSubmitCommand={onSubmitCommand} />);
+    expect(screen.getByPlaceholderText('O que você quer criar?')).toBeTruthy();
+  });
+
+  it('o comando da página solta a seleção, e com um id passa para aquela arte', () => {
+    // Depois de criar, solta: herdar um modo esquecido é o que produziu o
+    // bug. Depois de alterar, a seleção passa para o resultado, para o
+    // próximo pedido não mexer no original de novo.
+    const { rerender, onSubmitCommand } = montar({ command: 'algo' });
+    fireEvent.click(cards()[0]);
+
+    rerender(<CreativeStudioShell
+      {...propsBase({ command: 'algo', selectionCommand: { token: 1, assetId: null } })}
+      onSubmitCommand={onSubmitCommand}
+    />);
+    expect(screen.getByPlaceholderText('O que você quer criar?')).toBeTruthy();
+
+    const outra = visiveis[1].id;
+    rerender(<CreativeStudioShell
+      {...propsBase({ command: 'algo', selectionCommand: { token: 2, assetId: outra } })}
+      onSubmitCommand={onSubmitCommand}
+    />);
+    fireEvent.click(screen.getByRole('button', { name: 'Gerar' }));
+    expect(onSubmitCommand).toHaveBeenLastCalledWith([outra]);
   });
 });

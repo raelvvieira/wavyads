@@ -1055,8 +1055,100 @@ describe('CriativoStudioV2Page', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Gerar' }));
     });
 
+    // Agora a alteração também passa pela proposta: ela diz em que arte vai
+    // mexer e o que entendeu, antes de gastar.
+    expect(screen.getByText('Alterar esta arte')).toBeTruthy();
+    expect(invoke).not.toHaveBeenCalledWith('criativo-edit-image', expect.anything());
+
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^Alterar$/ })); });
+
     expect(invoke).toHaveBeenCalledWith('criativo-edit-image', expect.anything());
-    await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Edição aplicada' })));
+    await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Alteração aplicada' })));
+  });
+
+  it('com arte selecionada, pedir coisa NOVA cria — o relato do COMBO', async () => {
+    // "quero mais 2 criativos de COMBO: Limpeza + Clareamento com imagem de
+    // antes e depois, pra dra mariane" saiu como UMA edição da arte
+    // selecionada: o texto inteiro virou `metadata.feedback`, a quantidade
+    // nunca foi lida e os anexos nunca entraram no pedido.
+    invoke.mockImplementation(invokeComLeitura(() =>
+      Promise.resolve({ data: { imageUrl: 'https://x/n.png' }, error: null })));
+    createCreativeAsset.mockImplementation(async (input: any) => ({
+      ...ASSETS_DO_PROJETO[0], id: `nv-${Math.random()}`, ...input,
+    }));
+    updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({
+      ...ASSETS_DO_PROJETO[0], id, ...patch,
+    }));
+    montar();
+    await waitFor(() => expect(prontos().length).toBeGreaterThan(0));
+    fireEvent.click(prontos()[0].querySelector('.studio-asset-surface')!);
+
+    fireEvent.change(screen.getByPlaceholderText('O que você quer alterar nesta arte?'), {
+      target: { value: 'quero mais 2 criativos de COMBO: Limpeza + Clareamento, pra dra mariane' },
+    });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Gerar' })); });
+
+    // Criação, não alteração — e com as duas peças.
+    expect(screen.getByText('2 peças')).toBeTruthy();
+    expect(screen.queryByText('Alterar esta arte')).toBeNull();
+    // E diz que atropelou a seleção, porque pode ter sido a esquecida.
+    expect(screen.getByText(/pediu peça nova/)).toBeTruthy();
+
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Gerar as 2/ })); });
+    expect(invoke.mock.calls.filter((c: any[]) => c[0] === 'criativo-generate')).toHaveLength(2);
+    expect(invoke).not.toHaveBeenCalledWith('criativo-edit-image', expect.anything());
+  });
+
+  it('o dock diz o que o Enter vai fazer, com o campo cheio', async () => {
+    // O único aviso de modo era o `placeholder` — e ele some no primeiro
+    // caractere digitado, bem quando a consequência passa a importar.
+    montar();
+    await waitFor(() => expect(prontos().length).toBeGreaterThan(0));
+    fireEvent.click(prontos()[0].querySelector('.studio-asset-surface')!);
+
+    const campo = screen.getByPlaceholderText('O que você quer alterar nesta arte?');
+    fireEvent.change(campo, { target: { value: 'tira o fundo azul' } });
+    expect(screen.getByText('Enter altera a arte selecionada')).toBeTruthy();
+
+    fireEvent.change(campo, { target: { value: 'quero 2 criativos novos' } });
+    expect(screen.getByText('Enter cria 2 peças novas')).toBeTruthy();
+  });
+
+  it('os anexos avisam que não valem numa alteração', async () => {
+    // Eles ficavam acesos, não eram usados e não eram limpos — as três
+    // coisas juntas, que é a pior combinação: parece que foram.
+    uploadDataUrlToCreativeStorage.mockResolvedValue('https://x/logo.png');
+    createCreativeAsset.mockResolvedValue({ ...ASSETS_DO_PROJETO[0], id: 'logo-nova', type: 'logo' });
+    montar();
+    await waitFor(() => expect(prontos().length).toBeGreaterThan(0));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência, logo, copy, produto ou avatar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar logo' }));
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [new File(['x'], 'logo.png', { type: 'image/png' })] } });
+    });
+    await waitFor(() => expect(screen.getByText('Logo')).toBeTruthy());
+    // Sem seleção, nenhum aviso: ali eles valem.
+    expect(screen.queryByText(/anexos não valem/)).toBeNull();
+
+    fireEvent.click(prontos()[0].querySelector('.studio-asset-surface')!);
+    fireEvent.change(screen.getByPlaceholderText('O que você quer alterar nesta arte?'), {
+      target: { value: 'tira o fundo' },
+    });
+    expect(screen.getByText(/anexos não valem numa alteração/)).toBeTruthy();
+  });
+
+  it('fechar o inspetor solta a arte — o dock volta a criar', async () => {
+    // Fechar o painel deixava a seleção viva e o dock em modo alteração,
+    // invisível.
+    montar();
+    await waitFor(() => expect(prontos().length).toBeGreaterThan(0));
+    fireEvent.click(prontos()[0].querySelector('.studio-asset-surface')!);
+    expect(screen.getByPlaceholderText('O que você quer alterar nesta arte?')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fechar inspetor' }));
+    expect(screen.getByPlaceholderText('O que você quer criar?')).toBeTruthy();
   });
 
   it('retentar uma arte que falhou chama o provedor de novo, sem duplicar o card', async () => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Grid3x3, GitBranch } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CreativeAsset, CreativeAspectRatio, CreativeResolution } from '../types/creative';
@@ -49,6 +49,18 @@ export interface CreativeStudioShellProps {
   stage?: GenerationStage | null;
   /** O detalhe da etapa — "ideia 2 de 2" num pedido de várias peças. */
   stageDetail?: string | null;
+  /**
+   * Pedido da página sobre a seleção, depois que uma geração termina.
+   *
+   * `assetId: null` solta tudo — é o que faz o próximo pedido começar limpo,
+   * em vez de herdar um modo que o usuário já esqueceu que estava ligado.
+   * Com um id, a seleção PASSA para aquela arte: é o que mantém a iteração
+   * fluindo depois de uma alteração, em vez de o próximo pedido voltar a
+   * mexer no original.
+   *
+   * O token distingue dois pedidos iguais seguidos de um só.
+   */
+  selectionCommand?: { token: number; assetId: string | null };
   hasCopy: boolean;
   ratio: CreativeAspectRatio;
   resolution: CreativeResolution;
@@ -115,11 +127,28 @@ export function CreativeStudioShell(props: CreativeStudioShellProps) {
   const [libraryExpanded, setLibraryExpanded] = useState(false);
   const [sidePanel, setSidePanel] = useState<SidePanelMode>('none');
 
+  /*
+   * A seleção que vale é a VISÍVEL.
+   *
+   * O dock mostrava `selecionados` (filtrado pelo que está na tela) e o
+   * submit mandava `selectedIds` (cru) — duas verdades sobre a mesma coisa.
+   * Quando a arte selecionada saía de vista (outro cliente, outra
+   * biblioteca, um filtro), o dock voltava a dizer "O que você quer criar?"
+   * e o Enter editava assim mesmo.
+   *
+   * Uma fonte só mata o estado mentiroso na raiz, mesmo que algum caminho
+   * de limpeza passe despercebido no futuro.
+   */
   const selecionados = useMemo(
     () => props.assets.filter((a) => selectedIds.includes(a.id)),
     [props.assets, selectedIds],
   );
   const resumo = useMemo(() => summarizeSelection(selecionados), [selecionados]);
+
+  const soltarSelecao = useCallback(() => {
+    setSelectedIds([]);
+    setSidePanel((atual) => (atual === 'inspector' ? 'none' : atual));
+  }, []);
 
   const toggleSelect = (asset: CreativeAsset, additive: boolean) => {
     setSelectedIds((atual) => {
@@ -151,6 +180,42 @@ export function CreativeStudioShell(props: CreativeStudioShellProps) {
   useEffect(() => {
     if (props.proposal) setSidePanel('copilot');
   }, [props.proposal]);
+
+  /*
+   * Trocar de cliente ou de biblioteca solta a arte.
+   *
+   * É o caminho que produzia a seleção fora de vista — a que fazia o dock
+   * anunciar "criar" enquanto o Enter editava.
+   */
+  useEffect(() => {
+    setSelectedIds([]);
+    setSidePanel((atual) => (atual === 'inspector' ? 'none' : atual));
+  }, [props.clientId, props.activeLibrary]);
+
+  const tokenDaSelecao = props.selectionCommand?.token ?? 0;
+  const alvoDaSelecao = props.selectionCommand?.assetId ?? null;
+  useEffect(() => {
+    if (!tokenDaSelecao) return; // o estado inicial não comanda nada
+    if (alvoDaSelecao) {
+      setSelectedIds([alvoDaSelecao]);
+      props.onAssetFocused?.(alvoDaSelecao);
+      return;
+    }
+    setSelectedIds([]);
+    setSidePanel((atual) => (atual === 'inspector' ? 'none' : atual));
+    // `props` fora das deps de propósito: o efeito responde ao TOKEN, não a
+    // qualquer rerender da página — que acontece a cada tecla digitada.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tokenDaSelecao]);
+
+  /* Esc solta a seleção. É a saída que todo mundo tenta primeiro. */
+  useEffect(() => {
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') soltarSelecao();
+    };
+    window.addEventListener('keydown', aoTeclar);
+    return () => window.removeEventListener('keydown', aoTeclar);
+  }, [soltarSelecao]);
 
   const modoAvatar = props.activeLibrary === 'avatars';
   /*
@@ -223,6 +288,10 @@ export function CreativeStudioShell(props: CreativeStudioShellProps) {
         </div>
 
         <CreativeCanvas
+          // O comentário de `toggleSelect` já supunha que dava para "procurar
+          // um vazio no canvas" para desselecionar. Não dava: o vazio nunca
+          // teve handler.
+          onEmptyClick={soltarSelecao}
           assets={props.assets}
           mode={viewMode}
           selectedIds={selectedIds}
@@ -238,7 +307,7 @@ export function CreativeStudioShell(props: CreativeStudioShellProps) {
           <CommandDock
             value={props.command}
             onChange={props.onCommandChange}
-            onSubmit={() => props.onSubmitCommand(selectedIds)}
+            onSubmit={() => props.onSubmitCommand(selecionados.map((a) => a.id))}
             busy={props.busy}
             stage={props.stage}
             stageDetail={props.stageDetail}
@@ -292,7 +361,11 @@ export function CreativeStudioShell(props: CreativeStudioShellProps) {
           selected={selecionados}
           allAssets={props.allAssets}
           onAction={props.onAssetAction}
-          onClose={() => setSidePanel('none')}
+          // O X é o usuário dizendo "terminei de olhar". Fechando só o
+          // painel, a seleção continuava viva e o dock seguia em modo
+          // edição — invisível, porque o único aviso é o `placeholder`, que
+          // some no primeiro caractere digitado.
+          onClose={soltarSelecao}
         />
       )}
       </div>

@@ -18,6 +18,8 @@ interface CreativeCanvasProps {
   /** Verdadeiro quando o vazio veio de filtro, não de projeto novo. */
   filtered?: boolean;
   onClearFilters?: () => void;
+  /** Clicar no vazio solta a seleção — a saída que o canvas nunca teve. */
+  onEmptyClick?: () => void;
 }
 
 /**
@@ -41,6 +43,7 @@ export function CreativeCanvas({
   error,
   filtered,
   onClearFilters,
+  onEmptyClick,
 }: CreativeCanvasProps) {
   const selecionados = useMemo(() => new Set(selectedIds), [selectedIds]);
 
@@ -76,7 +79,15 @@ export function CreativeCanvas({
   }
 
   return (
-    <div className="studio-canvas-scroll" role="region" aria-label="Artes do projeto">
+    <div
+      className="studio-canvas-scroll"
+      role="region"
+      aria-label="Artes do projeto"
+      /* Só o clique no PRÓPRIO fundo solta. Sem a checagem de alvo, o
+         clique numa arte borbulharia até aqui e desfaria a seleção que o
+         card acabou de fazer. */
+      onClick={(e) => { if (e.target === e.currentTarget) onEmptyClick?.(); }}
+    >
       {secoes.map((secao) => (
         <section key={secao.key} className="studio-canvas-group">
           <header className="studio-canvas-group-header">
