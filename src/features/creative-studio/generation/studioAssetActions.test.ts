@@ -773,3 +773,133 @@ function variacaoFalsa(slot: number) {
     validation: { changedDimensions: ['thesis'], qualityScore: 9 },
   } as any;
 }
+
+describe('interpret — a leitura separada da geração', () => {
+  it('lê e devolve, sem gravar linha nem chamar o provedor', async () => {
+    // É a razão de o passo existir: a leitura custa segundos e nada de
+    // dinheiro; a geração custa os dois. Parar entre as duas é o que torna
+    // possível corrigir antes de gastar.
+    const deps = fakeDeps();
+    deps.analyzeReferences = vi.fn(async () => ({
+      designSystemDoc: '## Paleta\nAzul petróleo',
+      antiPadroes: ['nada de gradiente arco-íris'],
+      mood: { adjetivos: ['sóbrio'], referencias: [], evita: [] },
+    }) as any);
+    deps.directArt = vi.fn(async () => ({
+      artDirection: { mainSubject: 'Vitrine da loja', composition: 'Frontal, luz dura', mood: 'urbano' },
+      copyBlocks: null,
+    }));
+
+    const leitura = await createStudioAssetActions(deps).interpret('liquidação', '1:1', {
+      referenceImageUrls: ['https://x/ref.png'],
+    });
+
+    expect(leitura.artDirection?.mainSubject).toBe('Vitrine da loja');
+    expect(leitura.designSystemDoc).toContain('Azul petróleo');
+    expect(leitura.designSystemFromReference).toBe(true);
+    expect(deps.ordem).toEqual([]); // nenhuma linha no banco
+    expect(deps.invoke).not.toHaveBeenCalled(); // nenhuma imagem gerada
+  });
+
+  it('IA fora do ar devolve leitura vazia, não exceção', async () => {
+    // Quem chama é a tela. Um throw aqui travaria o Enter em vez de deixar
+    // o usuário seguir sem a camada extra.
+    const deps = fakeDeps();
+    deps.directArt = vi.fn(async () => { throw new Error('modelo descontinuado'); });
+    deps.analyzeReferences = vi.fn(async () => { throw new Error('visão indisponível'); });
+
+    const leitura = await createStudioAssetActions(deps).interpret('qualquer coisa', '4:5', {
+      referenceImageUrls: ['https://x/ref.png'],
+    });
+
+    expect(leitura.artDirection).toBeNull();
+    expect(leitura.designSystemDoc).toBeNull();
+    // A referência EXISTIU, mesmo não tendo sido lida: a cláusula que proíbe
+    // reproduzir a marca de origem continua devida.
+    expect(leitura.designSystemFromReference).toBe(true);
+  });
+
+  it('a leitura aprovada não é refeita na geração', async () => {
+    // Reler chamaria duas IAs de novo para possivelmente chegar a outra
+    // interpretação — e gerar uma arte que não é a que o usuário aprovou.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    deps.directArt = vi.fn(async () => ({ artDirection: null, copyBlocks: null }));
+    deps.analyzeReferences = vi.fn(async () => null);
+
+    const acoes = createStudioAssetActions(deps);
+    const leitura = await acoes.interpret('vitrine', '1:1', { referenceImageUrls: ['https://x/r.png'] });
+    expect(deps.directArt).toHaveBeenCalledTimes(1);
+
+    const arte = await acoes.generate('vitrine', '1:1', {
+      referenceImageUrls: ['https://x/r.png'],
+      interpretation: {
+        ...leitura,
+        artDirection: { mainSubject: 'O que foi aprovado', composition: 'Como foi aprovado', mood: '' },
+      },
+    });
+
+    expect(deps.directArt).toHaveBeenCalledTimes(1); // nenhuma segunda leitura
+    expect(deps.analyzeReferences).toHaveBeenCalledTimes(1);
+    // E o que viaja é o aprovado, não uma releitura.
+    expect(arte.metadata?.artDirection?.mainSubject).toBe('O que foi aprovado');
+    expect((deps.invoke as any).mock.calls[0][1].prompt).toContain('O que foi aprovado');
+  });
+
+  it('sem leitura pronta, gerar continua lendo sozinho', async () => {
+    // O caminho de hoje não pode depender da proposta: um fluxo que pule a
+    // aprovação (ou uma tela que não a mostre) ainda tem direito à camada.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    deps.directArt = vi.fn(async () => ({
+      artDirection: { mainSubject: 'Lido na hora', composition: 'direto', mood: '' },
+      copyBlocks: null,
+    }));
+
+    await createStudioAssetActions(deps).generate('promoção', '4:5');
+
+    expect(deps.directArt).toHaveBeenCalledTimes(1);
+    expect((deps.invoke as any).mock.calls[0][1].prompt).toContain('Lido na hora');
+  });
+});
+
+describe('a leitura de referências reaproveitada entre peças', () => {
+  it('com a leitura em mãos, as referências não são decodificadas de novo', () => {
+    // Num pedido de duas peças, `interpret` roda duas vezes. Sem reaproveitar,
+    // as MESMAS referências custariam duas chamadas de visão para chegar ao
+    // mesmo documento de estilo.
+    const deps = fakeDeps();
+    deps.analyzeReferences = vi.fn(async () => ({ designSystemDoc: 'x', antiPadroes: [], mood: null }) as any);
+    deps.directArt = vi.fn(async () => ({ artDirection: null, copyBlocks: null }));
+
+    return createStudioAssetActions(deps).interpret('peça 2', '1:1', {
+      referenceImageUrls: ['https://x/r.png'],
+      referenceReading: {
+        designSystemDoc: '## Paleta\nAzul petróleo',
+        antiPadroes: ['nada de arco-íris'],
+        mood: null,
+        designSystemFromReference: true,
+      },
+    }).then((leitura) => {
+      expect(deps.analyzeReferences).not.toHaveBeenCalled();
+      expect(leitura.designSystemDoc).toContain('Azul petróleo');
+      expect(leitura.designSystemFromReference).toBe(true);
+      // E o estilo reaproveitado chega à direção de arte da segunda peça.
+      expect((deps.directArt as any).mock.calls[0][0].designSystemDoc).toContain('Azul petróleo');
+    });
+  });
+
+  it('sem leitura em mãos, continua lendo as referências como antes', async () => {
+    const deps = fakeDeps();
+    deps.analyzeReferences = vi.fn(async () => ({
+      designSystemDoc: 'lido na hora', antiPadroes: null, mood: null,
+    }) as any);
+
+    const leitura = await createStudioAssetActions(deps).interpret('peça 1', '1:1', {
+      referenceImageUrls: ['https://x/r.png'],
+    });
+
+    expect(deps.analyzeReferences).toHaveBeenCalledTimes(1);
+    expect(leitura.designSystemDoc).toBe('lido na hora');
+  });
+})

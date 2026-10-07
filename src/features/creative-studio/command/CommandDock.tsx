@@ -32,6 +32,14 @@ interface CommandDockProps {
   busy: boolean;
   /** Em que etapa a geração está — ver `GenerationStage`. */
   stage?: GenerationStage | null;
+  /**
+   * O detalhe da etapa — "ideia 2 de 2".
+   *
+   * Num pedido de várias peças, as leituras acontecem em sequência, e um
+   * spinner idêntico por vários segundos parece uma tela travada. O detalhe
+   * é o que distingue "está demorando" de "está trabalhando".
+   */
+  stageDetail?: string | null;
   hasCopy: boolean;
   ratio: CreativeAspectRatio;
   resolution: CreativeResolution;
@@ -64,6 +72,15 @@ interface CommandDockProps {
   onDeleteAsset?: (asset: CreativeAsset) => Promise<void>;
   onNewLibraryUpload: (kind: 'reference' | 'logo' | 'product', url: string) => void;
   onOpenCopilot: () => void;
+  /**
+   * Existe proposta para reabrir?
+   *
+   * Sem isto o botão era um no-op: clicava, nada acontecia, e nada dizia
+   * por quê. A proposta nasce do Enter — antes dele não há o que abrir, e um
+   * botão desligado com título explicando é mais informativo que um botão
+   * aceso que ignora o clique.
+   */
+  hasProposal?: boolean;
 }
 
 /**
@@ -90,6 +107,7 @@ export function CommandDock({
   onSubmit,
   busy,
   stage = null,
+  stageDetail = null,
   hasCopy,
   ratio,
   resolution,
@@ -111,6 +129,7 @@ export function CommandDock({
   onDeleteAsset,
   onNewLibraryUpload,
   onOpenCopilot,
+  hasProposal = false,
   focusToken,
 }: CommandDockProps) {
   const textarea = useRef<HTMLTextAreaElement>(null);
@@ -193,9 +212,10 @@ export function CommandDock({
         <button
           type="button"
           onClick={onOpenCopilot}
-          aria-label="Abrir Copiloto no painel lateral"
-          title="Abrir Copiloto"
-          className="studio-dock-icon"
+          disabled={!hasProposal}
+          aria-label="Reabrir a proposta no painel lateral"
+          title={hasProposal ? 'Reabrir a proposta' : 'A proposta aparece depois de você enviar o pedido'}
+          className={cn('studio-dock-icon', !hasProposal && 'cursor-not-allowed opacity-40')}
         >
           <MessageSquare className="h-4 w-4" />
         </button>
@@ -234,7 +254,17 @@ export function CommandDock({
           </button>
         </GenerationSettingsPopover>
 
-        {selection.total > 0 && (
+        {/* A etapa, por escrito. Ela já existia em três nomes e vivia só no
+            `aria-label` — ou seja, só quem usava leitor de tela sabia que o
+            sistema estava lendo referência em vez de estar travado. */}
+        {busy && (
+          <span className="text-[11px] text-white/55" role="status">
+            {ROTULO_DO_ESTAGIO[stage ?? 'generating']}
+            {stageDetail ? ` ${stageDetail}` : ''}
+          </span>
+        )}
+
+        {!busy && selection.total > 0 && (
           <span className="text-[11px] text-white/50">
             {resumoDaSelecao(selection)}
           </span>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Grid3x3, GitBranch } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CreativeAsset, CreativeAspectRatio, CreativeResolution } from '../types/creative';
@@ -16,6 +16,8 @@ import { CreativeCanvas } from '../canvas/CreativeCanvas';
 import { AvatarStudio } from '../avatar/AvatarStudio';
 import { CommandDock } from '../command/CommandDock';
 import { AssetInspector } from '../inspector/AssetInspector';
+import { ProposalPanel } from '../command/ProposalPanel';
+import type { PropostaDoPedido } from '@/lib/creativeStudio/proposal';
 
 export interface CreativeStudioShellProps {
   clientName: string | null;
@@ -45,6 +47,8 @@ export interface CreativeStudioShellProps {
   onSubmitCommand: (selectedIds: string[]) => void;
   busy: boolean;
   stage?: GenerationStage | null;
+  /** O detalhe da etapa — "ideia 2 de 2" num pedido de várias peças. */
+  stageDetail?: string | null;
   hasCopy: boolean;
   ratio: CreativeAspectRatio;
   resolution: CreativeResolution;
@@ -78,6 +82,19 @@ export interface CreativeStudioShellProps {
   avatarLibrary: CreativeAsset[];
   onGenerateAvatar: (persona: AvatarPersona, referenceImages: string[]) => void;
   onAssetAction: (action: SelectionAction, assets: CreativeAsset[]) => void;
+  /**
+   * O que o sistema entendeu do pedido, esperando um sim.
+   *
+   * Chega não-nula e o painel abre sozinho — ela é a resposta ao Enter, não
+   * um lugar que alguém vai pensar em procurar.
+   */
+  proposal?: PropostaDoPedido | null;
+  /** O sim: gera com a leitura que está na tela, sem reler. */
+  onApproveProposal?: () => void;
+  /** Devolve o texto ao campo de comando, com os anexos intactos. */
+  onAdjustProposal?: () => void;
+  /** Desiste: a proposta sai da tela e nada é gerado. */
+  onDiscardProposal?: () => void;
 }
 
 /**
@@ -124,8 +141,27 @@ export function CreativeStudioShell(props: CreativeStudioShellProps) {
     });
   };
 
+  /*
+   * A proposta chega e o painel abre.
+   *
+   * Ela é a RESPOSTA ao Enter. Nascer num painel fechado, esperando que
+   * alguém clique no ícone do dock para descobrir que existe, seria o mesmo
+   * spinner mudo de antes — com um passo a mais.
+   */
+  useEffect(() => {
+    if (props.proposal) setSidePanel('copilot');
+  }, [props.proposal]);
+
   const modoAvatar = props.activeLibrary === 'avatars';
-  const painelAberto = !modoAvatar && sidePanel !== 'none' && selecionados.length > 0;
+  /*
+   * A proposta é o único painel que não depende de seleção: ela fala da arte
+   * que ainda NÃO existe. Era essa a condição que mantinha
+   * `sidePanel === 'copilot'` sem efeito nenhum — o botão do dock trocava o
+   * modo, e o painel seguia fechado porque nada estava selecionado.
+   */
+  const painelDaProposta = !modoAvatar && sidePanel === 'copilot' && !!props.proposal;
+  const painelDoInspetor = !modoAvatar && sidePanel === 'inspector' && selecionados.length > 0;
+  const painelAberto = painelDaProposta || painelDoInspetor;
 
   return (
     <div
@@ -205,6 +241,7 @@ export function CreativeStudioShell(props: CreativeStudioShellProps) {
             onSubmit={() => props.onSubmitCommand(selectedIds)}
             busy={props.busy}
             stage={props.stage}
+            stageDetail={props.stageDetail}
             hasCopy={props.hasCopy}
             ratio={props.ratio}
             resolution={props.resolution}
@@ -226,6 +263,7 @@ export function CreativeStudioShell(props: CreativeStudioShellProps) {
             onDeleteAsset={props.onDeleteAsset}
             onNewLibraryUpload={props.onNewLibraryUpload}
             focusToken={props.focusToken}
+            hasProposal={!!props.proposal}
             onOpenCopilot={() => setSidePanel('copilot')}
           />
         </div>
@@ -233,7 +271,23 @@ export function CreativeStudioShell(props: CreativeStudioShellProps) {
         )}
       </main>
 
-      {painelAberto && (
+      {painelDaProposta && props.proposal && (
+        <ProposalPanel
+          proposta={props.proposal}
+          busy={props.busy}
+          onGerar={() => props.onApproveProposal?.()}
+          onAjustar={() => {
+            setSidePanel('none');
+            props.onAdjustProposal?.();
+          }}
+          onClose={() => {
+            setSidePanel('none');
+            props.onDiscardProposal?.();
+          }}
+        />
+      )}
+
+      {painelDoInspetor && (
         <AssetInspector
           selected={selecionados}
           allAssets={props.allAssets}
