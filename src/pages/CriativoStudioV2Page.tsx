@@ -65,6 +65,7 @@ import {
 import { montarPropostaDoPedido, type PropostaDoPedido } from '@/lib/creativeStudio/proposal';
 import { lerQuantidade } from '@/lib/creativeStudio/quantidade';
 import { rotearPedido } from '@/lib/creativeStudio/intencao';
+import { briefingDaArte } from '@/lib/creativeStudio/briefing';
 import { briefDaVariacao, resumoDaPeca } from '@/lib/creativeStudio/variacoes';
 import { IMAGE_GENERATION_MODEL } from '@/features/creative-studio/generation/capabilities';
 import { ASSET_ORIGIN_LABELS, SOURCE_ASSET_TYPES } from '@/features/creative-studio/types/creative';
@@ -182,7 +183,16 @@ export default function CriativoStudioV2Page() {
       }
 
       const doInsumo = insumos.status === 'fulfilled' ? insumos.value : [];
-      setAssets(mesclarPorId(artes.value, doInsumo));
+      /*
+       * Recarregar não pode jogar fora o peso já hidratado.
+       *
+       * A consulta da grade omite `prompt` e `metadata` de propósito. Como
+       * o Fator chama `carregar()` no fim, cada lote substituía o estado
+       * inteiro por linhas magras — inclusive a arte que o próprio Fator
+       * acabou de hidratar. Quem editasse logo depois de um Fator partia de
+       * `metadata: {}` com certeza, não por azar de corrida.
+       */
+      setAssets((atuais) => preservarOPeso(mesclarPorId(artes.value, doInsumo), atuais));
       setProjects(recentes.status === 'fulfilled' ? recentes.value : []);
 
       // Uma falha aqui degrada o menu de anexos, não a tela. Dizer isso em
@@ -379,6 +389,10 @@ export default function CriativoStudioV2Page() {
       createGroup: createAssetGroup,
       directArt,
       analyzeReferences,
+      // O Fator sobe a linhagem com ela quando a arte-base chega sem o
+      // sistema visual da marca — o caso de qualquer arte editada ou
+      // reenquadrada antes desta correção.
+      getAsset: (id: string) => getCreativeAsset(id).catch(() => null),
       recordUsage: (usageKey) => { void recordAiUsage(usageKey as AiUsageType); },
     };
     return createStudioAssetActions(deps);
@@ -516,7 +530,8 @@ export default function CriativoStudioV2Page() {
       const ratio = (alvo.aspectRatio as CreativeAspectRatio) || '9:16';
       toast({ title: 'Lendo a oferta e montando 5 teses…', description: 'A escrita estratégica leva alguns instantes.' });
       const saida = await generateFactorVariations({
-        originalPrompt: alvo.prompt ?? '',
+        // O briefing, não o texto de reenquadramento. Ver `briefingDaArte`.
+        originalPrompt: briefingDaArte(alvo),
         copy: (alvo.metadata as any)?.copy ?? null,
         offerIntelligence: entrada?.offerIntelligence ?? null,
         mode: entrada?.mode ?? 'automatic',
@@ -571,9 +586,9 @@ export default function CriativoStudioV2Page() {
     setFatorAnalisando(true);
     try {
       const { offerIntelligence } = await analyzeOffer({
-        originalPrompt: alvo.prompt ?? '',
+        originalPrompt: briefingDaArte(alvo),
         copy: (alvo.metadata as any)?.copy ?? null,
-        businessContext: alvo.prompt ?? null,
+        businessContext: briefingDaArte(alvo) || null,
         clientName,
         language: 'pt-BR',
       });
@@ -1401,6 +1416,27 @@ export default function CriativoStudioV2Page() {
  * duas. A primeira lista manda na ordem, porque é ela que define o que o
  * canvas desenha de cima para baixo.
  */
+/**
+ * Mantém `prompt` e `metadata` que já estavam em memória.
+ *
+ * A consulta da grade não os traz — são quilobytes por linha que só
+ * interessam a uma arte de cada vez. Uma linha nova que chega sem eles não
+ * significa que a arte perdeu o prompt; significa que esta consulta não
+ * perguntou por ele.
+ */
+function preservarOPeso(novas: CreativeAsset[], atuais: CreativeAsset[]): CreativeAsset[] {
+  if (atuais.length === 0) return novas;
+  const porId = new Map(atuais.map((a) => [a.id, a]));
+  return novas.map((nova) => {
+    const antiga = porId.get(nova.id);
+    if (!antiga) return nova;
+    const prompt = nova.prompt ?? antiga.prompt ?? null;
+    const temMetadata = nova.metadata && Object.keys(nova.metadata).length > 0;
+    const metadata = temMetadata ? nova.metadata : (antiga.metadata ?? nova.metadata);
+    return { ...nova, prompt, metadata };
+  });
+}
+
 function mesclarPorId(...listas: CreativeAsset[][]): CreativeAsset[] {
   const vistos = new Set<string>();
   const saida: CreativeAsset[] = [];

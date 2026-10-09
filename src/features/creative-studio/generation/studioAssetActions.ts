@@ -12,6 +12,7 @@ import type { AvatarPersona } from '../types/avatarPersona';
 import type { FactorCreativeOutput, FactorVariation } from '../types/factorCreative';
 import type { ArtDirectionInput, ArtDirectionResult } from '../api/artDirection';
 import type { ReferenceAnalysis } from '../api/referenceAnalysis';
+import { briefingDaArte } from '@/lib/creativeStudio/briefing';
 
 
 /**
@@ -44,6 +45,14 @@ export interface StudioAssetActionsDeps {
   directArt?(input: ArtDirectionInput): Promise<ArtDirectionResult>;
   /** Lê as referências anexadas e devolve o sistema visual delas. */
   analyzeReferences?(urls: string[]): Promise<ReferenceAnalysis | null>;
+  /**
+   * Busca uma linha inteira pelo id — com `prompt` e `metadata`.
+   *
+   * O Fator usa para SUBIR A LINHAGEM quando a arte-base chega sem sistema
+   * visual. Opcional: sem ela, o Fator segue com o que a base tiver, que é
+   * o comportamento de antes.
+   */
+  getAsset?(id: string): Promise<CreativeAsset | null>;
   recordUsage(usageKey: string): void;
 }
 
@@ -300,6 +309,57 @@ async function lerOPedido(
   };
 }
 
+/** As chaves que descrevem a MARCA da peça — as que não podem faltar no Fator. */
+const CHAVES_DE_MARCA = [
+  'designSystemDoc', 'antiPadroes', 'designSystemFromReference',
+  'artDirection', 'copyBlocks', 'logoImage',
+] as const;
+
+/**
+ * Completa o metadata da arte-base com o do ancestral mais próximo.
+ *
+ * Sobe no máximo três degraus: uma cadeia original → resize → edição →
+ * edição já é longa, e cada degrau custa uma ida ao banco. Três cobre o que
+ * existe no acervo sem transformar um clique em cinco consultas.
+ *
+ * Só preenche o que está FALTANDO. O que a base tem vence sempre — ela é a
+ * peça que o usuário escolheu, e sobrescrevê-la com o avô seria desfazer
+ * uma edição deliberada.
+ */
+async function herdarDoAncestral(
+  deps: StudioAssetActionsDeps,
+  base: CreativeAsset,
+): Promise<CreativeAsset> {
+  const falta = CHAVES_DE_MARCA.filter((k) => (base.metadata as any)?.[k] == null);
+  if (falta.length === 0 || !deps.getAsset) return base;
+
+  let metadata: Record<string, unknown> = { ...(base.metadata ?? {}) };
+  let faltando = [...falta];
+  let paiId = base.parentAssetId ?? null;
+
+  for (let degrau = 0; degrau < 3 && paiId && faltando.length > 0; degrau++) {
+    let pai: CreativeAsset | null = null;
+    try {
+      pai = await deps.getAsset(paiId);
+    } catch {
+      break; // uma consulta que falha não pode impedir a geração
+    }
+    if (!pai) break;
+
+    for (const k of faltando) {
+      const v = (pai.metadata as any)?.[k];
+      if (v != null) metadata[k] = v;
+    }
+    faltando = faltando.filter((k) => metadata[k] == null);
+    paiId = pai.parentAssetId ?? null;
+  }
+
+  // O briefing também sobe: é ele que o estrategista lê como "a peça
+  // aprovada", e um reenquadramento o teria substituído por texto de corte.
+  const briefing = briefingDaArte({ prompt: base.prompt, metadata } as any);
+  return { ...base, prompt: briefing || base.prompt, metadata } as CreativeAsset;
+}
+
 export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAssetActions {
   return {
     interpret(brief, aspectRatio, options = {}) {
@@ -437,7 +497,25 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
       return runGeneration(deps, row, body);
     },
 
-    async factorCriativo({ base, variations, diagnosis = null, onSlotsCreated, onSlotDone }) {
+    async factorCriativo({ base: baseBruta, variations, diagnosis = null, onSlotsCreated, onSlotDone }) {
+      /*
+       * A herança por linhagem.
+       *
+       * O Fator lê `base.metadata.designSystemDoc` para dar às cinco o
+       * sistema visual da peça aprovada. Mas uma arte EDITADA ou
+       * REENQUADRADA nascia sem essas chaves — e o montador, que só emite
+       * `[DESIGN SYSTEM]` com o documento preenchido, não punha nada no
+       * lugar. Era assim que cinco variações de uma clínica creme e dourada
+       * saíam em preto, azul e bege, cada uma inventando a própria marca.
+       *
+       * Os escritores já foram corrigidos, mas as artes GRAVADAS pobres
+       * continuam no acervo — são elas que estão no canvas de quem usa
+       * agora. Subir a linhagem é o que as recupera, e de quebra protege
+       * de qualquer ação derivada futura que esqueça uma chave.
+       *
+       * Falhar aqui não impede nada: segue-se com a base como veio.
+       */
+      const base = await herdarDoAncestral(deps, baseBruta);
       const projectId = await deps.ensureProjectId();
       const ratio = (base.aspectRatio as CreativeAspectRatio) || '4:5';
       const backendAspect = ratio === '1:1' ? 'square' : 'story';
@@ -597,6 +675,27 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
           personImages: asset.metadata?.personImages ?? [],
           avatarImages: asset.metadata?.avatarImages ?? [],
           referenceImages: asset.metadata?.referenceImages ?? [],
+          /*
+           * O sistema visual desce para a arte editada.
+           *
+           * Sem estas três chaves, rodar o Fator Criativo sobre uma edição
+           * lia `designSystemDoc: null` — e o montador, que emite
+           * `[DESIGN SYSTEM]` só com o documento preenchido, simplesmente
+           * não emitia o bloco. Nem ele, nem o rider [STYLE REFERENCE], nem
+           * os anti-padrões no [DO NOT INCLUDE]. A perda era silenciosa e
+           * total: a paleta e a tipografia da marca sumiam do prompt sem
+           * nada no lugar.
+           */
+          designSystemDoc: asset.metadata?.designSystemDoc ?? null,
+          antiPadroes: asset.metadata?.antiPadroes ?? null,
+          designSystemFromReference: asset.metadata?.designSystemFromReference ?? false,
+          // A leitura do pedido que produziu a peça. O inspetor e o Fator
+          // explicam a arte por ela.
+          artDirection: asset.metadata?.artDirection ?? null,
+          copyBlocks: asset.metadata?.copyBlocks ?? null,
+          // O briefing que descreve o ANÚNCIO, separado do texto que foi
+          // enviado ao gerador. Ver `briefingDaArte`.
+          promptDeOrigem: briefingDaArte(asset),
         },
       });
       onCreated?.(row);
@@ -632,12 +731,41 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
         resolution: asset.resolution,
         prompt,
         model: IMAGE_GENERATION_MODEL.id,
-        // `sourceImage` é o que sustenta o prompt desta linha: ele abre
-        // dizendo que a imagem anexada É a arte. Sem guardar aqui, o
-        // "tentar novamente" mandava esse texto sem anexar imagem nenhuma —
-        // o mesmo bug que o reenquadramento acabou de corrigir, de volta
-        // pela porta dos fundos.
-        metadata: { sourceImage: asset.url },
+        /*
+         * `sourceImage` é o que sustenta o prompt desta linha: ele abre
+         * dizendo que a imagem anexada É a arte. Sem guardar aqui, o
+         * "tentar novamente" mandava esse texto sem anexar imagem nenhuma —
+         * o mesmo bug que o reenquadramento acabou de corrigir, de volta
+         * pela porta dos fundos.
+         *
+         * O resto desce do pai porque isto era o metadata mais pobre do
+         * sistema: uma linha só, apagando de uma vez a logo, o produto, o
+         * sistema visual e a direção de arte. Qualquer Fator ou edição
+         * rodando sobre um reenquadramento herdava o nada.
+         */
+        metadata: {
+          sourceImage: asset.url,
+          logoImage: asset.metadata?.logoImage ?? null,
+          productImages: asset.metadata?.productImages ?? [],
+          personImages: asset.metadata?.personImages ?? [],
+          avatarImages: asset.metadata?.avatarImages ?? [],
+          referenceImages: asset.metadata?.referenceImages ?? [],
+          designSystemDoc: asset.metadata?.designSystemDoc ?? null,
+          antiPadroes: asset.metadata?.antiPadroes ?? null,
+          designSystemFromReference: asset.metadata?.designSystemFromReference ?? false,
+          artDirection: asset.metadata?.artDirection ?? null,
+          copyBlocks: asset.metadata?.copyBlocks ?? null,
+          /*
+           * O briefing da peça, à parte do texto de recorte.
+           *
+           * `prompt` PRECISA continuar sendo o texto de reenquadramento: é
+           * ele que o "tentar novamente" reenvia. Mas o Fator manda
+           * `prompt` ao estrategista como "a peça aprovada" — e rodar o
+           * Fator sobre um reenquadramento fazia as cinco teses nascerem de
+           * `[REFRAME — THIS IS NOT A NEW ARTWORK]`.
+           */
+          promptDeOrigem: briefingDaArte(asset),
+        },
       });
       onCreated?.(row);
       return runGeneration(deps, row, body);

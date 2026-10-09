@@ -76,6 +76,15 @@ export interface CreativePromptInput {
   hasLogo?: boolean;
   /** Story usado como verdade visual quando se gera a versão quadrada. */
   hasStoryReference?: boolean;
+  /**
+   * A PRIMEIRA imagem anexada é uma peça aprovada DESTA marca.
+   *
+   * Distinta de `hasStoryReference`, que é o contrato do REENQUADRAMENTO e
+   * manda que "only the framing/composition changes". Aplicar aquele
+   * contrato ao Fator Criativo mataria a variação — que é justamente o que
+   * se quer manter. Aqui a marca é lei e a ideia é livre.
+   */
+  baseArtwork?: boolean;
   template?: { name: string; category: string | null; layoutStructure: unknown } | null;
   mood?: { adjetivos: string[]; referencias: string[]; evita: string[] } | null;
   antiPadroes?: string[] | null;
@@ -172,6 +181,7 @@ export function buildCreativePrompt(input: CreativePromptInput): string {
     preserveFaces = true,
     hasLogo = false,
     hasStoryReference = false,
+    baseArtwork = false,
     template = null,
     mood = null,
     antiPadroes = null,
@@ -399,12 +409,60 @@ A brand logo is provided as a separate reference. Place it discreetly in a corne
     ...userNegatives,
     safeAreaViolationLine(safeAreaFor(safeRatio)),
     `- Any text in a language other than ${lang}`,
+    // A cauda é a última coisa que o modelo lê, e é onde o repositório já
+    // concentra o que não pode acontecer. A marca trocada é exatamente
+    // isso: o defeito que o usuário viu, dito no lugar de maior peso.
+    ...(baseArtwork
+      ? ['- A different brand identity from the attached approved piece — different palette, different typeface, or a missing logo']
+      : []),
     '- Misspelled, garbled or fake-looking text',
     '- Watermarks, signatures, low-resolution artifacts',
     '- Generic stock-photo aesthetic',
   ].join('\n');
 
   const closing = `All text in the artwork MUST be written in ${lang}. Final result: ${resolutionConfig.promptQuality}, polished, professional advertising design, sharp typography, brand-grade composition.`;
+
+  /**
+   * A peça aprovada, anexada, declarada como lei de marca.
+   *
+   * O Fator Criativo gerava cinco variações que saíam como cinco marcas
+   * diferentes: fundo preto num anúncio de clínica creme e dourada, outra
+   * tipografia, nenhuma logo. A causa era física, não de estilo — a arte
+   * aprovada NUNCA chegava ao gerador fora do 1:1, porque
+   * `storyReference` era descartado para todo aspecto 'story'. O modelo
+   * recebia só texto, e um prompt descreve uma intenção, não uma peça.
+   *
+   * Com a imagem de volta, falta o contrato de leitura: dizer o que aquela
+   * primeira imagem É e o que fazer com ela. Sem isso ela chega como mais
+   * uma referência solta, e o bloco [REFERENCE IMAGES] que a edge function
+   * concatena no fim trata tudo como "source of truth for faces, product
+   * appearance and brand logo" — o que faria a variação copiar a CENA, e
+   * não a marca.
+   *
+   * A divisão é a que o usuário pediu em uma frase: "mesmo design, outras
+   * óticas". Marca travada — paleta, tipografia, tratamento, logo. Ideia
+   * livre — sujeito, cena, enquadramento, hierarquia.
+   */
+  const baseArtworkBlock = baseArtwork
+    ? `[BASE ARTWORK — BRAND IS LAW, IDEA IS FREE]
+The FIRST attached image is an APPROVED piece from THIS brand and THIS campaign. It is not a mood board and not a third-party reference: it is this client's own artwork, already signed off.
+
+REPLICATE EXACTLY — these are not suggestions:
+- The colour palette. Every hue, saturation and value. Same background family, same accent colours.
+- The typeface family and its weights. Same letterforms — if it is a high-contrast serif, stay a high-contrast serif.
+- The typographic scale and spacing feel.
+- The photographic treatment, colour grading, contrast and finish.
+- The brand logo: same mark, same proportions, same placement logic. If a logo is visible in that image, this artwork MUST carry it too.
+
+CHANGE — this is a NEW piece, not a copy:
+- The subject and the scene.
+- The framing, the crop and the composition.
+- The visual hierarchy and what dominates the frame.
+- The argument the image makes.
+
+Do NOT invent a new palette, a new typeface or a new logo. Do NOT drop the logo. Do NOT reuse the headline or the copy of the attached piece — the words for THIS piece are given in [TEXT BLOCKS].
+Someone seeing the two side by side must recognise the SAME brand instantly, and must NOT mistake one for the other.`
+    : '';
 
   const consistency = aspect === 'square' && hasStoryReference
     ? `[VISUAL CONSISTENCY — CRITICAL]
@@ -448,6 +506,9 @@ Where the description conflicts with an attached photograph, the attached photog
   return [
     intro,
     photoBlock,
+    // Imediatamente depois de [ATTACHED PHOTOS]: ele diz o que a PRIMEIRA
+    // daquelas imagens é, e sem isso ela chega como referência solta.
+    baseArtworkBlock,
     artDirectionBlock,
     designSystemBlock,
     // Imediatamente depois do bloco que qualifica: é um rider, e longe dele

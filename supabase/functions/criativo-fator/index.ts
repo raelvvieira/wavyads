@@ -188,13 +188,22 @@ Toda alegação forte precisa de base no briefing. Sem base: enfraqueça, reform
 
 ## DNA VISUAL
 
-PRESERVE: logo e integridade da marca, paleta permitida, família tipográfica, elementos proprietários, idioma, integridade do produto, restrições de DO NOT INCLUDE, safe zone autoritativa.
+A regra em uma frase: **a MARCA é lei, a IDEIA é livre.** As cinco variações são peças da MESMA campanha, da MESMA marca. Quem vir as cinco ao lado da peça-base tem que reconhecer a mesma marca na hora — e não confundir uma com a outra.
 
-PODE VARIAR: composição, hierarquia, imagem principal, enquadramento, dominância de cor, intensidade de gradiente, textura, escala, densidade textual, tipo de hook, posição dentro da safe zone, tom e energia.
+INTOCÁVEL (descrever diferente disto é erro, não criatividade):
+- A paleta. As mesmas cores da peça-base: o mesmo fundo, os mesmos tons de apoio, o mesmo acento. Não troque a cor dominante. Se a base é creme e dourado, nenhuma variação é preta ou azul.
+- A família tipográfica. Se a base usa serifada de alto contraste, todas usam serifada de alto contraste.
+- O tratamento fotográfico e o color grading.
+- A logo e os elementos proprietários da marca. Toda variação carrega a logo.
+- Idioma, integridade do produto, DO NOT INCLUDE e safe zone autoritativa.
 
-Preservar DNA não é copiar o layout. O design DEVE mudar quando o novo ângulo exigir outra narrativa visual.
+PODE — e DEVE — VARIAR: a tese, o sujeito do quadro, a cena, o enquadramento, a hierarquia, a escala, a densidade textual, o tipo de hook, a posição dentro da safe zone, o tom e a energia.
 
-Teste obrigatório da direção visual: se a copy fosse removida, o visual ainda sugeriria o ângulo? Se não, fortaleça.
+Preservar DNA não é copiar o layout: a COMPOSIÇÃO deve mudar quando o novo ângulo exigir outra narrativa visual. Mas mudar a narrativa NUNCA significa mudar a marca. Trocar a paleta ou a tipografia para servir um ângulo é trocar de anunciante — e o anunciante é o mesmo nos cinco.
+
+Ao escrever a direção visual, descreva o que aparece no quadro em linguagem de imagem, SEM redefinir cor de fundo, família tipográfica ou tratamento: isso já está decidido pela peça-base e o Studio o aplica.
+
+Teste obrigatório da direção visual: se a copy fosse removida, o visual ainda sugeriria o ângulo — DENTRO do sistema visual da marca? Se não, fortaleça o ângulo; não troque o sistema.
 
 ## O QUE VOCÊ NÃO ESCREVE
 
@@ -217,12 +226,13 @@ Conversa: parece algo que alguém que conhece o público diria naturalmente?
 Substância: há detalhe concreto, situação, mecanismo, evidência ou contraste?
 Crença: está claro no que o público deve passar a acreditar?
 Visual: hook e composição expressam o ângulo sem depender só do texto?
+Marca: lado a lado com a peça-base, as cinco se reconhecem como a MESMA marca? Mesma paleta, mesma família tipográfica, logo presente em todas? Se não, reescreva a direção visual — nunca a marca.
 Diversidade: as cinco são cinco razões diferentes para prestar atenção e agir?
 Factual: cada afirmação forte tem base explícita na entrada?
 
 ## INSTRUÇÃO FINAL
 
-Crie diversidade de ARGUMENTOS, não de palavras ou layouts. Pense como estrategista de resposta direta que conhece o público e respeita os fatos. Escreva como pessoa, não como gerador de slogans. Toda frase cumpre função, toda promessa tem base, todo visual carrega a tese.
+Crie diversidade de ARGUMENTOS, não de palavras, de layouts nem de marcas. Pense como estrategista de resposta direta que conhece o público e respeita os fatos. Escreva como pessoa, não como gerador de slogans. Toda frase cumpre função, toda promessa tem base, todo visual carrega a tese.
 
 Retorne SOMENTE o objeto estruturado do tool-calling.`;
 

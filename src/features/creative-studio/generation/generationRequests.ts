@@ -25,6 +25,15 @@ export interface GenerationRequest {
     productImages: string[];
     logoImage: string | null;
     storyReference: string | null;
+    /**
+     * A peça de referência visual, sem portão de aspecto.
+     *
+     * A edge function resolve `body.aspectReference ?? (!isStory ?
+     * body.storyReference : null)` — ou seja, `storyReference` só é lido
+     * quando o alvo NÃO é story, e `aspectReference` é lido sempre. É o
+     * canal que o Fator precisa para anexar a arte aprovada em 9:16.
+     */
+    aspectReference?: string | null;
   };
 }
 
@@ -440,7 +449,8 @@ export function buildFactorVariationRequest(input: {
   /** As pessoas reais da peça-base. As cinco variações são da mesma
    *  campanha: trocar quem aparece nelas descaracterizaria o lote. */
   personImageUrls?: string[];
-  /** A base, quando o alvo é quadrado: mesma verdade visual do Story. */
+  /** A peça aprovada. Vai anexada como imagem em TODO formato — é a
+   *  âncora visual do lote. */
   storyReferenceUrl?: string | null;
   /**
    * O sistema visual lido das referências da peça-base.
@@ -471,16 +481,30 @@ export function buildFactorVariationRequest(input: {
 
   // O contexto carrega o DNA da arte aprovada E a tese nova. Sem o original
   // a variação vira outra marca; sem a tese vira a mesma peça repintada.
+  /*
+   * O briefing da variação, e só ele.
+   *
+   * Aqui vinha `input.originalPrompt.trim().slice(0, 6000)` — o prompt
+   * INTEIRO da peça-base aninhado dentro desta frase. `businessContext` é
+   * interpolado no meio da primeira linha do prompt
+   * (`advertisement image for ${businessContext}`), então a variação
+   * carregava dois [SAFE ZONE], dois [DO NOT INCLUDE], duas listas de
+   * [TEXT BLOCKS] — a copy VELHA da base e a nova — e dois fechamentos,
+   * enquanto a base coubesse em 6.000 caracteres. Acima disso, terminava
+   * numa frase cortada ao meio, e o que se perdia no corte era a cauda:
+   * [TEXT BLOCKS], [MOOD], [BRAND LOGO], [DO NOT INCLUDE].
+   *
+   * Aquilo era, até agora, a única coisa que ainda carregava identidade
+   * visual — feio, mas era o que havia. Agora não é mais: a identidade
+   * viaja pela IMAGEM da peça aprovada (`aspectReference`), pelo
+   * [BASE ARTWORK] que a declara lei, pelo [DESIGN SYSTEM] e pela logo.
+   * Com isso, tirar o prompt aninhado deixa de ser perda e passa a ser
+   * limpeza.
+   */
   const contexto = [
-    'PEÇA APROVADA QUE SERVE DE BASE VISUAL (preserve marca, paleta e tratamento):',
-    input.originalPrompt.trim().slice(0, 6000),
-    '',
     `NOVA TESE (${v.strategy.angle} · ${v.strategy.angleSubtype}): ${v.strategy.strategicThesis}`,
     `PARA QUEM: ${v.audience.persona} — consciência ${v.audience.awarenessLevel}.`,
     `EMOÇÃO DOMINANTE: ${v.execution.dominantEmotion}.`,
-    '',
-    `SUJEITO PRINCIPAL: ${v.visualDirection.mainSubject}`,
-    `COMPOSIÇÃO: ${v.visualDirection.composition}`,
     v.visualDirection.differencesFromOriginal?.length
       ? `O QUE MUDA EM RELAÇÃO À PEÇA BASE: ${v.visualDirection.differencesFromOriginal.join('; ')}`
       : '',
@@ -499,9 +523,40 @@ export function buildFactorVariationRequest(input: {
     hasLogo: !!input.logoImageUrl,
     template: input.template ?? null,
     designSystemDoc: input.designSystemDoc ?? '',
-    designSystemIsThirdParty: !!input.designSystemIsThirdParty,
+    /*
+     * A bandeira de terceiros NÃO atravessa para o Fator.
+     *
+     * Ela liga a cláusula [STYLE REFERENCE], escrita para quando o sistema
+     * visual foi lido de arte de ESTRANHOS: "do NOT draw that brand's name
+     * or logo", "treat it as trivia about the source". No Fator o sistema
+     * visual herdado é o do PRÓPRIO cliente, por desenho — a peça-base é
+     * dele. Repassar a bandeira aplicaria à marca do cliente a proibição
+     * que existe para proteger a dos outros.
+     */
+    designSystemIsThirdParty: false,
     antiPadroes: input.antiPadroes ?? null,
-    hasStoryReference: backendAspect === 'square' && !!input.storyReferenceUrl,
+    /*
+     * `hasStoryReference` é o contrato do REENQUADRAMENTO, não o do Fator:
+     * ele manda que "only the framing/composition changes to fit a 1:1
+     * square". Ligá-lo aqui mataria a variação — e era o que acontecia nas
+     * variações 1:1. O Fator usa `baseArtwork`, que trava a marca e libera
+     * a ideia.
+     */
+    hasStoryReference: false,
+    baseArtwork: !!input.storyReferenceUrl,
+    /*
+     * A direção visual da variação ganha bloco próprio.
+     *
+     * `mainSubject` e `composition` viajavam diluídos no meio da frase do
+     * [INTRODUCTION], depois de até 6.000 caracteres de prompt alheio. O
+     * [ART DIRECTION] é descrito no montador como "a única instrução que
+     * diz o que desenhar", e vem antes da parede de restrições — e o Fator
+     * era o único caminho que não o emitia.
+     */
+    artDirection: {
+      mainSubject: v.visualDirection.mainSubject,
+      composition: v.visualDirection.composition,
+    },
     // A copy da variação é texto FINAL escrito pelo estrategista, com papel
     // definido por bloco — é exatamente o que o modo `ai` representa.
     copy: {
@@ -532,7 +587,26 @@ export function buildFactorVariationRequest(input: {
       // [PRODUCT] a cauda.
       productImages: [...pessoas, ...produtos],
       logoImage: input.logoImageUrl ?? null,
-      storyReference: backendAspect === 'square' ? (input.storyReferenceUrl ?? null) : null,
+      /*
+       * A arte aprovada chega ao gerador em QUALQUER formato.
+       *
+       * Era aqui que o Fator cegava: `storyReference` só viajava quando
+       * `backendAspect === 'square'`, e `backendAspect` é 'square' apenas
+       * para 1:1. Numa peça 9:16 — o formato padrão do Studio — as cinco
+       * variações eram geradas só a partir de texto, sem nunca ver a peça
+       * que deviam preservar.
+       *
+       * `aspectReference` entra sem portão nenhum na edge function
+       * (`body.aspectReference ?? (!isStory ? body.storyReference : null)`)
+       * e já roda em produção pela V1. Trocar o nome do campo devolve a
+       * âncora visual sem exigir deploy.
+       */
+      aspectReference: input.storyReferenceUrl ?? null,
+      // Mantido nulo de propósito: a edge function resolve
+      // `aspectReference ?? (!isStory ? storyReference : null)`, então o
+      // canal certo já está preenchido e duplicar a URL só inflaria o
+      // corpo do pedido.
+      storyReference: null,
     },
   };
 }
