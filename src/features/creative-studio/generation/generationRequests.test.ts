@@ -419,3 +419,128 @@ describe('buildRetryRequest — o que o prompt afirma, o corpo sustenta', () => 
     expect(body.logoImage).toBeNull();
   });
 });
+
+describe('buildFactorVariationRequest — a arte aprovada volta a ser vista', () => {
+  it('a peça-base vai ANEXADA em 9:16, e não só descrita', () => {
+    // A causa principal do relato: `storyReference` só viajava com
+    // `backendAspect === 'square'`, e isso é só 1:1. Numa peça 9:16 — o
+    // formato padrão do Studio — as 5 variações eram geradas a partir de
+    // texto puro, sem nunca ver o que deviam preservar. O repositório já
+    // tinha diagnosticado isso para o reenquadramento: "um prompt descreve
+    // uma intenção, não uma peça".
+    const { body } = buildFactorVariationRequest({
+      variation: variacao(),
+      originalPrompt: 'prompt da base',
+      aspectRatio: '9:16',
+      storyReferenceUrl: 'https://x/aprovada.png',
+    });
+    expect(body.aspectReference).toBe('https://x/aprovada.png');
+  });
+
+  it('em 1:1 também, pelo mesmo canal', () => {
+    const { body } = buildFactorVariationRequest({
+      variation: variacao(),
+      originalPrompt: 'p',
+      aspectRatio: '1:1',
+      storyReferenceUrl: 'https://x/aprovada.png',
+    });
+    expect(body.aspectReference).toBe('https://x/aprovada.png');
+  });
+
+  it('`aspectReference` é o canal certo: a edge function o lê sem portão', () => {
+    // `body.aspectReference ?? (!isStory ? body.storyReference : null)` —
+    // o segundo é ignorado em story. Duplicar a URL nos dois campos só
+    // inflaria o pedido.
+    const { body } = buildFactorVariationRequest({
+      variation: variacao(), originalPrompt: 'p', aspectRatio: '9:16',
+      storyReferenceUrl: 'https://x/a.png',
+    });
+    expect(body.storyReference).toBeNull();
+  });
+
+  it('o prompt declara que a primeira imagem é a peça aprovada, e o que é lei', () => {
+    // Sem contrato de leitura, a imagem chega como referência solta — e o
+    // [REFERENCE IMAGES] que a edge function concatena no fim trata tudo
+    // como "source of truth for faces, product appearance and brand logo",
+    // o que faria a variação copiar a CENA em vez da marca.
+    const { prompt } = buildFactorVariationRequest({
+      variation: variacao(), originalPrompt: 'p', aspectRatio: '9:16',
+      storyReferenceUrl: 'https://x/a.png',
+    });
+    expect(prompt).toContain('[BASE ARTWORK — BRAND IS LAW, IDEA IS FREE]');
+    expect(prompt).toContain('The colour palette');
+    expect(prompt).toContain('The typeface family');
+    // E a proibição na cauda, onde moram as que pesam.
+    expect(prompt).toContain('A different brand identity from the attached approved piece');
+  });
+
+  it('sem peça-base, o bloco não aparece — nada de contrato sobre imagem que não existe', () => {
+    const { prompt } = buildFactorVariationRequest({
+      variation: variacao(), originalPrompt: 'p', aspectRatio: '9:16',
+    });
+    expect(prompt).not.toContain('[BASE ARTWORK');
+    expect(prompt).not.toContain('A different brand identity');
+  });
+
+  it('o contrato do REENQUADRAMENTO não vaza para o Fator', () => {
+    // `[VISUAL CONSISTENCY — CRITICAL]` manda que "only the
+    // framing/composition changes to fit a 1:1 square". Aplicado ao Fator,
+    // mataria a variação — que é exatamente o que se quer manter. Era o que
+    // acontecia nas variações 1:1.
+    const { prompt } = buildFactorVariationRequest({
+      variation: variacao(), originalPrompt: 'p', aspectRatio: '1:1',
+      storyReferenceUrl: 'https://x/a.png',
+    });
+    expect(prompt).not.toContain('[VISUAL CONSISTENCY');
+    expect(prompt).not.toContain('Only the framing/composition changes');
+  });
+
+  it('a cláusula de marca de TERCEIROS não é aplicada à marca do próprio cliente', () => {
+    // Ela existe para quando o sistema visual foi lido de arte de
+    // estranhos: "do NOT draw that brand's name or logo". No Fator a
+    // peça-base é do próprio cliente, por desenho — repassar a bandeira
+    // proibiria a arte de usar a marca de quem a encomendou.
+    const { prompt } = buildFactorVariationRequest({
+      variation: variacao(), originalPrompt: 'p', aspectRatio: '9:16',
+      designSystemDoc: 'Layer 1 — Background: warm cream',
+      designSystemIsThirdParty: true,
+    });
+    expect(prompt).toContain('[DESIGN SYSTEM]');
+    expect(prompt).not.toContain('[STYLE REFERENCE');
+    expect(prompt).not.toContain("Do NOT draw that brand's name or logo");
+  });
+
+  it('a direção visual da variação ganha bloco próprio', () => {
+    // Era a única geração do sistema que não emitia [ART DIRECTION] — o
+    // bloco que o próprio montador chama de "a única instrução que diz o
+    // que desenhar". Sujeito e composição viajavam diluídos no meio de uma
+    // frase, depois de milhares de caracteres de prompt alheio.
+    const { prompt } = buildFactorVariationRequest({
+      variation: variacao(), originalPrompt: 'p', aspectRatio: '9:16',
+    });
+    expect(prompt).toContain('[ART DIRECTION]');
+  });
+
+  it('o prompt da base não é mais aninhado dentro do prompt da variação', () => {
+    // Enquanto coubesse em 6.000 caracteres, a variação carregava DOIS
+    // [SAFE ZONE], DOIS [DO NOT INCLUDE] e duas listas de [TEXT BLOCKS] —
+    // a copy velha da base e a nova. Acima disso, terminava numa frase
+    // cortada ao meio, e o que se perdia era a cauda.
+    const promptDaBase = buildGenerationRequest({ brief: 'clínica odontológica', aspectRatio: '9:16' }).prompt;
+    const { prompt } = buildFactorVariationRequest({
+      variation: variacao(), originalPrompt: promptDaBase, aspectRatio: '9:16',
+      storyReferenceUrl: 'https://x/a.png',
+    });
+    expect(prompt.split('[SAFE ZONE]')).toHaveLength(2);
+    expect(prompt.split('[DO NOT INCLUDE]')).toHaveLength(2);
+    expect(prompt).not.toContain('PEÇA APROVADA QUE SERVE DE BASE VISUAL');
+  });
+
+  it('a tese nova continua chegando inteira', () => {
+    // Enxugar o contexto não pode custar o que a variação É.
+    const { prompt } = buildFactorVariationRequest({
+      variation: variacao(), originalPrompt: 'p', aspectRatio: '9:16',
+    });
+    expect(prompt).toContain('NOVA TESE');
+  });
+});

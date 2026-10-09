@@ -903,3 +903,148 @@ describe('a leitura de referências reaproveitada entre peças', () => {
     expect(leitura.designSystemDoc).toBe('lido na hora');
   });
 })
+
+describe('o sistema visual sobrevive à cadeia de artes derivadas', () => {
+  /** Uma variação do Fator, no formato que a edge function devolve. */
+  function variacaoDoFator(): any {
+    return {
+      slot: 1, label: 'V1 — problema',
+      strategy: {
+        angle: 'problema', angleSubtype: 'sub', angleViability: 'valid',
+        strategicThesis: 'tese', whySelected: 'x', recognition: 'y',
+        beliefBefore: 'a', beliefAfter: 'b', reasonToBelieve: 'c',
+      },
+      audience: { persona: 'iniciante', awarenessLevel: 'consciente do problema', situation: 's' },
+      execution: {
+        dominantEmotion: 'frustração', offerFrame: 'transformação',
+        argumentStructure: ['problema'], visualHookType: 'problema visualizado',
+      },
+      copy: { title: 'Título', cta: 'Fale conosco' },
+      visualDirection: {
+        dominantHook: 'h', mainSubject: 'm', composition: 'c', hierarchy: ['1'],
+        mood: 'mo', relationshipToThesis: 'r',
+        differencesFromOriginal: ['d'], differencesFromOtherVariations: ['e'],
+      },
+      validation: {
+        supportedFactsUsed: ['f'], unsupportedClaims: [],
+        changedDimensions: ['thesis'], scores: {}, qualityScore: 8.6,
+      },
+      promptCompleto: 'PROMPT DA VARIACAO',
+    };
+  }
+
+  const COM_MARCA = {
+    logoImage: 'https://x/logo.png',
+    productImages: ['https://x/prod.png'],
+    designSystemDoc: '## Paleta\nCreme e dourado',
+    antiPadroes: ['nada de neon'],
+    designSystemFromReference: true,
+    artDirection: { mainSubject: 'Dois sorrisos', composition: 'Split', mood: 'claro' },
+    copyBlocks: { titulo: 'Limpeza + Clareamento' },
+  };
+
+  it('editar não apaga mais a paleta e a tipografia da marca', async () => {
+    // Era aqui que o Fator sobre uma Edição passava a ler
+    // `designSystemDoc: null` — e o montador, que só emite [DESIGN SYSTEM]
+    // com o documento preenchido, não punha nada no lugar.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { editedImageUrl: 'https://x/e.png' }, error: null });
+    const base = assetBase({ id: 'mae', url: 'https://x/m.png', metadata: COM_MARCA as any });
+
+    await createStudioAssetActions(deps).edit(base, 'tira o fundo');
+
+    const filha = [...deps.linhas.values()].find((l) => l.type === 'edited')!;
+    expect(filha.metadata?.designSystemDoc).toContain('Creme e dourado');
+    expect(filha.metadata?.antiPadroes).toEqual(['nada de neon']);
+    expect(filha.metadata?.designSystemFromReference).toBe(true);
+    expect(filha.metadata?.artDirection?.mainSubject).toBe('Dois sorrisos');
+    expect(filha.metadata?.logoImage).toBe('https://x/logo.png');
+  });
+
+  it('reenquadrar também — era o metadata mais pobre do sistema', async () => {
+    // `metadata: { sourceImage }` apagava de uma vez a logo, o produto, o
+    // sistema visual e a direção de arte.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/r.png' }, error: null });
+    const base = assetBase({ id: 'mae', aspectRatio: '9:16', url: 'https://x/m.png', prompt: 'anúncio de clareamento', metadata: COM_MARCA as any });
+
+    await createStudioAssetActions(deps).resize(base);
+
+    const filha = [...deps.linhas.values()].find((l) => l.type === 'resize')!;
+    expect(filha.metadata?.logoImage).toBe('https://x/logo.png');
+    expect(filha.metadata?.designSystemDoc).toContain('Creme e dourado');
+    // E o briefing fica guardado à parte do texto de recorte, que precisa
+    // continuar em `prompt` para o "tentar novamente" funcionar.
+    expect(filha.prompt).toContain('REFRAME');
+    expect(filha.metadata?.promptDeOrigem).toBe('anúncio de clareamento');
+  });
+
+  it('o Fator sobe a linhagem quando a arte-base chega pobre', async () => {
+    // Os escritores foram corrigidos, mas as artes JÁ GRAVADAS pobres
+    // continuam no acervo — são elas que estão no canvas de quem usa agora.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    const avo = assetBase({ id: 'avo', metadata: COM_MARCA as any, prompt: 'anúncio de clareamento' });
+    deps.getAsset = vi.fn(async (id: string) => (id === 'avo' ? avo : null));
+
+    const pobre = assetBase({
+      id: 'pobre', parentAssetId: 'avo', url: 'https://x/p.png',
+      prompt: '[REFRAME — THIS IS NOT A NEW ARTWORK]', metadata: { sourceImage: 'https://x/m.png' },
+    });
+
+    await createStudioAssetActions(deps).factorCriativo({
+      base: pobre,
+      variations: [variacaoDoFator()],
+    });
+
+    const enviado = (deps.invoke as any).mock.calls[0][1];
+    expect(enviado.prompt).toContain('Creme e dourado');
+    expect(enviado.logoImage).toBe('https://x/logo.png');
+    // E a imagem da peça escolhida vai anexada, não a do avô.
+    expect(enviado.aspectReference).toBe('https://x/p.png');
+  });
+
+  it('o que a base TEM vence o ancestral — herdar não é desfazer a edição', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    const avo = assetBase({ id: 'avo', metadata: { ...COM_MARCA, logoImage: 'https://x/antiga.png' } as any });
+    deps.getAsset = vi.fn(async () => avo);
+
+    const base = assetBase({
+      id: 'base', parentAssetId: 'avo', url: 'https://x/b.png',
+      metadata: { logoImage: 'https://x/nova.png' },
+    });
+
+    await createStudioAssetActions(deps).factorCriativo({ base, variations: [variacaoDoFator()] });
+
+    const enviado = (deps.invoke as any).mock.calls[0][1];
+    expect(enviado.logoImage).toBe('https://x/nova.png');
+    expect(enviado.prompt).toContain('Creme e dourado'); // o que faltava, herdou
+  });
+
+  it('sem `getAsset`, o Fator segue com o que a base tiver', async () => {
+    // A herança é uma camada a mais, nunca um pré-requisito: uma consulta
+    // indisponível não pode impedir a arte.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    const base = assetBase({ id: 'base', parentAssetId: 'avo', url: 'https://x/b.png', metadata: {} });
+
+    const artes = await createStudioAssetActions(deps).factorCriativo({
+      base, variations: [variacaoDoFator()],
+    });
+    expect(artes).toHaveLength(1);
+  });
+
+  it('consulta que falha no meio da subida não derruba a geração', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    deps.getAsset = vi.fn(async () => { throw new Error('banco fora do ar'); });
+    const base = assetBase({ id: 'base', parentAssetId: 'avo', url: 'https://x/b.png', metadata: {} });
+
+    const artes = await createStudioAssetActions(deps).factorCriativo({
+      base, variations: [variacaoDoFator()],
+    });
+    expect(artes).toHaveLength(1);
+    expect(artes[0].status).toBe('ready');
+  });
+});
