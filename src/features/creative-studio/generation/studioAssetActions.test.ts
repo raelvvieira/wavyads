@@ -14,6 +14,34 @@ function assetBase(patch: Partial<CreativeAsset> = {}): CreativeAsset {
   };
 }
 
+/** Uma variação do Fator, no formato que a edge function devolve. */
+function variacaoDoFator(): any {
+  return {
+    slot: 1, label: 'V1 — problema',
+    strategy: {
+      angle: 'problema', angleSubtype: 'sub', angleViability: 'valid',
+      strategicThesis: 'tese', whySelected: 'x', recognition: 'y',
+      beliefBefore: 'a', beliefAfter: 'b', reasonToBelieve: 'c',
+    },
+    audience: { persona: 'iniciante', awarenessLevel: 'consciente do problema', situation: 's' },
+    execution: {
+      dominantEmotion: 'frustração', offerFrame: 'transformação',
+      argumentStructure: ['problema'], visualHookType: 'problema visualizado',
+    },
+    copy: { title: 'Título', cta: 'Fale conosco' },
+    visualDirection: {
+      dominantHook: 'h', mainSubject: 'm', composition: 'c', hierarchy: ['1'],
+      mood: 'mo', relationshipToThesis: 'r',
+      differencesFromOriginal: ['d'], differencesFromOtherVariations: ['e'],
+    },
+    validation: {
+      supportedFactsUsed: ['f'], unsupportedClaims: [],
+      changedDimensions: ['thesis'], scores: {}, qualityScore: 8.6,
+    },
+    promptCompleto: 'PROMPT DA VARIACAO',
+  };
+}
+
 /** Banco falso: guarda linhas por id e registra a ORDEM das operações. */
 function fakeDeps(): StudioAssetActionsDeps & { linhas: Map<string, CreativeAsset>; ordem: string[] } {
   const linhas = new Map<string, CreativeAsset>();
@@ -905,33 +933,6 @@ describe('a leitura de referências reaproveitada entre peças', () => {
 })
 
 describe('o sistema visual sobrevive à cadeia de artes derivadas', () => {
-  /** Uma variação do Fator, no formato que a edge function devolve. */
-  function variacaoDoFator(): any {
-    return {
-      slot: 1, label: 'V1 — problema',
-      strategy: {
-        angle: 'problema', angleSubtype: 'sub', angleViability: 'valid',
-        strategicThesis: 'tese', whySelected: 'x', recognition: 'y',
-        beliefBefore: 'a', beliefAfter: 'b', reasonToBelieve: 'c',
-      },
-      audience: { persona: 'iniciante', awarenessLevel: 'consciente do problema', situation: 's' },
-      execution: {
-        dominantEmotion: 'frustração', offerFrame: 'transformação',
-        argumentStructure: ['problema'], visualHookType: 'problema visualizado',
-      },
-      copy: { title: 'Título', cta: 'Fale conosco' },
-      visualDirection: {
-        dominantHook: 'h', mainSubject: 'm', composition: 'c', hierarchy: ['1'],
-        mood: 'mo', relationshipToThesis: 'r',
-        differencesFromOriginal: ['d'], differencesFromOtherVariations: ['e'],
-      },
-      validation: {
-        supportedFactsUsed: ['f'], unsupportedClaims: [],
-        changedDimensions: ['thesis'], scores: {}, qualityScore: 8.6,
-      },
-      promptCompleto: 'PROMPT DA VARIACAO',
-    };
-  }
 
   const COM_MARCA = {
     logoImage: 'https://x/logo.png',
@@ -1046,5 +1047,39 @@ describe('o sistema visual sobrevive à cadeia de artes derivadas', () => {
     });
     expect(artes).toHaveLength(1);
     expect(artes[0].status).toBe('ready');
+  });
+});
+
+describe('toda chamada ao provedor declara um teto de espera', () => {
+  // Esta garantia era protegida por um teste de caracterização que lia o
+  // código-fonte da V1 — "toda chamada de geração, edição e Fator declara
+  // timeout". Com a V1 removida, aquele arquivo saiu junto, e esta era a
+  // única das 16 afirmações dele sem equivalente de comportamento na V2.
+  //
+  // O dano que evita: uma chamada sem teto deixa o card em `generating`
+  // para sempre quando o provedor engasga. Não falha, não volta, não dá
+  // erro — fica girando, e o usuário recarrega a página achando que
+  // travou.
+  const TETO = 90_000;
+
+  it('gerar, editar, redimensionar, retentar e o Fator — nenhum sem teto', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({
+      data: { imageUrl: 'https://x/n.png', editedImageUrl: 'https://x/e.png' }, error: null,
+    });
+    const acoes = createStudioAssetActions(deps);
+    const base = assetBase({ id: 'b', url: 'https://x/b.png', aspectRatio: '9:16', prompt: 'p' });
+
+    await acoes.generate('arte', '9:16');
+    await acoes.edit(base, 'muda o fundo');
+    await acoes.resize(base);
+    await acoes.retry(assetBase({ id: 'r', status: 'failed', prompt: 'p' }));
+    await acoes.factorCriativo({ base, variations: [variacaoDoFator()] });
+
+    const chamadas = (deps.invoke as any).mock.calls;
+    expect(chamadas.length).toBeGreaterThanOrEqual(5);
+    for (const [nome, , timeout] of chamadas) {
+      expect(timeout, `${nome} sem teto de espera`).toBe(TETO);
+    }
   });
 });

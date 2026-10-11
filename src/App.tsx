@@ -14,7 +14,6 @@ import ComercialPage from "@/pages/ComercialPage";
 import ComercialIndexPage from "@/pages/ComercialIndexPage";
 import CrmRedirect from "@/pages/CrmRedirect";
 import GoogleAdsAIPage from "@/pages/GoogleAdsAIPage";
-import CriativoStudioPage from "@/pages/CriativoStudioPage";
 import CriativoStudioV2Page from "@/pages/CriativoStudioV2Page";
 import UgcStudioPage from "@/pages/UgcStudioPage";
 import UgcProjectPage from "@/pages/UgcProjectPage";
@@ -52,16 +51,18 @@ const App = () => (
               <Route path="/crm" element={<CrmRedirect />} />
               <Route path="/crm/:clientId" element={<CrmRedirect />} />
               <Route path="/google-ads-ai" element={<GoogleAdsAIPage />} />
-              {/* A V2 é o Criativo Studio. A ilha de navegação já aponta para
-                  esta rota, então o menu passou a levar à versão nova sem
-                  precisar mudar a navegação. */}
+              {/* O Criativo Studio. Versão única desde a remoção da
+                  anterior — o `V2` no nome do componente é histórico. */}
               <Route path="/criativo-studio" element={<CriativoStudioV2Page />} />
-              {/* A antiga continua alcançável enquanto ela for necessária —
-                  é a saída de emergência que o botão da faixa oferece. */}
-              <Route path="/criativo-studio/v1" element={<CriativoStudioPage />} />
-              {/* Redireciona em vez de renderizar: manter duas rotas servindo
-                  a mesma tela cria dois endereços canônicos e, com eles, dois
+              {/* As duas rotas antigas redirecionam em vez de sumir: a `/v1`
+                  esteve no ar e foi oferecida por um botão na tela, então há
+                  links salvos apontando para ela. Um 404 agora pareceria
+                  sistema quebrado, não versão aposentada.
+
+                  Redirecionar em vez de renderizar também evita dois
+                  endereços canônicos para a mesma tela — e, com eles, dois
                   lugares para corrigir na próxima mudança. */}
+              <Route path="/criativo-studio/v1" element={<Navigate to="/criativo-studio" replace />} />
               <Route path="/criativo-studio/v2" element={<Navigate to="/criativo-studio" replace />} />
               <Route path="/ugc-studio" element={<UgcStudioPage />} />
               <Route path="/ugc-studio/:id" element={<UgcProjectPage />} />

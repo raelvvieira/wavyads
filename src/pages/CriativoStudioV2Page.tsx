@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Boxes, CheckCircle2, ImageIcon, Images, LayoutTemplate, Layers, UserRound } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useClients } from '@/hooks/useClients';
@@ -11,7 +10,6 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { CreativeStudioShell } from '@/features/creative-studio/shell/CreativeStudioShell';
-import { StudioVersionBanner } from '@/features/creative-studio/shell/StudioVersionBanner';
 import {
   createAssetGroup,
   createCreativeAsset,
@@ -84,7 +82,6 @@ import type { AvatarPersona } from '@/features/creative-studio/types/avatarPerso
  * provedor chega ao usuário em vez de desaparecer.
  */
 export default function CriativoStudioV2Page() {
-  const navigate = useNavigate();
 
   const [assets, setAssets] = useState<CreativeAsset[]>([]);
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
@@ -406,7 +403,6 @@ export default function CriativoStudioV2Page() {
     toast({ title: 'Ainda não disponível', description: mensagem });
   }, []);
 
-  const abrirVersaoAntiga = useCallback(() => navigate('/criativo-studio/v1'), [navigate]);
 
   // Trocar de cliente zera o projeto ativo. Sem isso, o canvas continuaria
   // preso a um projeto do cliente ANTERIOR, filtrado pelo cliente NOVO —
@@ -1273,8 +1269,6 @@ export default function CriativoStudioV2Page() {
 
   return (
     <div className="studio-page">
-      <StudioVersionBanner onOpenLegacy={abrirVersaoAntiga} />
-
       <CreativeStudioShell
         clientName={clientName}
         clientId={selectedClientId}

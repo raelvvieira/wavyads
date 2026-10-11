@@ -1,5 +1,10 @@
 # Criativo Studio V2 — Fase 0: baseline e proteção
 
+> **Histórico.** A Fase 0 protegeu a extração da V1 para o módulo
+> `src/features/creative-studio/`. A V1 foi removida em outubro de 2026, e
+> com ela a feature flag e os testes de caracterização que este documento
+> descreve. O plano cumpriu o que prometia; o registro fica.
+
 Diagnóstico exigido pela Fase 0 do plano. **Nenhum comportamento de produção
 foi alterado.** O que entrou: feature flag, testes de caracterização e este
 documento.
