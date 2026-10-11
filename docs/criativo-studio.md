@@ -1,11 +1,22 @@
 # Criativo Studio — descritivo técnico e de UX
 
+> **Histórico.** Este documento descreve a PRIMEIRA versão do Criativo Studio,
+> o componente único de 4.101 linhas que ficou em `CriativoStudioPage.tsx`.
+> Essa versão foi **removida** em outubro de 2026, depois que o canvas V2
+> passou a cobrir o fluxo inteiro. O texto fica como registro de onde o
+> módulo `src/features/creative-studio/` veio e por que ele é como é —
+> várias decisões de hoje só se explicam pelo que havia antes.
+>
+> Para o que existe agora, leia o código em
+> `src/pages/CriativoStudioV2Page.tsx` e em `src/features/creative-studio/`.
+> O histórico da V1 continua em `git log -- src/pages/CriativoStudioPage.tsx`.
+
 Documento de contexto para trabalhar na melhoria da página. Descreve o que
-existe hoje: a experiência, as ferramentas, a arquitetura de código, os fluxos
+existia: a experiência, as ferramentas, a arquitetura de código, os fluxos
 internos, o modelo de dados e os pontos frágeis conhecidos.
 
-Referência do código: `src/pages/CriativoStudioPage.tsx` (4.101 linhas) mais o
-módulo `src/features/creative-studio/`.
+Referência do código: `src/pages/CriativoStudioPage.tsx` (4.101 linhas, hoje
+removido) mais o módulo `src/features/creative-studio/`.
 
 ---
 

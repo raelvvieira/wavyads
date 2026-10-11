@@ -7,7 +7,6 @@ import { IMAGE_GENERATION_MODEL } from '../generation/capabilities';
 import { CreativeStudioShell } from './CreativeStudioShell';
 import { FatorCriativoDialog } from '../factor/FatorCriativoDialog';
 import type { OfferIntelligence } from '../types/factorCreative';
-import { StudioVersionBanner } from './StudioVersionBanner';
 import {
   SEM_FILTROS_AVANCADOS,
   advancedFilterChips,
@@ -76,7 +75,6 @@ export function StudioShellPreview() {
 
   return (
     <div className="studio-page">
-      <StudioVersionBanner onOpenLegacy={() => {}} />
       <CreativeStudioShell
       clientName={clients.find((c) => c.id === clientId)?.name ?? null}
       clientId={clientId}

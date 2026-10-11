@@ -260,16 +260,16 @@ describe('CriativoStudioV2Page', () => {
     expect(screen.queryByText('Não deu para carregar as artes')).toBeNull();
   });
 
-  it('a faixa anuncia versão nova, não prévia', async () => {
-    // Esta tela deixou de ser prévia quando virou a rota principal do
-    // Criativo Studio. Uma faixa que continua dizendo "PRÉVIA" ensina o
-    // usuário a não confiar no que a tela afirma sobre si mesma — foi assim
-    // que ela já chegou a dizer que o Fator Criativo "segue no Studio atual"
-    // depois de ele funcionar aqui.
+  it('não existe mais faixa de versão nem saída para a antiga', async () => {
+    // A faixa existia por um motivo só: oferecer a volta a quem tinha o
+    // fluxo antigo na memória muscular. Sem versão antiga, ela afirmaria
+    // algo falso ("a anterior continua disponível") e ocuparia a primeira
+    // faixa da tela para isso.
     montar();
-    await waitFor(() => expect(screen.getByText('Novo')).toBeTruthy());
-    expect(screen.queryByText('Prévia')).toBeNull();
-    expect(screen.getByText(/A anterior continua disponível/)).toBeTruthy();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+    expect(screen.queryByText('Novo')).toBeNull();
+    expect(screen.queryByText(/A anterior continua disponível/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Abrir versão antiga' })).toBeNull();
   });
 
   it('o logo do cliente sobrevive à criação do primeiro projeto', async () => {
@@ -1211,15 +1211,6 @@ describe('CriativoStudioV2Page', () => {
     montar();
     await waitFor(() => expect(screen.getByText(/RLS negou a consulta/)).toBeTruthy());
     expect(screen.queryByText(/O canvas está vazio/)).toBeNull();
-  });
-
-  it('a faixa dá a saída para a versão antiga', async () => {
-    // `/criativo-studio` agora é ESTA tela. A antiga mudou de endereço, e
-    // mandar o botão para a raiz recarregaria a própria página.
-    montar();
-    await waitFor(() => expect(screen.getByText('Novo')).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: 'Abrir versão antiga' }));
-    expect(navigate).toHaveBeenCalledWith('/criativo-studio/v1');
   });
 
   it('selecionar um cliente filtra o canvas e as contagens da ilha ao que é dele', async () => {
