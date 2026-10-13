@@ -280,3 +280,49 @@ describe('pertenceAoGrupo', () => {
     }
   });
 });
+
+describe('"Ativas na Meta" — o grupo que espelha o Gerenciador', () => {
+  const comFilhos = (efeito: string, veiculacao: any = null) =>
+    derivarStatusCampanha({ efeito_bruto: efeito, veiculacao } as any);
+
+  it('campanha ligada aparece como Ativa mesmo sem conseguir confirmar a entrega', () => {
+    // É o caso do relato: a leitura dos anúncios não confirmou, a campanha
+    // caiu em "Veiculação não confirmada" e SUMIU do filtro "Veiculando" —
+    // mesmo com a chave ligada na Meta. O cliente compara com o
+    // Gerenciador, que diz "Ativa", e conclui que o sistema a perdeu.
+    const semConfirmacao = comFilhos('ACTIVE', null);
+    expect(semConfirmacao.estado).toBe('nao_confirmada');
+    expect(pertenceAoGrupo(semConfirmacao, 'veiculando')).toBe(false);
+    expect(pertenceAoGrupo(semConfirmacao, 'ativas')).toBe(true);
+  });
+
+  it('ligada e entregando está nos DOIS grupos', () => {
+    const entregando = comFilhos('ACTIVE', { tem_anuncio_ativo: true });
+    expect(pertenceAoGrupo(entregando, 'ativas')).toBe(true);
+    expect(pertenceAoGrupo(entregando, 'veiculando')).toBe(true);
+  });
+
+  it('ligada mas com os conjuntos pausados continua Ativa — é o que a Meta diz', () => {
+    // E continua FORA de "Veiculando", que é a pergunta mais estrita.
+    const semEntrega = comFilhos('ACTIVE', { tem_anuncio_ativo: false, tem_conjunto_ativo: false });
+    expect(semEntrega.estado).toBe('sem_veiculacao');
+    expect(pertenceAoGrupo(semEntrega, 'ativas')).toBe(true);
+    expect(pertenceAoGrupo(semEntrega, 'veiculando')).toBe(false);
+  });
+
+  it('pausada e arquivada não são Ativas', () => {
+    expect(pertenceAoGrupo(comFilhos('PAUSED'), 'ativas')).toBe(false);
+    expect(pertenceAoGrupo(comFilhos('ARCHIVED'), 'ativas')).toBe(false);
+  });
+
+  it('o formato antigo também responde ao grupo', () => {
+    // Nele não há `bruto`, e "veiculando" é tudo que o dado permitia dizer.
+    expect(pertenceAoGrupo(derivarStatusCampanha({ status_legado: 'active' } as any), 'ativas')).toBe(true);
+    expect(pertenceAoGrupo(derivarStatusCampanha({ status_legado: 'paused' } as any), 'ativas')).toBe(false);
+  });
+
+  it('status desconhecido não é promovido a Ativa', () => {
+    // Afirmar "Ativa" sobre o que a Meta não explicou seria inventar.
+    expect(pertenceAoGrupo(comFilhos('COISA_NOVA'), 'ativas')).toBe(false);
+  });
+});

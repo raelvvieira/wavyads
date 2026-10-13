@@ -91,6 +91,11 @@ interface CampaignsTableProps {
  */
 const STATUS_FILTERS: { value: GrupoDeStatus; label: string }[] = [
   { value: 'todas', label: 'Todas' },
+  // "Ativas" espelha o Gerenciador — a chave ligada. "Veiculando" é mais
+  // estrito: chave ligada E anúncio confirmado no ar. Quem compara com o
+  // Gerenciador procura a primeira; quem quer saber o que está entregando
+  // de fato procura a segunda.
+  { value: 'ativas', label: 'Ativas na Meta' },
   { value: 'veiculando', label: 'Veiculando' },
   { value: 'atencao', label: 'Precisam de atenção' },
   { value: 'pausadas', label: 'Pausadas' },
