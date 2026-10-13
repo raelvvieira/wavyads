@@ -9,13 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import type { MetaAd } from '@/hooks/useMetaAds';
-import { pertenceAoGrupo, type GrupoDeStatus } from '@/lib/campaignStatus';
+import { pertenceAoGrupoDeAnuncio, type GrupoDeStatus } from '@/lib/campaignStatus';
 
 type SortKey = 'spend' | 'ctr' | 'cost_per_result' | 'results' | 'purchases' | 'purchase_roas';
 
 /** Mesmos grupos da tabela de campanhas — a mesma verdade, um nível abaixo. */
 const STATUS_FILTERS: { value: GrupoDeStatus; label: string }[] = [
   { value: 'todas', label: 'Todos' },
+  // "Ativos" é a chave do anúncio ligada E a campanha dele também —
+  // independente de estar entregando agora. "Veiculando" é mais estrito.
+  { value: 'ativas', label: 'Ativos' },
   { value: 'veiculando', label: 'Veiculando' },
   { value: 'atencao', label: 'Precisam de atenção' },
   { value: 'pausadas', label: 'Pausados' },
@@ -56,7 +59,7 @@ export function CreativesGallery({ ads }: CreativesGalleryProps) {
   const [selectedAd, setSelectedAd] = useState<MetaAd | null>(null);
 
   const filtered = useMemo(() => {
-    let list = statusFilter === 'todas' ? ads : ads.filter(a => pertenceAoGrupo(a.status, statusFilter));
+    let list = statusFilter === 'todas' ? ads : ads.filter(a => pertenceAoGrupoDeAnuncio(a.status, statusFilter));
 
     list = [...list].sort((a, b) => {
       switch (sortKey) {
@@ -83,7 +86,7 @@ export function CreativesGallery({ ads }: CreativesGalleryProps) {
   const aviso = useMemo(() => avisoDosAnuncios(diagnosticarAnuncios(ads)), [ads]);
 
   const totalFiltered = useMemo(() => {
-    const list = statusFilter === 'todas' ? ads : ads.filter(a => pertenceAoGrupo(a.status, statusFilter));
+    const list = statusFilter === 'todas' ? ads : ads.filter(a => pertenceAoGrupoDeAnuncio(a.status, statusFilter));
     return list.length;
   }, [ads, statusFilter]);
 

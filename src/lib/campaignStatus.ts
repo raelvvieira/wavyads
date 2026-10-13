@@ -372,6 +372,53 @@ const ATENCAO: EstadoCampanha[] = [
  * chave ligada. Daí este grupo: ele espelha o Gerenciador e não depende de
  * conseguir ler os filhos.
  */
+/**
+ * Os `effective_status` de anúncio em que algo ACIMA ou O PRÓPRIO está
+ * desligado.
+ *
+ * A Meta reporta no `effective_status` do anúncio o impedimento de MAIOR
+ * nível: campanha pausada vence conjunto pausado, que vence a chave do
+ * próprio anúncio. É o que torna este conjunto suficiente — não é preciso
+ * cruzar com a lista de campanhas para saber se a campanha está ligada: se
+ * estivesse desligada, o valor aqui seria `CAMPAIGN_PAUSED`.
+ */
+const ANUNCIO_DESLIGADO = new Set(['PAUSED', 'CAMPAIGN_PAUSED', 'ARCHIVED', 'DELETED']);
+
+/**
+ * A chave do anúncio está ligada E a campanha dele também.
+ *
+ * É a pergunta que o usuário fez em voz alta: "os criativos com a chave
+ * ligada, e que estejam dentro de uma campanha ativada".
+ *
+ * Note o que ela NÃO exige: que o anúncio esteja entregando. Um anúncio
+ * ligado numa campanha ligada, mas com o conjunto pausado
+ * (`ADSET_PAUSED`), continua sendo um anúncio ativo pela definição acima —
+ * ele só não está no ar neste momento. Quem quer saber o que entrega de
+ * fato usa "Veiculando"; quem quer saber o que está montado e ligado usa
+ * este.
+ */
+export function anuncioEstaAtivo(status: StatusCampanha): boolean {
+  if (status.bruto) return !ANUNCIO_DESLIGADO.has(status.bruto);
+  /*
+   * Formato antigo: só existe a chave do próprio anúncio, e nada sobre a
+   * campanha acima. "Veiculando" é tudo que aquele dado permitia afirmar —
+   * e é o mais perto que dá para chegar sem inventar.
+   */
+  return status.estado === 'veiculando';
+}
+
+/**
+ * O mesmo filtro, com o vocabulário do nível do ANÚNCIO.
+ *
+ * Existe separado porque "ativo" quer dizer coisas diferentes nos dois
+ * níveis. Numa campanha, é a chave dela. Num anúncio, é a chave dele MAIS a
+ * da campanha acima — e é o `effective_status` que carrega as duas.
+ */
+export function pertenceAoGrupoDeAnuncio(status: StatusCampanha, grupo: GrupoDeStatus): boolean {
+  if (grupo === 'ativas') return anuncioEstaAtivo(status);
+  return pertenceAoGrupo(status, grupo);
+}
+
 export function pertenceAoGrupo(status: StatusCampanha, grupo: GrupoDeStatus): boolean {
   switch (grupo) {
     case 'todas': return true;
