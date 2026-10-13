@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { avisoDaIntegracao, diagnosticarCampanhas } from '@/lib/metaIntegrationHealth';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import { StatusBadge } from './StatusBadge';
@@ -173,6 +174,19 @@ export function CampaignsTable({ campaigns, atualizadoEm, onAtualizar }: Campaig
    * Dizer qual recorte é a diferença entre um número e um número com
    * contexto.
    */
+  /*
+   * Em que condições estes status estão sendo lidos.
+   *
+   * Com a função antiga no ar, o status diz só se a chave da campanha está
+   * ligada — e a lista para em 200. Filtrar por "Veiculando" e receber zero
+   * então não significa que não há campanha ativa: significa que nenhuma
+   * das 200 que couberam é ativa, e que o payload não sabe dizer mais que
+   * isso. Sem o aviso, quem vê o zero conclui que o sistema perdeu as
+   * campanhas, e reporta o mesmo problema toda semana.
+   */
+  const diagnostico = useMemo(() => diagnosticarCampanhas(campaigns), [campaigns]);
+  const aviso = avisoDaIntegracao(diagnostico);
+
   const rotuloDoTotal = statusFilter === 'todas'
     ? 'Total / Média'
     : `Total / Média · ${STATUS_FILTERS.find(f => f.value === statusFilter)?.label} (${filtered.length} de ${campaigns.length})`;
@@ -269,6 +283,14 @@ export function CampaignsTable({ campaigns, atualizadoEm, onAtualizar }: Campaig
           </button>
         ))}
       </div>
+
+      {/* O aviso aparece só quando há o que avisar, e some sozinho no dia
+          em que a função for implantada — nada a limpar depois. */}
+      {aviso && (
+        <p className="mb-3 rounded-lg border border-amber-500/20 bg-amber-500/[0.07] px-3 py-2 text-[11px] leading-relaxed text-amber-200/90">
+          {aviso}
+        </p>
+      )}
 
       {/* Mobile: card list with sort selector */}
       <div className="md:hidden">

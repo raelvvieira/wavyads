@@ -155,3 +155,33 @@ describe('CampaignsTable — o filtro que mentia', () => {
     expect(() => montar([torta])).not.toThrow();
   });
 });
+
+describe('o aviso de integração antiga', () => {
+  it('com o payload antigo, a tela admite em que modo está', () => {
+    // "0 de 200" com campanhas ativas na conta era um zero sem explicação.
+    // Quem o via concluía que o sistema tinha perdido as campanhas — e
+    // reportava o mesmo problema toda semana, porque a tela nunca admitiu o
+    // limite em que estava operando.
+    const antigas = Array.from({ length: 200 }, (_, i) => ({
+      ...campanha(`C${i}`, {}),
+      status: derivarStatusCampanha({ status_legado: 'paused' } as any),
+    })) as any;
+    montar(antigas);
+
+    expect(screen.getByText(/integração com a Meta está numa versão antiga/)).toBeTruthy();
+    expect(screen.getByText(/nem chegaram aqui/)).toBeTruthy();
+  });
+
+  it('com o payload novo, nenhum aviso aparece', () => {
+    // Um aviso que sobra depois de resolvido ensina a ignorar avisos.
+    const novas = [{
+      ...campanha('NOVA', {}),
+      status: derivarStatusCampanha({
+        efeito_bruto: 'ACTIVE', veiculacao: { tem_anuncio_ativo: true },
+      } as any),
+    }] as any;
+    montar(novas);
+
+    expect(screen.queryByText(/versão antiga/)).toBeNull();
+  });
+})

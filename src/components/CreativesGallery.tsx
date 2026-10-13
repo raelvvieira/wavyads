@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { avisoDosAnuncios, diagnosticarAnuncios } from '@/lib/metaIntegrationHealth';
 import { ImageOff, ArrowUpDown, ChevronDown, ChevronUp } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import { StatusBadge } from './StatusBadge';
@@ -73,6 +74,14 @@ export function CreativesGallery({ ads }: CreativesGalleryProps) {
     return list.slice(0, expanded ? 15 : 5);
   }, [ads, statusFilter, sortKey, expanded]);
 
+  /*
+   * No formato antigo, "Veiculando" aqui quer dizer que o ANÚNCIO está
+   * ligado — e nada sobre a campanha acima dele. É por isso que a galeria
+   * mostra criativos de campanhas já desligadas: o payload não carrega a
+   * hierarquia, e nenhuma leitura esperta a inventa.
+   */
+  const aviso = useMemo(() => avisoDosAnuncios(diagnosticarAnuncios(ads)), [ads]);
+
   const totalFiltered = useMemo(() => {
     const list = statusFilter === 'todas' ? ads : ads.filter(a => pertenceAoGrupo(a.status, statusFilter));
     return list.length;
@@ -102,6 +111,12 @@ export function CreativesGallery({ ads }: CreativesGalleryProps) {
               </button>
             ))}
           </div>
+
+      {aviso && (
+        <p className="mb-3 rounded-lg border border-amber-500/20 bg-amber-500/[0.07] px-3 py-2 text-[11px] leading-relaxed text-amber-200/90">
+          {aviso}
+        </p>
+      )}
 
           <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
             <SelectTrigger className="w-[150px] h-7 text-[11px] bg-white/[0.03] border-white/10">
