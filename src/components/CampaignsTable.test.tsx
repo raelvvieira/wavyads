@@ -82,10 +82,30 @@ describe('CampaignsTable — o filtro que mentia', () => {
     // — e era com esse número que olhava a verba.
     montar([rodando, parada]);
 
-    expect(screen.getAllByText('Total / Média').length).toBeGreaterThan(0);
+    // A tela abre nas ativas, então o rodapé já nomeia o recorte — é o
+    // oposto do "Total" que parecia ser o da conta inteira.
+    // As duas têm a chave ligada: uma entrega, a outra está com o conjunto
+    // pausado. "Ativas" é a pergunta do Gerenciador e inclui as duas.
+    expect(screen.getAllByText(/Total \/ Média · Ativas na Meta \(2 de 2\)/).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('button', { name: 'Veiculando' }));
     expect(screen.getAllByText(/Total \/ Média · Veiculando \(1 de 2\)/).length).toBeGreaterThan(0);
+
+    // Só em "Todas" ele volta a ser um total sem qualificação.
+    fireEvent.click(screen.getByRole('button', { name: 'Todas' }));
+    expect(screen.getAllByText('Total / Média').length).toBeGreaterThan(0);
+  });
+
+  it('a tela abre nas ativas, e o vazio oferece a saída em vez de só zerar', () => {
+    // Abrir num filtro sem dizer que ele existe recriaria o zero sem
+    // explicação que esta mesma tela acabou de corrigir.
+    const desligada = campanha('DESLIGADA', { efeito_bruto: 'PAUSED', status_bruto: 'PAUSED' });
+    montar([desligada]);
+
+    expect(screen.getAllByText(/Nenhuma campanha em .Ativas na Meta./).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getAllByRole('button', { name: /Ver todas as 1/ })[0]);
+    expect(screen.queryAllByText(/Nenhuma campanha em/)).toHaveLength(0);
+    expect(linhas('DESLIGADA').length).toBeGreaterThan(0);
   });
 
   it('status desconhecido fica visível em "atenção", e não arquivado em "Encerradas"', () => {
