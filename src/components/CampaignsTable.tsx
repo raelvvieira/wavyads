@@ -105,7 +105,18 @@ const STATUS_FILTERS: { value: GrupoDeStatus; label: string }[] = [
 export function CampaignsTable({ campaigns, atualizadoEm, onAtualizar }: CampaignsTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('spend');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
-  const [statusFilter, setStatusFilter] = useState<GrupoDeStatus>('todas');
+  /*
+   * A tela abre nas ATIVAS.
+   *
+   * "Todas" é um recorte de tudo que já existiu na conta — centenas de
+   * campanhas encerradas há meses, com as poucas que importam perdidas no
+   * meio. Quem abre o dashboard quer saber o que está no ar agora.
+   *
+   * O rodapé continua nomeando o recorte, e o estado vazio oferece a volta
+   * para "Todas": abrir num filtro sem dizer que ele existe seria recriar o
+   * zero sem explicação que esta mesma tela acabou de corrigir.
+   */
+  const [statusFilter, setStatusFilter] = useState<GrupoDeStatus>('ativas');
 
   const filtered = useMemo(() => {
     if (statusFilter === 'todas') return campaigns;
@@ -191,6 +202,29 @@ export function CampaignsTable({ campaigns, atualizadoEm, onAtualizar }: Campaig
    */
   const diagnostico = useMemo(() => diagnosticarCampanhas(campaigns), [campaigns]);
   const aviso = avisoDaIntegracao(diagnostico);
+
+  /*
+   * O vazio que explica a si mesmo.
+   *
+   * Uma tabela sem linhas e um rodapé zerado foi o que fez o cliente
+   * concluir que o sistema tinha perdido as campanhas. Dizer qual recorte
+   * está ligado, quantas existem fora dele e oferecer a saída custa três
+   * linhas e evita o chamado.
+   */
+  const vazioPorFiltro = sorted.length === 0 && campaigns.length > 0 ? (
+    <div className="py-6 text-center">
+      <p className="text-sm text-muted-foreground">
+        Nenhuma campanha em “{STATUS_FILTERS.find(f => f.value === statusFilter)?.label}” neste período.
+      </p>
+      <button
+        type="button"
+        onClick={() => setStatusFilter('todas')}
+        className="mt-1.5 text-xs text-foreground underline underline-offset-2"
+      >
+        Ver todas as {campaigns.length}
+      </button>
+    </div>
+  ) : null;
 
   const rotuloDoTotal = statusFilter === 'todas'
     ? 'Total / Média'
@@ -319,6 +353,7 @@ export function CampaignsTable({ campaigns, atualizadoEm, onAtualizar }: Campaig
           </button>
         </div>
         <div className="space-y-2.5 max-h-[520px] overflow-y-auto pr-1">
+          {vazioPorFiltro}
           {sorted.map((c) => {
             const tags = getTags(c);
             const actionLabel = getActionLabel(c.result_type || '');
@@ -408,6 +443,9 @@ export function CampaignsTable({ campaigns, atualizadoEm, onAtualizar }: Campaig
               </tr>
             </thead>
             <tbody>
+              {sorted.length === 0 && (
+                <tr><td colSpan={12} className="py-6">{vazioPorFiltro}</td></tr>
+              )}
               {sorted.map((c) => {
                 const tags = getTags(c);
                 const actionLabel = getActionLabel(c.result_type || '');

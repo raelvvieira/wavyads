@@ -53,7 +53,9 @@ interface CreativesGalleryProps {
 }
 
 export function CreativesGallery({ ads }: CreativesGalleryProps) {
-  const [statusFilter, setStatusFilter] = useState<GrupoDeStatus>('todas');
+  // Abre nos ATIVOS: a chave do criativo ligada, dentro de campanha ligada.
+  // "Todos" traz o acervo inteiro da conta, com os que importam no meio.
+  const [statusFilter, setStatusFilter] = useState<GrupoDeStatus>('ativas');
   const [sortKey, setSortKey] = useState<SortKey>('spend');
   const [expanded, setExpanded] = useState(false);
   const [selectedAd, setSelectedAd] = useState<MetaAd | null>(null);
@@ -217,7 +219,22 @@ export function CreativesGallery({ ads }: CreativesGalleryProps) {
         </div>
 
         {filtered.length === 0 && (
-          <p className="text-sm text-muted-foreground text-center py-6">Nenhum criativo encontrado.</p>
+          <div className="py-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              {ads.length === 0
+                ? 'Nenhum criativo encontrado.'
+                : `Nenhum criativo em “${STATUS_FILTERS.find(f => f.value === statusFilter)?.label}” neste período.`}
+            </p>
+            {ads.length > 0 && statusFilter !== 'todas' && (
+              <button
+                type="button"
+                onClick={() => { setStatusFilter('todas'); setExpanded(false); }}
+                className="mt-1.5 text-xs text-foreground underline underline-offset-2"
+              >
+                Ver todos os {ads.length}
+              </button>
+            )}
+          </div>
         )}
 
         {/* Expand / Collapse button */}
