@@ -40,6 +40,9 @@ import { libraryAssets, visibleCanvasAssets, type SelectionAction } from '@/feat
  * `save-to-client-intelligence` só marca uma coluna: hidratar para elas
  * seria uma ida ao banco sem motivo.
  */
+/** O corte da listagem do canvas. Espelha o default de `listCreativeAssets`. */
+const TETO_DA_LISTAGEM = 300;
+
 const PRECISA_DO_PESO = new Set<SelectionAction>([
   'retry', 'edit', 'resize', 'factor', 'factor-briefing', 'save-as-template',
 ]);
@@ -64,6 +67,7 @@ import { montarPropostaDoPedido, type PropostaDoPedido } from '@/lib/creativeStu
 import { lerQuantidade } from '@/lib/creativeStudio/quantidade';
 import { rotearPedido } from '@/lib/creativeStudio/intencao';
 import { briefingDaArte } from '@/lib/creativeStudio/briefing';
+import { aRecuperarSozinho } from '@/lib/creativeStudio/imagemDaArte';
 import { briefDaVariacao, resumoDaPeca } from '@/lib/creativeStudio/variacoes';
 import { IMAGE_GENERATION_MODEL } from '@/features/creative-studio/generation/capabilities';
 import { ASSET_ORIGIN_LABELS, SOURCE_ASSET_TYPES } from '@/features/creative-studio/types/creative';
@@ -190,6 +194,22 @@ export default function CriativoStudioV2Page() {
        * `metadata: {}` com certeza, não por azar de corrida.
        */
       setAssets((atuais) => preservarOPeso(mesclarPorId(artes.value, doInsumo), atuais));
+
+      /*
+       * O teto da consulta para de ser silencioso.
+       *
+       * A listagem corta nas 300 artes mais recentes. Quando ela volta
+       * CHEIA, é porque há mais — e a tela estava afirmando ser o acervo
+       * inteiro. Quem procurava uma arte antiga e não achava concluía que o
+       * sistema a tinha perdido.
+       */
+      if (artes.value.length >= TETO_DA_LISTAGEM && !avisouDoTeto.current) {
+        avisouDoTeto.current = true;
+        toast({
+          title: `Mostrando as ${TETO_DA_LISTAGEM} artes mais recentes`,
+          description: 'Há mais no acervo. Use a busca ou escolha um cliente para alcançar as antigas.',
+        });
+      }
       setProjects(recentes.status === 'fulfilled' ? recentes.value : []);
 
       // Uma falha aqui degrada o menu de anexos, não a tela. Dizer isso em
@@ -390,6 +410,12 @@ export default function CriativoStudioV2Page() {
       // sistema visual da marca — o caso de qualquer arte editada ou
       // reenquadrada antes desta correção.
       getAsset: (id: string) => getCreativeAsset(id).catch(() => null),
+      // A arte vira arquivo antes de ser gravada. Sem isto, uma conversão
+      // que falhou na edge function grava a imagem inteira dentro da
+      // coluna `url` — e a listagem, que anula esse campo, devolve um card
+      // branco que nunca carrega.
+      persistImage: (dataUrl: string, hint: string) =>
+        uploadDataUrlToCreativeStorage({ dataUrl, path: `generated/${hint}.png` }),
       recordUsage: (usageKey) => { void recordAiUsage(usageKey as AiUsageType); },
     };
     return createStudioAssetActions(deps);
@@ -638,6 +664,21 @@ export default function CriativoStudioV2Page() {
     | null
   >(null);
   const [proposta, setProposta] = useState<PropostaDoPedido | null>(null);
+  /**
+   * As artes cuja imagem está sendo buscada agora.
+   *
+   * A consulta da grade lê a view `creative_assets_grid`, que anula `url`
+   * quando ela é um `data:` ou passa de 2048 caracteres — e faz certo, ou
+   * trezentas linhas com uma imagem dentro de cada viriam como megabytes de
+   * JSON. Mas a arte continua lá, na tabela. Buscá-la é uma linha a mais, e
+   * só quando alguém olha.
+   */
+  const [recuperando, setRecuperando] = useState<Set<string>>(new Set());
+  /** O que já foi pedido — sem isto, cada render pediria tudo de novo. */
+  const jaPediImagem = useRef<Set<string>>(new Set());
+  /** O aviso do teto vale uma vez por sessão, não a cada recarga de lista. */
+  const avisouDoTeto = useRef(false);
+
   /** "ideia 2 de 2" — o que distingue "está demorando" de "está travado". */
   const [detalheDoEstagio, setDetalheDoEstagio] = useState<string | null>(null);
 
@@ -1040,6 +1081,69 @@ export default function CriativoStudioV2Page() {
    * está desenhado com o que a grade tinha, e o prompt aparece quando
    * chega. Falhar aqui não tira nada da tela.
    */
+  /**
+   * Traz a imagem de uma arte que a listagem devolveu sem endereço.
+   *
+   * `getCreativeAsset` lê a TABELA, não a view — é por isso que ela
+   * enxerga o que a grade esconde. E, trazida a imagem, ela é migrada para
+   * um arquivo no Storage em segundo plano: a próxima abertura da tela já
+   * encontra uma URL leve, e esta arte nunca mais precisa deste caminho.
+   *
+   * A migração pode falhar — bucket, permissão, rede. Falhar nela não pode
+   * custar a imagem: o que foi buscado continua na tela de qualquer jeito.
+   */
+  const recuperarImagem = useCallback((asset: CreativeAsset) => {
+    if (jaPediImagem.current.has(asset.id)) return;
+    jaPediImagem.current.add(asset.id);
+    setRecuperando((atual) => new Set(atual).add(asset.id));
+
+    void getCreativeAsset(asset.id)
+      .then(async (cheio) => {
+        if (!cheio.url) return;
+        upsertAsset(cheio);
+
+        if (!cheio.url.startsWith('data:')) return;
+        try {
+          const url = await uploadDataUrlToCreativeStorage({
+            dataUrl: cheio.url,
+            path: `recuperadas/${asset.id}.png`,
+          });
+          // Uma URL vazia gravaria por cima da imagem que acabou de
+          // aparecer — e o card voltaria a ser branco por causa do conserto.
+          if (!url) return;
+          const leve = await updateCreativeAsset(asset.id, { url, thumbnailUrl: url });
+          if (leve) upsertAsset(leve);
+        } catch {
+          // A imagem já está na tela. Migrar é melhoria, não pré-requisito.
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        setRecuperando((atual) => {
+          const proximo = new Set(atual);
+          proximo.delete(asset.id);
+          return proximo;
+        });
+      });
+  }, [upsertAsset]);
+
+  /*
+   * As primeiras da tela recuperam sozinhas.
+   *
+   * Pedir um clique por card seria devolver ao usuário um trabalho que o
+   * sistema sabe fazer. Pedir todas de uma vez seria trocar o retângulo
+   * branco por uma tela travada — cada linha dessas carrega a imagem
+   * inteira. O teto resolve as duas coisas: a primeira dobra enche sozinha,
+   * e o resto fica a um clique, que é onde o custo aparece para quem paga.
+   */
+  useEffect(() => {
+    const alvos = aRecuperarSozinho(visiveis, jaPediImagem.current);
+    for (const id of alvos) {
+      const arte = visiveis.find((a) => a.id === id);
+      if (arte) recuperarImagem(arte);
+    }
+  }, [visiveis, recuperarImagem]);
+
   const hidratarAsset = useCallback((id: string) => {
     const atual = assets.find((a) => a.id === id);
     if (atual && atual.prompt !== null && atual.prompt !== undefined) return;
@@ -1301,6 +1405,8 @@ export default function CriativoStudioV2Page() {
         onCommandChange={setCommand}
         onSubmitCommand={handleSubmitCommand}
         stageDetail={detalheDoEstagio}
+        onRecoverImage={recuperarImagem}
+        recoveringIds={recuperando}
         selectionCommand={comandoDeSelecao}
         proposal={proposta}
         onApproveProposal={aprovarProposta}

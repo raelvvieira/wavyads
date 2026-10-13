@@ -94,6 +94,10 @@ export interface CreativeStudioShellProps {
   avatarLibrary: CreativeAsset[];
   onGenerateAvatar: (persona: AvatarPersona, referenceImages: string[]) => void;
   onAssetAction: (action: SelectionAction, assets: CreativeAsset[]) => void;
+  /** Busca a imagem de uma arte que a listagem devolveu sem endereço. */
+  onRecoverImage?: (asset: CreativeAsset) => void;
+  /** Ids das artes sendo buscadas agora. */
+  recoveringIds?: ReadonlySet<string>;
   /**
    * O que o sistema entendeu do pedido, esperando um sim.
    *
@@ -292,6 +296,8 @@ export function CreativeStudioShell(props: CreativeStudioShellProps) {
           // um vazio no canvas" para desselecionar. Não dava: o vazio nunca
           // teve handler.
           onEmptyClick={soltarSelecao}
+          onRecoverImage={props.onRecoverImage}
+          recoveringIds={props.recoveringIds}
           assets={props.assets}
           mode={viewMode}
           selectedIds={selectedIds}

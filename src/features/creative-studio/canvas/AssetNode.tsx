@@ -1,9 +1,10 @@
-import { AlertTriangle, Check, Download, Loader2, Maximize2, Pencil, RefreshCw, Repeat, Sparkles, Trash2 } from 'lucide-react';
+import { AlertTriangle, Check, Download, ImageOff, Loader2, Maximize2, Pencil, RefreshCw, Repeat, Sparkles, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CreativeAsset } from '../types/creative';
 import { ASSET_ORIGIN_LABELS, FACTOR_AXIS_LABELS } from '../types/creative';
 import { angleLabelFrom } from '../types/factorCreative';
 import type { SelectionAction } from '../state/canvasSelectors';
+import { estadoDaImagem } from '@/lib/creativeStudio/imagemDaArte';
 
 const TIPO_LABEL: Record<string, string> = {
   original: 'Original',
@@ -37,6 +38,10 @@ interface AssetNodeProps {
   onAction: (action: SelectionAction, asset: CreativeAsset) => void;
   /** Ações que valem para ESTE asset sozinho, vindas de `availableActionsForSelection`. */
   actions: SelectionAction[];
+  /** Busca a imagem de uma arte que a listagem devolveu sem endereço. */
+  onRecoverImage?: (asset: CreativeAsset) => void;
+  /** Esta arte está sendo buscada agora. */
+  recovering?: boolean;
 }
 
 /**
@@ -47,10 +52,14 @@ interface AssetNodeProps {
  * botão de retentar. Sumir com a arte que falhou é como o usuário perde a
  * referência do que pediu e repete o pedido do zero.
  */
-export function AssetNode({ asset, selected, onToggleSelect, onAction, actions }: AssetNodeProps) {
-  const pronto = asset.status === 'ready' && !!asset.url;
-  const trabalhando = asset.status === 'queued' || asset.status === 'generating';
-  const falhou = asset.status === 'failed';
+export function AssetNode({
+  asset, selected, onToggleSelect, onAction, actions, onRecoverImage, recovering,
+}: AssetNodeProps) {
+  const estado = estadoDaImagem(asset);
+  const pronto = estado === 'pronta';
+  const trabalhando = estado === 'trabalhando';
+  const falhou = estado === 'falhou';
+  const semEndereco = estado === 'sem_endereco';
 
   return (
     <figure
@@ -63,7 +72,8 @@ export function AssetNode({ asset, selected, onToggleSelect, onAction, actions }
         onClick={(e) => onToggleSelect(asset, e.metaKey || e.ctrlKey || e.shiftKey)}
         aria-pressed={selected}
         aria-label={`${TIPO_LABEL[asset.type] ?? asset.type} ${asset.aspectRatio ?? ''} — ${
-          pronto ? 'pronta' : trabalhando ? 'gerando' : 'falhou'
+          pronto ? 'pronta' : trabalhando ? 'gerando'
+            : falhou ? 'falhou' : 'imagem não carregada'
         }`}
         className="studio-asset-surface"
         style={aspectStyle(asset)}
@@ -86,6 +96,44 @@ export function AssetNode({ asset, selected, onToggleSelect, onAction, actions }
             <span className="text-[11px]">
               {asset.status === 'queued' ? 'Na fila' : 'Gerando'}
             </span>
+          </span>
+        )}
+
+        {/* O quarto estado, que não existia.
+            A arte está no banco com a imagem dentro da coluna `url`, em
+            base64 — e a view da grade anula esse campo de propósito, para
+            não despachar megabytes por linha. O card não está sem imagem:
+            está sem o ENDEREÇO dela nesta consulta. Dizer isso é a
+            diferença entre "o sistema perdeu minha arte" e "clique para
+            carregar". */}
+        {semEndereco && (
+          <span className="flex h-full w-full flex-col items-center justify-center gap-2 px-3 text-center">
+            {recovering ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin text-white/50" />
+                <span className="text-[11px] text-white/55">Carregando a imagem…</span>
+              </>
+            ) : (
+              <>
+                <ImageOff className="h-5 w-5 text-white/40" />
+                <span className="text-[11px] leading-snug text-white/55">
+                  Imagem guardada fora da listagem
+                </span>
+                {onRecoverImage && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => { e.stopPropagation(); onRecoverImage(asset); }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onRecoverImage(asset); }
+                    }}
+                    className="rounded-full border border-white/15 px-2.5 py-1 text-[11px] font-medium text-white/80 transition-colors hover:bg-white/[0.08]"
+                  >
+                    Carregar
+                  </span>
+                )}
+              </>
+            )}
           </span>
         )}
 

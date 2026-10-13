@@ -113,6 +113,17 @@ function montar() {
   return render(<MemoryRouter><CriativoStudioV2Page /></MemoryRouter>);
 }
 
+/** Uma arte que a listagem devolve SEM endereço de imagem — o caso da view
+ *  da grade, que anula `url` quando ela é um `data:`. */
+const SEM_ENDERECO: CreativeAsset = {
+  id: 'sem-url', projectId: 'proj-1', clientId: null, type: 'original', status: 'ready',
+  url: null, thumbnailUrl: null, parentAssetId: null, rootAssetId: null, groupId: null,
+  factorAxis: null, aspectRatio: '9:16', resolution: '2K', width: null, height: null,
+  prompt: null, negativePrompt: null, model: 'gpt-image-2', errorMessage: null,
+  filename: 'arte antiga', isClientIntelligence: false, metadata: {},
+  createdAt: '2026-10-09T10:00:00.000Z', updatedAt: '2026-10-09T10:00:00.000Z',
+};
+
 const cards = () => [...document.querySelectorAll('.studio-asset-surface')];
 const prontos = () =>
   [...document.querySelectorAll('figure')].filter((f) => f.getAttribute('data-status') === 'ready');
@@ -628,6 +639,154 @@ describe('CriativoStudioV2Page', () => {
 
     expect(briefs).toEqual(['anúncio de clareamento dental']);
     expect(screen.queryByText(/peças/)).toBeNull();
+  });
+
+  it('arte sem endereço na listagem não vira retângulo branco mudo', async () => {
+    // A view da grade anula `url` quando ela é um `data:` — e faz certo,
+    // ou trezentas linhas com uma imagem dentro de cada viriam como
+    // megabytes de JSON. Mas os três estados do card não cobriam esse caso,
+    // e sobrava um branco com um rótulo embaixo. Para sempre.
+    listCreativeAssets.mockResolvedValue([SEM_ENDERECO]);
+    getCreativeAsset.mockResolvedValue({ ...SEM_ENDERECO, url: 'data:image/png;base64,AAAA' });
+    // `vi.clearAllMocks()` zera as CHAMADAS, não as implementações: sem
+    // declarar estas duas, o teste herda o mock de quem rodou antes.
+    uploadDataUrlToCreativeStorage.mockResolvedValue('https://storage/migrada.png');
+    updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({
+      ...SEM_ENDERECO, id, ...patch,
+    }));
+    montar();
+
+    // A primeira dobra recupera sozinha: pedir um clique por card devolveria
+    // ao usuário um trabalho que o sistema sabe fazer.
+    await waitFor(() => expect(getCreativeAsset).toHaveBeenCalledWith('sem-url'));
+    // E a imagem não só aparece: ela é migrada para um arquivo no caminho.
+    // A próxima abertura da tela já encontra uma URL leve, e esta arte nunca
+    // mais precisa deste desvio.
+    await waitFor(() => {
+      const srcs = [...document.querySelectorAll('figure img')].map((i) => i.getAttribute('src'));
+      expect(srcs).toContain('https://storage/migrada.png');
+    });
+    expect(uploadDataUrlToCreativeStorage).toHaveBeenCalledWith(
+      expect.objectContaining({ dataUrl: 'data:image/png;base64,AAAA' }),
+    );
+  });
+
+  it('a recuperação migra a imagem para arquivo, e a falha não a tira da tela', async () => {
+    // Migrar é melhoria, não pré-requisito: a próxima abertura encontra uma
+    // URL leve e a arte nunca mais precisa deste caminho. Mas se o bucket
+    // recusar, o que já foi buscado continua valendo.
+    listCreativeAssets.mockResolvedValue([SEM_ENDERECO]);
+    getCreativeAsset.mockResolvedValue({ ...SEM_ENDERECO, url: 'data:image/png;base64,AAAA' });
+    uploadDataUrlToCreativeStorage.mockRejectedValue(new Error('bucket recusou'));
+    updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({
+      ...SEM_ENDERECO, id, ...patch,
+    }));
+    montar();
+
+    await waitFor(() => expect(uploadDataUrlToCreativeStorage).toHaveBeenCalled());
+    const img = document.querySelector('figure img') as HTMLImageElement | null;
+    expect(img?.getAttribute('src')).toBe('data:image/png;base64,AAAA');
+  });
+
+  it('a mesma arte não é pedida duas vezes', async () => {
+    // A lista muda a cada geração; sem memória do que já foi pedido, cada
+    // render baixaria tudo de novo — e são megabytes por linha.
+    listCreativeAssets.mockResolvedValue([SEM_ENDERECO]);
+    getCreativeAsset.mockResolvedValue({ ...SEM_ENDERECO, url: 'data:image/png;base64,AAAA' });
+    uploadDataUrlToCreativeStorage.mockResolvedValue('https://storage/migrada.png');
+    updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({
+      ...SEM_ENDERECO, id, ...patch,
+    }));
+    montar();
+
+    await waitFor(() => expect(getCreativeAsset).toHaveBeenCalledWith('sem-url'));
+    await act(async () => { await Promise.resolve(); });
+    expect(getCreativeAsset.mock.calls.filter((c: any[]) => c[0] === 'sem-url')).toHaveLength(1);
+  });
+
+  it('além do teto, o card oferece o botão em vez de um branco mudo', async () => {
+    // Buscar todas de uma vez trocaria o retângulo branco por uma tela
+    // travada: cada linha dessas carrega a imagem inteira. O que passa do
+    // teto fica a um clique — que é onde o custo aparece para quem o paga.
+    const muitas = Array.from({ length: 20 }, (_, i) => ({
+      ...SEM_ENDERECO, id: `sem-${i}`, createdAt: `2026-10-${String(9 + (i % 2)).padStart(2, '0')}T10:00:00.000Z`,
+    }));
+    listCreativeAssets.mockResolvedValue(muitas);
+    getCreativeAsset.mockImplementation(async (id: string) => ({
+      ...SEM_ENDERECO, id, url: 'data:image/png;base64,AAAA',
+    }));
+    uploadDataUrlToCreativeStorage.mockResolvedValue('https://storage/m.png');
+    updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({ ...SEM_ENDERECO, id, ...patch }));
+    montar();
+
+    await waitFor(() => expect(cards().length).toBe(20));
+    // Doze recuperam sozinhas; as oito restantes mostram a saída.
+    await waitFor(() => expect(getCreativeAsset.mock.calls.length).toBe(12));
+    expect(screen.getAllByText('Carregar').length).toBe(8);
+    expect(screen.getAllByText('Imagem guardada fora da listagem').length).toBe(8);
+  });
+
+  it('clicar em Carregar busca aquela arte', async () => {
+    const muitas = Array.from({ length: 20 }, (_, i) => ({ ...SEM_ENDERECO, id: `sem-${i}` }));
+    listCreativeAssets.mockResolvedValue(muitas);
+    getCreativeAsset.mockImplementation(async (id: string) => ({
+      ...SEM_ENDERECO, id, url: 'data:image/png;base64,AAAA',
+    }));
+    uploadDataUrlToCreativeStorage.mockResolvedValue('https://storage/m.png');
+    updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({ ...SEM_ENDERECO, id, ...patch }));
+    montar();
+
+    await waitFor(() => expect(screen.getAllByText('Carregar').length).toBe(8));
+    await act(async () => { fireEvent.click(screen.getAllByText('Carregar')[0]); });
+    expect(getCreativeAsset.mock.calls.length).toBe(13);
+  });
+
+  it('arte devolvida embutida é gravada como ARQUIVO, não como base64 na linha', async () => {
+    // Era assim que a biblioteca ia ficando invisível: a imagem inteira
+    // gravada dentro da coluna `url`, e a listagem — que anula esse campo
+    // de propósito — devolvendo um card sem endereço.
+    invoke.mockImplementation(invokeComLeitura(() =>
+      Promise.resolve({ data: { imageUrl: 'data:image/png;base64,AAAA' }, error: null })));
+    createCreativeAsset.mockImplementation(async (input: any) => ({ ...SEM_ENDERECO, id: 'nv', ...input }));
+    updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({ ...SEM_ENDERECO, id, ...patch }));
+    uploadDataUrlToCreativeStorage.mockResolvedValue('https://storage/gerada.png');
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+
+    fireEvent.change(screen.getByPlaceholderText('O que você quer criar?'), { target: { value: 'uma arte' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Gerar' })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Gerar assim/ })); });
+
+    await waitFor(() => expect(uploadDataUrlToCreativeStorage).toHaveBeenCalledWith(
+      expect.objectContaining({ dataUrl: 'data:image/png;base64,AAAA' }),
+    ));
+    expect(updateCreativeAsset).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ status: 'ready', url: 'https://storage/gerada.png' }),
+    );
+  });
+
+  it('listagem cheia avisa que há mais acervo', async () => {
+    // A consulta corta nas 300 mais recentes. Voltando CHEIA, há mais — e a
+    // tela estava afirmando ser o acervo inteiro. Quem procurava uma arte
+    // antiga e não achava concluía que o sistema a tinha perdido.
+    const trezentas = Array.from({ length: 300 }, (_, i) => ({
+      ...ASSETS_DO_PROJETO[0], id: `a${i}`, url: `https://x/${i}.png`, type: 'original',
+    }));
+    listCreativeAssets.mockResolvedValue(trezentas);
+    montar();
+
+    await waitFor(() => expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Mostrando as 300 artes mais recentes' }),
+    ));
+  });
+
+  it('acervo que cabe não avisa nada', async () => {
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+    expect(toast).not.toHaveBeenCalledWith(
+      expect.objectContaining({ title: expect.stringContaining('mais recentes') }),
+    );
   });
 
   it('o Fator põe as cinco cinzas na tela antes de qualquer imagem', async () => {

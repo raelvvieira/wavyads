@@ -1083,3 +1083,65 @@ describe('toda chamada ao provedor declara um teto de espera', () => {
     }
   });
 });
+
+describe('a imagem vira arquivo antes de ser gravada na linha', () => {
+  const BASE64 = 'data:image/png;base64,iVBORw0KGgoAAAANS';
+
+  it('arte devolvida embutida é convertida em arquivo', async () => {
+    // Gravar o base64 na coluna `url` guarda a imagem inteira dentro do
+    // banco — e a listagem anula esse campo de propósito, porque trezentas
+    // linhas assim seriam megabytes de JSON por abertura de tela. A arte
+    // existe e some da tela ao mesmo tempo: um card branco que nunca
+    // carrega, por mais que se espere.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: BASE64 }, error: null });
+    deps.persistImage = vi.fn(async () => 'https://storage/arquivo.png');
+
+    const arte = await createStudioAssetActions(deps).generate('anúncio', '9:16');
+
+    expect(deps.persistImage).toHaveBeenCalledWith(BASE64, expect.any(String));
+    expect(arte.url).toBe('https://storage/arquivo.png');
+    expect(arte.thumbnailUrl).toBe('https://storage/arquivo.png');
+  });
+
+  it('a edição também', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { editedImageUrl: BASE64 }, error: null });
+    deps.persistImage = vi.fn(async () => 'https://storage/editada.png');
+
+    const arte = await createStudioAssetActions(deps).edit(
+      assetBase({ url: 'https://x/a.png' }), 'tira o fundo',
+    );
+    expect(arte.url).toBe('https://storage/editada.png');
+  });
+
+  it('URL normal passa direto — nada a converter', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/ja-e-arquivo.png' }, error: null });
+    deps.persistImage = vi.fn(async () => 'NÃO DEVERIA');
+
+    const arte = await createStudioAssetActions(deps).generate('anúncio', '9:16');
+    expect(deps.persistImage).not.toHaveBeenCalled();
+    expect(arte.url).toBe('https://x/ja-e-arquivo.png');
+  });
+
+  it('conversão que falha NÃO custa a arte', async () => {
+    // Uma imagem que precisa de um clique para aparecer é muito melhor que
+    // uma geração perdida depois de paga.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: BASE64 }, error: null });
+    deps.persistImage = vi.fn(async () => { throw new Error('bucket recusou'); });
+
+    const arte = await createStudioAssetActions(deps).generate('anúncio', '9:16');
+    expect(arte.status).toBe('ready');
+    expect(arte.url).toBe(BASE64);
+  });
+
+  it('sem a conversão ligada, o comportamento é o de antes', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: BASE64 }, error: null });
+
+    const arte = await createStudioAssetActions(deps).generate('anúncio', '9:16');
+    expect(arte.url).toBe(BASE64);
+  });
+});
