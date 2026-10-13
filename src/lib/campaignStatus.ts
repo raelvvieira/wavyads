@@ -346,16 +346,45 @@ export function derivarStatusGoogle(bruto: string | null | undefined, legado?: s
 }
 
 /** Os grupos do filtro da tabela. Onze botões não seriam um filtro. */
-export type GrupoDeStatus = 'todas' | 'veiculando' | 'atencao' | 'pausadas' | 'encerradas';
+export type GrupoDeStatus = 'todas' | 'ativas' | 'veiculando' | 'atencao' | 'pausadas' | 'encerradas';
 
 const ATENCAO: EstadoCampanha[] = [
   'em_analise', 'nao_aprovada', 'sem_veiculacao', 'verba_esgotada',
   'com_problemas', 'nao_confirmada', 'desconhecida',
 ];
 
+/**
+ * "Ativa" e "Veiculando" são perguntas DIFERENTES.
+ *
+ * O Gerenciador de Anúncios chama de **Ativa** a campanha cuja chave está
+ * ligada. É o que o cliente vê lá, e é por esse nome que ele compara.
+ *
+ * **Veiculando** é mais estrito: é a chave ligada E a confirmação de que
+ * existe anúncio no ar. Uma campanha pode estar Ativa e não entregar nada —
+ * conjunto pausado, anúncio reprovado, período vencido, verba esgotada.
+ * Essa distinção existe porque foi exatamente o que gerou o primeiro
+ * relato: campanhas que o dashboard dizia estarem ativas e que o
+ * Gerenciador já não entregava.
+ *
+ * O preço de ser estrito apareceu agora: quando a leitura dos anúncios não
+ * confirma (lista cortada, consulta que falhou), a campanha cai em
+ * "Veiculação não confirmada" e SOME do filtro "Veiculando" — mesmo com a
+ * chave ligada. Daí este grupo: ele espelha o Gerenciador e não depende de
+ * conseguir ler os filhos.
+ */
 export function pertenceAoGrupo(status: StatusCampanha, grupo: GrupoDeStatus): boolean {
   switch (grupo) {
     case 'todas': return true;
+    /*
+     * `bruto` é o que a Meta respondeu em `effective_status`. ACTIVE ali é
+     * a mesma coisa que "Ativa" no Gerenciador, independente do que os
+     * anúncios digam — e é por isso que este grupo continua útil quando a
+     * leitura dos filhos falha.
+     *
+     * O segundo braço cobre o formato antigo do payload, em que não há
+     * `bruto` e "veiculando" é tudo que aquele dado permitia afirmar.
+     */
+    case 'ativas': return status.bruto === 'ACTIVE' || (status.bruto === null && status.estado === 'veiculando');
     case 'veiculando': return status.veiculando === true;
     // O desconhecido fica VISÍVEL aqui, em vez de arquivado em "Encerradas".
     case 'atencao': return ATENCAO.includes(status.estado);
