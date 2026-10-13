@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-  derivarStatusCampanha,
+  anuncioEstaAtivo,
   derivarStatusAnuncio,
+  derivarStatusCampanha,
   derivarStatusGoogle,
   pertenceAoGrupo,
+  pertenceAoGrupoDeAnuncio,
   type CampanhaBruta,
   type Veiculacao,
 } from './campaignStatus';
@@ -324,5 +326,60 @@ describe('"Ativas na Meta" — o grupo que espelha o Gerenciador', () => {
   it('status desconhecido não é promovido a Ativa', () => {
     // Afirmar "Ativa" sobre o que a Meta não explicou seria inventar.
     expect(pertenceAoGrupo(comFilhos('COISA_NOVA'), 'ativas')).toBe(false);
+  });
+});
+
+describe('"Ativos" no nível do ANÚNCIO — chave do criativo e da campanha', () => {
+  const anuncio = (efeito: string | null, legado?: string) =>
+    derivarStatusAnuncio(efeito, legado);
+
+  it('anúncio ligado dentro de campanha ligada é ativo', () => {
+    expect(anuncioEstaAtivo(anuncio('ACTIVE'))).toBe(true);
+  });
+
+  it('conjunto pausado NÃO desqualifica: a chave do anúncio e a da campanha seguem ligadas', () => {
+    // É a definição que o usuário pediu em voz alta: a chave do criativo
+    // ligada, dentro de uma campanha ativada. O conjunto é um terceiro
+    // nível, e quem quer saber o que entrega AGORA usa "Veiculando".
+    expect(anuncioEstaAtivo(anuncio('ADSET_PAUSED'))).toBe(true);
+  });
+
+  it('campanha pausada desqualifica — era o incômodo do relato', () => {
+    // "Top Criativos · Veiculando" mostrando peças de campanhas já
+    // desligadas foi o que motivou este grupo existir.
+    expect(anuncioEstaAtivo(anuncio('CAMPAIGN_PAUSED'))).toBe(false);
+  });
+
+  it('chave do próprio anúncio desligada também desqualifica', () => {
+    expect(anuncioEstaAtivo(anuncio('PAUSED'))).toBe(false);
+    expect(anuncioEstaAtivo(anuncio('ARCHIVED'))).toBe(false);
+    expect(anuncioEstaAtivo(anuncio('DELETED'))).toBe(false);
+  });
+
+  it('anúncio em revisão ou reprovado continua ativo — ligado, dentro de campanha ligada', () => {
+    // A Meta reporta o impedimento de MAIOR nível: se a campanha estivesse
+    // pausada, o valor aqui seria CAMPAIGN_PAUSED. Então estes todos
+    // implicam campanha ligada.
+    for (const e of ['PENDING_REVIEW', 'PREAPPROVED', 'DISAPPROVED', 'PENDING_BILLING_INFO', 'WITH_ISSUES']) {
+      expect(anuncioEstaAtivo(anuncio(e)), e).toBe(true);
+    }
+  });
+
+  it('no formato antigo, vale o que aquele dado permitia afirmar', () => {
+    expect(anuncioEstaAtivo(anuncio(null, 'active'))).toBe(true);
+    expect(anuncioEstaAtivo(anuncio(null, 'paused'))).toBe(false);
+  });
+
+  it('o grupo do anúncio difere do da campanha onde precisa, e só onde precisa', () => {
+    // Um anúncio com o conjunto pausado é ATIVO pela régua do anúncio e NÃO
+    // seria pela régua da campanha, que exige `bruto === 'ACTIVE'`.
+    const comConjuntoPausado = anuncio('ADSET_PAUSED');
+    expect(pertenceAoGrupoDeAnuncio(comConjuntoPausado, 'ativas')).toBe(true);
+    expect(pertenceAoGrupo(comConjuntoPausado, 'ativas')).toBe(false);
+    // Nos demais grupos, as duas réguas são a mesma.
+    for (const g of ['todas', 'veiculando', 'atencao', 'pausadas', 'encerradas'] as const) {
+      expect(pertenceAoGrupoDeAnuncio(comConjuntoPausado, g), g)
+        .toBe(pertenceAoGrupo(comConjuntoPausado, g));
+    }
   });
 });
