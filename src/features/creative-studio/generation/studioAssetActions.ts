@@ -53,6 +53,20 @@ export interface StudioAssetActionsDeps {
    * o comportamento de antes.
    */
   getAsset?(id: string): Promise<CreativeAsset | null>;
+  /**
+   * Guarda uma imagem em base64 como ARQUIVO e devolve a URL dela.
+   *
+   * O provedor devolve a arte embutida em `data:`. A edge function tenta
+   * convertê-la em arquivo, mas quando essa conversão falha ela devolve o
+   * base64 mesmo assim, em silêncio — e aí a imagem inteira é gravada
+   * dentro da coluna `url`. A listagem da grade anula esse campo de
+   * propósito (trezentas linhas assim seriam megabytes de JSON), e o card
+   * nasce sem imagem para sempre.
+   *
+   * Converter no cliente fecha esse caminho sem depender de implantar nada.
+   * Opcional: sem ela, o comportamento é o de antes.
+   */
+  persistImage?(dataUrl: string, hint: string): Promise<string>;
   recordUsage(usageKey: string): void;
 }
 
@@ -218,6 +232,31 @@ export interface StudioAssetActions {
  * A linha nascer antes da resposta é o que distingue isto de só inserir no
  * fim: uma falha a meio do caminho não desaparece muda, ela chega ao card.
  */
+/**
+ * A imagem vira ARQUIVO antes de ser gravada na linha.
+ *
+ * Quando o provedor devolve a arte embutida (`data:`), gravar esse texto na
+ * coluna `url` guarda a imagem inteira dentro do banco. A listagem anula
+ * esse campo — e com razão —, então a arte existe e some da tela ao mesmo
+ * tempo: um retângulo branco que nunca carrega, por mais que se espere.
+ *
+ * Falhar a conversão NÃO pode custar a arte. Se o upload não for possível,
+ * grava-se o `data:` mesmo assim: uma imagem que precisa de um clique para
+ * aparecer é muito melhor que uma geração perdida depois de paga.
+ */
+async function comoArquivo(
+  deps: StudioAssetActionsDeps,
+  url: string,
+  assetId: string,
+): Promise<string> {
+  if (!url?.startsWith('data:') || !deps.persistImage) return url;
+  try {
+    return await deps.persistImage(url, assetId);
+  } catch {
+    return url;
+  }
+}
+
 async function runGeneration(
   deps: StudioAssetActionsDeps,
   row: CreativeAsset,
@@ -228,7 +267,7 @@ async function runGeneration(
     if (error) throw new Error(await deps.extractErrorMessage(error));
     const apiError = (data as any)?.error;
     if (apiError) throw new Error(apiError);
-    const url = (data as any).imageUrl as string;
+    const url = await comoArquivo(deps, (data as any).imageUrl as string, row.id);
     deps.recordUsage(IMAGE_GENERATION_MODEL.usageKey);
     return await deps.updateAsset(row.id, { status: 'ready', url, thumbnailUrl: url });
   } catch (e: any) {
@@ -704,7 +743,7 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
         if (error) throw new Error(await deps.extractErrorMessage(error));
         const apiError = (data as any)?.error;
         if (apiError) throw new Error(apiError);
-        const url = (data as any).editedImageUrl as string;
+        const url = await comoArquivo(deps, (data as any).editedImageUrl as string, row.id);
         deps.recordUsage(IMAGE_EDIT_MODEL.usageKey);
         return await deps.updateAsset(row.id, { status: 'ready', url, thumbnailUrl: url });
       } catch (e: any) {

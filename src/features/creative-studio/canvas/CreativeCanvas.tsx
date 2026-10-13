@@ -20,6 +20,10 @@ interface CreativeCanvasProps {
   onClearFilters?: () => void;
   /** Clicar no vazio solta a seleção — a saída que o canvas nunca teve. */
   onEmptyClick?: () => void;
+  /** Busca a imagem de uma arte que a listagem devolveu sem endereço. */
+  onRecoverImage?: (asset: CreativeAsset) => void;
+  /** Ids das artes sendo buscadas agora. */
+  recoveringIds?: ReadonlySet<string>;
 }
 
 /**
@@ -44,6 +48,8 @@ export function CreativeCanvas({
   filtered,
   onClearFilters,
   onEmptyClick,
+  onRecoverImage,
+  recoveringIds,
 }: CreativeCanvasProps) {
   const selecionados = useMemo(() => new Set(selectedIds), [selectedIds]);
 
@@ -113,6 +119,8 @@ export function CreativeCanvas({
               >
                 <AssetNode
                   asset={asset}
+                  onRecoverImage={onRecoverImage}
+                  recovering={recoveringIds?.has(asset.id) ?? false}
                   selected={selecionados.has(asset.id)}
                   onToggleSelect={onToggleSelect}
                   onAction={onAction}
