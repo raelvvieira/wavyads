@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { BudgetBandsCard } from '@/components/BudgetBandsCard';
+import { rotuloDeResultado } from '@/components/CampaignsTable';
 import { useParams, useNavigate } from 'react-router-dom';
 import { TrendingUp, RefreshCw, ArrowLeft, CalendarIcon, Send, SlidersHorizontal } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths, subDays, startOfDay } from 'date-fns';
@@ -328,6 +330,24 @@ export default function ClientDashboard() {
    * de "não conectado" retorna antes), mas um fallback que fabrica números
    * não pode ficar esperando a próxima refatoração reabrir o caminho.
    */
+  /**
+   * Como ESTE cliente chama o que a campanha entrega.
+   *
+   * "Lead" para uma clínica, "compra" para uma loja, "conversa" para quem
+   * roda WhatsApp. Dizer "resultado" para todo mundo é correto e não
+   * significa nada; o tipo mais frequente entre as campanhas é o que o
+   * cliente usa quando fala do próprio negócio.
+   */
+  const rotuloDoResultado = useMemo(() => {
+    const contagem = new Map<string, number>();
+    for (const c of (campaigns ?? []) as any[]) {
+      const t = rotuloDeResultado(c.result_type);
+      if (t) contagem.set(t, (contagem.get(t) ?? 0) + 1);
+    }
+    const topo = [...contagem].sort((a, b) => b[1] - a[1])[0];
+    return topo ? topo[0].toLowerCase() : 'resultado';
+  }, [campaigns]);
+
   const campaignList = useMemo(
     () => (isSynced && campaigns ? campaigns : []),
     [isSynced, campaigns],
@@ -837,6 +857,17 @@ export default function ClientDashboard() {
               {/* Daily Chart */}
               {!isLoading && dailyData.length > 0 && (
                 <DailyChart data={dailyData} />
+              )}
+
+              {/* Onde está a verba.
+                  Antes da tabela de propósito: a tabela responde "como foi
+                  cada campanha"; isto responde "onde está o meu dinheiro",
+                  que é a pergunta que vem primeiro. */}
+              {!isLoading && campaignList.length > 0 && (
+                <BudgetBandsCard
+                  campaigns={campaignList as any}
+                  resultLabel={rotuloDoResultado}
+                />
               )}
 
               {/* Campaigns Table */}
