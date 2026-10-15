@@ -32,6 +32,9 @@ function getActionLabel(resultType: string): string {
   return ACTION_TYPE_LABELS[resultType] || resultType || '';
 }
 
+/** O mesmo rótulo, para quem precisa dele fora da tabela. */
+export const rotuloDeResultado = getActionLabel;
+
 interface Column {
   key: SortKey;
   label: string;
