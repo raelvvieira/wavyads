@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react';
+import { CreativeScoreBadge } from './CreativeScoreBadge';
+import { notaDoCriativo, referenciaDaConta, resumoDasNotas } from '@/lib/dashboard/notaDoCriativo';
 import { avisoDosAnuncios, diagnosticarAnuncios } from '@/lib/metaIntegrationHealth';
 import { ImageOff, ArrowUpDown, ChevronDown, ChevronUp } from 'lucide-react';
 import { GlassCard } from './GlassCard';
@@ -87,6 +89,20 @@ export function CreativesGallery({ ads }: CreativesGalleryProps) {
    */
   const aviso = useMemo(() => avisoDosAnuncios(diagnosticarAnuncios(ads)), [ads]);
 
+  /*
+   * A nota de cada criativo, medida contra a régua da própria conta.
+   *
+   * Uma por anúncio, calculada uma vez: a referência depende do conjunto
+   * inteiro, então nota de card não pode nascer dentro do card.
+   */
+  const notas = useMemo(() => {
+    const ref = referenciaDaConta(ads as any);
+    const mapa = new Map<string, ReturnType<typeof notaDoCriativo>>();
+    for (const a of ads) mapa.set(a.id, notaDoCriativo(a as any, ref));
+    return mapa;
+  }, [ads]);
+  const resumo = useMemo(() => resumoDasNotas([...notas.values()]), [notas]);
+
   const totalFiltered = useMemo(() => {
     const list = statusFilter === 'todas' ? ads : ads.filter(a => pertenceAoGrupoDeAnuncio(a.status, statusFilter));
     return list.length;
@@ -98,7 +114,21 @@ export function CreativesGallery({ ads }: CreativesGalleryProps) {
     <>
       <GlassCard className="animate-fade-in">
         <div className="flex flex-wrap items-center gap-2 mb-3">
-          <h3 className="text-lg font-semibold mr-auto">Top Criativos</h3>
+          <h3 className="text-lg font-semibold">Top Criativos</h3>
+          {/* O resumo em três números. Ele existe para que a galeria
+              responda antes de ser percorrida: a média diz a saúde do
+              acervo, e os dois extremos dizem onde mexer hoje. */}
+          {resumo.total > 0 && (
+            <span className="mr-auto flex items-center gap-2.5 text-[11px] text-muted-foreground">
+              <span>Nota média <span className="metric-number text-foreground/85">{resumo.media}</span></span>
+              {resumo.escalar > 0 && (
+                <span className="text-emerald-300/90">{resumo.escalar} p/ escalar</span>
+              )}
+              {resumo.parar > 0 && (
+                <span className="text-orange-300/90">{resumo.parar} p/ revisar</span>
+              )}
+            </span>
+          )}
 
           <div className="flex items-center gap-1.5">
             {STATUS_FILTERS.map((f) => (
@@ -205,6 +235,15 @@ export function CreativesGallery({ ads }: CreativesGalleryProps) {
                     </span>
                   </div>
                 </div>
+
+                {/* A nota, antes do status: ela responde "o que faço com
+                    este criativo", que é a pergunta de quem está olhando a
+                    galeria. O status responde "por que ele está assim". */}
+                {notas.get(ad.id) && (
+                  <div className="flex-shrink-0">
+                    <CreativeScoreBadge nota={notas.get(ad.id)!} />
+                  </div>
+                )}
 
                 {/* Status */}
                 <div className="flex-shrink-0">
