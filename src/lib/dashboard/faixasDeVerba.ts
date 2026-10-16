@@ -30,6 +30,8 @@ export const ORDEM_DAS_FAIXAS: Faixa[] = ['escalar', 'manter', 'observar', 'revi
 export interface CampanhaParaFaixa {
   id: string;
   name: string;
+  /** Opcional: quando presente, o detalhe lista as campanhas da faixa. */
+  status?: { estado?: string } | null;
   spend: number;
   /** Quantos resultados a campanha trouxe — leads, compras, conversas. */
   results: number;
@@ -45,6 +47,16 @@ export interface FatiaDaVerba {
   /** Fatia do investimento TOTAL, de 0 a 100. */
   percentual: number;
   resultados: number;
+  /** O custo por resultado da faixa inteira. Zero quando não houve resultado. */
+  custoPorResultado: number;
+  /** Os nomes das campanhas desta faixa, da que mais gastou para a que menos. */
+  nomes: string[];
+}
+
+/** Uma das frases do detalhe, com o tom que ela merece na tela. */
+export interface FraseDaVerba {
+  tom: 'bom' | 'atencao' | 'ruim';
+  texto: string;
 }
 
 export interface MapaDaVerba {
@@ -68,6 +80,14 @@ export interface MapaDaVerba {
    * parágrafos é um painel que ninguém lê.
    */
   frase: string | null;
+  /**
+   * As frases do DETALHE — até três, e só as que têm conteúdo.
+   *
+   * No card cabe uma; no detalhe, quem abriu já declarou que quer mais.
+   * Mesmo ali elas são as mesmas três perguntas, nunca um relatório: o que
+   * está indo bem, o que precisa de revisão, e o que não voltou.
+   */
+  frases: FraseDaVerba[];
 }
 
 /**
@@ -107,23 +127,35 @@ export function mapearVerba(campanhas: CampanhaParaFaixa[]): MapaDaVerba {
   const referencia = resultadosTotais > 0 ? total / resultadosTotais : 0;
 
   const vazia = (faixa: Faixa): FatiaDaVerba => ({
-    faixa, rotulo: ROTULO_DA_FAIXA[faixa], campanhas: 0, investimento: 0, percentual: 0, resultados: 0,
+    faixa, rotulo: ROTULO_DA_FAIXA[faixa], campanhas: 0, investimento: 0,
+    percentual: 0, resultados: 0, custoPorResultado: 0, nomes: [],
   });
   const porFaixa = new Map<Faixa, FatiaDaVerba>(ORDEM_DAS_FAIXAS.map((f) => [f, vazia(f)]));
 
-  for (const c of comGasto) {
+  for (const c of [...comGasto].sort((a, b) => b.spend - a.spend)) {
     const fatia = porFaixa.get(faixaDaCampanha(c, referencia))!;
     fatia.campanhas += 1;
     fatia.investimento += c.spend;
     fatia.resultados += Math.max(0, c.results);
+    fatia.nomes.push(c.name);
   }
 
   const fatias = ORDEM_DAS_FAIXAS.map((f) => {
     const fatia = porFaixa.get(f)!;
-    return { ...fatia, percentual: total > 0 ? (fatia.investimento / total) * 100 : 0 };
+    return {
+      ...fatia,
+      percentual: total > 0 ? (fatia.investimento / total) * 100 : 0,
+      // O custo da FAIXA, recalculado da soma — média de médias distorceria
+      // aqui pelo mesmo motivo que distorce na régua.
+      custoPorResultado: fatia.resultados > 0 ? fatia.investimento / fatia.resultados : 0,
+    };
   });
 
-  return { referencia, total, fatias, frase: montarFrase(fatias, total) };
+  return {
+    referencia, total, fatias,
+    frase: montarFrase(fatias, total),
+    frases: montarFrases(fatias, total),
+  };
 }
 
 /**
@@ -153,4 +185,45 @@ function montarFrase(fatias: FatiaDaVerba[], total: number): string | null {
   const bem = achar('escalar').percentual + achar('manter').percentual;
   if (bem >= 50) return `${Math.round(bem)}% da verba está no que performa acima da média.`;
   return null;
+}
+
+/**
+ * As três frases do detalhe.
+ *
+ * Mesmas perguntas da frase única do card, abertas: o que está indo bem, o
+ * que precisa de revisão, e o que não voltou — esta última com os nomes,
+ * porque "uma campanha sem retorno" sem dizer qual não é acionável.
+ */
+function montarFrases(fatias: FatiaDaVerba[], total: number): FraseDaVerba[] {
+  if (total <= 0) return [];
+  const achar = (f: Faixa) => fatias.find((x) => x.faixa === f)!;
+  const pct = (v: number) => `${Math.round(v)}%`;
+  const saida: FraseDaVerba[] = [];
+
+  const bem = achar('escalar').investimento + achar('manter').investimento;
+  if (bem > 0) {
+    saida.push({
+      tom: 'bom',
+      texto: `${pct((bem / total) * 100)} da verba está no que performa na média ou melhor (${dinheiro(bem)}).`,
+    });
+  }
+
+  const revisar = achar('revisar');
+  if (revisar.investimento > 0) {
+    saida.push({
+      tom: 'atencao',
+      texto: `${pct(revisar.percentual)} está em campanhas acima do custo médio (${dinheiro(revisar.investimento)}).`,
+    });
+  }
+
+  const semRetorno = achar('sem_retorno');
+  if (semRetorno.investimento > 0) {
+    const quantas = semRetorno.campanhas === 1 ? '1 campanha' : `${semRetorno.campanhas} campanhas`;
+    saida.push({
+      tom: 'ruim',
+      texto: `${quantas} sem nenhum resultado — ${dinheiro(semRetorno.investimento)} investidos sem retorno.`,
+    });
+  }
+
+  return saida;
 }

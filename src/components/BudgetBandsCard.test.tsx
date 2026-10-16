@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { BudgetBandsCard } from './BudgetBandsCard';
 
@@ -45,6 +45,7 @@ describe('BudgetBandsCard', () => {
       campanha({ id: '1', spend: 5000, results: 200, cost_per_result: 25 }),
       campanha({ id: '2', spend: 222, results: 0 }),
     ]);
+    // Uma só no card: o detalhe está fechado.
     expect(screen.getByText(/sem nenhum resultado/)).toBeTruthy();
   });
 
@@ -60,5 +61,52 @@ describe('BudgetBandsCard', () => {
     // hover onde não há nada para ver.
     montar([campanha({ spend: 1000, results: 40, cost_per_result: 25 })]);
     expect(barras().every((e) => parseFloat((e as HTMLElement).style.width) > 0)).toBe(true);
+  });
+});
+
+describe('o detalhe das faixas', () => {
+  const abrir = (campanhas: any[]) => {
+    montar(campanhas);
+    fireEvent.click(screen.getByText('Ver detalhes'));
+  };
+
+  it('a tabela mostra as cinco faixas, inclusive as vazias', () => {
+    // Uma tabela que esconde as faixas zeradas muda de altura a cada
+    // período, e o olho perde a referência de onde olhar.
+    abrir([campanha({ spend: 1000, results: 40, cost_per_result: 25 })]);
+    for (const r of ['Escalar', 'Manter', 'Observar', 'Revisar', 'Sem retorno']) {
+      expect(screen.getAllByText(r).length).toBeGreaterThan(0);
+    }
+  });
+
+  it('diz QUAIS campanhas estão sem retorno, não só quantas', () => {
+    // "1 campanha sem retorno" sem dizer qual não é acionável.
+    abrir([
+      campanha({ id: '1', name: 'BOA', spend: 900, results: 36, cost_per_result: 25 }),
+      campanha({ id: '2', name: 'se_conv_tp_view', spend: 222, results: 0 }),
+    ]);
+    expect(screen.getByText(/se_conv_tp_view/)).toBeTruthy();
+  });
+
+  it('as três frases abrem o que o card resume em uma', () => {
+    abrir([
+      campanha({ id: '1', name: 'A', spend: 600, results: 24, cost_per_result: 25 }),
+      campanha({ id: '2', name: 'B', spend: 300, results: 3, cost_per_result: 100 }),
+      campanha({ id: '3', name: 'C', spend: 100, results: 0 }),
+    ]);
+    expect(screen.getByText(/performa na média ou melhor/)).toBeTruthy();
+    expect(screen.getByText(/acima do custo médio/)).toBeTruthy();
+    // Duas: a frase do card e a do detalhe. As duas devem existir.
+    expect(screen.getAllByText(/sem nenhum resultado/).length).toBe(2);
+  });
+
+  it('o custo da faixa é o da faixa inteira, não a média das campanhas', () => {
+    // Média de médias distorce aqui pelo mesmo motivo que distorce na régua.
+    abrir([
+      campanha({ id: '1', name: 'A', spend: 900, results: 36, cost_per_result: 25 }),
+      campanha({ id: '2', name: 'B', spend: 100, results: 4, cost_per_result: 25 }),
+    ]);
+    // 1000 / 40 = R$ 25,00 na faixa inteira.
+    expect(screen.getAllByText(/R\$\s?25,00/).length).toBeGreaterThan(0);
   });
 });
