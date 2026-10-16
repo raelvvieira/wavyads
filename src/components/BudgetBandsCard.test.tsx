@@ -125,3 +125,20 @@ describe('o detalhe das faixas', () => {
     expect(screen.getAllByText(/R\$\s?25,00/).length).toBeGreaterThan(0);
   });
 });
+
+describe('o card sobrevive ao tema claro', () => {
+  it('nenhum contorno do card é pintado de branco', () => {
+    // Mesmo motivo do SegmentsCard: no tema claro, `border-white/15` sobre
+    // fundo branco devolve o botão ao estado de texto invisível que o
+    // usuário pediu para corrigir.
+    const { container } = montar([
+      campanha({ id: '1', name: 'A', spend: 900, results: 36, cost_per_result: 25 }),
+      campanha({ id: '2', name: 'B', spend: 100, results: 0 }),
+    ]);
+    fireEvent.click(screen.getByText('Ver detalhes'));
+    const brancos = [...container.querySelectorAll('[class]')]
+      .map((e) => e.getAttribute('class') ?? '')
+      .filter((c) => /(border|bg)-white\//.test(c));
+    expect(brancos).toEqual([]);
+  });
+});

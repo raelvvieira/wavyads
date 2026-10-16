@@ -15,6 +15,10 @@ import { unidadeDoResultado, pluralDoResultado } from '@/lib/dashboard/unidadeDo
  * campanhas. São três respostas para a MESMA pergunta — "com quem o
  * dinheiro foi gasto" —, e perguntas iguais cabem no mesmo lugar.
  *
+ * Nada aqui é pintado com `white`: o painel tem tema claro, e uma borda
+ * branca sobre fundo branco é borda nenhuma. Contornos e trilhos saem de
+ * `border`/`foreground`, que viram o seu oposto quando o tema vira.
+ *
  * O detalhe abre no próprio card, não num modal: um modal tira a pessoa do
  * painel para mostrar o aprofundamento de um bloco dele, e ao fechar ela
  * volta sem o contexto que tinha.
@@ -55,7 +59,7 @@ export function SegmentsCard({ vistas, resultType, carregando }: SegmentsCardPro
 
   if (carregando) {
     return (
-      <GlassCard className="h-[200px] animate-pulse bg-white/[0.02]">
+      <GlassCard className="h-[200px] animate-pulse bg-foreground/[0.03]">
         <span className="sr-only">Carregando segmentação</span>
       </GlassCard>
     );
@@ -81,7 +85,7 @@ export function SegmentsCard({ vistas, resultType, carregando }: SegmentsCardPro
           <button
             type="button"
             onClick={() => setVerAlternativa((v) => !v)}
-            className="rounded-full border border-white/15 px-2.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+            className="rounded-full border border-border/25 px-2.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground"
           >
             {verAlternativa ? vista.subtitulo : vista.alternativa.rotulo}
           </button>
@@ -108,13 +112,13 @@ export function SegmentsCard({ vistas, resultType, carregando }: SegmentsCardPro
             </span>
             <button
               type="button" onClick={() => ir(-1)} aria-label="Recorte anterior"
-              className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+              className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
             </button>
             <button
               type="button" onClick={() => ir(1)} aria-label="Próximo recorte"
-              className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+              className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground"
             >
               <ChevronRight className="h-3.5 w-3.5" />
             </button>
@@ -141,7 +145,7 @@ export function SegmentsCard({ vistas, resultType, carregando }: SegmentsCardPro
               <span className="metric-number shrink-0 text-muted-foreground">{formatCurrency(f.spend)}</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
+              <div className="h-1 flex-1 overflow-hidden rounded-full bg-foreground/[0.08]">
                 <div className="h-full rounded-full bg-emerald-400/70" style={{ width: `${f.percentual}%` }} />
               </div>
               <span className="metric-number w-10 shrink-0 text-right text-[10px] text-muted-foreground">
@@ -157,7 +161,7 @@ export function SegmentsCard({ vistas, resultType, carregando }: SegmentsCardPro
           type="button"
           onClick={() => setAberto((v) => !v)}
           aria-expanded={aberto}
-          className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1 text-[11px] font-medium text-foreground/85 transition-colors hover:bg-white/[0.08] hover:text-foreground"
+          className="inline-flex items-center gap-1.5 rounded-full border border-border/25 bg-foreground/[0.04] px-3 py-1 text-[11px] font-medium text-foreground/85 transition-colors hover:bg-foreground/[0.08] hover:text-foreground"
         >
           {aberto ? 'Ocultar detalhes' : `Ver todos os ${resumo.fatias.length + resumo.ocultas}`}
           <ChevronDown className={cn('h-3 w-3 transition-transform duration-200', aberto && 'rotate-180')} />
@@ -165,10 +169,10 @@ export function SegmentsCard({ vistas, resultType, carregando }: SegmentsCardPro
       )}
 
       {aberto && (
-        <div className="animate-fade-in space-y-2.5 border-t border-white/10 pt-3">
+        <div className="animate-fade-in space-y-2.5 border-t border-border/15 pt-3">
           <div className="max-h-[260px] space-y-2.5 overflow-y-auto pr-1">
             {completo.fatias.map((f) => (
-              <div key={f.chave} className="space-y-1 border-b border-white/5 pb-2 last:border-0">
+              <div key={f.chave} className="space-y-1 border-b border-border/10 pb-2 last:border-0">
                 <div className="flex items-baseline justify-between gap-2 text-xs">
                   <span className="truncate text-foreground/90">{rotuloDoSegmento(f.chave)}</span>
                   <span className="metric-number text-muted-foreground">
