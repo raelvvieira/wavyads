@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import type { LinhaDeSegmento } from '@/lib/dashboard/segmentos';
 import { supabase } from '@/integrations/supabase/client';
 import { derivarStatusCampanha, type CampanhaBruta, type StatusCampanha } from '@/lib/campaignStatus';
 
@@ -183,5 +184,41 @@ export function useMetaInsightsPrevious(clientId: string | undefined, enabled: b
     enabled: enabled && !!clientId && !!timeRange,
     staleTime: 5 * 60 * 1000,
     ...metaQueryOptions,
+  });
+}
+
+export interface MetaSegments {
+  idade: LinhaDeSegmento[];
+  plataforma: LinhaDeSegmento[];
+  posicao: LinhaDeSegmento[];
+  regiao: LinhaDeSegmento[];
+}
+
+/**
+ * Idade, plataforma, posição e região.
+ *
+ * Consulta separada das outras de propósito: ela pede três `breakdowns` à
+ * Meta e é a mais lenta da tela. Carregá-la junto do resto atrasaria os
+ * números que o cliente olha primeiro, para entregar o detalhe que ele olha
+ * depois.
+ *
+ * Uma resposta vazia é um estado legítimo — a edge function devolve lista
+ * vazia quando um breakdown falha, em vez de derrubar o painel inteiro.
+ */
+export function useMetaSegments(clientId: string | undefined, enabled: boolean, timeRange: TimeRange | undefined) {
+  return useQuery({
+    queryKey: ['meta-segments', clientId, timeRange?.since, timeRange?.until],
+    queryFn: async () => {
+      const data = await fetchInsights('segments', clientId!, timeRange!);
+      return {
+        idade: (data.idade ?? []) as LinhaDeSegmento[],
+        plataforma: (data.plataforma ?? []) as LinhaDeSegmento[],
+        posicao: (data.posicao ?? []) as LinhaDeSegmento[],
+        regiao: (data.regiao ?? []) as LinhaDeSegmento[],
+      } satisfies MetaSegments;
+    },
+    enabled: enabled && !!clientId && !!timeRange,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
   });
 }

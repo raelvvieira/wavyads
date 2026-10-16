@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { BudgetBandsCard } from '@/components/BudgetBandsCard';
+import { SegmentCard } from '@/components/SegmentCard';
 import { rotuloDeResultado } from '@/components/CampaignsTable';
 import { useParams, useNavigate } from 'react-router-dom';
 import { TrendingUp, RefreshCw, ArrowLeft, CalendarIcon, Send, SlidersHorizontal } from 'lucide-react';
@@ -25,7 +26,7 @@ import { useClient } from '@/hooks/useClients';
 import { useRole } from '@/hooks/useRole';
 import { useGetMetaAuthUrl, useSelectMetaAccount } from '@/hooks/useMetaOAuth';
 import { useGetGoogleAdsAuthUrl, useSelectGoogleAdsAccount } from '@/hooks/useGoogleAdsOAuth';
-import { useMetaCampaigns, useMetaInsights, useMetaInsightsPrevious, type DailyMetric, type TimeRange } from '@/hooks/useMetaInsights';
+import { useMetaSegments, useMetaCampaigns, useMetaInsights, useMetaInsightsPrevious, type DailyMetric, type TimeRange } from '@/hooks/useMetaInsights';
 import { useMetaAds } from '@/hooks/useMetaAds';
 import {
   useGoogleAdsCampaigns, useGoogleAdsInsights, useGoogleAdsInsightsPrevious,
@@ -217,6 +218,7 @@ export default function ClientDashboard() {
   // Meta hooks
   const { data: metaCampaigns, isLoading: metaCampaignsLoading, error: metaCampaignsError, dataUpdatedAt: metaAtualizadoEm, refetch: recarregarMeta } = useMetaCampaigns(clientId, platform === 'meta' && isMetaSynced, timeRange);
   const { data: metaInsights, isLoading: metaInsightsLoading, error: metaInsightsError } = useMetaInsights(clientId, platform === 'meta' && isMetaSynced, timeRange);
+  const { data: metaSegments, isLoading: segmentsLoading } = useMetaSegments(clientId, platform === 'meta' && isMetaSynced, timeRange);
   const { data: metaPreviousInsights } = useMetaInsightsPrevious(clientId, platform === 'meta' && isMetaSynced, timeRange);
   const { data: metaAds, isLoading: metaAdsLoading, error: metaAdsError } = useMetaAds(clientId, platform === 'meta' && isMetaSynced, timeRange);
   // Google Ads hooks
@@ -872,6 +874,36 @@ export default function ClientDashboard() {
                   campaigns={campaignList as any}
                   resultLabel={rotuloDoResultado}
                 />
+              )}
+
+              {/* Com QUEM o dinheiro foi gasto.
+                  O painel respondia quanto e com que resultado, nunca para
+                  quem. É o bloco que o cliente pediu por nome. */}
+              {platform === 'meta' && (metaSegments || segmentsLoading) && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+                  <SegmentCard
+                    titulo="Idade"
+                    subtitulo="Distribuição do investimento"
+                    linhas={metaSegments?.idade}
+                    resultLabel={rotuloDoResultado}
+                    carregando={segmentsLoading}
+                  />
+                  <SegmentCard
+                    titulo="Posicionamento"
+                    subtitulo="Plataforma"
+                    linhas={metaSegments?.plataforma}
+                    alternativa={{ rotulo: 'Posição', linhas: metaSegments?.posicao }}
+                    resultLabel={rotuloDoResultado}
+                    carregando={segmentsLoading}
+                  />
+                  <SegmentCard
+                    titulo="Regiões"
+                    subtitulo="Top 10 por investimento"
+                    linhas={metaSegments?.regiao}
+                    resultLabel={rotuloDoResultado}
+                    carregando={segmentsLoading}
+                  />
+                </div>
               )}
 
               {/* Campaigns Table */}
