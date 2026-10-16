@@ -42,17 +42,52 @@ export const METRIC_DEFS: Record<MetricKey, MetricDef> = {
 
 const ALL_KEYS = Object.keys(METRIC_DEFS) as MetricKey[];
 
-export const DEFAULT_CARDS: MetricKey[] = ['spend', 'impressions', 'clicks', 'results', 'cost_per_result', 'purchases', 'purchase_value'];
+/**
+ * Quantos blocos cabem na tela.
+ *
+ * Eram sete. O benchmark mostra ONZE de uma vez, em duas linhas densas — e
+ * a diferença não é estética: com sete, metade das perguntas do cliente
+ * ("qual o CPM?", "o CTR caiu?") exige abrir um menu e trocar um card por
+ * outro, perdendo o que estava ali. Doze cobre o conjunto inteiro que
+ * importa num relance.
+ */
+export const TETO_DE_CARDS = 12;
+
+/**
+ * O padrão de hoje — as métricas que respondem sem precisar de clique.
+ *
+ * A ordem é a da leitura: primeiro o dinheiro (o que entrou, o que saiu, se
+ * valeu), depois o volume (quantos resultados, a que custo), depois a
+ * mecânica (impressões, cliques, CTR, CPM, CPC).
+ */
+export const DEFAULT_CARDS: MetricKey[] = [
+  'spend', 'purchase_value', 'purchase_roas', 'results', 'cost_per_result',
+  'purchases', 'impressions', 'clicks', 'ctr', 'cpm', 'cpc', 'reach',
+];
+
+/**
+ * O padrão ANTERIOR, guardado de propósito.
+ *
+ * As escolhas de card ficam salvas por usuário. Quem nunca abriu o menu tem
+ * gravada exatamente esta lista — e tratá-la como "escolha do usuário"
+ * deixaria quem nunca customizou preso aos sete cards para sempre,
+ * justamente quem mais ganha com os doze. Uma lista idêntica ao padrão
+ * antigo é a assinatura de quem nunca escolheu nada.
+ */
+const PADRAO_ANTIGO: MetricKey[] = [
+  'spend', 'impressions', 'clicks', 'results', 'cost_per_result', 'purchases', 'purchase_value',
+];
+
+function eOPadraoAntigo(lista: MetricKey[]): boolean {
+  return lista.length === PADRAO_ANTIGO.length && lista.every((k, i) => k === PADRAO_ANTIGO[i]);
+}
 
 export function normalizeCards(input: unknown): MetricKey[] {
   if (!Array.isArray(input)) return DEFAULT_CARDS;
   const valid = input.filter((k): k is MetricKey => typeof k === 'string' && k in METRIC_DEFS);
   if (valid.length === 0) return DEFAULT_CARDS;
-  if (valid.length < 7) {
-    const missing = DEFAULT_CARDS.filter(k => !valid.includes(k));
-    return [...valid, ...missing].slice(0, 7);
-  }
-  return valid.slice(0, 7);
+  if (eOPadraoAntigo(valid)) return DEFAULT_CARDS;
+  return valid.slice(0, TETO_DE_CARDS);
 }
 
 interface KpiCardProps {
@@ -98,41 +133,43 @@ export function KpiCard({ metricKey, value, previousValue, onChangeMetric }: Kpi
 
   return (
     <div ref={ref} className="relative group">
-      <GlassCard hover className="animate-fade-in overflow-hidden p-3 sm:p-4 xl:p-5">
+      {/* Denso de propósito: o ícone entra na linha do rótulo e a variação
+          vira texto, não pílula. O que saiu daqui — o chip colorido de 36px
+          e o acolchoamento — custava a altura de uma segunda fileira de
+          blocos, que vale mais que a decoração. */}
+      <GlassCard hover className="animate-fade-in overflow-hidden p-2.5 sm:p-3">
         <div className={cn('transition-opacity duration-200', fade && 'opacity-0')}>
-          <div className="flex items-center sm:items-start justify-between gap-2">
-            <div className="space-y-1 sm:space-y-1.5 min-w-0 flex-1">
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium leading-tight line-clamp-2 sm:min-h-[24px]">{def.label}</p>
-              <p className="text-base sm:text-lg md:text-xl lg:text-xl xl:text-xl 2xl:text-2xl font-bold metric-number tabular-nums leading-tight break-words">{def.format(value)}</p>
-              {changePercent != null && (
-                <div
-                  className={cn(
-                    'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold border',
-                    isPositive
-                      ? 'bg-status-active/10 text-status-active border-status-active/20'
-                      : 'bg-red-500/10 text-red-400 border-red-500/20'
-                  )}
-                >
-                  {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                  {Math.abs(changePercent).toFixed(1)}%
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <div className="flex h-8 w-8 xl:h-9 xl:w-9 items-center justify-center rounded-xl btn-accent">
-                <Icon className="h-4 w-4 xl:h-[18px] xl:w-[18px]" />
-              </div>
-              <button
-                onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
-                className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors opacity-60 sm:opacity-0 group-hover:opacity-100 xl:opacity-100"
-                aria-label="Mudar métrica"
-              >
-                <Settings className="h-3.5 w-3.5" />
-              </button>
-            </div>
+          <div className="flex items-start justify-between gap-1.5">
+            <p className="flex min-w-0 items-center gap-1.5 text-[9.5px] uppercase tracking-wider text-muted-foreground font-medium leading-tight">
+              <Icon className="h-3 w-3 shrink-0 opacity-70" />
+              <span className="truncate">{def.label}</span>
+            </p>
+            <button
+              onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+              className="-mr-0.5 -mt-0.5 shrink-0 rounded-md p-0.5 text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground opacity-0 group-hover:opacity-100"
+              aria-label="Mudar métrica"
+            >
+              <Settings className="h-3 w-3" />
+            </button>
           </div>
+
+          <p className="mt-1 text-lg sm:text-xl font-bold metric-number tabular-nums leading-tight break-words">
+            {def.format(value)}
+          </p>
+
+          {changePercent != null && (
+            <span
+              className={cn(
+                'mt-0.5 inline-flex items-center gap-0.5 text-[10px] font-semibold',
+                isPositive ? 'text-status-active' : 'text-red-400',
+              )}
+            >
+              {isPositive ? <ArrowUpRight className="h-2.5 w-2.5" /> : <ArrowDownRight className="h-2.5 w-2.5" />}
+              {Math.abs(changePercent).toFixed(1)}%
+            </span>
+          )}
         </div>
-        <div className={cn('absolute bottom-0 left-0 right-0 h-1 rounded-b-xl', def.color)} />
+        <div className={cn('absolute bottom-0 left-0 right-0 h-0.5 rounded-b-xl', def.color)} />
       </GlassCard>
 
       {open && (
