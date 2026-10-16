@@ -122,3 +122,21 @@ describe('SegmentsCard', () => {
     expect(screen.getByText('Carregando segmentação')).toBeTruthy();
   });
 });
+
+describe('o card sobrevive ao tema claro', () => {
+  it('nenhum contorno do card é pintado de branco', () => {
+    // O painel tem tema claro. Uma borda `white/15` sobre fundo branco é
+    // borda nenhuma: o gatilho "Ver todos" voltaria a ser texto solto, e
+    // os trilhos das barras sumiriam. `border`/`foreground` viram o seu
+    // oposto quando o tema vira; `white` não vira nada.
+    const { container } = montar([
+      { ...idade, linhas: [l('a', 100), l('b', 50), l('c', 30), l('d', 10)] },
+      { ...regioes, linhas: [l('Bahia', 500)] },
+    ]);
+    fireEvent.click(screen.getByText('Ver todos os 4'));
+    const brancos = [...container.querySelectorAll('[class]')]
+      .map((e) => e.getAttribute('class') ?? '')
+      .filter((c) => /(border|bg)-white\//.test(c));
+    expect(brancos).toEqual([]);
+  });
+});

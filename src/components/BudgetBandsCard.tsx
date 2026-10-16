@@ -71,7 +71,7 @@ export function BudgetBandsCard({ campaigns, resultType }: BudgetBandsCardProps)
 
       {/* A barra. Sem eixo, sem grade, sem rótulo dentro — a proporção É a
           informação, e qualquer coisa a mais disputa com ela. */}
-      <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
+      <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-foreground/[0.08]">
         {comVerba.map((f) => (
           <Tooltip key={f.faixa}>
             <TooltipTrigger asChild>
@@ -110,12 +110,17 @@ export function BudgetBandsCard({ campaigns, resultType }: BudgetBandsCardProps)
         ) : <span />}
         {/* O gatilho é um botão com contorno, e não um link sublinhado de
             11px: ele some numa tela cheia, e quem não o vê não descobre que
-            existe mais informação atrás dele. */}
+            existe mais informação atrás dele.
+
+            A cor vem de `border`/`foreground`, nunca de `white`: no tema
+            claro uma borda branca sobre fundo branco é borda nenhuma — o
+            botão voltaria a ser texto solto, que é exatamente o problema
+            que ele veio resolver. */}
         <button
           type="button"
           onClick={() => setAberto((v) => !v)}
           aria-expanded={aberto}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1 text-[11px] font-medium text-foreground/85 transition-colors hover:bg-white/[0.08] hover:text-foreground"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border/25 bg-foreground/[0.04] px-3 py-1 text-[11px] font-medium text-foreground/85 transition-colors hover:bg-foreground/[0.08] hover:text-foreground"
         >
           {aberto ? 'Ocultar detalhes' : 'Ver detalhes'}
           <ChevronDown className={cn('h-3 w-3 transition-transform duration-200', aberto && 'rotate-180')} />
@@ -126,7 +131,7 @@ export function BudgetBandsCard({ campaigns, resultType }: BudgetBandsCardProps)
           Um modal tira a pessoa do painel para mostrar o aprofundamento de
           um bloco dele — e ao fechar ela volta sem o contexto que tinha. */}
       {aberto && (
-        <div className="animate-fade-in space-y-3 border-t border-white/10 pt-3">
+        <div className="animate-fade-in space-y-3 border-t border-border/15 pt-3">
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
@@ -143,7 +148,7 @@ export function BudgetBandsCard({ campaigns, resultType }: BudgetBandsCardProps)
                 {ORDEM_DAS_FAIXAS.map((faixa) => {
                   const f = mapa.fatias.find((x) => x.faixa === faixa)!;
                   return (
-                    <tr key={faixa} className={cn('border-t border-white/5', f.campanhas === 0 && 'opacity-40')}>
+                    <tr key={faixa} className={cn('border-t border-border/10', f.campanhas === 0 && 'opacity-40')}>
                       <td className="py-2 pr-2">
                         <span className="flex items-center gap-1.5">
                           <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', PONTO[faixa])} />
