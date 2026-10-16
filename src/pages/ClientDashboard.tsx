@@ -860,9 +860,22 @@ export default function ClientDashboard() {
                 )}
               </div>
 
-              {/* Daily Chart */}
+              {/* Dois painéis, como no benchmark: um responde "quanto entrou
+                  e quanto saiu", o outro "a que custo". Lado a lado, a
+                  pergunta seguinte não exige rolar nem trocar de métrica. */}
               {!isLoading && dailyData.length > 0 && (
-                <DailyChart data={dailyData} />
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-4">
+                  <DailyChart
+                    data={dailyData}
+                    titulo="Investimento e resultados"
+                    inicial={['spend', 'results']}
+                  />
+                  <DailyChart
+                    data={dailyData}
+                    titulo="Eficiência"
+                    inicial={['cost_per_result', 'ctr']}
+                  />
+                </div>
               )}
 
               {/* Onde está a verba.
