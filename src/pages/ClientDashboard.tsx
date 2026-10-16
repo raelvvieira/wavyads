@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { BudgetBandsCard } from '@/components/BudgetBandsCard';
-import { SegmentCard } from '@/components/SegmentCard';
-import { rotuloDeResultado } from '@/components/CampaignsTable';
+import { SegmentsCard } from '@/components/SegmentsCard';
 import { useParams, useNavigate } from 'react-router-dom';
 import { TrendingUp, RefreshCw, ArrowLeft, CalendarIcon, Send, SlidersHorizontal } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths, subDays, startOfDay } from 'date-fns';
@@ -333,21 +332,20 @@ export default function ClientDashboard() {
    * não pode ficar esperando a próxima refatoração reabrir o caminho.
    */
   /**
-   * Como ESTE cliente chama o que a campanha entrega.
+   * O tipo de resultado DESTE cliente, cru, como a Meta devolve.
    *
-   * "Lead" para uma clínica, "compra" para uma loja, "conversa" para quem
-   * roda WhatsApp. Dizer "resultado" para todo mundo é correto e não
-   * significa nada; o tipo mais frequente entre as campanhas é o que o
-   * cliente usa quando fala do próprio negócio.
+   * O tipo mais frequente entre as campanhas é o que o cliente usa quando
+   * fala do próprio negócio — lead para uma clínica, compra para uma loja,
+   * conversa para quem roda WhatsApp. Quem traduz para um substantivo que
+   * cabe numa frase é `unidadeDoResultado`; aqui só se escolhe o tipo.
    */
-  const rotuloDoResultado = useMemo(() => {
+  const tipoDoResultado = useMemo(() => {
     const contagem = new Map<string, number>();
     for (const c of (campaigns ?? []) as any[]) {
-      const t = rotuloDeResultado(c.result_type);
+      const t = c.result_type;
       if (t) contagem.set(t, (contagem.get(t) ?? 0) + 1);
     }
-    const topo = [...contagem].sort((a, b) => b[1] - a[1])[0];
-    return topo ? topo[0].toLowerCase() : 'resultado';
+    return [...contagem].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
   }, [campaigns]);
 
   const campaignList = useMemo(
@@ -885,7 +883,7 @@ export default function ClientDashboard() {
               {!isLoading && campaignList.length > 0 && (
                 <BudgetBandsCard
                   campaigns={campaignList as any}
-                  resultLabel={rotuloDoResultado}
+                  resultType={tipoDoResultado}
                 />
               )}
 
@@ -893,30 +891,31 @@ export default function ClientDashboard() {
                   O painel respondia quanto e com que resultado, nunca para
                   quem. É o bloco que o cliente pediu por nome. */}
               {platform === 'meta' && (metaSegments || segmentsLoading) && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-                  <SegmentCard
-                    titulo="Idade"
-                    subtitulo="Distribuição do investimento"
-                    linhas={metaSegments?.idade}
-                    resultLabel={rotuloDoResultado}
-                    carregando={segmentsLoading}
-                  />
-                  <SegmentCard
-                    titulo="Posicionamento"
-                    subtitulo="Plataforma"
-                    linhas={metaSegments?.plataforma}
-                    alternativa={{ rotulo: 'Posição', linhas: metaSegments?.posicao }}
-                    resultLabel={rotuloDoResultado}
-                    carregando={segmentsLoading}
-                  />
-                  <SegmentCard
-                    titulo="Regiões"
-                    subtitulo="Top 10 por investimento"
-                    linhas={metaSegments?.regiao}
-                    resultLabel={rotuloDoResultado}
-                    carregando={segmentsLoading}
-                  />
-                </div>
+                <SegmentsCard
+                  vistas={[
+                    {
+                      chave: 'idade',
+                      titulo: 'Idade',
+                      subtitulo: 'Distribuição do investimento',
+                      linhas: metaSegments?.idade,
+                    },
+                    {
+                      chave: 'posicionamento',
+                      titulo: 'Posicionamento',
+                      subtitulo: 'Plataforma',
+                      linhas: metaSegments?.plataforma,
+                      alternativa: { rotulo: 'Posição', linhas: metaSegments?.posicao },
+                    },
+                    {
+                      chave: 'regioes',
+                      titulo: 'Regiões',
+                      subtitulo: 'Top 10 por investimento',
+                      linhas: metaSegments?.regiao,
+                    },
+                  ]}
+                  resultType={tipoDoResultado}
+                  carregando={segmentsLoading}
+                />
               )}
 
               {/* Campaigns Table */}

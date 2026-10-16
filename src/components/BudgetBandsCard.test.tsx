@@ -7,10 +7,10 @@ const campanha = (p: any = {}) => ({
   id: 'a', name: 'A', spend: 1000, results: 20, cost_per_result: 50, ...p,
 });
 
-const montar = (campaigns: any[], resultLabel?: string) =>
+const montar = (campaigns: any[], resultType?: string) =>
   render(
     <TooltipProvider>
-      <BudgetBandsCard campaigns={campaigns} resultLabel={resultLabel} />
+      <BudgetBandsCard campaigns={campaigns} resultType={resultType} />
     </TooltipProvider>,
   );
 
@@ -36,7 +36,7 @@ describe('BudgetBandsCard', () => {
   });
 
   it('o rótulo do resultado é o do cliente, não "resultado" para todo mundo', () => {
-    montar([campanha()], 'compra');
+    montar([campanha()], 'purchase');
     expect(screen.getByText(/por compra na média da conta/)).toBeTruthy();
   });
 
@@ -98,6 +98,21 @@ describe('o detalhe das faixas', () => {
     expect(screen.getByText(/acima do custo médio/)).toBeTruthy();
     // Duas: a frase do card e a do detalhe. As duas devem existir.
     expect(screen.getAllByText(/sem nenhum resultado/).length).toBe(2);
+  });
+
+  it('o detalhe abre DENTRO do card, não num pop-up, e fecha pelo mesmo botão', () => {
+    // Um modal tira a pessoa do painel para aprofundar um bloco dele, e ao
+    // fechar ela volta sem o contexto que tinha. E um botão que só abre
+    // deixa o card inchado sem saída.
+    montar([campanha({ spend: 1000, results: 40, cost_per_result: 25 })]);
+    const botao = screen.getByText('Ver detalhes');
+    fireEvent.click(botao);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByText('Ocultar detalhes')).toBeTruthy();
+
+    fireEvent.click(screen.getByText('Ocultar detalhes'));
+    expect(screen.queryByText('Escalar')).toBeNull();
+    expect(screen.getByText('Ver detalhes')).toBeTruthy();
   });
 
   it('o custo da faixa é o da faixa inteira, não a média das campanhas', () => {

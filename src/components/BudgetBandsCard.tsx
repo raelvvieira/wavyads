@@ -4,8 +4,9 @@ import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/format';
 import { mapearVerba, type CampanhaParaFaixa, type Faixa } from '@/lib/dashboard/faixasDeVerba';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ChevronDown } from 'lucide-react';
 import { ORDEM_DAS_FAIXAS } from '@/lib/dashboard/faixasDeVerba';
+import { unidadeDoResultado, pluralDoResultado } from '@/lib/dashboard/unidadeDoResultado';
 
 /**
  * Onde está a verba — em uma barra e uma frase.
@@ -39,11 +40,18 @@ const PONTO: Record<Faixa, string> = {
 
 interface BudgetBandsCardProps {
   campaigns: CampanhaParaFaixa[];
-  /** Como o cliente chama o que a campanha entrega: lead, compra, conversa. */
-  resultLabel?: string;
+  /**
+   * O tipo de resultado da conta, cru, como a Meta devolve.
+   *
+   * O substantivo sai de `unidadeDoResultado`, e não do rótulo da tabela:
+   * aquele é cabeçalho de coluna, plural e descritivo, e numa frase vira
+   * "R$ 11,18 por conversas por mensagem iniciadas na média da conta".
+   */
+  resultType?: string | null;
 }
 
-export function BudgetBandsCard({ campaigns, resultLabel = 'resultado' }: BudgetBandsCardProps) {
+export function BudgetBandsCard({ campaigns, resultType }: BudgetBandsCardProps) {
+  const resultLabel = unidadeDoResultado(resultType);
   const mapa = useMemo(() => mapearVerba(campaigns), [campaigns]);
   const [aberto, setAberto] = useState(false);
   if (mapa.total <= 0) return null;
@@ -51,7 +59,6 @@ export function BudgetBandsCard({ campaigns, resultLabel = 'resultado' }: Budget
   const comVerba = mapa.fatias.filter((f) => f.investimento > 0);
 
   return (
-    <>
     <GlassCard className="animate-fade-in space-y-3">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h3 className="text-base sm:text-lg font-semibold">Onde está a verba</h3>
@@ -78,7 +85,7 @@ export function BudgetBandsCard({ campaigns, resultLabel = 'resultado' }: Budget
               <p className="font-medium">{f.rotulo} · {Math.round(f.percentual)}%</p>
               <p className="text-muted-foreground">
                 {formatCurrency(f.investimento)} · {f.campanhas} {f.campanhas === 1 ? 'campanha' : 'campanhas'}
-                {f.resultados > 0 && ` · ${f.resultados} ${resultLabel}${f.resultados === 1 ? '' : 's'}`}
+                {f.resultados > 0 && ` · ${f.resultados} ${pluralDoResultado(resultType, f.resultados)}`}
               </p>
             </TooltipContent>
           </Tooltip>
@@ -95,104 +102,94 @@ export function BudgetBandsCard({ campaigns, resultLabel = 'resultado' }: Budget
         ))}
       </div>
 
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         {/* Uma frase, e só quando há o que dizer. Um painel que descreve tudo
             em parágrafos é um painel que ninguém lê. */}
         {mapa.frase ? (
           <p className="text-sm font-medium text-foreground/90">{mapa.frase}</p>
         ) : <span />}
+        {/* O gatilho é um botão com contorno, e não um link sublinhado de
+            11px: ele some numa tela cheia, e quem não o vê não descobre que
+            existe mais informação atrás dele. */}
         <button
           type="button"
-          onClick={() => setAberto(true)}
-          className="text-[11px] text-foreground/70 underline underline-offset-2 transition-colors hover:text-foreground"
+          onClick={() => setAberto((v) => !v)}
+          aria-expanded={aberto}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1 text-[11px] font-medium text-foreground/85 transition-colors hover:bg-white/[0.08] hover:text-foreground"
         >
-          Ver detalhes
+          {aberto ? 'Ocultar detalhes' : 'Ver detalhes'}
+          <ChevronDown className={cn('h-3 w-3 transition-transform duration-200', aberto && 'rotate-180')} />
         </button>
       </div>
+
+      {/* O detalhe abre AQUI, no próprio card.
+          Um modal tira a pessoa do painel para mostrar o aprofundamento de
+          um bloco dele — e ao fechar ela volta sem o contexto que tinha. */}
+      {aberto && (
+        <div className="animate-fade-in space-y-3 border-t border-white/10 pt-3">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <th className="pb-2 text-left font-medium">Faixa</th>
+                  <th className="pb-2 text-right font-medium">Camp.</th>
+                  <th className="pb-2 text-right font-medium">Invest.</th>
+                  <th className="pb-2 text-right font-medium">% total</th>
+                  <th className="pb-2 text-right font-medium">Result.</th>
+                  <th className="pb-2 text-right font-medium">Custo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ORDEM_DAS_FAIXAS.map((faixa) => {
+                  const f = mapa.fatias.find((x) => x.faixa === faixa)!;
+                  return (
+                    <tr key={faixa} className={cn('border-t border-white/5', f.campanhas === 0 && 'opacity-40')}>
+                      <td className="py-2 pr-2">
+                        <span className="flex items-center gap-1.5">
+                          <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', PONTO[faixa])} />
+                          <span className="truncate">{f.rotulo}</span>
+                        </span>
+                        {/* Os nomes, e não só a contagem: "1 campanha sem
+                            retorno" sem dizer qual não é acionável. */}
+                        {f.nomes.length > 0 && (
+                          <span className="mt-0.5 block truncate pl-3 text-[10px] text-muted-foreground">
+                            {f.nomes.slice(0, 3).join(' · ')}
+                            {f.nomes.length > 3 && ` · +${f.nomes.length - 3}`}
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2 text-right metric-number">{f.campanhas}</td>
+                      <td className="py-2 text-right metric-number">{formatCurrency(f.investimento)}</td>
+                      <td className="py-2 text-right metric-number">{f.percentual.toFixed(1)}%</td>
+                      <td className="py-2 text-right metric-number">{f.resultados || '—'}</td>
+                      <td className="py-2 text-right metric-number">
+                        {f.custoPorResultado > 0 ? formatCurrency(f.custoPorResultado) : '—'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="space-y-1.5">
+            {mapa.frases.map((f) => (
+              <p
+                key={f.texto}
+                className={cn(
+                  'rounded-lg border px-2.5 py-2 text-[11.5px] leading-relaxed',
+                  f.tom === 'bom' && 'border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-700 dark:text-emerald-200/90',
+                  f.tom === 'atencao' && 'border-amber-400/25 bg-amber-400/[0.07] text-amber-700 dark:text-amber-200/90',
+                  f.tom === 'ruim' && 'border-red-500/25 bg-red-500/[0.08] text-red-700 dark:text-red-200/90',
+                )}
+              >
+                {f.texto}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
     </GlassCard>
 
-    {/* O detalhe. Quem abriu já declarou que quer mais que uma barra: aqui
-        entram os números por faixa, as campanhas de cada uma e as três
-        frases abertas. */}
-    <Dialog open={aberto} onOpenChange={setAberto}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="text-base">Investimento por faixa</DialogTitle>
-          <p className="text-xs text-muted-foreground">
-            {campaigns.filter((c) => c.spend > 0).length} campanhas · {formatCurrency(mapa.total)} no período ·
-            {' '}{formatCurrency(mapa.referencia)} por {resultLabel} na média
-          </p>
-        </DialogHeader>
-
-        <div className="flex h-2 w-full overflow-hidden rounded-full bg-white/[0.06]">
-          {comVerba.map((f) => (
-            <div key={f.faixa} className={cn('h-full', COR[f.faixa])} style={{ width: `${f.percentual}%` }} />
-          ))}
-        </div>
-
-        <div className="max-h-[45vh] overflow-y-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                <th className="pb-2 text-left font-medium">Faixa</th>
-                <th className="pb-2 text-right font-medium">Camp.</th>
-                <th className="pb-2 text-right font-medium">Invest.</th>
-                <th className="pb-2 text-right font-medium">% total</th>
-                <th className="pb-2 text-right font-medium">Result.</th>
-                <th className="pb-2 text-right font-medium">Custo</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ORDEM_DAS_FAIXAS.map((faixa) => {
-                const f = mapa.fatias.find((x) => x.faixa === faixa)!;
-                const vazia = f.campanhas === 0;
-                return (
-                  <tr key={faixa} className={cn('border-t border-white/5', vazia && 'opacity-40')}>
-                    <td className="py-2">
-                      <span className="flex items-center gap-1.5">
-                        <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', PONTO[faixa])} />
-                        <span className="truncate">{f.rotulo}</span>
-                      </span>
-                      {/* Os nomes, e não só a contagem: "1 campanha sem
-                          retorno" sem dizer qual não é acionável. */}
-                      {f.nomes.length > 0 && (
-                        <span className="mt-0.5 block truncate pl-3 text-[10px] text-muted-foreground">
-                          {f.nomes.slice(0, 3).join(' · ')}
-                          {f.nomes.length > 3 && ` · +${f.nomes.length - 3}`}
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-2 text-right metric-number">{f.campanhas}</td>
-                    <td className="py-2 text-right metric-number">{formatCurrency(f.investimento)}</td>
-                    <td className="py-2 text-right metric-number">{f.percentual.toFixed(1)}%</td>
-                    <td className="py-2 text-right metric-number">{f.resultados || '—'}</td>
-                    <td className="py-2 text-right metric-number">
-                      {f.custoPorResultado > 0 ? formatCurrency(f.custoPorResultado) : '—'}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="space-y-1.5">
-          {mapa.frases.map((f) => (
-            <p
-              key={f.texto}
-              className={cn(
-                'rounded-lg border px-2.5 py-2 text-[11.5px] leading-relaxed',
-                f.tom === 'bom' && 'border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-200/90',
-                f.tom === 'atencao' && 'border-amber-400/20 bg-amber-400/[0.07] text-amber-200/90',
-                f.tom === 'ruim' && 'border-red-500/25 bg-red-500/[0.08] text-red-200/90',
-              )}
-            >
-              {f.texto}
-            </p>
-          ))}
-        </div>
-      </DialogContent>
-    </Dialog>
-    </>
   );
 }
