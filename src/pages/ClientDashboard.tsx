@@ -7,7 +7,7 @@ import { format, startOfMonth, endOfMonth, subMonths, subDays, startOfDay } from
 import { ptBR } from 'date-fns/locale';
 import { GlassCard } from '@/components/GlassCard';
 import { Skeleton } from '@/components/ui/skeleton';
-import { KpiCard, normalizeCards, DEFAULT_CARDS, type MetricKey } from '@/components/KpiCard';
+import { KpiCard, normalizeCards, DEFAULT_CARDS, type MetricKey, TETO_DE_CARDS } from '@/components/KpiCard';
 import { useDashboardPrefs } from '@/hooks/useDashboardPrefs';
 import type { BottomStageOption } from '@/components/ConversionFunnel';
 import { DailyChart } from '@/components/DailyChart';
@@ -836,10 +836,14 @@ export default function ClientDashboard() {
               <GapAlert leads={metricValues.leads} purchases={metricValues.purchases} />
 
               {/* KPI Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-7 gap-3 sm:gap-4">
+              {/* Doze blocos em duas linhas densas, e não sete espaçados.
+                  Com sete, metade das perguntas do cliente ("qual o CPM?",
+                  "o CTR caiu?") exigia abrir um menu e trocar um card por
+                  outro, perdendo o que estava ali. */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-2.5">
                 {isLoading ? (
-                  Array.from({ length: 7 }).map((_, i) => (
-                    <GlassCard key={i}><Skeleton className="h-20 bg-white/5" /></GlassCard>
+                  Array.from({ length: TETO_DE_CARDS }).map((_, i) => (
+                    <GlassCard key={i}><Skeleton className="h-14 bg-white/5" /></GlassCard>
                   ))
                 ) : (
                   kpiCards.map((key, i) => (
