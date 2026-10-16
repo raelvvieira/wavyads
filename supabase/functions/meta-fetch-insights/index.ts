@@ -614,6 +614,98 @@ Deno.serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // ==================== SEGMENTAÇÃO ====================
+    /*
+     * Idade, posicionamento e região — os `breakdowns` que nunca pedimos.
+     *
+     * O painel mostrava o agregado e nada sobre QUEM. Estas três perguntas
+     * são as que um gestor responde de cabeça depois de olhar o
+     * Gerenciador, e o cliente não tem como responder sozinho: em que faixa
+     * etária o dinheiro está indo, em que plataforma, em que estado.
+     *
+     * Uma chamada por breakdown, em paralelo, no nível da CONTA. Nível de
+     * conta e não de campanha de propósito: é o mesmo recorte que o
+     * Gerenciador mostra na tela de conta, e somar breakdown por campanha
+     * multiplicaria as chamadas por 200 sem responder nada a mais.
+     *
+     * Best-effort por segmento: um breakdown que falha devolve lista vazia
+     * e os outros dois continuam. Nenhum deles impede o painel.
+     */
+    if (action === "segments") {
+      const campos = "spend,impressions,clicks,actions,action_values,cost_per_action_type";
+
+      async function porBreakdown(breakdowns: string): Promise<any[]> {
+        try {
+          const res = await fetchWithTimeout(
+            `${GRAPH_API}/${adAccountId}/insights?fields=${campos}&breakdowns=${breakdowns}` +
+            `&limit=200&${dateFilter}&access_token=${accessToken}`,
+            {},
+            20_000,
+          );
+          const json = await res.json();
+          if (json.error || !Array.isArray(json.data)) {
+            console.warn("breakdown falhou:", breakdowns, json.error?.message);
+            return [];
+          }
+          return json.data;
+        } catch (e) {
+          console.warn("breakdown falhou:", breakdowns, (e as Error)?.message);
+          return [];
+        }
+      }
+
+      const linha = (r: any, chave: string) => {
+        const spend = parseFloat(r.spend || "0");
+        const results = extractResults(r.actions);
+        return {
+          chave,
+          spend,
+          impressions: parseInt(r.impressions || "0"),
+          clicks: parseInt(r.clicks || "0"),
+          results,
+          cost_per_result: results > 0 ? spend / results : 0,
+          purchase_value: extractActionValue(r.action_values, PURCHASE_TYPES),
+        };
+      };
+
+      const [idadeRaw, posicaoRaw, regiaoRaw] = await Promise.all([
+        porBreakdown("age"),
+        porBreakdown("publisher_platform,platform_position"),
+        porBreakdown("region"),
+      ]);
+
+      /* O posicionamento vem em dois níveis na MESMA resposta: a plataforma
+         (instagram) e a posição dentro dela (instagram_stories). Separar os
+         dois aqui evita duas chamadas para a mesma pergunta. */
+      const somar = (linhas: any[], chaveDe: (r: any) => string) => {
+        const mapa = new Map<string, any>();
+        for (const r of linhas) {
+          const chave = chaveDe(r) || "Desconhecido";
+          const atual = mapa.get(chave) ?? linha({ spend: "0" }, chave);
+          const nova = linha(r, chave);
+          mapa.set(chave, {
+            chave,
+            spend: atual.spend + nova.spend,
+            impressions: atual.impressions + nova.impressions,
+            clicks: atual.clicks + nova.clicks,
+            results: atual.results + nova.results,
+            cost_per_result: 0,
+            purchase_value: atual.purchase_value + nova.purchase_value,
+          });
+        }
+        return [...mapa.values()]
+          .map((x) => ({ ...x, cost_per_result: x.results > 0 ? x.spend / x.results : 0 }))
+          .sort((a, b) => b.spend - a.spend);
+      };
+
+      return new Response(JSON.stringify({
+        idade: somar(idadeRaw, (r) => r.age),
+        plataforma: somar(posicaoRaw, (r) => r.publisher_platform),
+        posicao: somar(posicaoRaw, (r) => r.platform_position),
+        regiao: somar(regiaoRaw, (r) => r.region).slice(0, 10),
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // ==================== INSIGHTS ====================
     if (action === "insights") {
       const res = await fetch(
