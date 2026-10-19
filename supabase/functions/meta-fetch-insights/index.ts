@@ -8,6 +8,21 @@ const corsHeaders = {
 
 const GRAPH_API = "https://graph.facebook.com/v20.0";
 
+/** fetch com tempo limite — um breakdown lento não pode prender o painel. */
+async function fetchWithTimeout(
+  url: string,
+  opts: RequestInit = {},
+  timeoutMs = 20_000,
+): Promise<Response> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...opts, signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function isTooMuchDataError(err: any): boolean {
   const msg = String(err?.message || "");
   return err?.code === 1 || /reduce the amount of data/i.test(msg);
@@ -741,8 +756,8 @@ Deno.serve(async (req) => {
         `${GRAPH_API}/${adAccountId}/insights?fields=spend,impressions,reach,clicks,actions&${dateFilter}&time_increment=1&limit=500&access_token=${accessToken}`;
       let pageGuard = 0;
       while (nextUrl && pageGuard < 20) {
-        const r = await fetch(nextUrl);
-        const j = await r.json();
+        const r: Response = await fetch(nextUrl);
+        const j: any = await r.json();
         if (j.error) break;
         dailyAll.push(...(j.data || []));
         nextUrl = j.paging?.next || null;
