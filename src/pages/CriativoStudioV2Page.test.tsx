@@ -226,10 +226,10 @@ describe('CriativoStudioV2Page', () => {
     createCreativeAsset.mockResolvedValue({ ...semPeso[0], id: 'tpl-1', type: 'template' });
     createCreativeAsset.mockClear();
 
-    await acionarNoInspetor('Salvar como template');
-    fireEvent.change(screen.getByLabelText('Nome do template'), { target: { value: 'editorial' } });
+    await acionarNoInspetor('Salvar nos favoritos');
+    fireEvent.change(screen.getByLabelText('Nome do favorito'), { target: { value: 'editorial' } });
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Salvar template' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
     });
 
     expect(getCreativeAsset).toHaveBeenCalled();
@@ -1590,20 +1590,20 @@ describe('CriativoStudioV2Page', () => {
     );
   });
 
-  it('salvar como template pede um nome antes de criar', async () => {
+  it('salvar nos favoritos pede um nome antes de criar', async () => {
     // Sem nome, a biblioteca vira uma lista de "template" indistinguível.
     montar();
     await waitFor(() => expect(prontos().length).toBeGreaterThan(0));
     createCreativeAsset.mockClear();
 
-    await acionarNoInspetor('Salvar como template');
+    await acionarNoInspetor('Salvar nos favoritos');
 
     expect(createCreativeAsset).not.toHaveBeenCalled();
-    fireEvent.change(screen.getByLabelText('Nome do template'), {
+    fireEvent.change(screen.getByLabelText('Nome do favorito'), {
       target: { value: 'editorial com faixa' },
     });
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Salvar template' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
     });
 
     expect(createCreativeAsset).toHaveBeenCalledWith(expect.objectContaining({

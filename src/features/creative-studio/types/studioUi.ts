@@ -33,7 +33,7 @@ export interface StudioLibraryEntry {
 }
 
 /** O que o menu de anexos do dock sabe anexar. */
-export type DockAttachmentKind = 'reference' | 'logo' | 'copy' | 'product' | 'avatar';
+export type DockAttachmentKind = 'reference' | 'logo' | 'copy' | 'product' | 'avatar' | 'favorite';
 
 /**
  * O que um anexo de produto É.
@@ -58,6 +58,14 @@ export interface DockAttachment {
   thumbnailUrl?: string | null;
   /** URL para reference/logo/file; o texto em si para copy. */
   value: string;
+  /**
+   * A arte de origem, para `kind: 'favorite'`.
+   *
+   * O favorito não é lido da imagem como uma referência — o sistema visual
+   * dele já está gravado na linha. É por este id que a geração vai buscá-lo
+   * em vez de pagar uma chamada de visão por um documento pior.
+   */
+  assetId?: string;
   /** Só para `kind: 'product'`. Ausente = `'object'`, que é o
    *  comportamento que já existia — nenhum anexo antigo muda de sentido. */
   subject?: ProductSubject;

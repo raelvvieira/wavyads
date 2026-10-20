@@ -1315,3 +1315,91 @@ describe('a troca de formato depois da leitura aprovada', () => {
     expect(r.metadata?.containerId).toBeNull();
   });
 });
+
+describe('o favorito anexado empresta estilo e formato', () => {
+  const prompt = (deps: any) => (deps.invoke as any).mock.calls[0][1].prompt as string;
+  /** O que o dock monta quando você anexa um favorito. */
+  const doFavorito = {
+    referenceReading: {
+      designSystemDoc: '## Palette\nOff-white #F4F0E8, accent #C08457.',
+      antiPadroes: ['NEVER use cold blue clinical lighting'],
+      mood: null,
+      designSystemFromReference: false,
+    },
+    containerSugerido: 'antes_depois',
+  };
+
+  it('o sistema visual dele entra sem custar uma leitura de visão', async () => {
+    // Reler a imagem chegaria a um documento PARECIDO com o que já está
+    // gravado na linha — pagando uma chamada de visão para perder
+    // fidelidade.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    deps.analyzeReferences = vi.fn();
+
+    await createStudioAssetActions(deps).generate('clareamento', '1:1', doFavorito);
+
+    expect(deps.analyzeReferences).not.toHaveBeenCalled();
+    expect(prompt(deps)).toContain('Off-white #F4F0E8');
+  });
+
+  it('NÃO dispara a cláusula que proíbe reproduzir a marca de origem', async () => {
+    // Essa cláusula existe porque uma referência é arte de TERCEIROS.
+    // Emiti-la sobre um favorito proibiria a arte de usar a marca do
+    // próprio cliente — que é o que o favorito foi salvo para repetir.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+
+    await createStudioAssetActions(deps).generate('clareamento', '1:1', doFavorito);
+
+    // A cláusula tem duas partes, e nenhuma pode aparecer: o bloco
+    // [STYLE REFERENCE] e a linha dele em [DO NOT INCLUDE].
+    expect(prompt(deps)).not.toContain('[STYLE REFERENCE — DESCRIPTION ONLY');
+    expect(prompt(deps)).not.toContain('produced by a THIRD PARTY');
+    expect(prompt(deps)).not.toMatch(/Any brand name, wordmark, logo, slogan, headline or person that appears in the style description/);
+  });
+
+  it('empresta o formato quando o pedido não nomeia nenhum', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+
+    const r = await createStudioAssetActions(deps).generate('clareamento', '1:1', doFavorito);
+
+    expect(prompt(deps)).toContain('Template name: Antes e depois');
+    expect(r.metadata?.containerId).toBe('antes_depois');
+  });
+
+  it('mas o TEXTO manda: um formato citado vence o do favorito', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+
+    const r = await createStudioAssetActions(deps)
+      .generate('quero um criativo censurado', '1:1', doFavorito);
+
+    expect(r.metadata?.containerId).toBe('censurado');
+  });
+
+  it('e a escolha à mão vence os dois', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+
+    const r = await createStudioAssetActions(deps)
+      .generate('quero um criativo censurado', '1:1', { ...doFavorito, containerId: null });
+
+    expect(r.metadata?.containerId).toBeNull();
+  });
+
+  it('favorito de outra proporção não impõe o formato dele', async () => {
+    // A porteira continua valendo: um favorito 1:1 num pedido 9:16
+    // emprestaria uma peça que o próprio container declara não ser aquela
+    // proporção.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+
+    const r = await createStudioAssetActions(deps).generate('clareamento', '9:16', doFavorito);
+
+    expect(r.metadata?.containerId).toBeNull();
+    // O estilo dele continua valendo — é a proporção que não bate, não a marca.
+    expect(prompt(deps)).toContain('Off-white #F4F0E8');
+  });
+});

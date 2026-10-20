@@ -1,4 +1,4 @@
-import { Boxes, CheckCircle2, ImageIcon, Images, LayoutTemplate, Layers, UserRound } from 'lucide-react';
+import { Boxes, CheckCircle2, ImageIcon, Images, Star, Layers, UserRound } from 'lucide-react';
 import type { CreativeAsset } from '../types/creative';
 import type { StudioLibraryEntry } from '../types/studioUi';
 
@@ -137,6 +137,6 @@ export const PREVIEW_LIBRARIES: StudioLibraryEntry[] = [
   { id: 'references', label: 'Referências', icon: Images, count: 3 },
   { id: 'products', label: 'Produtos', icon: Boxes, count: 2 },
   { id: 'avatars', label: 'Avatares', icon: UserRound, count: 1 },
-  { id: 'templates', label: 'Templates', icon: LayoutTemplate, count: 4 },
+  { id: 'templates', label: 'Favoritos', icon: Star, count: 4 },
   { id: 'approved', label: 'Aprovados', icon: CheckCircle2, count: 2 },
 ];

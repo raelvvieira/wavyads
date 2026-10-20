@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Boxes, CheckCircle2, ImageIcon, Images, LayoutTemplate, Layers, UserRound } from 'lucide-react';
+import { Boxes, CheckCircle2, ImageIcon, Images, Star, Layers, UserRound } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useClients } from '@/hooks/useClients';
 import { supabase } from '@/integrations/supabase/client';
@@ -64,6 +64,7 @@ import {
   type StudioInterpretation,
 } from '@/features/creative-studio/generation/studioAssetActions';
 import { montarPropostaDoPedido, type PropostaDoPedido } from '@/lib/creativeStudio/proposal';
+import { lerFavorito, avisoDasReferenciasIgnoradas, type LeituraDoFavorito } from '@/lib/creativeStudio/favorito';
 import { containerPorId } from '@/lib/creativeGenome/catalog';
 import type { CreativeContainer } from '@/lib/creativeGenome/types';
 import { lerQuantidade } from '@/lib/creativeStudio/quantidade';
@@ -104,6 +105,10 @@ function sugestaoDoPedido(args: {
   ignorouSelecao: boolean;
   /** A troca manual. `undefined` = o que a leitura escolheu. */
   override?: string | null;
+  /** O favorito anexado, quando trouxe estilo ou formato. */
+  favorito?: string | null;
+  /** O que foi anexado e não entrou, com o motivo. */
+  naoLeu?: string[];
 }): PropostaDoPedido {
   const escolha = args.leituras.find((l) => l?.formato)?.formato ?? null;
   const container = args.override !== undefined
@@ -129,6 +134,8 @@ function sugestaoDoPedido(args: {
     ignorouSelecao: args.ignorouSelecao,
     alternativas: (escolha?.listaCurta ?? []).map((c) => c.container),
     foraDoFormato: escolha?.foraDoFormato ?? null,
+    favorito: args.favorito ?? null,
+    naoLeu: args.naoLeu ?? [],
   });
 }
 
@@ -187,7 +194,7 @@ export default function CriativoStudioV2Page() {
 
   // Confirmação de apagar arte: abrir o diálogo não apaga nada — só a
   // confirmação chama `deleteCreativeAsset`.
-  // Nomear o template antes de criá-lo. Sem nome, a biblioteca vira uma
+  // Nomear o favorito antes de criá-lo. Sem nome, a biblioteca vira uma
   // lista de "template" que ninguém consegue distinguir.
   const [templateAlvo, setTemplateAlvo] = useState<CreativeAsset | null>(null);
   const [templateNome, setTemplateNome] = useState('');
@@ -431,7 +438,20 @@ export default function CriativoStudioV2Page() {
       { id: 'references', label: 'Referências', icon: Images, count: conta((a) => a.type === 'reference') },
       { id: 'products', label: 'Produtos', icon: Boxes, count: conta((a) => a.type === 'product') },
       { id: 'avatars', label: 'Avatares', icon: UserRound, count: conta((a) => a.type === 'avatar') },
-      { id: 'templates', label: 'Templates', icon: LayoutTemplate, count: conta((a) => a.type === 'template') },
+      /*
+       * "Favoritos" na tela, `type: 'template'` no banco.
+       *
+       * Os dois nomes divergem de propósito. A palavra "Templates" colidia
+       * com os 53 CONTAINERS do catálogo — que são especificações de peça,
+       * não artes — e a confusão era legítima: um usuário vendo "Templates"
+       * na ilha esperava encontrar lá "Antes e depois" e "Bilhete
+       * manuscrito", e encontrava duas artes próprias.
+       *
+       * O tipo no banco fica como está: `creative_assets.type` tem CHECK, e
+       * trocar o valor exigiria migração para renomear uma coluna que só o
+       * código lê. Quem lê a tela nunca vê a palavra.
+       */
+      { id: 'templates', label: 'Favoritos', icon: Star, count: conta((a) => a.type === 'template') },
       { id: 'approved', label: 'Inteligência', icon: CheckCircle2, count: conta((a) => a.isClientIntelligence) },
     ];
   }, [assetsDoCliente]);
@@ -785,7 +805,14 @@ export default function CriativoStudioV2Page() {
     const pessoas = attachments.filter((a) => a.kind === 'product' && a.subject === 'person').map((a) => a.value);
     const objetos = attachments.filter((a) => a.kind === 'product' && a.subject !== 'person').map((a) => a.value);
     const avatares = attachments.filter((a) => a.kind === 'avatar').map((a) => a.value);
-    return { logo: logo?.value ?? null, copyAnexada: copyAnexada?.value ?? null, referencias, pessoas, objetos, avatares };
+    // O favorito é um só: dois sistemas visuais na mesma arte produzem uma
+    // terceira coisa que não é nenhum dos dois. O último anexado vence.
+    const favorito = [...attachments].reverse().find((a) => a.kind === 'favorite') ?? null;
+    return {
+      logo: logo?.value ?? null, copyAnexada: copyAnexada?.value ?? null,
+      referencias, pessoas, objetos, avatares,
+      favoritoId: favorito?.assetId ?? null,
+    };
   }, [attachments]);
 
   /**
@@ -952,7 +979,28 @@ export default function CriativoStudioV2Page() {
        * só não era devolvida a ninguém. O ponto de parada não acrescenta
        * espera: ele mostra a espera que já havia.
        */
-      const { logo, copyAnexada, referencias, pessoas, objetos, avatares } = anexosPorPapel();
+      const { logo, copyAnexada, referencias, pessoas, objetos, avatares, favoritoId } = anexosPorPapel();
+
+      /*
+       * O favorito, lido da LINHA e não da imagem.
+       *
+       * A grade omite `metadata` de propósito, então a arte que está no
+       * canvas não traz o sistema visual dela. Uma ida ao banco resolve —
+       * e é mais barata que a chamada de visão que uma referência custaria
+       * para chegar a um documento pior.
+       *
+       * Falhar aqui não impede nada: o pedido segue sem o favorito, que é
+       * exatamente como ele se comportava antes desta mudança.
+       */
+      let favorito: LeituraDoFavorito | null = null;
+      if (favoritoId) {
+        try {
+          favorito = lerFavorito(await getCreativeAsset(favoritoId));
+        } catch {
+          favorito = null;
+        }
+      }
+
       const opcoes: GenerationOptions = {
         resolution,
         modelId,
@@ -963,6 +1011,24 @@ export default function CriativoStudioV2Page() {
         personImageUrls: pessoas,
         avatarImageUrls: avatares,
         clientName,
+        /*
+         * O favorito entra pelo canal da leitura já feita.
+         *
+         * `referenceReading` existe para não reler as referências a cada
+         * peça de um lote; aqui ele serve ao mesmo propósito por outro
+         * motivo — não há o que ler, o documento já existe. E vem com
+         * `designSystemFromReference: false`, que é o que impede a cláusula
+         * anti-cópia de proibir a marca do próprio cliente.
+         */
+        referenceReading: favorito?.designSystemDoc || favorito?.antiPadroes
+          ? {
+              designSystemDoc: favorito.designSystemDoc,
+              antiPadroes: favorito.antiPadroes,
+              mood: favorito.mood,
+              designSystemFromReference: false,
+            }
+          : undefined,
+        containerSugerido: favorito?.containerId ?? null,
       };
 
       /*
@@ -1039,6 +1105,9 @@ export default function CriativoStudioV2Page() {
         referencias: referencias.length,
         quantidade: { n, pedido },
         ignorouSelecao,
+        favorito: favorito?.nome ?? null,
+        naoLeu: [avisoDasReferenciasIgnoradas(favorito, referencias.length)]
+          .filter((x): x is string => !!x),
       };
       const sugestao = sugestaoDoPedido(contexto);
 
@@ -1336,20 +1405,36 @@ export default function CriativoStudioV2Page() {
 
     if (acao === 'use-as-reference') {
       if (!alvo.url) return;
+      /*
+       * Um FAVORITO anexado não é uma referência.
+       *
+       * A referência é arte de terceiros: ela é lida por visão e dispara a
+       * cláusula que proíbe reproduzir a marca de origem. O favorito é arte
+       * do próprio cliente, já carrega o sistema visual gravado na linha, e
+       * emitir aquela cláusula sobre ele proibiria a arte de usar a marca
+       * que o favorito foi salvo justamente para repetir.
+       */
+      const ehFavorito = alvo.type === 'template';
       handleAttach({
         id: crypto.randomUUID(),
-        kind: 'reference',
-        label: alvo.filename ?? 'Referência',
+        kind: ehFavorito ? 'favorite' : 'reference',
+        label: alvo.filename ?? (ehFavorito ? 'Favorito' : 'Referência'),
         thumbnailUrl: alvo.thumbnailUrl ?? alvo.url,
         value: alvo.url,
+        assetId: ehFavorito ? alvo.id : undefined,
       });
       // Diz o que mudou: a referência deixou de ser copiada. Para arte de
       // terceiros é o conserto; para uma arte do próprio cliente é uma
       // perda, e o usuário precisa saber qual dos dois vai acontecer.
-      toast({
-        title: 'Adicionada como referência',
-        description: 'Entra no próximo pedido como referência de ESTILO — a imagem não é copiada.',
-      });
+      toast(ehFavorito
+        ? {
+            title: 'Favorito anexado',
+            description: 'O próximo pedido sai com o sistema visual e o formato dele — a copy é a sua.',
+          }
+        : {
+            title: 'Adicionada como referência',
+            description: 'Entra no próximo pedido como referência de ESTILO — a imagem não é copiada.',
+          });
       return;
     }
 
@@ -1539,9 +1624,9 @@ export default function CriativoStudioV2Page() {
       <AlertDialog open={!!templateAlvo} onOpenChange={(open) => { if (!open) setTemplateAlvo(null); }}>
         <AlertDialogContent className="glass border-white/10 bg-card">
           <AlertDialogHeader>
-            <AlertDialogTitle>Salvar como template</AlertDialogTitle>
+            <AlertDialogTitle>Salvar nos favoritos</AlertDialogTitle>
             <AlertDialogDescription>
-              O template guarda o layout e o sistema visual desta arte — não a copy dela.
+              Guarda esta arte com o sistema visual e a direção que ela recebeu — não a copy dela.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <input
@@ -1550,7 +1635,7 @@ export default function CriativoStudioV2Page() {
             onChange={(e) => setTemplateNome(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') void salvarComoTemplate(); }}
             placeholder="Ex.: editorial com faixa inferior"
-            aria-label="Nome do template"
+            aria-label="Nome do favorito"
             className="glass-input h-9 w-full rounded-[var(--wavy-radius-control)] px-3 text-[13px]"
           />
           <AlertDialogFooter>
@@ -1560,7 +1645,7 @@ export default function CriativoStudioV2Page() {
               disabled={!templateNome.trim() || salvandoTemplate}
               onClick={(e) => { e.preventDefault(); void salvarComoTemplate(); }}
             >
-              {salvandoTemplate ? 'Salvando…' : 'Salvar template'}
+              {salvandoTemplate ? 'Salvando…' : 'Salvar'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

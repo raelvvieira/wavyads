@@ -159,6 +159,15 @@ export interface GenerationOptions {
    */
   containerId?: string | null;
   /**
+   * O formato que o FAVORITO anexado trazia.
+   *
+   * É sugestão, não ordem: entra quando o pedido não nomeou nenhum formato.
+   * Quem escreve "faz um antes e depois" com um favorito anexado está
+   * pedindo o estilo do favorito e o formato que digitou — e o texto, aqui
+   * como em todo o resto do Studio, manda.
+   */
+  containerSugerido?: string | null;
+  /**
    * O lugar desta peça num pedido de várias.
    *
    * Fica no metadata, e não num `asset_group`: `asset_groups.type` tem CHECK
@@ -398,7 +407,7 @@ function escolherOFormato(
       foraDoFormato: null,
     };
   }
-  return escolherContainer({
+  const escolha = escolherContainer({
     brief,
     aspectRatio,
     copy: options.copy ?? null,
@@ -409,6 +418,27 @@ function escolherOFormato(
     temLogo: !!options.logoImageUrl,
     temReferencia: (options.referenceImageUrls?.length ?? 0) > 0,
   });
+
+  /*
+   * O favorito empresta o formato — a menos que o texto tenha nomeado um.
+   *
+   * A porteira da proporção continua valendo: um favorito 1:1 anexado a um
+   * pedido 9:16 emprestaria uma peça que o próprio container declara não
+   * ser aquela proporção.
+   */
+  if (!escolha.citado && options.containerSugerido) {
+    const doFavorito = containerPorId(options.containerSugerido);
+    if (doFavorito && (!aspectRatio || doFavorito.proporcao === aspectRatio)) {
+      return {
+        ...escolha,
+        container: doFavorito,
+        porques: ['veio do favorito que você anexou'],
+        faltas: [],
+      };
+    }
+  }
+
+  return escolha;
 }
 
 /** As chaves que descrevem a MARCA da peça — as que não podem faltar no Fator. */

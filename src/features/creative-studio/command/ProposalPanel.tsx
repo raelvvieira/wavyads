@@ -172,6 +172,20 @@ export function ProposalPanel({ proposta, busy, onGerar, onAjustar, onTrocarForm
               Só o seu pedido. Anexar uma referência ou escolher um cliente dá mais de onde partir.
             </p>
           )}
+
+          {/* E o que NÃO entrou. Uma decisão certa tomada em silêncio
+              parece um bug: a pessoa vê os chips no dock e não vê efeito
+              nenhum na arte. */}
+          {proposta.naoLeu.length > 0 && (
+            <ul className="mt-1.5 space-y-1">
+              {proposta.naoLeu.map((motivo) => (
+                <li key={motivo} className="flex items-start gap-1.5 text-[12px] leading-relaxed text-amber-300/75">
+                  <X className="mt-[3px] h-3 w-3 shrink-0" />
+                  {motivo}
+                </li>
+              ))}
+            </ul>
+          )}
         </Secao>
       </div>
 
