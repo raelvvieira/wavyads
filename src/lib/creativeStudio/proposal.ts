@@ -20,8 +20,20 @@ import type { CreativeContainer } from '@/lib/creativeGenome/types';
  */
 
 export interface PropostaDeArte {
-  /** O container escolhido, quando houve um. */
-  formato: { nome: string; proporcao: string } | null;
+  /**
+   * O container escolhido, quando houve um.
+   *
+   * `porques` e `faltas` são o que torna a escolha conferível: um formato
+   * imposto sem dizer por quê é uma caixa-preta, e um formato que precisa
+   * de uma foto que ninguém anexou produz uma arte com produto inventado —
+   * o tipo de peça que se descobre depois de gastar.
+   */
+  formato: {
+    nome: string;
+    proporcao: string;
+    porques: string[];
+    faltas: string[];
+  } | null;
   /** O que vai aparecer no quadro. Uma ou duas frases. */
   cena: string | null;
   /** A copy já repartida em papéis, na ordem em que aparece na peça. */
@@ -52,6 +64,10 @@ const ORDEM_DOS_PAPEIS: { chave: keyof PromptCopyBlocks; rotulo: string }[] = [
 
 export interface EntradaDaProposta {
   container?: CreativeContainer | null;
+  /** Por que este formato — já em português, vindo de `escolherContainer`. */
+  porques?: string[];
+  /** O que o formato pede e não foi anexado. */
+  faltas?: string[];
   artDirection?: ArtDirection | null;
   copyBlocks?: PromptCopyBlocks | null;
   aspectRatio?: CreativeAspectRatio | null;
@@ -121,7 +137,12 @@ export function montarProposta(e: EntradaDaProposta): PropostaDeArte {
   const leu = listarFontes(e);
 
   const formato = container
-    ? { nome: container.nome_pt, proporcao: e.aspectRatio ?? container.proporcao }
+    ? {
+        nome: container.nome_pt,
+        proporcao: e.aspectRatio ?? container.proporcao,
+        porques: e.porques ?? [],
+        faltas: e.faltas ?? [],
+      }
     : null;
 
   return {
@@ -158,6 +179,26 @@ export interface PropostaDoPedido {
   /** As fontes lidas — do pedido, não de cada peça. */
   leu: string[];
   /**
+   * Os outros formatos que servem a este pedido.
+   *
+   * Vive no PEDIDO e não na peça porque todas as peças de um lote partem do
+   * mesmo texto e dos mesmos anexos — a lista é a mesma para as duas, e
+   * duplicá-la por peça daria duas listas que podem divergir.
+   *
+   * Existe mesmo quando o sistema não escolheu nada: é o caso mais comum de
+   * quem quer um formato e não sabe o nome dele. Não escolher é diferente
+   * de não ter o que oferecer.
+   */
+  alternativas: { id: string; nome: string; proporcao: string; atual: boolean }[];
+  /**
+   * O pedido nomeou um formato que não existe na proporção escolhida.
+   *
+   * "Quero um antes e depois" em 9:16 cairia no vazio — o formato é 1:1 no
+   * catálogo. Sem esta linha, a arte sai comum e o pedido parece não ter
+   * sido lido.
+   */
+  foraDoFormato: { nome: string; proporcao: string } | null;
+  /**
    * Quando o pedido é de ALTERAÇÃO, e não de criação.
    *
    * A edição ia direto ao provedor, sem ponto de parada nenhum. Foi por
@@ -182,6 +223,9 @@ export interface EntradaDoPedido extends Omit<EntradaDaProposta, 'artDirection' 
   quantidade?: { n: number; pedido: number };
   edicao?: { arte: string; pedido: string } | null;
   ignorouSelecao?: boolean;
+  /** A lista curta de `escolherContainer`, para a troca antes de gerar. */
+  alternativas?: CreativeContainer[];
+  foraDoFormato?: { nome: string; proporcao: string } | null;
 }
 
 export function montarPropostaDoPedido(e: EntradaDoPedido): PropostaDoPedido {
@@ -196,6 +240,13 @@ export function montarPropostaDoPedido(e: EntradaDoPedido): PropostaDoPedido {
     cliente,
     quantidade,
     leu: listarFontes(e),
+    alternativas: (e.alternativas ?? []).map((c) => ({
+      id: c.id,
+      nome: c.nome_pt,
+      proporcao: c.proporcao,
+      atual: c.id === e.container?.id,
+    })),
+    foraDoFormato: e.foraDoFormato ?? null,
     edicao,
     ignorouSelecao: !!e.ignorouSelecao,
     /*
@@ -213,8 +264,14 @@ export function montarPropostaDoPedido(e: EntradaDoPedido): PropostaDoPedido {
      * novas vira uma edição da arte selecionada e ninguém fica sabendo até
      * a imagem aparecer. O mesmo vale para a seleção ignorada.
      */
+    /*
+     * Um formato citado que o catálogo não tem naquela proporção também
+     * pede confirmação, mesmo numa peça magra: o sistema está prestes a
+     * ignorar algo que foi pedido com todas as letras.
+     */
     vazia: !edicao
       && !e.ignorouSelecao
+      && !e.foraDoFormato
       && pecas.every((p) => p.vazia)
       && quantidade.n <= 1
       && !cliente?.doTexto,

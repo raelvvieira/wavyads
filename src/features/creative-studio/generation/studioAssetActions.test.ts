@@ -1145,3 +1145,173 @@ describe('a imagem vira arquivo antes de ser gravada na linha', () => {
     expect(arte.url).toBe(BASE64);
   });
 });
+
+describe('o formato da peça — o container', () => {
+  const prompt = (deps: any) => (deps.invoke as any).mock.calls[0][1].prompt as string;
+
+  it('o pedido que nomeia o formato leva o layout ao prompt', async () => {
+    // O cano existia dos dois lados desde a fase 2 — catálogo de um lado,
+    // bloco [TEMPLATE STRUCTURE] do outro — e nenhuma arte passava por ele:
+    // o único lugar que preenchia `template` era a bancada, em DEV.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+
+    const r = await createStudioAssetActions(deps).generate('quero um antes e depois', '1:1');
+
+    expect(prompt(deps)).toContain('[TEMPLATE STRUCTURE]');
+    expect(prompt(deps)).toContain('Template name: Antes e depois');
+    expect(r.metadata?.containerId).toBe('antes_depois');
+  });
+
+  it('o que o container declara INEGOCIÁVEL entra como regra dura', async () => {
+    // `fixo` é o que mata o formato se mudar. Passar o nome da peça sem as
+    // regras dela seria dizer "faça um antes e depois" e deixar o modelo
+    // inventar o que isso significa.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+
+    await createStudioAssetActions(deps).generate('quero um antes e depois', '1:1');
+
+    expect(prompt(deps)).toContain('NON-NEGOTIABLE');
+  });
+
+  it('pedido genérico não ganha formato nenhum, e o prompt sai como sempre saiu', async () => {
+    // Container errado é pior que container nenhum: o layout entra como
+    // regra dura e a pessoa recebe uma peça que não pediu.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+
+    const r = await createStudioAssetActions(deps).generate('criativo de clareamento', '4:5');
+
+    expect(prompt(deps)).not.toContain('[TEMPLATE STRUCTURE]');
+    expect(r.metadata?.containerId).toBeNull();
+  });
+
+  it('o formato escolhido À MÃO vence o que o texto sugere', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+
+    const r = await createStudioAssetActions(deps)
+      .generate('quero um antes e depois', '1:1', { containerId: 'censurado' });
+
+    expect(prompt(deps)).toContain('Template name: Censurado');
+    expect(r.metadata?.containerId).toBe('censurado');
+  });
+
+  it('recusar o formato é possível — `null` explícito desliga a escolha', async () => {
+    // Sem a distinção entre `null` e ausente, recusar o formato proposto
+    // seria impossível: a escolha automática o traria de volta no pedido
+    // seguinte, e o botão de desmarcar não faria nada.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+
+    const r = await createStudioAssetActions(deps)
+      .generate('quero um antes e depois', '1:1', { containerId: null });
+
+    expect(prompt(deps)).not.toContain('[TEMPLATE STRUCTURE]');
+    expect(r.metadata?.containerId).toBeNull();
+  });
+
+  it('a leitura devolve o formato, para a proposta mostrar antes de gastar', async () => {
+    const deps = fakeDeps();
+    const leitura = await createStudioAssetActions(deps).interpret('quero um antes e depois', '1:1');
+    expect(leitura.formato?.container?.id).toBe('antes_depois');
+    expect(leitura.formato?.listaCurta.length).toBeGreaterThan(0);
+  });
+
+  it('a leitura aprovada não é refeita — o formato dela é o que gera', async () => {
+    // Reler aqui geraria uma arte que não é a que foi aprovada na tela.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    const acoes = createStudioAssetActions(deps);
+    const leitura = await acoes.interpret('quero um antes e depois', '1:1');
+
+    await acoes.generate('texto completamente diferente agora', '1:1', { interpretation: leitura });
+
+    expect(prompt(deps)).toContain('Template name: Antes e depois');
+  });
+});
+
+describe('o formato atravessa as artes derivadas', () => {
+  it('o Fator mantém o formato da arte-base nas cinco', async () => {
+    // As variações são da mesma campanha: o que varia entre elas é a TESE,
+    // não a peça. Deixá-las sem o formato faria o lote divergir
+    // exatamente no que deveria preservar.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/v.png' }, error: null });
+    const base = assetBase({ id: 'base', aspectRatio: '1:1', metadata: { containerId: 'antes_depois' } });
+
+    const linhas = await createStudioAssetActions(deps).factorCriativo({
+      base,
+      variations: [variacaoDoFator()],
+    });
+
+    expect(linhas[0].metadata?.containerId).toBe('antes_depois');
+    const enviado = (deps.invoke as any).mock.calls[0][1];
+    expect(enviado.prompt).toContain('Template name: Antes e depois');
+  });
+
+  it('editar uma arte não é pedir outra peça — o formato desce pelo ancestral', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/v.png' }, error: null });
+    const avo = assetBase({ id: 'avo', aspectRatio: '1:1', metadata: { containerId: 'antes_depois' } });
+    deps.getAsset = vi.fn(async (id: string) => (id === 'avo' ? avo : null));
+    const filha = assetBase({ id: 'filha', aspectRatio: '1:1', parentAssetId: 'avo', metadata: {} });
+
+    const linhas = await createStudioAssetActions(deps).factorCriativo({
+      base: filha,
+      variations: [variacaoDoFator()],
+    });
+
+    expect(linhas[0].metadata?.containerId).toBe('antes_depois');
+  });
+
+  it('base sem formato não inventa um', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/v.png' }, error: null });
+
+    const linhas = await createStudioAssetActions(deps).factorCriativo({
+      base: assetBase({ id: 'base', aspectRatio: '1:1' }),
+      variations: [variacaoDoFator()],
+    });
+
+    expect(linhas[0].metadata?.containerId).toBeNull();
+    expect((deps.invoke as any).mock.calls[0][1].prompt).not.toContain('[TEMPLATE STRUCTURE]');
+  });
+});
+
+describe('a troca de formato depois da leitura aprovada', () => {
+  it('o formato escolhido no painel vence a leitura já feita', async () => {
+    // O buraco que o teste de página encontrou: a precedência valia só
+    // dentro da leitura, e com a proposta ligada a leitura não roda de
+    // novo. Trocar o formato no painel não mudava nada — o painel dizia
+    // uma coisa e o gerador fazia outra.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    const acoes = createStudioAssetActions(deps);
+    const leitura = await acoes.interpret('quero um antes e depois', '1:1');
+
+    const r = await acoes.generate('quero um antes e depois', '1:1', {
+      interpretation: leitura,
+      containerId: 'censurado',
+    });
+
+    expect((deps.invoke as any).mock.calls[0][1].prompt).toContain('Template name: Censurado');
+    expect(r.metadata?.containerId).toBe('censurado');
+  });
+
+  it('recusar o formato depois de aprovar a leitura também funciona', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    const acoes = createStudioAssetActions(deps);
+    const leitura = await acoes.interpret('quero um antes e depois', '1:1');
+
+    const r = await acoes.generate('quero um antes e depois', '1:1', {
+      interpretation: leitura,
+      containerId: null,
+    });
+
+    expect((deps.invoke as any).mock.calls[0][1].prompt).not.toContain('[TEMPLATE STRUCTURE]');
+    expect(r.metadata?.containerId).toBeNull();
+  });
+});

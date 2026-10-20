@@ -1,4 +1,5 @@
 import { Check, Pencil, UserRound, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { PropostaDeArte, PropostaDoPedido } from '@/lib/creativeStudio/proposal';
 
 export interface ProposalPanelProps {
@@ -8,6 +9,14 @@ export interface ProposalPanelProps {
   onGerar: () => void;
   /** Devolve o texto ao campo de comando, com os anexos intactos. */
   onAjustar: () => void;
+  /**
+   * Troca o formato antes de gerar. `null` é "nenhum formato".
+   *
+   * Sem ele o painel seria um aviso: diria qual peça vai sair e deixaria a
+   * pessoa sem nada a fazer a respeito a não ser reescrever o pedido e
+   * torcer. A troca é o que transforma a proposta de explicação em decisão.
+   */
+  onTrocarFormato?: (containerId: string | null) => void;
   onClose: () => void;
 }
 
@@ -26,7 +35,7 @@ export interface ProposalPanelProps {
  * O painel não interpreta nada — a leitura inteira chega pronta em
  * `proposta`, de `montarPropostaDoPedido`. Aqui só se desenha.
  */
-export function ProposalPanel({ proposta, busy, onGerar, onAjustar, onClose }: ProposalPanelProps) {
+export function ProposalPanel({ proposta, busy, onGerar, onAjustar, onTrocarFormato, onClose }: ProposalPanelProps) {
   const { n, pedido } = proposta.quantidade;
   const lote = n > 1;
   const edicao = proposta.edicao;
@@ -101,6 +110,49 @@ export function ProposalPanel({ proposta, busy, onGerar, onAjustar, onClose }: P
           <Peca key={i} peca={peca} rotulo={lote ? `Peça ${i + 1} de ${n}` : null} />
         ))}
 
+        {/* O formato que você pediu existe — noutra proporção.
+            Sem esta linha a arte sai comum e o pedido parece não ter sido
+            lido, que é o pior desfecho possível para um pedido escrito com
+            todas as letras. */}
+        {proposta.foraDoFormato && (
+          <p className="rounded-[var(--wavy-radius-control)] border border-amber-400/25 bg-amber-400/[0.07] px-2.5 py-2 text-[11.5px] leading-relaxed text-amber-200/90">
+            “{proposta.foraDoFormato.nome}” só existe em {proposta.foraDoFormato.proporcao} no catálogo —
+            você pediu outra proporção, então ele ficou de fora.
+          </p>
+        )}
+
+        {/* A troca. É o que transforma a proposta de aviso em decisão: sem
+            ela, o painel diria qual peça vai sair e deixaria a pessoa sem
+            nada a fazer a não ser reescrever o pedido e torcer. */}
+        {onTrocarFormato && proposta.alternativas.length > 0 && !edicao && (
+          <Secao titulo="Formato">
+            <div className="flex flex-wrap gap-1.5">
+              {proposta.alternativas.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  disabled={busy}
+                  aria-pressed={a.atual}
+                  onClick={() => onTrocarFormato(a.atual ? null : a.id)}
+                  className={cn(
+                    'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors duration-150 disabled:opacity-50',
+                    a.atual
+                      ? 'border-accent/45 bg-accent/15 text-white/92'
+                      : 'border-white/12 bg-white/[0.05] text-white/60 hover:bg-white/[0.09] hover:text-white/85',
+                  )}
+                >
+                  {a.nome}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-white/40">
+              {proposta.alternativas.some((a) => a.atual)
+                ? 'Clique no escolhido para gerar sem formato nenhum.'
+                : 'Nenhum formato aplicado — clique em um para usá-lo.'}
+            </p>
+          </Secao>
+        )}
+
         {/* "O sistema leu tudo" é uma promessa que ninguém consegue
             verificar. Listar as fontes transforma isso em algo conferível —
             e a lista vazia também é resposta: o pedido foi mais pobre do
@@ -164,10 +216,28 @@ function Peca({ peca, rotulo }: { peca: PropostaDeArte; rotulo: string | null })
       )}
 
       {peca.formato && (
-        <p className="text-[12.5px] leading-relaxed text-white/85">
-          {peca.formato.nome}
-          <span className="text-white/45"> · {peca.formato.proporcao}</span>
-        </p>
+        <>
+          <p className="text-[12.5px] leading-relaxed text-white/85">
+            {peca.formato.nome}
+            <span className="text-white/45"> · {peca.formato.proporcao}</span>
+          </p>
+          {/* Por que este formato. Uma escolha que o sistema faz sozinho e
+              não explica é uma caixa-preta — e o layout dela entra no
+              prompt como regra dura. */}
+          {peca.formato.porques.length > 0 && (
+            <p className="text-[11.5px] leading-relaxed text-white/45">
+              {peca.formato.porques.join(' · ')}
+            </p>
+          )}
+          {/* O que falta. Sem este aviso, a peça sai com o produto
+              inventado pelo gerador — e isso só se descobre depois de
+              pagar a geração. */}
+          {peca.formato.faltas.length > 0 && (
+            <p className="text-[11.5px] leading-relaxed text-amber-300/80">
+              Esse formato pede {peca.formato.faltas.join(' e ')} — sem isso, o gerador inventa.
+            </p>
+          )}
+        </>
       )}
 
       {peca.cena && <p className="text-[12.5px] leading-relaxed text-white/85">{peca.cena}</p>}

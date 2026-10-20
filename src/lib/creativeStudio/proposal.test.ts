@@ -57,7 +57,7 @@ describe('montarProposta', () => {
     // ser gerado.
     const c = containerPorId('antes_depois')!;
     expect(montarProposta({ container: c }).formato)
-      .toEqual({ nome: c.nome_pt, proporcao: c.proporcao });
+      .toMatchObject({ nome: c.nome_pt, proporcao: c.proporcao });
     expect(montarProposta({ container: c, aspectRatio: '9:16' }).formato?.proporcao).toBe('9:16');
   });
 
@@ -162,5 +162,60 @@ describe('montarPropostaDoPedido', () => {
   it('o teto cortado atravessa para a tela', () => {
     const p = montarPropostaDoPedido({ pecas: [{}, {}, {}, {}], quantidade: { n: 4, pedido: 10 } });
     expect(p.quantidade).toEqual({ n: 4, pedido: 10 });
+  });
+});
+
+describe('o formato, antes de gastar', () => {
+  const antes = containerPorId('antes_depois')!;
+
+  it('diz POR QUE escolheu aquele formato', () => {
+    // Formato imposto sem dizer por quê é caixa-preta: o layout entra no
+    // prompt como regra dura e a pessoa não tem como discordar.
+    const p = montarProposta({ container: antes, porques: ['você pediu este formato pelo nome'] });
+    expect(p.formato?.porques).toContain('você pediu este formato pelo nome');
+  });
+
+  it('diz o que o formato pede e não foi anexado', () => {
+    // Sem isso, a peça sai com o produto inventado pelo gerador — e isso
+    // só se descobre depois de pagar a geração.
+    const p = montarProposta({ container: antes, faltas: ['uma foto do produto'] });
+    expect(p.formato?.faltas).toEqual(['uma foto do produto']);
+  });
+
+  it('as alternativas vêm no PEDIDO, com o atual marcado', () => {
+    const outro = containerPorId('censurado')!;
+    const p = montarPropostaDoPedido({
+      pecas: [{ container: antes }],
+      container: antes,
+      alternativas: [antes, outro],
+    });
+    expect(p.alternativas.map((a) => [a.id, a.atual])).toEqual([
+      ['antes_depois', true],
+      ['censurado', false],
+    ]);
+  });
+
+  it('há alternativas mesmo quando o sistema não escolheu nada', () => {
+    // É o caso mais comum: quem quer um formato e não sabe o nome dele.
+    // Não escolher é diferente de não ter o que oferecer.
+    const p = montarPropostaDoPedido({ pecas: [{}], alternativas: [antes] });
+    expect(p.pecas[0].formato).toBeNull();
+    expect(p.alternativas.length).toBe(1);
+    expect(p.alternativas[0].atual).toBe(false);
+  });
+
+  it('formato pedido que não existe na proporção escolhida PARA o fluxo', () => {
+    // O pedido tem todas as letras e o sistema está prestes a ignorá-lo.
+    // Uma proposta "vazia" aqui geraria direto, sem ninguém saber.
+    const p = montarPropostaDoPedido({
+      pecas: [{}],
+      foraDoFormato: { nome: 'Antes e depois', proporcao: '1:1' },
+    });
+    expect(p.vazia).toBe(false);
+    expect(p.foraDoFormato?.proporcao).toBe('1:1');
+  });
+
+  it('sem container, o pedido magro continua sem cobrar aprovação', () => {
+    expect(montarPropostaDoPedido({ pecas: [{}] }).vazia).toBe(true);
   });
 });

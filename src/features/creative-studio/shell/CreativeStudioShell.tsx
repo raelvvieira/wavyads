@@ -111,6 +111,12 @@ export interface CreativeStudioShellProps {
   onAdjustProposal?: () => void;
   /** Desiste: a proposta sai da tela e nada é gerado. */
   onDiscardProposal?: () => void;
+  /**
+   * Troca o formato sem reler o pedido. `null` é "nenhum formato".
+   *
+   * O painel fica aberto: a troca é parte de aprovar, não um novo pedido.
+   */
+  onChangeProposalFormat?: (containerId: string | null) => void;
 }
 
 /**
@@ -355,6 +361,7 @@ export function CreativeStudioShell(props: CreativeStudioShellProps) {
             setSidePanel('none');
             props.onAdjustProposal?.();
           }}
+          onTrocarFormato={props.onChangeProposalFormat}
           onClose={() => {
             setSidePanel('none');
             props.onDiscardProposal?.();
