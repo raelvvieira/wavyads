@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { montarPropostaDoPedido } from '@/lib/creativeStudio/proposal';
 import { CreativeStudioShell, type CreativeStudioShellProps } from './CreativeStudioShell';
 import { PREVIEW_ASSETS, PREVIEW_LIBRARIES } from './studioPreviewFixtures';
 import { visibleCanvasAssets } from '../state/canvasSelectors';
@@ -211,8 +212,15 @@ describe('CreativeStudioShell', () => {
 });
 
 describe('o painel da proposta', () => {
+  /*
+   * A proposta sai do montador de verdade, e não de um objeto escrito à
+   * mão. Um fixture literal fica para trás a cada campo novo — e foi o que
+   * aconteceu: `alternativas` entrou no tipo, o `as any` dos testes
+   * engoliu a ausência, e os sete testes deste bloco quebraram no
+   * `.length` de um campo que nunca chegou.
+   */
   const PECA = {
-    formato: { nome: 'Antes e depois', proporcao: '1:1' },
+    formato: { nome: 'Antes e depois', proporcao: '1:1', porques: [], faltas: [] },
     cena: 'Dois registros do mesmo sorriso.',
     copy: [{ papel: 'Título', texto: 'Dá pra resolver.' }],
     angulo: { nome: 'demonstração', inedito: true },
@@ -220,11 +228,8 @@ describe('o painel da proposta', () => {
     vazia: false,
   };
   const PROPOSTA = {
+    ...montarPropostaDoPedido({ pecas: [{}], referencias: 2 }),
     pecas: [PECA],
-    cliente: null,
-    quantidade: { n: 1, pedido: 1 },
-    leu: ['2 referências anexadas'],
-    vazia: false,
   };
 
   it('abre sozinho quando a proposta chega — ninguém vai procurá-la', () => {

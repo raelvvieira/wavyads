@@ -13,6 +13,9 @@ import type { FactorCreativeOutput, FactorVariation } from '../types/factorCreat
 import type { ArtDirectionInput, ArtDirectionResult } from '../api/artDirection';
 import type { ReferenceAnalysis } from '../api/referenceAnalysis';
 import { briefingDaArte } from '@/lib/creativeStudio/briefing';
+import { escolherContainer, type EscolhaDeContainer } from '@/lib/creativeGenome/escolha';
+import { containerPorId } from '@/lib/creativeGenome/catalog';
+import { containerComoTemplate } from '@/lib/creativeGenome/layout';
 
 
 /**
@@ -92,6 +95,17 @@ export interface StudioInterpretation {
   mood: ReferenceAnalysis['mood'] | null;
   /** O documento de estilo saiu de arte de terceiros? */
   designSystemFromReference: boolean;
+  /**
+   * QUE PEÇA esta arte é — o container, escolhido aqui.
+   *
+   * Mora na leitura, e não na geração, por três razões que são a mesma: a
+   * leitura já roda antes de qualquer imagem, o resultado dela é o que a
+   * proposta mostra, e é ela que viaja de volta para gerar. Escolher aqui
+   * significa que o formato aparece na proposta, que você pode trocá-lo
+   * antes de gastar, e que a arte sai com o formato que você aprovou — não
+   * com um segundo, escolhido de novo lá na frente.
+   */
+  formato: EscolhaDeContainer | null;
 }
 
 export interface GenerationOptions {
@@ -135,6 +149,15 @@ export interface GenerationOptions {
    * que não é a que ele disse sim.
    */
   interpretation?: StudioInterpretation | null;
+  /**
+   * O formato escolhido À MÃO. Vence a escolha automática, sempre.
+   *
+   * `null` explícito é diferente de ausente: `null` é "não quero formato
+   * nenhum nesta peça", e desliga a escolha automática também. Sem essa
+   * distinção, recusar o formato proposto seria impossível — o sistema o
+   * escolheria de novo no pedido seguinte.
+   */
+  containerId?: string | null;
   /**
    * O lugar desta peça num pedido de várias.
    *
@@ -345,13 +368,57 @@ async function lerOPedido(
     artDirection: direcao.artDirection,
     copyBlocks: direcao.copyBlocks,
     ...estilo,
+    formato: escolherOFormato(brief, aspectRatio, options),
   };
+}
+
+/**
+ * Que PEÇA é esta — a precedência.
+ *
+ * 1. O que você escolheu à mão vence. Inclusive `null`, que é "nenhum".
+ * 2. Senão, o módulo puro decide pelo pedido e pelos anexos.
+ *
+ * Nenhuma chamada de rede acontece aqui: é regra escrita à mão, e isso é
+ * deliberado. A escolha precisa funcionar hoje, com a edge function de
+ * direção de arte fora do ar — que é o estado em que o sistema está.
+ */
+function escolherOFormato(
+  brief: string,
+  aspectRatio: CreativeAspectRatio,
+  options: GenerationOptions,
+): EscolhaDeContainer | null {
+  if (options.containerId !== undefined) {
+    const escolhido = options.containerId ? containerPorId(options.containerId) : null;
+    return {
+      container: escolhido,
+      porques: escolhido ? ['você escolheu este formato'] : [],
+      faltas: [],
+      listaCurta: [],
+      citado: false,
+      foraDoFormato: null,
+    };
+  }
+  return escolherContainer({
+    brief,
+    aspectRatio,
+    copy: options.copy ?? null,
+    temProduto: (options.productImageUrls?.length ?? 0) > 0,
+    // Pessoa e avatar são a mesma pergunta para o container: há um humano
+    // real no quadro? É o mesmo mapeamento que a direção de arte faz.
+    temPessoa: (options.personImageUrls?.length ?? 0) + (options.avatarImageUrls?.length ?? 0) > 0,
+    temLogo: !!options.logoImageUrl,
+    temReferencia: (options.referenceImageUrls?.length ?? 0) > 0,
+  });
 }
 
 /** As chaves que descrevem a MARCA da peça — as que não podem faltar no Fator. */
 const CHAVES_DE_MARCA = [
   'designSystemDoc', 'antiPadroes', 'designSystemFromReference',
   'artDirection', 'copyBlocks', 'logoImage',
+  // O formato da peça desce junto: editar ou reenquadrar uma arte não é
+  // pedir outra peça. Sem isto, a edição de um "antes e depois" perderia o
+  // layout que define o formato e voltaria como arte comum.
+  'containerId',
 ] as const;
 
 /**
@@ -467,6 +534,19 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
       const leitura = options.interpretation
         ?? await lerOPedido(deps, brief, aspectRatio, options);
 
+      /*
+       * A precedência do formato, aplicada no ponto de uso.
+       *
+       * Aplicá-la só dentro de `lerOPedido` deixava um buraco: com a
+       * proposta ligada, a leitura JÁ foi feita e não roda de novo — então
+       * trocar o formato no painel não mudava nada, e a arte saía com o
+       * formato que o sistema tinha escolhido sozinho. O painel dizia uma
+       * coisa e o gerador fazia outra.
+       */
+      const container = options.containerId !== undefined
+        ? (options.containerId ? containerPorId(options.containerId) : null)
+        : leitura.formato?.container ?? null;
+
       options.onStage?.('generating');
       const { prompt, body } = buildGenerationRequest({
         brief,
@@ -484,6 +564,10 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
         designSystemIsThirdParty: leitura.designSystemFromReference,
         antiPadroes: leitura.antiPadroes,
         mood: leitura.mood,
+        // O container. Sem isto o bloco [TEMPLATE STRUCTURE] continuava
+        // sendo código morto para quem usa o Studio: existia no montador,
+        // existia no catálogo, e nenhuma arte passava por ele.
+        template: container ? containerComoTemplate(container) : null,
       });
       // A linha já existe; o que muda agora é o prompt definitivo e o que a
       // arte recebeu de direção. As URLs dos anexos não sobrevivem no
@@ -506,6 +590,10 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
           // fora, para reemitir a proibição de reproduzir a marca de
           // origem. `undefined` marca linha gerada antes desta separação.
           designSystemFromReference: leitura.designSystemFromReference,
+          // O formato fica gravado COM a arte. É o que permite o Fator
+          // manter o layout da base, a edição não perdê-lo, e o inspetor
+          // dizer que peça aquela arte é.
+          containerId: container?.id ?? null,
         },
       });
       return runGeneration(deps, comPrompt, body);
@@ -555,6 +643,7 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
        * Falhar aqui não impede nada: segue-se com a base como veio.
        */
       const base = await herdarDoAncestral(deps, baseBruta);
+      const containerDaBase = containerPorId((base.metadata as any)?.containerId ?? '');
       const projectId = await deps.ensureProjectId();
       const ratio = (base.aspectRatio as CreativeAspectRatio) || '4:5';
       const backendAspect = ratio === '1:1' ? 'square' : 'story';
@@ -592,6 +681,20 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
         designSystemDoc: base.metadata?.designSystemDoc ?? null,
         designSystemIsThirdParty: base.metadata?.designSystemFromReference ?? false,
         antiPadroes: base.metadata?.antiPadroes ?? null,
+        /*
+         * O formato da base desce para as cinco.
+         *
+         * As variações são da mesma campanha: o que varia entre elas é a
+         * TESE, não a peça. Deixá-las escolher formato cada uma faria o
+         * lote divergir exatamente no que ele deveria preservar — que é o
+         * relato de quando as cinco saíram parecendo cinco marcas
+         * diferentes.
+         *
+         * `herdarDoAncestral` já subiu `containerId` até três degraus, de
+         * modo que o Fator sobre uma EDIÇÃO de um "antes e depois" ainda
+         * sabe que é um antes e depois.
+         */
+        template: containerDaBase ? containerComoTemplate(containerDaBase) : null,
       }));
 
       // As 5 linhas nascem ANTES de qualquer imagem: é o que faz o lote
@@ -645,6 +748,9 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
           designSystemDoc: base.metadata?.designSystemDoc ?? null,
           antiPadroes: base.metadata?.antiPadroes ?? null,
           designSystemFromReference: base.metadata?.designSystemFromReference ?? false,
+          // O formato segue gravado em cada variação: é o que faz um retry
+          // de uma delas voltar com a mesma peça, e não com arte comum.
+          containerId: containerDaBase?.id ?? null,
         },
       })));
 

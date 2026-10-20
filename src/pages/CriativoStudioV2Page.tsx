@@ -64,6 +64,8 @@ import {
   type StudioInterpretation,
 } from '@/features/creative-studio/generation/studioAssetActions';
 import { montarPropostaDoPedido, type PropostaDoPedido } from '@/lib/creativeStudio/proposal';
+import { containerPorId } from '@/lib/creativeGenome/catalog';
+import type { CreativeContainer } from '@/lib/creativeGenome/types';
 import { lerQuantidade } from '@/lib/creativeStudio/quantidade';
 import { rotearPedido } from '@/lib/creativeStudio/intencao';
 import { briefingDaArte } from '@/lib/creativeStudio/briefing';
@@ -85,6 +87,66 @@ import type { AvatarPersona } from '@/features/creative-studio/types/avatarPerso
  * atualizar a tela: o card aparece gerando de verdade, e uma falha do
  * provedor chega ao usuário em vez de desaparecer.
  */
+/**
+ * A proposta do pedido, montada a partir das leituras.
+ *
+ * Função e não trecho inline porque ela é chamada DUAS vezes pelo mesmo
+ * pedido: ao ler, e de novo a cada troca de formato. Trocar o formato não
+ * pode custar uma releitura — ela gasta segundos e duas chamadas de IA, e
+ * devolveria uma interpretação possivelmente diferente da que está na tela.
+ * A troca mexe no formato e em nada mais.
+ */
+function sugestaoDoPedido(args: {
+  leituras: (StudioInterpretation | null)[];
+  ratio: CreativeAspectRatio;
+  referencias: number;
+  quantidade: { n: number; pedido: number };
+  ignorouSelecao: boolean;
+  /** A troca manual. `undefined` = o que a leitura escolheu. */
+  override?: string | null;
+}): PropostaDoPedido {
+  const escolha = args.leituras.find((l) => l?.formato)?.formato ?? null;
+  const container = args.override !== undefined
+    ? (args.override ? containerPorId(args.override) : null)
+    : escolha?.container ?? null;
+  const trocado = args.override !== undefined;
+
+  return montarPropostaDoPedido({
+    pecas: args.leituras.map((l) => ({
+      artDirection: l?.artDirection ?? null,
+      copyBlocks: l?.copyBlocks ?? null,
+      container,
+      // Os porquês da escolha automática não valem para uma troca manual:
+      // dizer "você pediu este formato pelo nome" sobre um formato que a
+      // pessoa acabou de escolher a dedo seria inventar um motivo.
+      porques: trocado ? (container ? ['você escolheu este formato'] : []) : escolha?.porques ?? [],
+      faltas: container ? faltasDoFormato(container, args.leituras) : [],
+    })),
+    container,
+    aspectRatio: args.ratio,
+    referencias: args.referencias,
+    quantidade: args.quantidade,
+    ignorouSelecao: args.ignorouSelecao,
+    alternativas: (escolha?.listaCurta ?? []).map((c) => c.container),
+    foraDoFormato: escolha?.foraDoFormato ?? null,
+  });
+}
+
+/**
+ * O que o formato pede e não foi anexado.
+ *
+ * Recalculado na troca: as faltas do formato automático não descrevem o
+ * formato que a pessoa escolheu no lugar dele. Um painel que avisa sobre a
+ * foto que o formato ANTERIOR pedia é pior que um que não avisa nada.
+ */
+function faltasDoFormato(
+  container: CreativeContainer,
+  leituras: (StudioInterpretation | null)[],
+): string[] {
+  const doSistema = leituras.find((l) => l?.formato?.container?.id === container.id);
+  return doSistema?.formato?.faltas ?? [];
+}
+
 export default function CriativoStudioV2Page() {
 
   const [assets, setAssets] = useState<CreativeAsset[]>([]);
@@ -659,6 +721,8 @@ export default function CriativoStudioV2Page() {
         /** Uma entrada por peça, cada uma com a leitura que o usuário aprovou. */
         pecas: GenerationOptions[];
         copyAnexada: string | null;
+        /** O que remontar a proposta precisa — sem reler nada. */
+        contexto: Parameters<typeof sugestaoDoPedido>[0];
       }
     | { tipo: 'editar'; texto: string; alvo: CreativeAsset }
     | null
@@ -969,13 +1033,14 @@ export default function CriativoStudioV2Page() {
         interpretation: leituras[i] ?? null,
       }));
 
-      const sugestao = montarPropostaDoPedido({
-        pecas: leituras.map((l) => ({ artDirection: l.artDirection, copyBlocks: l.copyBlocks })),
-        aspectRatio: ratio,
+      const contexto = {
+        leituras,
+        ratio,
         referencias: referencias.length,
         quantidade: { n, pedido },
         ignorouSelecao,
-      });
+      };
+      const sugestao = sugestaoDoPedido(contexto);
 
       /*
        * Proposta vazia não cobra aprovação.
@@ -989,7 +1054,7 @@ export default function CriativoStudioV2Page() {
         return;
       }
 
-      setPedidoPendente({ tipo: 'criar', texto, formato: ratio, pecas, copyAnexada });
+      setPedidoPendente({ tipo: 'criar', texto, formato: ratio, pecas, copyAnexada, contexto });
       setProposta(sugestao);
       return;
     }
@@ -1068,6 +1133,30 @@ export default function CriativoStudioV2Page() {
   const descartarProposta = useCallback(() => {
     setProposta(null);
     setPedidoPendente(null);
+  }, []);
+
+  /**
+   * Trocar o formato sem reler o pedido.
+   *
+   * Remonta a proposta a partir das MESMAS leituras e reescreve o
+   * `containerId` das peças pendentes. Reler aqui gastaria segundos e duas
+   * chamadas de IA para devolver uma interpretação possivelmente diferente
+   * da que está na tela — ou seja, geraria uma arte que não é a que foi
+   * aprovada. A troca mexe no formato e em nada mais.
+   *
+   * `null` é escolha explícita de "nenhum formato", e viaja como `null` até
+   * a geração: sem isso, recusar o formato proposto seria impossível, já
+   * que a escolha automática o traria de volta.
+   */
+  const trocarFormatoDaProposta = useCallback((containerId: string | null) => {
+    setPedidoPendente((atual) => {
+      if (!atual || atual.tipo !== 'criar') return atual;
+      setProposta(sugestaoDoPedido({ ...atual.contexto, override: containerId }));
+      return {
+        ...atual,
+        pecas: atual.pecas.map((p) => ({ ...p, containerId })),
+      };
+    });
   }, []);
 
   /**
@@ -1412,6 +1501,7 @@ export default function CriativoStudioV2Page() {
         onApproveProposal={aprovarProposta}
         onAdjustProposal={ajustarProposta}
         onDiscardProposal={descartarProposta}
+        onChangeProposalFormat={trocarFormatoDaProposta}
         busy={busy}
         stage={estagio}
         hasCopy={hasCopy}

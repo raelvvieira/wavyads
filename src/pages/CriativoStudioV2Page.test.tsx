@@ -1889,3 +1889,95 @@ describe('CriativoStudioV2Page', () => {
     expect(screen.getByRole('button', { name: 'Filtrar por cliente' })).toBeTruthy();
   });
 });
+
+describe('o formato da peça, antes de gerar', () => {
+  /*
+   * Os mocks deste bloco são declarados aqui, inteiros.
+   *
+   * `vi.clearAllMocks()` limpa as CHAMADAS, não as implementações — então
+   * um describe irmão parece funcionar herdando o que o anterior deixou, e
+   * quebra no dia em que alguém roda só este bloco. Foi o que aconteceu.
+   */
+  beforeEach(() => {
+    vi.clearAllMocks();
+    listCreativeAssets.mockResolvedValue(ASSETS_DO_PROJETO);
+    listRecentProjects.mockResolvedValue([PROJETO]);
+    updateProjectFormat.mockResolvedValue(undefined);
+    createProject.mockResolvedValue({ id: 'proj-1', title: 'Novo projeto' });
+    getCreativeAsset.mockImplementation(async (id: string) =>
+      ASSETS_DO_PROJETO.find((a) => a.id === id) ?? ASSETS_DO_PROJETO[0]);
+    listCopyBank.mockResolvedValue([]);
+    saveCopyToBank.mockResolvedValue(null);
+    useClients.mockReturnValue({ data: [{ id: 'c1', name: 'Boutique Aurora' }] });
+    createCreativeAsset.mockImplementation(async (input: any) => ({ ...ASSETS_DO_PROJETO[0], id: 'nv', ...input }));
+    updateCreativeAsset.mockImplementation(async (id: string, patch: any) => ({ ...ASSETS_DO_PROJETO[0], id, ...patch }));
+  });
+
+  /** O dock abre em 9:16 — "carrinho de checkout" é 9:16; "antes e depois" é 1:1. */
+  const pedir = async (texto: string) => {
+    invoke.mockImplementation(invokeComLeitura(() =>
+      Promise.resolve({ data: { imageUrl: 'https://x/n.png' }, error: null })));
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+    fireEvent.change(screen.getByPlaceholderText('O que você quer criar?'), { target: { value: texto } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Gerar' })); });
+  };
+
+  it('a proposta diz QUE PEÇA vai sair, e por quê', async () => {
+    // Até aqui o catálogo de 53 formatos era invisível para quem usa: o
+    // único lugar que escolhia um era a bancada de prompt, em DEV.
+    await pedir('quero um carrinho de checkout');
+    expect(screen.getByRole('button', { name: 'Carrinho de checkout', pressed: true })).toBeTruthy();
+    expect(screen.getByText(/você pediu este formato pelo nome/)).toBeTruthy();
+    // E ele entra na lista do que foi lido: o catálogo é uma fonte como as
+    // referências e o dossiê, não uma decisão de bastidor.
+    expect(screen.getByText(/do catálogo de formatos/)).toBeTruthy();
+  });
+
+  it('trocar o formato NÃO relê o pedido', async () => {
+    // Reler gastaria segundos e duas chamadas de IA para devolver uma
+    // interpretação possivelmente diferente da que está na tela — ou seja,
+    // geraria uma arte que não é a que foi aprovada.
+    await pedir('quero um carrinho de checkout');
+    const leiturasAntes = invoke.mock.calls.filter((c: any[]) => c[0] === 'criativo-art-direction').length;
+
+    const outro = screen.getAllByRole('button', { pressed: false })
+      .filter((b) => b.closest('aside'))
+      .find((b) => (b.textContent ?? '').trim() && b.textContent !== 'Carrinho de checkout')!;
+    const nome = outro.textContent!;
+    await act(async () => { fireEvent.click(outro); });
+    expect(screen.getByRole('button', { name: nome, pressed: true })).toBeTruthy();
+
+    const leiturasDepois = invoke.mock.calls.filter((c: any[]) => c[0] === 'criativo-art-direction').length;
+    expect(leiturasDepois).toBe(leiturasAntes);
+  });
+
+  it('clicar no formato atual gera sem formato nenhum', async () => {
+    // Recusar o que foi proposto precisa ser possível — senão a escolha
+    // automática o traz de volta e o botão de desmarcar não faz nada.
+    await pedir('quero um carrinho de checkout');
+    const atual = screen.getByRole('button', { name: 'Carrinho de checkout', pressed: true });
+    await act(async () => { fireEvent.click(atual); });
+
+    expect(screen.getByText(/Nenhum formato aplicado/)).toBeTruthy();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Gerar assim/ })); });
+
+    const geracao = invoke.mock.calls.find((c: any[]) => c[0] === 'criativo-generate')!;
+    expect(geracao[1].body.prompt).not.toContain('[TEMPLATE STRUCTURE]');
+  });
+
+  it('o formato aprovado é o que chega ao gerador', async () => {
+    await pedir('quero um carrinho de checkout');
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Gerar assim/ })); });
+
+    const geracao = invoke.mock.calls.find((c: any[]) => c[0] === 'criativo-generate')!;
+    expect(geracao[1].body.prompt).toContain('Template name: Carrinho de checkout');
+  });
+
+  it('formato pedido que não existe na proporção escolhida é dito, não engolido', async () => {
+    // O projeto está em 4:5 e o "antes e depois" é 1:1. Sem esta linha a
+    // arte sai comum e o pedido parece não ter sido lido.
+    await pedir('quero um antes e depois do sorriso');
+    expect(screen.getByText(/só existe em 1:1 no catálogo/)).toBeTruthy();
+  });
+});
