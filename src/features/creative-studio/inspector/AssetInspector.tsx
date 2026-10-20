@@ -18,7 +18,7 @@ const ACAO: Record<SelectionAction, { label: string; icon?: typeof Pencil } | un
   download: { label: 'Baixar', icon: Download },
   retry: { label: 'Tentar novamente', icon: RefreshCw },
   preview: undefined,
-  'save-as-template': { label: 'Salvar como template' },
+  'save-as-template': { label: 'Salvar nos favoritos' },
   'save-to-client-intelligence': { label: 'Salvar na inteligência do cliente' },
   delete: { label: 'Apagar arte', icon: Trash2 },
 };

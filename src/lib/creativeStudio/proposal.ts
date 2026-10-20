@@ -78,6 +78,17 @@ export interface EntradaDaProposta {
   aprovadas?: number;
   /** O sistema leu o dossiê da oferta deste cliente? */
   temDossie?: boolean;
+  /** O nome do favorito anexado, quando ele trouxe estilo ou formato. */
+  favorito?: string | null;
+  /**
+   * O que o sistema deixou de ler, e por quê.
+   *
+   * Contraparte de `leu`, e tão necessária quanto: um favorito que passa
+   * por cima das referências anexadas é uma decisão certa tomada em
+   * silêncio — e em silêncio ela parece um bug, porque a pessoa vê os
+   * chips no dock e não vê efeito nenhum.
+   */
+  naoLeu?: string[];
 }
 
 function frase(v: string | null | undefined): string | null {
@@ -109,6 +120,7 @@ export function listarFontes(e: EntradaDaProposta): string[] {
       : `${e.aprovadas} artes aprovadas deste cliente`);
   }
   if (e.temDossie) leu.push('o dossiê da oferta');
+  if (e.favorito) leu.push(`o favorito «${e.favorito}» — estilo e formato dele`);
   if (e.container) leu.push(`${e.container.nome_pt}, do catálogo de formatos`);
   return leu;
 }
@@ -178,6 +190,8 @@ export interface PropostaDoPedido {
   quantidade: { n: number; pedido: number };
   /** As fontes lidas — do pedido, não de cada peça. */
   leu: string[];
+  /** O que foi anexado e NÃO entrou, com o motivo. */
+  naoLeu: string[];
   /**
    * Os outros formatos que servem a este pedido.
    *
@@ -240,6 +254,7 @@ export function montarPropostaDoPedido(e: EntradaDoPedido): PropostaDoPedido {
     cliente,
     quantidade,
     leu: listarFontes(e),
+    naoLeu: e.naoLeu ?? [],
     alternativas: (e.alternativas ?? []).map((c) => ({
       id: c.id,
       nome: c.nome_pt,

@@ -219,3 +219,27 @@ describe('o formato, antes de gastar', () => {
     expect(montarPropostaDoPedido({ pecas: [{}] }).vazia).toBe(true);
   });
 });
+
+describe('o favorito na proposta', () => {
+  it('entra na lista do que foi lido, com o nome', () => {
+    const p = montarPropostaDoPedido({ pecas: [{}], favorito: 'Editorial com faixa' });
+    expect(p.leu.join(' ')).toMatch(/Editorial com faixa/);
+  });
+
+  it('e o que NÃO foi lido aparece separado, com o motivo', () => {
+    // Uma decisão certa tomada em silêncio parece um bug: a pessoa vê os
+    // chips de referência no dock e não vê efeito nenhum na arte.
+    const p = montarPropostaDoPedido({
+      pecas: [{}],
+      favorito: 'Editorial',
+      naoLeu: ['o favorito «Editorial» manda no estilo — a referência anexada não foi lida'],
+    });
+    expect(p.naoLeu).toHaveLength(1);
+    expect(p.leu.join(' ')).not.toMatch(/não foi lida/);
+  });
+
+  it('sem favorito, nada muda', () => {
+    const p = montarPropostaDoPedido({ pecas: [{}] });
+    expect(p.naoLeu).toEqual([]);
+  });
+});
