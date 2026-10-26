@@ -1,4 +1,6 @@
 import bruto from './containers.json';
+import doGenoma from './containers-genoma.json';
+import deOcasioes from './containers-ocasioes.json';
 import { normalizeContainersFile, type RelatorioDeCarga } from './normalize';
 import type { CreativeContainer } from './types';
 
@@ -15,7 +17,21 @@ import type { CreativeContainer } from './types';
  * arquivo. O tipo é que se adapta a ele, não o contrário.
  */
 
-const relatorio: RelatorioDeCarga = normalizeContainersFile(bruto, 'arquivo');
+/*
+ * Três arquivos, um catálogo.
+ *
+ * `containers.json` são os 53 originais. `containers-genoma.json` são os
+ * layouts de estética e odontologia aprovados no Genoma de Criativos
+ * (gerado por `ferramentas/exportar_conhecimento.py` naquele repositório e
+ * copiado sem edição). `containers-ocasioes.json` cobre o que os 53 não
+ * cobrem: evento, oferta, lançamento, depoimento, data comemorativa e
+ * inauguração. Juntos numa lista só, passam pelo mesmo normalizador — e um
+ * id repetido entre arquivos vira falha de carga, não substituição muda.
+ */
+const relatorio: RelatorioDeCarga = normalizeContainersFile(
+  [...(bruto as unknown[]), ...(doGenoma as unknown[]), ...(deOcasioes as unknown[])],
+  'arquivo',
+);
 
 /**
  * Ordem estável, alfabética por id.

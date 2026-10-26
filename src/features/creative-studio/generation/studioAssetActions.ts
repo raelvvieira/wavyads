@@ -13,7 +13,8 @@ import type { FactorCreativeOutput, FactorVariation } from '../types/factorCreat
 import type { ArtDirectionInput, ArtDirectionResult } from '../api/artDirection';
 import type { ReferenceAnalysis } from '../api/referenceAnalysis';
 import { briefingDaArte } from '@/lib/creativeStudio/briefing';
-import { escolherContainer, type EscolhaDeContainer } from '@/lib/creativeGenome/escolha';
+import { escolherContainer, pontuarContainer, TAMANHO_DA_LISTA_CURTA, type EscolhaDeContainer } from '@/lib/creativeGenome/escolha';
+import { montarRepertorio, type RepertorioDoPedido } from '@/lib/creativeStudio/repertorio';
 import { containerPorId } from '@/lib/creativeGenome/catalog';
 import { containerComoTemplate } from '@/lib/creativeGenome/layout';
 
@@ -106,6 +107,14 @@ export interface StudioInterpretation {
    * com um segundo, escolhido de novo lá na frente.
    */
   formato: EscolhaDeContainer | null;
+  /**
+   * O que o Studio sabe do pedido sem IA: cor e tema pedidos, ocasião,
+   * nicho, régua de qualidade e o container que serve a eles.
+   *
+   * Opcional porque leituras gravadas antes dele não o têm — e elas
+   * continuam gerando exatamente como geravam.
+   */
+  repertorio?: RepertorioDoPedido | null;
 }
 
 export interface GenerationOptions {
@@ -349,6 +358,19 @@ async function lerOPedido(
     designSystemFromReference: referencias.length > 0,
   };
 
+  const repertorio = montarRepertorio({
+    brief,
+    aspectRatio,
+    pessoas: pessoas.length + avatares.length,
+    produtos: produtos.length,
+    temReferencia: referencias.length > 0,
+    // O nicho também se reconhece pelo cliente e por um estilo PRÓPRIO
+    // anexado (favorito, Genoma). Documento lido de terceiros não entra:
+    // ele descreve a marca de outra pessoa.
+    contexto: [options.clientName, estilo.designSystemFromReference ? null : estilo.designSystemDoc]
+      .filter(Boolean).join('\n'),
+  });
+
   let direcao: ArtDirectionResult = { artDirection: null, copyBlocks: null };
   if (deps.directArt) {
     options.onStage?.('directing');
@@ -359,7 +381,10 @@ async function lerOPedido(
         clientName: options.clientName ?? null,
         language: options.language,
         aspectRatio,
-        designSystemDoc: estilo.designSystemDoc,
+        // A direção de arte lê o repertório junto com o estilo: é o que a
+        // faz saber que é um evento, que as pessoas anexadas são os
+        // palestrantes e que o verde pedido vence a paleta da referência.
+        designSystemDoc: [estilo.designSystemDoc, ...repertorio.blocos].filter(Boolean).join('\n\n'),
         hasReferences: referencias.length > 0,
         hasProduct: produtos.length > 0,
         // Pessoa e avatar são a MESMA pergunta para a direção de arte:
@@ -377,7 +402,8 @@ async function lerOPedido(
     artDirection: direcao.artDirection,
     copyBlocks: direcao.copyBlocks,
     ...estilo,
-    formato: escolherOFormato(brief, aspectRatio, options),
+    formato: escolherOFormato(brief, aspectRatio, options, repertorio),
+    repertorio,
   };
 }
 
@@ -395,6 +421,7 @@ function escolherOFormato(
   brief: string,
   aspectRatio: CreativeAspectRatio,
   options: GenerationOptions,
+  repertorio: RepertorioDoPedido | null = null,
 ): EscolhaDeContainer | null {
   if (options.containerId !== undefined) {
     const escolhido = options.containerId ? containerPorId(options.containerId) : null;
@@ -436,6 +463,31 @@ function escolherOFormato(
         faltas: [],
       };
     }
+  }
+
+  /*
+   * O repertório sugere o formato da ocasião ou do nicho.
+   *
+   * Vem depois do texto e do favorito, que são escolhas de quem pediu, e
+   * antes da pontuação automática: "criativo pro evento" com fotos de
+   * pessoas tem um formato típico, e esperar que sinais genéricos somem 5
+   * pontos deixava a peça sem formato nenhum.
+   */
+  const sugerido = !escolha.citado && repertorio?.container ? containerPorId(repertorio.container.id) : null;
+  if (sugerido && (!aspectRatio || sugerido.proporcao === aspectRatio)) {
+    const naLista = escolha.listaCurta.some((p) => p.container.id === sugerido.id);
+    const pontuado = naLista ? null : pontuarContainer(sugerido, {
+      brief, aspectRatio, copy: options.copy ?? null,
+      temProduto: (options.productImageUrls?.length ?? 0) > 0,
+      temPessoa: (options.personImageUrls?.length ?? 0) + (options.avatarImageUrls?.length ?? 0) > 0,
+    });
+    return {
+      ...escolha,
+      container: sugerido,
+      porques: [repertorio!.container!.motivo],
+      faltas: repertorio!.faltas,
+      listaCurta: pontuado ? [pontuado, ...escolha.listaCurta].slice(0, TAMANHO_DA_LISTA_CURTA) : escolha.listaCurta,
+    };
   }
 
   return escolha;
@@ -594,6 +646,7 @@ export function createStudioAssetActions(deps: StudioAssetActionsDeps): StudioAs
         designSystemIsThirdParty: leitura.designSystemFromReference,
         antiPadroes: leitura.antiPadroes,
         mood: leitura.mood,
+        repertorio: leitura.repertorio ?? null,
         // O container. Sem isto o bloco [TEMPLATE STRUCTURE] continuava
         // sendo código morto para quem usa o Studio: existia no montador,
         // existia no catálogo, e nenhuma arte passava por ele.

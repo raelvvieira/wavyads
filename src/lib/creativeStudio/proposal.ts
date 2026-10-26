@@ -89,6 +89,8 @@ export interface EntradaDaProposta {
    * chips no dock e não vê efeito nenhum.
    */
   naoLeu?: string[];
+  /** O que o repertório entendeu do pedido: cor e tema, ocasião, nicho. */
+  entendeu?: string[];
 }
 
 function frase(v: string | null | undefined): string | null {
@@ -122,6 +124,7 @@ export function listarFontes(e: EntradaDaProposta): string[] {
   if (e.temDossie) leu.push('o dossiê da oferta');
   if (e.favorito) leu.push(`o favorito «${e.favorito}» — estilo e formato dele`);
   if (e.container) leu.push(`${e.container.nome_pt}, do catálogo de formatos`);
+  leu.push(...(e.entendeu ?? []));
   return leu;
 }
 

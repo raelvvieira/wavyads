@@ -1175,16 +1175,66 @@ describe('o formato da peça — o container', () => {
     expect(prompt(deps)).toContain('NON-NEGOTIABLE');
   });
 
-  it('pedido genérico não ganha formato nenhum, e o prompt sai como sempre saiu', async () => {
+  it('pedido genérico não ganha formato nenhum', async () => {
     // Container errado é pior que container nenhum: o layout entra como
-    // regra dura e a pessoa recebe uma peça que não pediu.
+    // regra dura e a pessoa recebe uma peça que não pediu. Sem ocasião e
+    // sem nicho reconhecidos, o repertório também não sugere nada.
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+
+    const r = await createStudioAssetActions(deps).generate('criativo para a minha marca', '4:5');
+
+    expect(prompt(deps)).not.toContain('[TEMPLATE STRUCTURE]');
+    expect(r.metadata?.containerId).toBeNull();
+  });
+
+  it('pedido de um nicho com layouts aprovados usa um deles (Genoma)', async () => {
+    // "Clareamento" saía sem formato. O nicho tem dez layouts aprovados no
+    // Genoma de Criativos, e o repertório escolhe um que caiba.
     const deps = fakeDeps();
     (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
 
     const r = await createStudioAssetActions(deps).generate('criativo de clareamento', '4:5');
 
-    expect(prompt(deps)).not.toContain('[TEMPLATE STRUCTURE]');
-    expect(r.metadata?.containerId).toBeNull();
+    expect(String(r.metadata?.containerId)).toMatch(/^genoma_|^capa_|^pergunta_editorial|^editorial_|^toque_|^palavra_/);
+    expect(prompt(deps)).toContain('[TEMPLATE STRUCTURE]');
+    expect(prompt(deps)).toContain('[QUALITY BAR]');
+    expect(prompt(deps)).toContain('tooth shade guide');
+    expect(prompt(deps)).toContain('Any promise of results');
+  });
+
+  it('evento com fotos de pessoas: formato de evento, roteiro e o que falta', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+    const actions = createStudioAssetActions(deps);
+
+    const leitura = await actions.interpret('criativo para o nosso workshop de marketing', '4:5', {
+      personImageUrls: ['https://x/a.png', 'https://x/b.png'],
+    });
+    expect(leitura.formato?.container?.id).toBe('evento_lineup_convidados');
+    expect(leitura.formato?.faltas).toContain('a data, o horário e o local do evento');
+
+    await actions.generate('criativo para o nosso workshop de marketing', '4:5', {
+      personImageUrls: ['https://x/a.png', 'https://x/b.png'], interpretation: leitura,
+    });
+    expect(prompt(deps)).toContain('[CREATIVE PLAYBOOK — EVENTO]');
+    expect(prompt(deps)).toContain('Template name: Evento com vários convidados (lineup)');
+  });
+
+  it('cor pedida por escrito vence o estilo lido da referência', async () => {
+    const deps = fakeDeps();
+    (deps.invoke as any).mockResolvedValue({ data: { imageUrl: 'https://x/n.png' }, error: null });
+
+    await createStudioAssetActions(deps).generate('inspirado na referência, mas em verde e dourado, premium', '4:5', {
+      referenceReading: {
+        designSystemDoc: '## Paleta\nAzul petróleo e creme', antiPadroes: null, mood: null, designSystemFromReference: true,
+      },
+    });
+
+    const p = prompt(deps);
+    expect(p).toContain('[USER STYLE REQUEST — OVERRIDES THE DESIGN SYSTEM]');
+    expect(p).toContain('Use verde as the dominant colour and dourado');
+    expect(p.indexOf('[USER STYLE REQUEST')).toBeGreaterThan(p.indexOf('[DESIGN SYSTEM]'));
   });
 
   it('o formato escolhido À MÃO vence o que o texto sugere', async () => {

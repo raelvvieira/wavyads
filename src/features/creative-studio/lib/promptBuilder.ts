@@ -89,6 +89,14 @@ export interface CreativePromptInput {
   mood?: { adjetivos: string[]; referencias: string[]; evita: string[] } | null;
   antiPadroes?: string[] | null;
   negativePrompt?: string;
+  /**
+   * O que o Studio já sabe do pedido sem IA — `montarRepertorio`.
+   *
+   * `blocos` traz o pedido de cor e tema (que vence o [DESIGN SYSTEM]), o
+   * roteiro da ocasião e a régua de qualidade; `naoIncluir` soma ao
+   * [DO NOT INCLUDE] os limites do nicho. Ausente, o prompt sai idêntico.
+   */
+  repertorio?: { blocos: string[]; naoIncluir: string[] } | null;
 }
 
 function languageName(language: string): string {
@@ -186,6 +194,7 @@ export function buildCreativePrompt(input: CreativePromptInput): string {
     mood = null,
     antiPadroes = null,
     negativePrompt = '',
+    repertorio = null,
   } = input;
 
   const aspectConfig = aspectRatio && ASPECT_CONFIG[aspectRatio]
@@ -406,6 +415,7 @@ A brand logo is provided as a separate reference. Place it discreetly in a corne
       : []),
     ...evitaList,
     ...antiPadroesList,
+    ...(repertorio?.naoIncluir ?? []).map((item) => `- ${item}`),
     ...userNegatives,
     safeAreaViolationLine(safeAreaFor(safeRatio)),
     `- Any text in a language other than ${lang}`,
@@ -514,6 +524,9 @@ Where the description conflicts with an attached photograph, the attached photog
     // Imediatamente depois do bloco que qualifica: é um rider, e longe dele
     // vira uma regra solta sobre um documento que o modelo já passou.
     styleSourceBlock,
+    // Depois do sistema visual, porque é a ele que o pedido de cor se
+    // sobrepõe; antes do template, porque o roteiro diz o que a peça contém.
+    ...(repertorio?.blocos ?? []),
     templateBlock,
     safe,
     consistency,

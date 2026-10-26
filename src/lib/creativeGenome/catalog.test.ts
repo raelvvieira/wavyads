@@ -69,8 +69,8 @@ describe('normalizeContainersFile', () => {
 });
 
 describe('o catálogo real', () => {
-  it('carrega os 53 containers sem perder nenhum', () => {
-    expect(CONTAINERS.length).toBe(53);
+  it('carrega os 53 originais, os 10 do Genoma e os 9 de ocasião sem perder nenhum', () => {
+    expect(CONTAINERS.length).toBe(53 + 10 + 9);
     expect(FALHAS_DE_CARGA).toEqual([]);
   });
 

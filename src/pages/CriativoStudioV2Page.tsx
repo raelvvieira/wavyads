@@ -137,6 +137,7 @@ function sugestaoDoPedido(args: {
     foraDoFormato: escolha?.foraDoFormato ?? null,
     favorito: args.favorito ?? null,
     naoLeu: args.naoLeu ?? [],
+    entendeu: args.leituras.find((l) => l?.repertorio)?.repertorio?.leu ?? [],
   });
 }
 

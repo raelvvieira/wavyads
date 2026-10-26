@@ -148,6 +148,8 @@ export function buildGenerationRequest(input: {
   designSystemIsThirdParty?: boolean;
   antiPadroes?: string[] | null;
   mood?: { adjetivos: string[]; referencias: string[]; evita: string[] } | null;
+  /** Pedido de cor e tema, roteiro da ocasião e régua de qualidade. */
+  repertorio?: { blocos: string[]; naoIncluir: string[] } | null;
   /** Default `IMAGE_GENERATION_MODEL.id` — parametrizável para a Fase 7. */
   modelId?: string;
 }): GenerationRequest {
@@ -179,6 +181,7 @@ export function buildGenerationRequest(input: {
     designSystemIsThirdParty: !!input.designSystemIsThirdParty,
     antiPadroes: input.antiPadroes ?? null,
     mood: moodDoPedido(input.mood, input.artDirection),
+    repertorio: input.repertorio ?? null,
     // Papéis quando eles foram validados; o texto cru quando não. Nunca os
     // dois: o modo `ai` já renderiza cada pedaço, e repetir a copy inteira
     // logo abaixo faria a arte sair com o texto duplicado.

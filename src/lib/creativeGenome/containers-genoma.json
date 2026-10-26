@@ -1,0 +1,414 @@
+[
+  {
+    "id": "genoma_anuncio_close_manchete",
+    "nome_pt": "Close com manchete",
+    "nome_original": "Genoma de Criativos · Anúncio · Close com manchete",
+    "camada": "container",
+    "mimica_de": "anúncio premium de clínica de estética ou odontologia",
+    "descricao_layout": "Full-bleed extreme close-up editorial beauty photograph of <pessoa>, natural even skin with real texture, warm soft light. White text centered over the cheek: line 1 roman large \"<linha_1>\"; line 2 italic large between thin white hairlines \"<linha_2_italico>\"; line 3 small roman \"<linha_3>\"; line 4 italic large inside thin square brackets \"<linha_4_colchetes>\". Below, small wide caps \"<cta> →\".",
+    "blocos": [],
+    "densidade_texto": "media",
+    "presenca_de_cta": "obrigatorio",
+    "funil": [
+      "topo",
+      "meio"
+    ],
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "risco_de_reprovacao": "baixo",
+    "exige": [],
+    "fixo": [
+      "paleta e tipografia vêm do estilo pedido; sem pedido, creme e bege com serifa fina e sans leve",
+      "todo texto dentro da área segura e longe do degradê entre a foto e o fundo",
+      "pessoas com realismo de foto de celular: luz natural, pele com textura, nada de pele de plástico",
+      "uma ideia visual por peça, com o CTA visível no fim da leitura",
+      "antes e depois só com foto real de paciente; nunca gerado por IA"
+    ],
+    "trocavel": [
+      "paleta (branco e dourado, bege, verde, azul-petróleo ou a pedida)",
+      "cena da foto",
+      "copy"
+    ],
+    "exemplo_nicho": "estetica / odontologia / clareamento / harmonizacao / dermatologia / clinicas",
+    "exemplo_copy": "A estética / mais bonita / é a que respeita / o seu tempo / Agende sua avaliação",
+    "exemplo_paleta": "bege-areia",
+    "confianca": "alta",
+    "aliases": [
+      "close com manchete"
+    ],
+    "fonte": "genoma-de-criativos"
+  },
+  {
+    "id": "genoma_anuncio_objeto_luxo",
+    "nome_pt": "Objeto de luxo",
+    "nome_original": "Genoma de Criativos · Anúncio · Objeto de luxo",
+    "camada": "container",
+    "mimica_de": "anúncio premium de clínica de estética ou odontologia",
+    "descricao_layout": "Premium still-life product photograph: <objeto> standing on a block of warm travertine stone, soft cream backdrop, long elegant window-light shadows with leaf silhouettes falling across the scene, a few drops of water, calm luxury skincare campaign look. Upper area, dark text centered: large serif roman \"<manchete>\" and large serif italic \"<manchete_italico>\"; thin hairline; light sans-serif \"<apoio>\". Lower area, a small solid dark pill with cream text \"<cta> →\". No brand name on the object.",
+    "blocos": [],
+    "densidade_texto": "media",
+    "presenca_de_cta": "obrigatorio",
+    "funil": [
+      "topo",
+      "meio"
+    ],
+    "tem_rosto": false,
+    "tem_produto": true,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "risco_de_reprovacao": "baixo",
+    "exige": [],
+    "fixo": [
+      "paleta e tipografia vêm do estilo pedido; sem pedido, creme e bege com serifa fina e sans leve",
+      "todo texto dentro da área segura e longe do degradê entre a foto e o fundo",
+      "pessoas com realismo de foto de celular: luz natural, pele com textura, nada de pele de plástico",
+      "uma ideia visual por peça, com o CTA visível no fim da leitura",
+      "antes e depois só com foto real de paciente; nunca gerado por IA"
+    ],
+    "trocavel": [
+      "paleta (branco e dourado, bege, verde, azul-petróleo ou a pedida)",
+      "cena da foto",
+      "copy"
+    ],
+    "exemplo_nicho": "estetica / odontologia / clareamento / harmonizacao / dermatologia / clinicas",
+    "exemplo_copy": "Pele bonita / não tem pressa. / Tratamentos pensados para a sua pele, no tempo dela. / Agende sua avaliação",
+    "exemplo_paleta": "bege-areia",
+    "confianca": "alta",
+    "aliases": [
+      "objeto de luxo"
+    ],
+    "fonte": "genoma-de-criativos"
+  },
+  {
+    "id": "genoma_prova_depoimento",
+    "nome_pt": "Depoimento real",
+    "nome_original": "Genoma de Criativos · Prova · Depoimento real",
+    "camada": "container",
+    "mimica_de": "anúncio premium de clínica de estética ou odontologia",
+    "descricao_layout": "Cream background with a subtle linen texture and a soft diagonal window-light shadow. Centered: huge thin serif opening quotation mark in the accent color. Below, large dark serif italic text (the testimonial): \"<depoimento>\". Then a short thin hairline, five small accent-colored stars, small wide caps \"<iniciais>\" and sans \"<procedimento>\". Lower area, small dark serif italic inside thin brackets: \"[<cta>]\".",
+    "blocos": [],
+    "densidade_texto": "alta",
+    "presenca_de_cta": "opcional",
+    "funil": [
+      "meio",
+      "fundo"
+    ],
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "risco_de_reprovacao": "medio",
+    "exige": [
+      "depoimento real de paciente, com autorização"
+    ],
+    "fixo": [
+      "paleta e tipografia vêm do estilo pedido; sem pedido, creme e bege com serifa fina e sans leve",
+      "todo texto dentro da área segura e longe do degradê entre a foto e o fundo",
+      "pessoas com realismo de foto de celular: luz natural, pele com textura, nada de pele de plástico",
+      "uma ideia visual por peça, com o CTA visível no fim da leitura",
+      "antes e depois só com foto real de paciente; nunca gerado por IA"
+    ],
+    "trocavel": [
+      "paleta (branco e dourado, bege, verde, azul-petróleo ou a pedida)",
+      "cena da foto",
+      "copy"
+    ],
+    "exemplo_nicho": "estetica / odontologia / clareamento / harmonizacao / dermatologia / clinicas",
+    "exemplo_copy": "Eu tinha medo de ficar artificial. Saí me sentindo eu mesma, só que mais descansada. / M. R. / Bioestimulador de colágeno / Agende sua avaliação",
+    "exemplo_paleta": "bege-areia",
+    "confianca": "alta",
+    "aliases": [
+      "depoimento real"
+    ],
+    "fonte": "genoma-de-criativos"
+  },
+  {
+    "id": "genoma_prova_autoridade",
+    "nome_pt": "Autoridade da profissional",
+    "nome_original": "Genoma de Criativos · Prova · Autoridade da profissional",
+    "camada": "container",
+    "mimica_de": "anúncio premium de clínica de estética ou odontologia",
+    "descricao_layout": "Elegant portrait slide. Upper 55%: a real editorial portrait of the professional from the reference image (identical face, keep her appearance exactly), in a white coat or elegant neutral outfit, warm soft light, in a minimal clinic. Lower 45%: soft white panel. On the panel: large dark serif \"<nome>\"; small wide caps \"<titulo_profissional>\"; three rows separated by thin hairlines with sans-serif text: \"<credencial_1>\", \"<credencial_2>\", \"<credencial_3>\"; then dark serif italic \"<frase_italico>\" and small wide caps \"<cta> →\".",
+    "blocos": [],
+    "densidade_texto": "media",
+    "presenca_de_cta": "obrigatorio",
+    "funil": [
+      "meio"
+    ],
+    "tem_rosto": true,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "risco_de_reprovacao": "baixo",
+    "exige": [
+      "foto real da profissional"
+    ],
+    "fixo": [
+      "paleta e tipografia vêm do estilo pedido; sem pedido, creme e bege com serifa fina e sans leve",
+      "todo texto dentro da área segura e longe do degradê entre a foto e o fundo",
+      "pessoas com realismo de foto de celular: luz natural, pele com textura, nada de pele de plástico",
+      "uma ideia visual por peça, com o CTA visível no fim da leitura",
+      "antes e depois só com foto real de paciente; nunca gerado por IA"
+    ],
+    "trocavel": [
+      "paleta (branco e dourado, bege, verde, azul-petróleo ou a pedida)",
+      "cena da foto",
+      "copy"
+    ],
+    "exemplo_nicho": "estetica / odontologia / clareamento / harmonizacao / dermatologia / clinicas",
+    "exemplo_copy": "Dra. Nome Sobrenome / Cirurgiã-dentista · Harmonização facial / Especialização em Harmonização Orofacial / Mais de 10 anos de atendimento / Abordagem preventiva e natural / Cada rosto tem a sua história. / Agende sua avaliação",
+    "exemplo_paleta": "bege-areia",
+    "confianca": "alta",
+    "aliases": [
+      "autoridade da profissional"
+    ],
+    "fonte": "genoma-de-criativos"
+  },
+  {
+    "id": "genoma_anuncio_campanha_dourada",
+    "nome_pt": "Campanha dourada",
+    "nome_original": "Genoma de Criativos · Anúncio · Campanha dourada",
+    "camada": "container",
+    "mimica_de": "anúncio premium de clínica de estética ou odontologia",
+    "descricao_layout": "Full-bleed, warm, golden-hour editorial beauty macro photograph: extreme close-up of <detalhe>, filling the upper and right side of the frame, soft champagne and nude tones, slightly desaturated, luxurious, shallow depth of field; the lower-left area is softer and darker so text reads well. TOP-LEFT: a campaign seal: tiny sans caps \"<selo_pequeno>\" above a large metallic gold script/serif \"<campanha_1>\" and a white serif italic \"<campanha_2_italico>\" overlapping slightly below it. Under the seal, three short lines of small, very wide letter-spaced white caps: \"<pergunta_1>\" / bold \"<pergunta_2_destaque>\" / \"<pergunta_3>\". LOWER CENTER, centered: a light sans-serif white paragraph \"<apoio>\"; then a very large thin metallic gold sans-serif headline in caps with a subtle shine: \"<manchete>\"; below it, small white caps \"<procedimento>\"; then a thin white outlined rounded pill with small caps \"<cta> →\"; then tiny white text \"<nota>\". No other logo. LAYOUT LIMITS: the top of the campaign seal must start below 15% of the image height and the footer must sit above 82% of the height; keep the whole composition compact vertically.",
+    "blocos": [],
+    "densidade_texto": "alta",
+    "presenca_de_cta": "obrigatorio",
+    "funil": [
+      "topo",
+      "meio"
+    ],
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "risco_de_reprovacao": "baixo",
+    "exige": [],
+    "fixo": [
+      "paleta e tipografia vêm do estilo pedido; sem pedido, creme e bege com serifa fina e sans leve",
+      "todo texto dentro da área segura e longe do degradê entre a foto e o fundo",
+      "pessoas com realismo de foto de celular: luz natural, pele com textura, nada de pele de plástico",
+      "uma ideia visual por peça, com o CTA visível no fim da leitura",
+      "antes e depois só com foto real de paciente; nunca gerado por IA"
+    ],
+    "trocavel": [
+      "paleta (branco e dourado, bege, verde, azul-petróleo ou a pedida)",
+      "cena da foto",
+      "copy"
+    ],
+    "exemplo_nicho": "estetica / odontologia / clareamento / harmonizacao / dermatologia / clinicas",
+    "exemplo_copy": "PREVIEW / Novembro / dourado / POR QUE / ESPERAR / NOVEMBRO? / A agenda de novembro está chegando, mas a sua avaliação pode começar agora. / AGENDA ABERTA / BIOESTIMULADOR DE COLÁGENO / AGENDE AGORA / Vagas limitadas.",
+    "exemplo_paleta": "bege-areia",
+    "confianca": "alta",
+    "aliases": [
+      "campanha dourada"
+    ],
+    "fonte": "genoma-de-criativos"
+  },
+  {
+    "id": "genoma_pergunta_caixa_vidro",
+    "nome_pt": "Pergunta no vidro",
+    "nome_original": "Genoma de Criativos · Anúncio · Pergunta no vidro",
+    "camada": "container",
+    "mimica_de": "anúncio premium de clínica de estética ou odontologia",
+    "descricao_layout": "Full-bleed real photo: <foto>, occupying the lower 55% of the frame and sharp there, while the upper part of the photo is softly out of focus in light grey and neutral tones. Upper-middle area: a large rounded rectangle of frosted glass (subtle translucent white, thin light border), containing centered text: thin clean sans-serif in white \"<linha_1>\" followed by the word \"<palavra_pilula>\" in white inside a solid rounded pill in the accent color; next line thin white sans-serif \"<linha_2>\"; then a very large high-contrast serif word in the accent color \"<palavra_gigante>\". Below the glass panel, small white caps with a thin arrow \"<cta> →\".",
+    "blocos": [],
+    "densidade_texto": "baixa",
+    "presenca_de_cta": "obrigatorio",
+    "funil": [
+      "topo"
+    ],
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "risco_de_reprovacao": "baixo",
+    "exige": [],
+    "fixo": [
+      "paleta e tipografia vêm do estilo pedido; sem pedido, creme e bege com serifa fina e sans leve",
+      "todo texto dentro da área segura e longe do degradê entre a foto e o fundo",
+      "pessoas com realismo de foto de celular: luz natural, pele com textura, nada de pele de plástico",
+      "uma ideia visual por peça, com o CTA visível no fim da leitura",
+      "antes e depois só com foto real de paciente; nunca gerado por IA"
+    ],
+    "trocavel": [
+      "paleta (branco e dourado, bege, verde, azul-petróleo ou a pedida)",
+      "cena da foto",
+      "copy"
+    ],
+    "exemplo_nicho": "estetica / odontologia / clareamento / harmonizacao / dermatologia / clinicas",
+    "exemplo_copy": "Você sabe / quando / foi sua última / limpeza? / Agende sua avaliação",
+    "exemplo_paleta": "branco-dourado",
+    "confianca": "alta",
+    "aliases": [
+      "pergunta no vidro"
+    ],
+    "fonte": "genoma-de-criativos"
+  },
+  {
+    "id": "genoma_palavra_gigante_close",
+    "nome_pt": "Palavra gigante no close",
+    "nome_original": "Genoma de Criativos · Anúncio · Palavra gigante no close",
+    "camada": "container",
+    "mimica_de": "anúncio premium de clínica de estética ou odontologia",
+    "descricao_layout": "Full-bleed real editorial photograph: <foto>, the smile in the upper half, warm natural tones. Small letter-spaced caps in white at the top-left \"<nome_profissional>\" and top-right \"<especialidade>\", repeated identically at the bottom-left and bottom-right like a magazine page (keep these corner labels inside the safe area, never touching the edges). Lower-middle, left-aligned block in a pale cream / light accent color: small sans-serif \"<linha_1>\" with a thin underline; a huge flowing display serif word \"<palavra_gigante>\"; a sans-serif line with a thin underline \"<linha_2>\"; then a small light accent-colored rectangle tag, slightly tilted, with italic sans-serif text \"<pergunta>\". Below the tag, small letter-spaced caps in white \"<cta> →\".",
+    "blocos": [],
+    "densidade_texto": "media",
+    "presenca_de_cta": "obrigatorio",
+    "funil": [
+      "topo",
+      "meio"
+    ],
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "risco_de_reprovacao": "baixo",
+    "exige": [],
+    "fixo": [
+      "paleta e tipografia vêm do estilo pedido; sem pedido, creme e bege com serifa fina e sans leve",
+      "todo texto dentro da área segura e longe do degradê entre a foto e o fundo",
+      "pessoas com realismo de foto de celular: luz natural, pele com textura, nada de pele de plástico",
+      "uma ideia visual por peça, com o CTA visível no fim da leitura",
+      "antes e depois só com foto real de paciente; nunca gerado por IA"
+    ],
+    "trocavel": [
+      "paleta (branco e dourado, bege, verde, azul-petróleo ou a pedida)",
+      "cena da foto",
+      "copy"
+    ],
+    "exemplo_nicho": "estetica / odontologia / clareamento / harmonizacao / dermatologia / clinicas",
+    "exemplo_copy": "NÓS FLORIANÓPOLIS / ESTÉTICA FACIAL / A sua / gengiva / diz muito sobre a sua saúde: / Você sabe ler os sinais? / Agende sua avaliação",
+    "exemplo_paleta": "bege-areia",
+    "confianca": "alta",
+    "aliases": [
+      "palavra gigante no close"
+    ],
+    "fonte": "genoma-de-criativos"
+  },
+  {
+    "id": "genoma_manchete_cena_clinica",
+    "nome_pt": "Manchete com cena da clínica",
+    "nome_original": "Genoma de Criativos · Anúncio · Manchete com cena da clínica",
+    "camada": "container",
+    "mimica_de": "anúncio premium de clínica de estética ou odontologia",
+    "descricao_layout": "Full-bleed real photograph: <foto>; the upper half is softly blurred and light. Top center: small letter-spaced white caps \"<credencial>\"; the same line repeated near the bottom (both credential lines inside the safe area, never touching the edges). Upper area centered, white text: sans-serif lines \"<linha_1>\" / \"<linha_2>\"; then a very large high-contrast display serif headline \"<manchete_1>\" followed by the same serif in italic \"<manchete_2_italico>\". Below, two lines of sans-serif text each sitting on a soft translucent highlighter band in a pale accent color: \"<apoio_1>\" / \"<apoio_2>\". Below the bands, a small solid white pill with dark text \"<cta> →\".",
+    "blocos": [],
+    "densidade_texto": "media",
+    "presenca_de_cta": "obrigatorio",
+    "funil": [
+      "meio",
+      "fundo"
+    ],
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "risco_de_reprovacao": "baixo",
+    "exige": [],
+    "fixo": [
+      "paleta e tipografia vêm do estilo pedido; sem pedido, creme e bege com serifa fina e sans leve",
+      "todo texto dentro da área segura e longe do degradê entre a foto e o fundo",
+      "pessoas com realismo de foto de celular: luz natural, pele com textura, nada de pele de plástico",
+      "uma ideia visual por peça, com o CTA visível no fim da leitura",
+      "antes e depois só com foto real de paciente; nunca gerado por IA"
+    ],
+    "trocavel": [
+      "paleta (branco e dourado, bege, verde, azul-petróleo ou a pedida)",
+      "cena da foto",
+      "copy"
+    ],
+    "exemplo_nicho": "estetica / odontologia / clareamento / harmonizacao / dermatologia / clinicas",
+    "exemplo_copy": "NÓS FLORIANÓPOLIS | ODONTOLOGIA E ESTÉTICA / Um sorriso bonito / começa muito antes / do / clareamento. / Limpeza em dia é o primeiro passo / para um resultado saudável e natural. / Agende sua avaliação",
+    "exemplo_paleta": "branco-dourado",
+    "confianca": "alta",
+    "aliases": [
+      "manchete com cena da clínica"
+    ],
+    "fonte": "genoma-de-criativos"
+  },
+  {
+    "id": "genoma_anuncio_anotacoes_rodape",
+    "nome_pt": "Sorriso com anotações e rodapé",
+    "nome_original": "Genoma de Criativos · Anúncio · Sorriso com anotações e rodapé",
+    "camada": "container",
+    "mimica_de": "anúncio premium de clínica de estética ou odontologia",
+    "descricao_layout": "Full-bleed close-up real photograph of <pessoa>, cropped tight on the face and smile, filling the upper 85% of the image. PHOTO REALISM (critical): candid photo shot on an iPhone 15 Pro, natural daylight from a window, no studio lighting, no glow. Unretouched real skin with visible pores, fine peach fuzz, tiny natural imperfections and texture, very light natural makeup, natural flyaway hairs, slight phone-camera grain and natural depth of field. Natural healthy teeth in a natural shade (not artificially white, not perfect veneers). Must look like a real photo posted by a clinic, NOT AI, NOT airbrushed, NOT glossy or plastic. Upper-right, at about 16% of the image height (never near the top edge): small white caps \"<tagline>\". Two thin white hand-drawn curved arrows pointing to details of the smile/skin, each with a short white sans-serif label: \"<rotulo_1>\" and \"<rotulo_2>\". Near the cheek: a white die-cut sticker shaped like a soft cloud, slightly rotated, with a small round accent-colored brand dot and dark text \"<selo>\". Left-middle: the word \"<palavra_bloco>\" in white inside a solid rectangular accent-colored block, followed by white sans-serif \"<linha_1>\"; below in very large bold white uppercase sans-serif \"<manchete>\"; below in light white sans-serif \"<apoio>\". Bottom: a solid light cream band across the full width (about 13% of the height) with, on the left, two small rounded accent-colored icon squares (a chat bubble and a globe) next to dark text \"<contato_1>\" and \"<contato_2>\", and on the right a small solid dark pill \"<cta> →\".",
+    "blocos": [],
+    "densidade_texto": "alta",
+    "presenca_de_cta": "obrigatorio",
+    "funil": [
+      "meio",
+      "fundo"
+    ],
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "risco_de_reprovacao": "baixo",
+    "exige": [],
+    "fixo": [
+      "paleta e tipografia vêm do estilo pedido; sem pedido, creme e bege com serifa fina e sans leve",
+      "todo texto dentro da área segura e longe do degradê entre a foto e o fundo",
+      "pessoas com realismo de foto de celular: luz natural, pele com textura, nada de pele de plástico",
+      "uma ideia visual por peça, com o CTA visível no fim da leitura",
+      "antes e depois só com foto real de paciente; nunca gerado por IA"
+    ],
+    "trocavel": [
+      "paleta (branco e dourado, bege, verde, azul-petróleo ou a pedida)",
+      "cena da foto",
+      "copy"
+    ],
+    "exemplo_nicho": "estetica / odontologia / clareamento / harmonizacao / dermatologia / clinicas",
+    "exemplo_copy": "O SEU SORRISO, NO SEU MELHOR. / Dentes limpos / Brilho natural / Cuidado de verdade / Sorriso / em dia, / VIDA LEVE / Limpeza + clareamento com acompanhamento profissional. / Agende pelo WhatsApp / @nosodontofloripa / Agende sua avaliação",
+    "exemplo_paleta": "branco-dourado",
+    "confianca": "alta",
+    "aliases": [
+      "sorriso com anotações e rodapé"
+    ],
+    "fonte": "genoma-de-criativos"
+  },
+  {
+    "id": "genoma_colagem_sorrisos",
+    "nome_pt": "Colagem de sorrisos",
+    "nome_original": "Genoma de Criativos · Anúncio · Colagem de sorrisos",
+    "camada": "container",
+    "mimica_de": "anúncio premium de clínica de estética ou odontologia",
+    "descricao_layout": "Clean modern collage ad. Background: soft light gradient in the brand's lightest tones with one very subtle large curved line. Right side: real photo of <pessoa>, cut out and placed large, from the chest up, overlapping the other elements. PHOTO REALISM (critical): candid photo shot on an iPhone 15 Pro, natural daylight from a window, no studio lighting, no glow. Unretouched real skin with visible pores, fine peach fuzz, tiny natural imperfections and texture, very light natural makeup, natural flyaway hairs, slight phone-camera grain and natural depth of field. Natural healthy teeth in a natural shade (not artificially white, not perfect veneers). Must look like a real photo posted by a clinic, NOT AI, NOT airbrushed, NOT glossy or plastic. Top: three rounded-corner photo tiles of different sizes, slightly overlapping and partly cropped by the top edge: <detalhe_1>; <detalhe_2>; <detalhe_3>. Left-middle, left-aligned, dark text: a small rounded square icon in the accent color, then very large bold geometric sans-serif \"<titulo_negrito>\" and regular weight \"<titulo_resto>\" on two lines; a short thick accent-colored rounded line; light sans-serif \"<apoio>\". Bottom-right, overlapping the person: a rounded card in the accent color with two small round icon buttons (plus and arrow) on a white tab and text \"<cta>!\". Bottom-left: small dark text \"<rodape>\".",
+    "blocos": [],
+    "densidade_texto": "media",
+    "presenca_de_cta": "obrigatorio",
+    "funil": [
+      "topo",
+      "meio"
+    ],
+    "tem_rosto": false,
+    "tem_produto": false,
+    "proporcao": "4:5",
+    "midia": "estatico",
+    "risco_de_reprovacao": "baixo",
+    "exige": [],
+    "fixo": [
+      "paleta e tipografia vêm do estilo pedido; sem pedido, creme e bege com serifa fina e sans leve",
+      "todo texto dentro da área segura e longe do degradê entre a foto e o fundo",
+      "pessoas com realismo de foto de celular: luz natural, pele com textura, nada de pele de plástico",
+      "uma ideia visual por peça, com o CTA visível no fim da leitura",
+      "antes e depois só com foto real de paciente; nunca gerado por IA"
+    ],
+    "trocavel": [
+      "paleta (branco e dourado, bege, verde, azul-petróleo ou a pedida)",
+      "cena da foto",
+      "copy"
+    ],
+    "exemplo_nicho": "estetica / odontologia / clareamento / harmonizacao / dermatologia / clinicas",
+    "exemplo_copy": "close-up of a woman's natural smile / close-up of a smiling mouth with healthy gums / close-up of a smiling young woman's lips and teeth / Sorrir / também é saúde / Limpeza e clareamento para cuidar do seu sorriso por inteiro. / Agende sua avaliação / NÓS Florianópolis · @nosodontofloripa",
+    "exemplo_paleta": "branco-dourado",
+    "confianca": "alta",
+    "aliases": [
+      "colagem de sorrisos"
+    ],
+    "fonte": "genoma-de-criativos"
+  }
+]

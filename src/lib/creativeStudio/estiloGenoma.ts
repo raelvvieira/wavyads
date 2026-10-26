@@ -1,5 +1,6 @@
 import pacote from './estilosGenoma.json';
 import type { LeituraDoFavorito } from './favorito';
+import { containerPorId } from '@/lib/creativeGenome/catalog';
 
 /**
  * Os estilos de estética e odontologia do Genoma de Criativos.
@@ -39,14 +40,26 @@ export function lerEstiloGenoma(id: string | null | undefined): LeituraDoFavorit
   const estilo = ESTILOS_GENOMA.find((e) => e.id === id);
   if (!estilo) return null;
 
+  /*
+   * Layout e estilo em camadas separadas, como no resto do Studio.
+   *
+   * Os anúncios e provas do Genoma existem como containers
+   * (`containers-genoma.json`): o layout vai pelo [TEMPLATE STRUCTURE] e o
+   * documento leva só o sistema visual e a paleta. Assim um "antes e
+   * depois" pedido por escrito troca o layout sem brigar com o estilo.
+   * Os carrosséis não viraram container — o layout deles segue no texto.
+   */
+  const containerId = containerPorId(`genoma_${estilo.id.replace(/-/g, '_')}`)?.id ?? null;
   const doc = [
     pacote.docBase.trimEnd(),
     '',
     `TEMPLATE · ${estilo.nome}`,
     estilo.descricao,
     `Palette: ${estilo.paleta} (${estilo.hexes.join(', ')}).`,
-    'Layout (fill each <slot> with the content of the brief, in Brazilian Portuguese; never print the slot names):',
-    estilo.layout,
+    ...(containerId ? [] : [
+      'Layout (fill each <slot> with the content of the brief, in Brazilian Portuguese; never print the slot names):',
+      estilo.layout,
+    ]),
   ].join('\n');
 
   return {
@@ -54,9 +67,8 @@ export function lerEstiloGenoma(id: string | null | undefined): LeituraDoFavorit
     antiPadroes: pacote.antiPadroes,
     designSystemFromReference: false,
     mood: pacote.mood,
-    // Os 53 containers do Genoma Wavy são outra taxonomia; o layout do
-    // estilo já vai no documento, e o formato fica livre para o pedido.
-    containerId: null,
+    // Sugestão, não ordem: um formato nomeado no pedido vence.
+    containerId,
     nome: `Genoma · ${estilo.nome}`,
   };
 }
