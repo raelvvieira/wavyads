@@ -64,10 +64,10 @@ const abrir = () => fireEvent.click(screen.getByRole('button', { name: 'Abrir an
 beforeEach(() => vi.clearAllMocks());
 
 describe('AttachMenu', () => {
-  it('lista as cinco opções ao abrir', () => {
+  it('lista as seis opções ao abrir', () => {
     montar();
     abrir();
-    ['Anexar referência', 'Anexar logo', 'Anexar copy', 'Anexar produto', 'Anexar avatar'].forEach((rotulo) => {
+    ['Anexar referência', 'Anexar logo', 'Anexar copy', 'Anexar produto', 'Anexar avatar', 'Estilos de estética'].forEach((rotulo) => {
       expect(screen.getByRole('button', { name: rotulo })).toBeTruthy();
     });
   });
@@ -490,5 +490,15 @@ describe('AttachMenu', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Voltar' }));
     expect(screen.getByRole('button', { name: 'Anexar referência' })).toBeTruthy();
+  });
+
+  it('estilos de estética: anexa o estilo do Genoma como favorito, pelo id', () => {
+    const { onAttach } = montar();
+    abrir();
+    fireEvent.click(screen.getByRole('button', { name: 'Estilos de estética' }));
+    fireEvent.click(screen.getByRole('button', { name: /Palavra gigante no close/ }));
+    expect(onAttach).toHaveBeenCalledWith(expect.objectContaining({
+      kind: 'favorite', estiloId: 'palavra-gigante-close', label: 'Genoma · Anúncio · Palavra gigante no close',
+    }));
   });
 });

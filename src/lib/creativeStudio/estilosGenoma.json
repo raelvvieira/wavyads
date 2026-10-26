@@ -1,0 +1,260 @@
+{
+  "versao": "2026-10-26",
+  "fonte": "raelvvieira/genoma-de-criativos",
+  "docBase": "GENOMA · ESTÉTICA & ODONTOLOGIA — Design System (aprovado pelo Rael, out/2026)\n\nPHOTOGRAPHY\nPHOTO REALISM (critical): candid photo shot on an iPhone 15 Pro, natural daylight from a window, no studio lighting, no glow. Unretouched real skin with visible pores, fine peach fuzz, tiny natural imperfections and texture, very light natural makeup, natural flyaway hairs, slight phone-camera grain and natural depth of field. Natural healthy teeth in a natural shade (not artificially white, not perfect veneers). Must look like a real photo posted by a clinic, NOT AI, NOT airbrushed, NOT glossy or plastic.\nFrame tight on the face and smile (from nose to chin, or eyes to chin): teeth large and clearly visible, natural healthy shade, bright but never fake veneers.\nFor whitening/cleaning offers, best scenes: woman holding the shade guide next to her smile; close-up of a professional cleaning (gloved hands, mirror, ultrasonic tip); macro of the shade guide. A dental tooth shade guide (a row of about 12-16 small tooth-shaped porcelain tabs on a grey holder) held right next to the mouth, forming a clear smooth gradient from distinctly yellowish/ivory on the LEFT to very bright clean white on the RIGHT. No brand name written on it.\n\nCOMPOSITION\nPhoto occupies the top 55-70% (or full bleed with a soft veil behind text); text block below on calm background. Feed 4:5: keep every text, button and logo between 6% and 92% of the height and at least 6% from the sides, with text placed on calm areas, never on top of a photo-to-background fade transition.\n\nBACKGROUND\nBackground has texture and life (soft silk waves, light streaks, linen, subtle sparkle) in the palette colors, softened behind text with a gentle veil so legibility is perfect.\n\nCOLOR\nChoose one approved palette: branco-dourado (white, ivory, graphite, Gold accents are a soft metallic champagne-gold gradient (#EBD9AE to #CFAE6B to #A9843F) with a subtle luminous sheen.), bege-areia (cream, latte silk waves, chocolate text, caramel), verde (forest green, sage, cream), azul-petroleo (petrol blue, teal light waves, white text, aqua).\n\nTYPOGRAPHY\nHeadline: elegant thin high-contrast serif mixing roman and italic on the key word (Cormorant/Playfair style). Body: clean light sans (Inter/DM Sans). Labels: small wide letter-spaced caps. Offer text bold in a band, tag or highlighted block.\n\nCOPY\nOffer always spelled out: \"COMBO: Limpeza + Clareamento\" and \"Condições especiais\". Short headline with a twist. Always a call to action (\"Agende sua avaliação →\"). No result promises.\n\nTEXT\nAll Portuguese text exactly as written, with correct accents and punctuation, perfectly legible on a phone screen (no text smaller than ~24px at 1080px width). No other text, no logos, no watermarks.\n",
+  "antiPadroes": [
+    "NEVER generate or retouch a before/after with AI: before/after only with real, authorized patient photos (CFO and Meta rules).",
+    "NEVER present an AI-generated person as a patient; models are illustrative.",
+    "NEVER promise results ('resultado garantido', 'visível na primeira sessão', 'definitivo').",
+    "NEVER use flat yellow as gold; use the metallic champagne-gold gradient.",
+    "NEVER put text over the fade between the photo and the background, or closer than 6% to the edges.",
+    "NEVER use boxed numbered cards (01/02); show steps with simple typography or a dotted line.",
+    "NEVER deliver a piece without a photo or without a call to action."
+  ],
+  "mood": {
+    "adjetivos": [
+      "premium",
+      "natural",
+      "realista",
+      "limpo",
+      "acolhedor"
+    ],
+    "referencias": [
+      "foto de iPhone em consultório claro",
+      "editorial de beleza natural"
+    ],
+    "evita": [
+      "cara de IA",
+      "pele de plástico",
+      "amarelo chapado",
+      "antes e depois falso",
+      "texto no degradê"
+    ]
+  },
+  "estilos": [
+    {
+      "id": "carrossel-capa-dividida",
+      "nome": "Carrossel · Capa dividida",
+      "categoria": "carrossel",
+      "descricao": "Capa: foto de pessoa à esquerda, painel claro à direita com título serifado e caixa creme na divisa.",
+      "paleta": "bege-areia",
+      "hexes": [
+        "#F6F1EA",
+        "#E6D5C1",
+        "#3E2C20",
+        "#9C6B42"
+      ],
+      "layout": "Split layout: the LEFT 55% is a real photo of <pessoa>, photographed in a minimal clinic with warm light, cropped tight on face and shoulder. The RIGHT 45% is a solid soft white panel. On the panel, vertically centered, left-aligned, dark text: large serif roman \"<titulo_1>\"; large serif italic \"<titulo_2_italico>\"; light sans-serif \"<subtitulo>\". Overlapping the boundary between photo and panel near the lower middle, a solid cream box with a very thin dark outline and dark serif text: \"<caixa_linha_1>\" / \"[<caixa_linha_2_colchetes>]\" (second line italic inside thin brackets) and small sans \"arrasta →\"."
+    },
+    {
+      "id": "carrossel-perguntas",
+      "nome": "Carrossel · Perguntas em escada",
+      "categoria": "carrossel",
+      "descricao": "Slide de abertura de tema: 3 perguntas em escada + frase de apoio + colchetes.",
+      "paleta": "bege-areia",
+      "hexes": [
+        "#F6F1EA",
+        "#E6D5C1",
+        "#3E2C20",
+        "#9C6B42"
+      ],
+      "layout": "Solid soft white background, no photo. Upper area, three stacked lines in large dark serif italic, staggered left/center/right: \"<pergunta_1>\" / \"<pergunta_2>\" / \"<pergunta_3>\". A short thin hairline. Below, dark light sans-serif, centered: \"<apoio>\". Below, centered, dark serif italic inside thin accent-colored brackets: \"[<colchetes>]\"."
+    },
+    {
+      "id": "carrossel-ficha-arco",
+      "nome": "Carrossel · Ficha com foto em arco",
+      "categoria": "carrossel",
+      "descricao": "Slide explicativo: numeral grande vazado, título, foto em arco e ficha em 3 linhas.",
+      "paleta": "bege-areia",
+      "hexes": [
+        "#F6F1EA",
+        "#E6D5C1",
+        "#3E2C20",
+        "#9C6B42"
+      ],
+      "layout": "Cream background. Top-left: a huge thin outlined serif numeral \"<numero>\" in the accent color. Next to it, large dark serif \"<titulo>\" and below in italic \"<titulo_italico>\". Right side: a tall arch-shaped photo (rounded top) of <foto>. Lower half: a three-row information sheet separated by thin dark hairlines, each row with a small wide-caps label on the left and sans-serif text on the right: \"<rotulo_1>\" — \"<texto_1>\"; \"<rotulo_2>\" — \"<texto_2>\"; \"<rotulo_3>\" — \"<texto_3_italico>\" (this last text in serif italic)."
+    },
+    {
+      "id": "carrossel-macro-cartao",
+      "nome": "Carrossel · Macro de pele + cartão",
+      "categoria": "carrossel",
+      "descricao": "Slide explicativo: foto macro de pele em tela cheia + cartão creme com 3 colunas.",
+      "paleta": "bege-areia",
+      "hexes": [
+        "#F6F1EA",
+        "#E6D5C1",
+        "#3E2C20",
+        "#9C6B42"
+      ],
+      "layout": "Full-bleed real <foto>. Upper middle, in white: a large thin outlined serif numeral \"<numero>\" and white serif \"<titulo>\" / italic \"<titulo_italico>\". Lower part: a solid cream card spanning most of the width with dark text in three columns separated by thin vertical hairlines: label caps \"<rotulo_1>\" + sans \"<texto_1>\"; label \"<rotulo_2>\" + sans \"<texto_2>\"; label \"<rotulo_3>\" + serif italic \"<texto_3_italico>\"."
+    },
+    {
+      "id": "carrossel-cta-ambiente",
+      "nome": "Carrossel · Fechamento na clínica",
+      "categoria": "carrossel",
+      "descricao": "Último slide: foto do ambiente da clínica + caixa creme com CTA.",
+      "paleta": "bege-areia",
+      "hexes": [
+        "#F6F1EA",
+        "#E6D5C1",
+        "#3E2C20",
+        "#9C6B42"
+      ],
+      "layout": "Full-bleed real photo of an elegant, minimal clinic reception (light stone wall, oak wood, warm indirect light, vase with dried flowers, no people), slightly darkened. Centered, white large serif: \"<titulo_1>\" / italic \"<titulo_2_italico>\". Below, a solid cream box with dark text: sans \"<pergunta>\", serif italic inside thin brackets \"[<cta>]\" and small wide caps \"LINK NA BIO →\"."
+    },
+    {
+      "id": "anuncio-close-manchete",
+      "nome": "Anúncio · Close com manchete",
+      "categoria": "anuncio",
+      "descricao": "Estático de anúncio: close de rosto em tela cheia com manchete serifada branca e CTA entre colchetes.",
+      "paleta": "bege-areia",
+      "hexes": [
+        "#F6F1EA",
+        "#E6D5C1",
+        "#3E2C20",
+        "#9C6B42"
+      ],
+      "layout": "Full-bleed extreme close-up editorial beauty photograph of <pessoa>, natural even skin with real texture, warm soft light. White text centered over the cheek: line 1 roman large \"<linha_1>\"; line 2 italic large between thin white hairlines \"<linha_2_italico>\"; line 3 small roman \"<linha_3>\"; line 4 italic large inside thin square brackets \"<linha_4_colchetes>\". Below, small wide caps \"<cta> →\"."
+    },
+    {
+      "id": "anuncio-objeto-luxo",
+      "nome": "Anúncio · Objeto de luxo",
+      "categoria": "anuncio",
+      "descricao": "Estático de anúncio: still life premium (frasco, ampola ou objeto) sobre pedra, com sombra de janela e manchete.",
+      "paleta": "bege-areia",
+      "hexes": [
+        "#F6F1EA",
+        "#E6D5C1",
+        "#3E2C20",
+        "#9C6B42"
+      ],
+      "layout": "Premium still-life product photograph: <objeto> standing on a block of warm travertine stone, soft cream backdrop, long elegant window-light shadows with leaf silhouettes falling across the scene, a few drops of water, calm luxury skincare campaign look. Upper area, dark text centered: large serif roman \"<manchete>\" and large serif italic \"<manchete_italico>\"; thin hairline; light sans-serif \"<apoio>\". Lower area, a small solid dark pill with cream text \"<cta> →\". No brand name on the object."
+    },
+    {
+      "id": "prova-depoimento",
+      "nome": "Prova · Depoimento real",
+      "categoria": "prova",
+      "descricao": "Depoimento real em cartão: aspas grandes, texto do depoimento, iniciais e estrelas. Use SÓ depoimento real e autorizado.",
+      "paleta": "bege-areia",
+      "hexes": [
+        "#F6F1EA",
+        "#E6D5C1",
+        "#3E2C20",
+        "#9C6B42"
+      ],
+      "layout": "Cream background with a subtle linen texture and a soft diagonal window-light shadow. Centered: huge thin serif opening quotation mark in the accent color. Below, large dark serif italic text (the testimonial): \"<depoimento>\". Then a short thin hairline, five small accent-colored stars, small wide caps \"<iniciais>\" and sans \"<procedimento>\". Lower area, small dark serif italic inside thin brackets: \"[<cta>]\"."
+    },
+    {
+      "id": "prova-autoridade",
+      "nome": "Prova · Autoridade da profissional",
+      "categoria": "prova",
+      "descricao": "Autoridade da profissional: retrato real (passe a foto com --ref) + credenciais em lista fina.",
+      "paleta": "bege-areia",
+      "hexes": [
+        "#F6F1EA",
+        "#E6D5C1",
+        "#3E2C20",
+        "#9C6B42"
+      ],
+      "layout": "Elegant portrait slide. Upper 55%: a real editorial portrait of the professional from the reference image (identical face, keep her appearance exactly), in a white coat or elegant neutral outfit, warm soft light, in a minimal clinic. Lower 45%: soft white panel. On the panel: large dark serif \"<nome>\"; small wide caps \"<titulo_profissional>\"; three rows separated by thin hairlines with sans-serif text: \"<credencial_1>\", \"<credencial_2>\", \"<credencial_3>\"; then dark serif italic \"<frase_italico>\" and small wide caps \"<cta> →\"."
+    },
+    {
+      "id": "anuncio-campanha-dourada",
+      "nome": "Anúncio · Campanha dourada",
+      "categoria": "anuncio",
+      "descricao": "Campanha sazonal/oferta: macro de detalhe do rosto (lábios, pele) em tela cheia, selo de campanha em script dourado no topo, pergunta em caixa alta espaçada, manchete grande em dourado metálico, botão contornado e nota pequena.",
+      "paleta": "bege-areia",
+      "hexes": [
+        "#F6F1EA",
+        "#E6D5C1",
+        "#3E2C20",
+        "#9C6B42"
+      ],
+      "layout": "Full-bleed, warm, golden-hour editorial beauty macro photograph: extreme close-up of <detalhe>, filling the upper and right side of the frame, soft champagne and nude tones, slightly desaturated, luxurious, shallow depth of field; the lower-left area is softer and darker so text reads well. TOP-LEFT: a campaign seal: tiny sans caps \"<selo_pequeno>\" above a large metallic gold script/serif \"<campanha_1>\" and a white serif italic \"<campanha_2_italico>\" overlapping slightly below it. Under the seal, three short lines of small, very wide letter-spaced white caps: \"<pergunta_1>\" / bold \"<pergunta_2_destaque>\" / \"<pergunta_3>\". LOWER CENTER, centered: a light sans-serif white paragraph \"<apoio>\"; then a very large thin metallic gold sans-serif headline in caps with a subtle shine: \"<manchete>\"; below it, small white caps \"<procedimento>\"; then a thin white outlined rounded pill with small caps \"<cta> →\"; then tiny white text \"<nota>\". No other logo. LAYOUT LIMITS: the top of the campaign seal must start below 15% of the image height and the footer must sit above 82% of the height; keep the whole composition compact vertically."
+    },
+    {
+      "id": "pergunta-caixa-vidro",
+      "nome": "Anúncio · Pergunta no vidro",
+      "categoria": "anuncio",
+      "descricao": "Pergunta-gancho dentro de um painel de vidro fosco sobre foto macro de procedimento desfocada no topo; palavra-chave em pílula de cor e palavra final gigante em serifa colorida.",
+      "paleta": "branco-dourado",
+      "hexes": [
+        "#FFFFFF",
+        "#F7F2E8",
+        "#2E2A24",
+        "#CFAE6B"
+      ],
+      "layout": "Full-bleed real photo: <foto>, occupying the lower 55% of the frame and sharp there, while the upper part of the photo is softly out of focus in light grey and neutral tones. Upper-middle area: a large rounded rectangle of frosted glass (subtle translucent white, thin light border), containing centered text: thin clean sans-serif in white \"<linha_1>\" followed by the word \"<palavra_pilula>\" in white inside a solid rounded pill in the accent color; next line thin white sans-serif \"<linha_2>\"; then a very large high-contrast serif word in the accent color \"<palavra_gigante>\". Below the glass panel, small white caps with a thin arrow \"<cta> →\"."
+    },
+    {
+      "id": "jornada-pontilhada",
+      "nome": "Carrossel · Jornada pontilhada",
+      "categoria": "carrossel",
+      "descricao": "Capa educativa: macro de pele/sorriso em tela cheia, título com primeira linha em serifa itálica e o resto em sans bold, e uma linha pontilhada em onda com 4 pontos de cor e rótulos curtos (processo em etapas). Seta em círculo no canto.",
+      "paleta": "verde",
+      "hexes": [
+        "#1F3D33",
+        "#8FAF8C",
+        "#ECE8DA",
+        "#F7F5EE"
+      ],
+      "layout": "Full-bleed extreme macro real photograph: <foto>, filling the whole frame, slightly darkened for text contrast. Upper area centered, white text: elegant serif italic \"<titulo_italico>\" and below in large bold clean sans-serif \"<titulo_bold>\". Lower half: a thin white dashed line drawn as a smooth wave across the image, with four small solid dots in the accent color placed on the wave (low, high, low, high from left to right); next to each dot a short label in small white sans-serif: \"<etapa_1>\", \"<etapa_2>\", \"<etapa_3>\", \"<etapa_4>\". Bottom-left: a thin white circle with a thin arrow inside (swipe cue)."
+    },
+    {
+      "id": "palavra-gigante-close",
+      "nome": "Anúncio · Palavra gigante no close",
+      "categoria": "anuncio",
+      "descricao": "Close de sorriso em tela cheia com luz quente; cabeçalho e rodapé de revista (nome e especialidade nos cantos); uma palavra gigante em serifa display no meio, frase sublinhada e pergunta numa etiqueta.",
+      "paleta": "bege-areia",
+      "hexes": [
+        "#F6F1EA",
+        "#E6D5C1",
+        "#3E2C20",
+        "#9C6B42"
+      ],
+      "layout": "Full-bleed real editorial photograph: <foto>, the smile in the upper half, warm natural tones. Small letter-spaced caps in white at the top-left \"<nome_profissional>\" and top-right \"<especialidade>\", repeated identically at the bottom-left and bottom-right like a magazine page (keep these corner labels inside the safe area, never touching the edges). Lower-middle, left-aligned block in a pale cream / light accent color: small sans-serif \"<linha_1>\" with a thin underline; a huge flowing display serif word \"<palavra_gigante>\"; a sans-serif line with a thin underline \"<linha_2>\"; then a small light accent-colored rectangle tag, slightly tilted, with italic sans-serif text \"<pergunta>\". Below the tag, small letter-spaced caps in white \"<cta> →\"."
+    },
+    {
+      "id": "manchete-cena-clinica",
+      "nome": "Anúncio · Manchete com cena da clínica",
+      "categoria": "anuncio",
+      "descricao": "Cena real da clínica desfocada (dentista atendendo), linha de credencial no topo e no rodapé, manchete editorial gigante misturando serifa reta e itálica, e frase de apoio em faixas marca-texto.",
+      "paleta": "branco-dourado",
+      "hexes": [
+        "#FFFFFF",
+        "#F7F2E8",
+        "#2E2A24",
+        "#CFAE6B"
+      ],
+      "layout": "Full-bleed real photograph: <foto>; the upper half is softly blurred and light. Top center: small letter-spaced white caps \"<credencial>\"; the same line repeated near the bottom (both credential lines inside the safe area, never touching the edges). Upper area centered, white text: sans-serif lines \"<linha_1>\" / \"<linha_2>\"; then a very large high-contrast display serif headline \"<manchete_1>\" followed by the same serif in italic \"<manchete_2_italico>\". Below, two lines of sans-serif text each sitting on a soft translucent highlighter band in a pale accent color: \"<apoio_1>\" / \"<apoio_2>\". Below the bands, a small solid white pill with dark text \"<cta> →\"."
+    },
+    {
+      "id": "anuncio-anotacoes-rodape",
+      "nome": "Anúncio · Sorriso com anotações e rodapé",
+      "categoria": "anuncio",
+      "descricao": "Close de rosto/sorriso em tela cheia com setas desenhadas à mão e rótulos curtos apontando detalhes, selo-adesivo da marca, manchete com palavra em bloco de cor + caixa alta em sans bold, e faixa clara de rodapé com contatos.",
+      "paleta": "branco-dourado",
+      "hexes": [
+        "#FFFFFF",
+        "#F7F2E8",
+        "#2E2A24",
+        "#CFAE6B"
+      ],
+      "layout": "Full-bleed close-up real photograph of <pessoa>, cropped tight on the face and smile, filling the upper 85% of the image. PHOTO REALISM (critical): candid photo shot on an iPhone 15 Pro, natural daylight from a window, no studio lighting, no glow. Unretouched real skin with visible pores, fine peach fuzz, tiny natural imperfections and texture, very light natural makeup, natural flyaway hairs, slight phone-camera grain and natural depth of field. Natural healthy teeth in a natural shade (not artificially white, not perfect veneers). Must look like a real photo posted by a clinic, NOT AI, NOT airbrushed, NOT glossy or plastic. Upper-right, at about 16% of the image height (never near the top edge): small white caps \"<tagline>\". Two thin white hand-drawn curved arrows pointing to details of the smile/skin, each with a short white sans-serif label: \"<rotulo_1>\" and \"<rotulo_2>\". Near the cheek: a white die-cut sticker shaped like a soft cloud, slightly rotated, with a small round accent-colored brand dot and dark text \"<selo>\". Left-middle: the word \"<palavra_bloco>\" in white inside a solid rectangular accent-colored block, followed by white sans-serif \"<linha_1>\"; below in very large bold white uppercase sans-serif \"<manchete>\"; below in light white sans-serif \"<apoio>\". Bottom: a solid light cream band across the full width (about 13% of the height) with, on the left, two small rounded accent-colored icon squares (a chat bubble and a globe) next to dark text \"<contato_1>\" and \"<contato_2>\", and on the right a small solid dark pill \"<cta> →\"."
+    },
+    {
+      "id": "colagem-sorrisos",
+      "nome": "Anúncio · Colagem de sorrisos",
+      "categoria": "anuncio",
+      "descricao": "Colagem: pessoa sorrindo em destaque à direita, recortes de sorrisos em cartões arredondados no topo, fundo degradê claro com linha curva sutil, manchete em sans bold, traço de cor, apoio e cartão de CTA com ícones.",
+      "paleta": "branco-dourado",
+      "hexes": [
+        "#FFFFFF",
+        "#F7F2E8",
+        "#2E2A24",
+        "#CFAE6B"
+      ],
+      "layout": "Clean modern collage ad. Background: soft light gradient in the brand's lightest tones with one very subtle large curved line. Right side: real photo of <pessoa>, cut out and placed large, from the chest up, overlapping the other elements. PHOTO REALISM (critical): candid photo shot on an iPhone 15 Pro, natural daylight from a window, no studio lighting, no glow. Unretouched real skin with visible pores, fine peach fuzz, tiny natural imperfections and texture, very light natural makeup, natural flyaway hairs, slight phone-camera grain and natural depth of field. Natural healthy teeth in a natural shade (not artificially white, not perfect veneers). Must look like a real photo posted by a clinic, NOT AI, NOT airbrushed, NOT glossy or plastic. Top: three rounded-corner photo tiles of different sizes, slightly overlapping and partly cropped by the top edge: <detalhe_1>; <detalhe_2>; <detalhe_3>. Left-middle, left-aligned, dark text: a small rounded square icon in the accent color, then very large bold geometric sans-serif \"<titulo_negrito>\" and regular weight \"<titulo_resto>\" on two lines; a short thick accent-colored rounded line; light sans-serif \"<apoio>\". Bottom-right, overlapping the person: a rounded card in the accent color with two small round icon buttons (plus and arrow) on a white tab and text \"<cta>!\". Bottom-left: small dark text \"<rodape>\"."
+    }
+  ]
+}

@@ -66,6 +66,11 @@ export interface DockAttachment {
    * em vez de pagar uma chamada de visão por um documento pior.
    */
   assetId?: string;
+  /**
+   * O estilo do Genoma de estética, para `kind: 'favorite'` sem `assetId`.
+   * O documento está no bundle (`estiloGenoma.ts`), não numa linha.
+   */
+  estiloId?: string;
   /** Só para `kind: 'product'`. Ausente = `'object'`, que é o
    *  comportamento que já existia — nenhum anexo antigo muda de sentido. */
   subject?: ProductSubject;

@@ -65,6 +65,7 @@ import {
 } from '@/features/creative-studio/generation/studioAssetActions';
 import { montarPropostaDoPedido, type PropostaDoPedido } from '@/lib/creativeStudio/proposal';
 import { lerFavorito, avisoDasReferenciasIgnoradas, type LeituraDoFavorito } from '@/lib/creativeStudio/favorito';
+import { lerEstiloGenoma } from '@/lib/creativeStudio/estiloGenoma';
 import { containerPorId } from '@/lib/creativeGenome/catalog';
 import type { CreativeContainer } from '@/lib/creativeGenome/types';
 import { lerQuantidade } from '@/lib/creativeStudio/quantidade';
@@ -812,6 +813,7 @@ export default function CriativoStudioV2Page() {
       logo: logo?.value ?? null, copyAnexada: copyAnexada?.value ?? null,
       referencias, pessoas, objetos, avatares,
       favoritoId: favorito?.assetId ?? null,
+      estiloGenomaId: favorito?.estiloId ?? null,
     };
   }, [attachments]);
 
@@ -979,7 +981,7 @@ export default function CriativoStudioV2Page() {
        * só não era devolvida a ninguém. O ponto de parada não acrescenta
        * espera: ele mostra a espera que já havia.
        */
-      const { logo, copyAnexada, referencias, pessoas, objetos, avatares, favoritoId } = anexosPorPapel();
+      const { logo, copyAnexada, referencias, pessoas, objetos, avatares, favoritoId, estiloGenomaId } = anexosPorPapel();
 
       /*
        * O favorito, lido da LINHA e não da imagem.
@@ -992,8 +994,9 @@ export default function CriativoStudioV2Page() {
        * Falhar aqui não impede nada: o pedido segue sem o favorito, que é
        * exatamente como ele se comportava antes desta mudança.
        */
-      let favorito: LeituraDoFavorito | null = null;
-      if (favoritoId) {
+      // O estilo do Genoma já está no bundle: não há linha a buscar.
+      let favorito: LeituraDoFavorito | null = lerEstiloGenoma(estiloGenomaId);
+      if (!favorito && favoritoId) {
         try {
           favorito = lerFavorito(await getCreativeAsset(favoritoId));
         } catch {
@@ -1062,7 +1065,9 @@ export default function CriativoStudioV2Page() {
        * custaria duas chamadas de visão para chegar ao mesmo documento de
        * estilo.
        */
-      let estilo: GenerationOptions['referenceReading'] = null;
+      // Começa com o favorito, quando há: com `null` aqui, a primeira
+      // leitura recebia `referenceReading: null` e o estilo dele se perdia.
+      let estilo: GenerationOptions['referenceReading'] = opcoes.referenceReading ?? null;
 
       try {
         for (let i = 1; i <= n; i++) {

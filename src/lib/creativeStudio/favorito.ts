@@ -1,4 +1,5 @@
 import type { CreativeAsset } from '@/features/creative-studio/types/creative';
+import type { ReferenceAnalysis } from '@/features/creative-studio/api/referenceAnalysis';
 
 /**
  * O favorito anexado ao pedido.
@@ -40,7 +41,8 @@ export interface LeituraDoFavorito {
    * que ninguém precise lembrar de desligar a cláusula no caminho.
    */
   designSystemFromReference: false;
-  mood: null;
+  /** `null` no favorito (não é gravado); preenchido nos estilos do Genoma. */
+  mood: ReferenceAnalysis['mood'];
   /** O formato da arte favorita, quando ela tinha um. */
   containerId: string | null;
   /** Como chamá-lo na proposta. */

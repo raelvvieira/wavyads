@@ -8,6 +8,7 @@ import { uploadDataUrlToCreativeStorage } from '../api/storageUpload';
 import type { CopyBankEntry } from '../api/copyBank';
 import { suggestCopyVariations, type CopyVariation } from '../api/copySuggestions';
 import { countAssetUsage, usageSentence } from '../state/assetUsage';
+import { ESTILOS_GENOMA } from '@/lib/creativeStudio/estiloGenoma';
 import type { CreativeAsset } from '../types/creative';
 import type { DockAttachment, DockAttachmentKind, ProductSubject } from '../types/studioUi';
 
@@ -46,6 +47,9 @@ const OPCOES: { kind: DockAttachmentKind; label: string; icon: typeof Images }[]
   { kind: 'product', label: 'Anexar produto', icon: Boxes },
   // Mesmo ícone da biblioteca "Avatares" — mesmo conceito, mesmo símbolo.
   { kind: 'avatar', label: 'Anexar avatar', icon: UserRound },
+  // Estilos prontos de estética e odontologia (Genoma). Entram como
+  // favorito: documento já escrito, sem leitura de visão.
+  { kind: 'favorite', label: 'Estilos de estética', icon: Sparkles },
 ];
 
 /**
@@ -213,11 +217,53 @@ function SubPainel({
   }
   if (kind === 'copy') return <PainelCopy copyBank={copyBank} onVoltar={onVoltar} onAnexar={onAnexar} onSugestoesAbertas={onSugestoesAbertas} />;
   if (kind === 'avatar') return <PainelAvatar library={avatarLibrary} {...comuns} />;
+  if (kind === 'favorite') return <PainelEstilosGenoma onVoltar={onVoltar} onAnexar={onAnexar} />;
   return (
     <PainelBiblioteca
       titulo="Anexar produto" maxImages={6} texto="Solte, clique ou cole imagens do produto" kind="product"
       library={productLibrary} onNovoUpload={onNovoUpload} {...comuns}
     />
+  );
+}
+
+/**
+ * Os estilos de estética do Genoma.
+ *
+ * Lista de texto, e não grade de miniaturas: o estilo é um documento, não
+ * uma imagem, e o que ajuda a escolher é o nome, a descrição e a paleta.
+ */
+function PainelEstilosGenoma({
+  onVoltar,
+  onAnexar,
+}: {
+  onVoltar: () => void;
+  onAnexar: (attachment: Omit<DockAttachment, 'id'>) => void;
+}) {
+  return (
+    <div>
+      <VoltarHeader titulo="Estilos de estética" onVoltar={onVoltar} />
+      <ul className="max-h-[360px] overflow-y-auto p-1.5">
+        {ESTILOS_GENOMA.map((estilo) => (
+          <li key={estilo.id}>
+            <button
+              type="button"
+              onClick={() => onAnexar({ kind: 'favorite', label: `Genoma · ${estilo.nome}`, value: '', estiloId: estilo.id })}
+              className="flex w-full flex-col gap-1 rounded-[var(--wavy-radius-control)] px-2.5 py-2 text-left transition-colors duration-150 hover:bg-white/[0.07]"
+            >
+              <span className="flex items-center gap-2 text-[12.5px] font-medium text-white/85">
+                {estilo.nome}
+                <span className="ml-auto flex shrink-0 gap-0.5" aria-hidden>
+                  {estilo.hexes.map((hex) => (
+                    <span key={hex} className="h-2.5 w-2.5 rounded-full border border-white/15" style={{ backgroundColor: hex }} />
+                  ))}
+                </span>
+              </span>
+              <span className="text-[11px] leading-snug text-white/50">{estilo.descricao}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

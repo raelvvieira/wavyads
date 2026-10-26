@@ -1974,6 +1974,28 @@ describe('o formato da peça, antes de gerar', () => {
     expect(geracao[1].body.prompt).toContain('Template name: Carrinho de checkout');
   });
 
+  it('o estilo de estética do Genoma chega ao gerador, sem leitura de visão', async () => {
+    // O estilo entra como favorito pelo `referenceReading`. A primeira
+    // leitura do lote recebia `referenceReading: null` e o descartava.
+    invoke.mockImplementation(invokeComLeitura(() =>
+      Promise.resolve({ data: { imageUrl: 'https://x/n.png' }, error: null })));
+    montar();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar referência, logo, copy, produto ou avatar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Estilos de estética' }));
+    fireEvent.click(screen.getByRole('button', { name: /Palavra gigante no close/ }));
+    fireEvent.change(screen.getByPlaceholderText('O que você quer criar?'), { target: { value: 'combo limpeza + clareamento' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Gerar' })); });
+    const assim = screen.queryByRole('button', { name: /Gerar assim/ });
+    if (assim) await act(async () => { fireEvent.click(assim); });
+
+    await waitFor(() => expect(invoke.mock.calls.some((c: any[]) => c[0] === 'criativo-generate')).toBe(true));
+    const geracao = invoke.mock.calls.find((c: any[]) => c[0] === 'criativo-generate')!;
+    expect(geracao[1].body.prompt).toContain('TEMPLATE · Anúncio · Palavra gigante no close');
+    expect(geracao[1].body.prompt).toContain('PHOTO REALISM');
+    expect(invoke.mock.calls.some((c: any[]) => c[0] === 'criativo-analyze-refs')).toBe(false);
+  });
+
   it('formato pedido que não existe na proporção escolhida é dito, não engolido', async () => {
     // O projeto está em 4:5 e o "antes e depois" é 1:1. Sem esta linha a
     // arte sai comum e o pedido parece não ter sido lido.
