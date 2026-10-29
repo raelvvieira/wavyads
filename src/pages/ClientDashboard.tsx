@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { BudgetBandsCard } from '@/components/BudgetBandsCard';
-import { SegmentsCard } from '@/components/SegmentsCard';
+import { SegmentCard } from '@/components/SegmentCard';
 import { useParams, useNavigate } from 'react-router-dom';
 import { TrendingUp, RefreshCw, ArrowLeft, CalendarIcon, Send, SlidersHorizontal } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths, subDays, startOfDay } from 'date-fns';
@@ -891,31 +891,30 @@ export default function ClientDashboard() {
                   O painel respondia quanto e com que resultado, nunca para
                   quem. É o bloco que o cliente pediu por nome. */}
               {platform === 'meta' && (metaSegments || segmentsLoading) && (
-                <SegmentsCard
-                  vistas={[
-                    {
-                      chave: 'idade',
-                      titulo: 'Idade',
-                      subtitulo: 'Distribuição do investimento',
-                      linhas: metaSegments?.idade,
-                    },
-                    {
-                      chave: 'posicionamento',
-                      titulo: 'Posicionamento',
-                      subtitulo: 'Plataforma',
-                      linhas: metaSegments?.plataforma,
-                      alternativa: { rotulo: 'Posição', linhas: metaSegments?.posicao },
-                    },
-                    {
-                      chave: 'regioes',
-                      titulo: 'Regiões',
-                      subtitulo: 'Top 10 por investimento',
-                      linhas: metaSegments?.regiao,
-                    },
-                  ]}
-                  resultType={tipoDoResultado}
-                  carregando={segmentsLoading}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 items-start">
+                  <SegmentCard
+                    titulo="Idade"
+                    subtitulo="Distribuição do investimento"
+                    linhas={metaSegments?.idade}
+                    resultType={tipoDoResultado}
+                    carregando={segmentsLoading}
+                  />
+                  <SegmentCard
+                    titulo="Posicionamento"
+                    subtitulo="Plataforma"
+                    linhas={metaSegments?.plataforma}
+                    alternativa={{ rotulo: 'Posição', linhas: metaSegments?.posicao }}
+                    resultType={tipoDoResultado}
+                    carregando={segmentsLoading}
+                  />
+                  <SegmentCard
+                    titulo="Regiões"
+                    subtitulo="Top 10 por investimento"
+                    linhas={metaSegments?.regiao}
+                    resultType={tipoDoResultado}
+                    carregando={segmentsLoading}
+                  />
+                </div>
               )}
 
               {/* Campaigns Table */}
