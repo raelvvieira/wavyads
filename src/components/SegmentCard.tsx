@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import { cn } from '@/lib/utils';
 import { formatCurrency, formatNumber } from '@/lib/format';
@@ -7,13 +7,14 @@ import { resumirSegmento, rotuloDoSegmento, type LinhaDeSegmento } from '@/lib/d
 import { unidadeDoResultado, pluralDoResultado } from '@/lib/dashboard/unidadeDoResultado';
 
 /**
- * Para onde a verba foi — idade, posicionamento e região, num card só.
+ * Para onde a verba foi, num recorte — idade, posicionamento ou região.
  *
- * Eram três cards lado a lado, como no benchmark. Um carrossel troca
- * largura por profundidade: cada recorte ganha a linha inteira, as barras
- * ficam legíveis e o bloco para de competir por espaço com a tabela de
- * campanhas. São três respostas para a MESMA pergunta — "com quem o
- * dinheiro foi gasto" —, e perguntas iguais cabem no mesmo lugar.
+ * Um card por recorte, e não um carrossel com os três. O carrossel foi
+ * tentado: ele dava a linha inteira a cada recorte e deixava as barras mais
+ * largas, mas escondia dois terços da informação atrás de uma seta. Ver os
+ * três de uma vez é o que permite notar que a faixa que mais consome verba
+ * é também a que aparece pouco numa plataforma — e isso é a leitura que o
+ * bloco existe para dar.
  *
  * Nada aqui é pintado com `white`: o painel tem tema claro, e uma borda
  * branca sobre fundo branco é borda nenhuma. Contornos e trilhos saem de
@@ -24,36 +25,24 @@ import { unidadeDoResultado, pluralDoResultado } from '@/lib/dashboard/unidadeDo
  * volta sem o contexto que tinha.
  */
 
-export interface VistaDeSegmento {
-  chave: string;
+interface SegmentCardProps {
   titulo: string;
   subtitulo: string;
   linhas: LinhaDeSegmento[] | undefined;
   /** Um segundo recorte da mesma vista — "Plataforma" × "Posição". */
   alternativa?: { rotulo: string; linhas: LinhaDeSegmento[] | undefined };
-}
-
-interface SegmentsCardProps {
-  vistas: VistaDeSegmento[];
   resultType?: string | null;
   carregando?: boolean;
 }
 
-export function SegmentsCard({ vistas, resultType, carregando }: SegmentsCardProps) {
-  const [indice, setIndice] = useState(0);
+export function SegmentCard({
+  titulo, subtitulo, linhas, alternativa, resultType, carregando,
+}: SegmentCardProps) {
   const [verAlternativa, setVerAlternativa] = useState(false);
   const [aberto, setAberto] = useState(false);
   const unidade = unidadeDoResultado(resultType);
 
-  /* Só as vistas com dado entram no carrossel: navegar até um slide vazio
-     é prometer informação e entregar moldura. */
-  const comDado = useMemo(
-    () => vistas.filter((v) => (v.linhas ?? []).some((l) => l?.spend > 0)),
-    [vistas],
-  );
-  const vista = comDado[Math.min(indice, Math.max(0, comDado.length - 1))];
-
-  const ativas = verAlternativa ? vista?.alternativa?.linhas : vista?.linhas;
+  const ativas = verAlternativa ? alternativa?.linhas : linhas;
   const resumo = useMemo(() => resumirSegmento(ativas), [ativas]);
   const completo = useMemo(() => resumirSegmento(ativas, 50), [ativas]);
 
@@ -64,69 +53,32 @@ export function SegmentsCard({ vistas, resultType, carregando }: SegmentsCardPro
       </GlassCard>
     );
   }
-  if (!vista || resumo.fatias.length === 0) return null;
-
-  const ir = (passo: number) => {
-    setIndice((i) => (i + passo + comDado.length) % comDado.length);
-    setVerAlternativa(false);
-  };
+  /* Card vazio com título promete informação e entrega moldura — e numa
+     fileira de três, o buraco ainda desalinha os vizinhos. */
+  if (resumo.fatias.length === 0) return null;
 
   return (
     <GlassCard className="animate-fade-in space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-start gap-2">
         <div className="min-w-0">
-          <h3 className="text-base sm:text-lg font-semibold">{vista.titulo}</h3>
+          <h3 className="text-base font-semibold">{titulo}</h3>
           <p className="text-[11px] text-muted-foreground">
-            {verAlternativa ? vista.alternativa!.rotulo : vista.subtitulo}
+            {verAlternativa ? alternativa!.rotulo : subtitulo}
           </p>
         </div>
 
-        {vista.alternativa && (
+        {alternativa && (
           <button
             type="button"
             onClick={() => setVerAlternativa((v) => !v)}
-            className="rounded-full border border-border/25 px-2.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground"
+            className="ml-auto shrink-0 rounded-full border border-border/25 px-2.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground"
           >
-            {verAlternativa ? vista.subtitulo : vista.alternativa.rotulo}
+            {verAlternativa ? subtitulo : alternativa.rotulo}
           </button>
-        )}
-
-        {comDado.length > 1 && (
-          <div className="ml-auto flex items-center gap-1">
-            {/* Os pontos dizem quantos recortes existem — sem eles, o
-                carrossel esconde que há mais a ver. */}
-            <span className="mr-1 flex items-center gap-1">
-              {comDado.map((v, i) => (
-                <button
-                  key={v.chave}
-                  type="button"
-                  onClick={() => { setIndice(i); setVerAlternativa(false); }}
-                  aria-label={v.titulo}
-                  aria-current={i === indice}
-                  className={cn(
-                    'h-1.5 rounded-full transition-all',
-                    i === indice ? 'w-4 bg-foreground/70' : 'w-1.5 bg-foreground/25 hover:bg-foreground/40',
-                  )}
-                />
-              ))}
-            </span>
-            <button
-              type="button" onClick={() => ir(-1)} aria-label="Recorte anterior"
-              className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button" onClick={() => ir(1)} aria-label="Próximo recorte"
-              className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground"
-            >
-              <ChevronRight className="h-3.5 w-3.5" />
-            </button>
-          </div>
         )}
       </div>
 
-      <div className="flex gap-4 text-[11px]">
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
         <span className="text-muted-foreground">
           Invest. <span className="metric-number text-foreground/90">{formatCurrency(resumo.investimento)}</span>
         </span>
