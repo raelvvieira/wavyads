@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { planilhaDeConversoes, nomeDaPlanilha } from '@/lib/comercial/planilha';
 import { format, startOfDay, endOfDay, subDays, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import {
   Search,
@@ -13,6 +14,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   Send,
+  Download,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRole } from '@/hooks/useRole';
@@ -192,20 +194,36 @@ export default function ComercialPage() {
     queryKey: ['offline-conversions', clientId, typeFilter, dateRange?.since.toISOString(), dateRange?.until.toISOString()],
     enabled: !!clientId,
     queryFn: async () => {
-      let q = supabase
-        .from('offline_conversions')
-        .select('*')
-        .eq('client_id', clientId!)
-        .order('conversion_date', { ascending: false })
-        .limit(1000);
-      if (typeFilter !== 'all') q = q.eq('event_name', typeFilter);
-      if (dateRange) {
-        q = q.gte('conversion_date', dateRange.since.toISOString())
-             .lte('conversion_date', dateRange.until.toISOString());
+      /*
+       * Tudo, em páginas de mil.
+       *
+       * Havia um `.limit(1000)` aqui. Ele não avisava nada: no registro
+       * 1001 a tela simplesmente passava a mostrar menos do que existe, os
+       * totais dos cards ficavam menores que a realidade e a planilha
+       * sairia faltando gente — sem erro, sem aviso, sem jeito de
+       * perceber a não ser conferindo na mão.
+       */
+      const PAGINA = 1000;
+      const todas: OfflineConversionRow[] = [];
+      for (let inicio = 0; ; inicio += PAGINA) {
+        let q = supabase
+          .from('offline_conversions')
+          .select('*')
+          .eq('client_id', clientId!)
+          .order('conversion_date', { ascending: false })
+          .range(inicio, inicio + PAGINA - 1);
+        if (typeFilter !== 'all') q = q.eq('event_name', typeFilter);
+        if (dateRange) {
+          q = q.gte('conversion_date', dateRange.since.toISOString())
+               .lte('conversion_date', dateRange.until.toISOString());
+        }
+        const { data, error } = await q;
+        if (error) throw error;
+        const lote = (data || []) as OfflineConversionRow[];
+        todas.push(...lote);
+        if (lote.length < PAGINA) break;
       }
-      const { data, error } = await q;
-      if (error) throw error;
-      return (data || []) as OfflineConversionRow[];
+      return todas;
     },
   });
 
@@ -356,6 +374,28 @@ export default function ComercialPage() {
     }
   };
 
+  /**
+   * Baixa a lista como planilha.
+   *
+   * O arquivo nasce aqui mesmo, no navegador: são no máximo alguns
+   * milhares de linhas que a tela JÁ carregou, e mandar isso a uma edge
+   * function custaria uma ida ao servidor para devolver texto que já está
+   * na memória — além de precisar de deploy para existir.
+   *
+   * `revokeObjectURL` depois do clique: sem ele, o blob fica preso na
+   * memória da aba até ela fechar, e quem exporta várias vezes seguidas
+   * vai acumulando cópias da planilha inteira.
+   */
+  const baixarPlanilha = useCallback(() => {
+    const csv = planilhaDeConversoes(filtered);
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nomeDaPlanilha(client?.name);
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [filtered, client?.name]);
+
   if (roleLoading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[60vh]">
@@ -375,17 +415,37 @@ export default function ComercialPage() {
             Lista de Leads e Compradores registrados manualmente para a Meta.
           </p>
         </div>
-        {isAdmin && (
+        <div className="flex shrink-0 items-center gap-2">
+          {/* Baixa o que está NA TELA, com os filtros aplicados — e diz
+              quantos registros são no próprio botão. Um botão que exporta
+              o acervo inteiro enquanto a tela mostra um período filtrado
+              entrega um arquivo que não confere com o que se está
+              olhando, e a diferença só aparece depois. */}
           <Button
             variant="outline"
             size="sm"
-            onClick={() => navigate('/comercial')}
-            className="glass-input rounded-xl shrink-0"
+            onClick={baixarPlanilha}
+            disabled={filtered.length === 0}
+            className="glass-input rounded-xl"
           >
-            <ArrowLeft className="h-4 w-4 mr-1.5" />
-            Voltar
+            <Download className="h-4 w-4 mr-1.5" />
+            Baixar planilha
+            {filtered.length > 0 && (
+              <span className="ml-1.5 text-muted-foreground">({filtered.length})</span>
+            )}
           </Button>
-        )}
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/comercial')}
+              className="glass-input rounded-xl"
+            >
+              <ArrowLeft className="h-4 w-4 mr-1.5" />
+              Voltar
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Filters */}
